@@ -1,0 +1,137 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: 'benchmarks'
+          cache-on-failure: true
+
+      # Run benchmarks
+      - name: Run benchmarks
+        run: cargo bench
+
+  criterion-benchmarks:
+    name: Criterion Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: 'criterion'
+          cache-on-failure: true
+
+      # Cache critcmp installation
+      - name: Cache critcmp
+        id: cache-critcmp
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/critcmp
+          key: critcmp-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      # Install critcmp for comparing results
+      - name: Install critcmp
+        if: steps.cache-critcmp.outputs.cache-hit != 'true'
+        run: |
+          # Try cargo-binstall first for faster installation
+          if command -v cargo-binstall >/dev/null 2>&1; then
+            cargo binstall --no-confirm critcmp
+          else
+            cargo install critcmp
+          fi
+
+      # Checkout base branch
+      - name: Checkout base branch
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git checkout origin/${{ github.base_ref }}
+
+      # Run benchmarks on base branch
+      - name: Run base benchmarks
+        run: |
+          cargo bench -- --save-baseline base
+
+      # Checkout PR branch
+      - name: Checkout PR branch
+        run: git checkout ${{ github.sha }}
+
+      # Run benchmarks on PR branch
+      - name: Run PR benchmarks
+        run: |
+          cargo bench -- --save-baseline pr
+
+      # Compare results
+      - name: Compare benchmarks
+        run: |
+          critcmp base pr > comparison.txt
+          cat comparison.txt
+
+      # Comment on PR
+      - name: Comment PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const comparison = fs.readFileSync('comparison.txt', 'utf8');
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## Benchmark Results')
+            );
+
+            const body = `## Benchmark Results\n\n\`\`\`\n${comparison}\n\`\`\``;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }

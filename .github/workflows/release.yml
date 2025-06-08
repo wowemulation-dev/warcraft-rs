@@ -1,0 +1,238 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  RUST_BACKTRACE: 1
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          release_name: Release v${{ steps.get_version.outputs.version }}
+          draft: true
+          prerelease: false
+
+  # Build all binaries in parallel
+  build-binaries:
+    name: Build (${{ matrix.target }})
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux builds using cross for better compatibility
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary: warcraft-rs
+            use_cross: true
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            binary: warcraft-rs
+            use_cross: true
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary: warcraft-rs
+            use_cross: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            binary: warcraft-rs
+            use_cross: true
+
+          # Windows
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            binary: warcraft-rs.exe
+            use_cross: false
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            binary: warcraft-rs.exe
+            use_cross: true
+
+          # macOS
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            binary: warcraft-rs
+            use_cross: false
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            binary: warcraft-rs
+            use_cross: false
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: 'release-${{ matrix.target }}'
+          cache-on-failure: true
+
+      # Install cross for Linux builds
+      - name: Install cross
+        if: matrix.use_cross == true
+        run: |
+          # Use cargo-binstall for faster installation if available
+          if command -v cargo-binstall >/dev/null 2>&1; then
+            cargo binstall --no-confirm cross
+          else
+            cargo install cross --git https://github.com/cross-rs/cross
+          fi
+
+      # Build using cross or cargo
+      - name: Build release binary
+        run: |
+          if [[ "${{ matrix.use_cross }}" == "true" ]]; then
+            cross build --release --target ${{ matrix.target }} --bin warcraft-rs
+          else
+            cargo build --release --target ${{ matrix.target }} --bin warcraft-rs
+          fi
+        shell: bash
+
+      - name: Package binary
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          if [[ "${{ matrix.os }}" == "windows-latest" ]] || [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            7z a ../../../warcraft-rs-${{ matrix.target }}.zip ${{ matrix.binary }}
+          else
+            tar czf ../../../warcraft-rs-${{ matrix.target }}.tar.gz ${{ matrix.binary }}
+          fi
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
+          asset_name: warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
+          asset_content_type: ${{ contains(matrix.target, 'windows') && 'application/zip' || 'application/gzip' }}
+
+  # Publish crates to crates.io after binaries are built
+  publish-crates:
+    name: Publish to crates.io
+    needs: [build-binaries]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: 'publish'
+          cache-on-failure: true
+
+      # Publish crates in dependency order
+      # Core crates first
+      - name: Publish warcraft-cli-utils
+        run: cargo publish -p warcraft-cli-utils --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      # File format crates (can be published in parallel conceptually, but we do them sequentially)
+      - name: Publish wow-mpq
+        run: cargo publish -p wow-mpq --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish wow-dbc
+        run: cargo publish -p wow-dbc --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish wow-blp
+        run: cargo publish -p wow-blp --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish wow-m2
+        run: cargo publish -p wow-m2 --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish wow-wmo
+        run: cargo publish -p wow-wmo --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish wow-adt
+        run: cargo publish -p wow-adt --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish wow-wdl
+        run: cargo publish -p wow-wdl --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish wow-wdt
+        run: cargo publish -p wow-wdt --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      # Main CLI crate last (depends on others)
+      - name: Publish warcraft-rs
+        run: |
+          # Wait a bit for crates.io to index the dependencies
+          sleep 30
+          cargo publish -p warcraft-rs --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true

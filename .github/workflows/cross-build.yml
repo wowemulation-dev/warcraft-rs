@@ -1,0 +1,89 @@
+name: Cross-Platform Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  matrix-setup:
+    name: Setup Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        run: |
+          matrix=$(cat <<EOF
+          {
+            "include": [
+              {"target": "x86_64-unknown-linux-gnu", "os": "ubuntu-latest", "cross": false},
+              {"target": "x86_64-unknown-linux-musl", "os": "ubuntu-latest", "cross": true},
+              {"target": "aarch64-unknown-linux-gnu", "os": "ubuntu-latest", "cross": true},
+              {"target": "x86_64-pc-windows-gnu", "os": "ubuntu-latest", "cross": true},
+              {"target": "x86_64-pc-windows-msvc", "os": "windows-latest", "cross": false},
+              {"target": "aarch64-apple-darwin", "os": "macos-latest", "cross": false}
+            ]
+          }
+          EOF
+          )
+          echo "matrix=$(echo $matrix | jq -c .)" >> $GITHUB_OUTPUT
+
+  cross-build:
+    name: Build ${{ matrix.target }}
+    needs: matrix-setup
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: 'cross-${{ matrix.target }}'
+
+      # Use cross for Linux cross-compilation
+      - name: Install cross
+        if: matrix.cross && matrix.os == 'ubuntu-latest'
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      # Build with cross
+      - name: Build with cross
+        if: matrix.cross
+        run: |
+          cross build --target ${{ matrix.target }} --release --bin warcraft-rs
+
+      # Build natively
+      - name: Build natively
+        if: '!matrix.cross'
+        run: |
+          cargo build --target ${{ matrix.target }} --release --bin warcraft-rs
+
+      # Test build artifacts exist
+      - name: Verify build artifacts
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            ls -la target/${{ matrix.target }}/release/*.exe || true
+          else
+            ls -la target/${{ matrix.target }}/release/warcraft-rs || true
+          fi
+
+      # Upload artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/warcraft-rs*
+          if-no-files-found: error

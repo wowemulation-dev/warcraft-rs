@@ -1,0 +1,64 @@
+[package]
+name = "warcraft-rs"
+version = "0.1.0"
+authors = ["Daniel S. Reichenbach <daniel@kogito.network>"]
+edition = "2024"
+rust-version = "1.86"
+license = "MIT OR Apache-2.0"
+description = "Command-line tools for World of Warcraft file formats"
+repository = "https://github.com/wowemulation-dev/warcraft-rs"
+homepage = "https://github.com/wowemulation-dev/warcraft-rs"
+keywords = ["wow", "warcraft", "mpq", "blp", "dbc"]
+categories = ["command-line-utilities", "game-development"]
+
+[dependencies]
+# CLI framework
+clap = { version = "4.5", features = ["derive", "cargo", "env"] }
+clap_complete = "4.5"
+
+# File format crates
+wow-mpq = { path = "../file-formats/archives/wow-mpq" }
+wow-dbc = { path = "../file-formats/database/wow-dbc", optional = true }
+wow-blp = { path = "../file-formats/graphics/wow-blp", optional = true }
+wow-m2 = { path = "../file-formats/graphics/wow-m2", optional = true }
+wow-wmo = { path = "../file-formats/graphics/wow-wmo", optional = true }
+wow-adt = { path = "../file-formats/world-data/wow-adt", optional = true }
+wow-wdt = { path = "../file-formats/world-data/wow-wdt", optional = true }
+wow-wdl = { path = "../file-formats/world-data/wow-wdl", optional = true }
+
+# Error handling and logging
+anyhow = "1.0"
+thiserror = "2.0"
+log = "0.4"
+env_logger = "0.11"
+
+# UI and formatting
+indicatif = "0.17"
+prettytable-rs = "0.10"
+humansize = "2.1"
+console = "0.15"
+
+# Utilities
+chrono = "0.4"
+glob = "0.3"
+
+[features]
+default = ["mpq"]
+full = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl"]
+mpq = []
+dbc = ["dep:wow-dbc"]
+blp = ["dep:wow-blp"]
+m2 = ["dep:wow-m2"]
+wmo = ["dep:wow-wmo"]
+adt = ["dep:wow-adt"]
+wdt = ["dep:wow-wdt"]
+wdl = ["dep:wow-wdl"]
+
+[[bin]]
+name = "warcraft-rs"
+path = "src/main.rs"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
+tempfile = "3.20"

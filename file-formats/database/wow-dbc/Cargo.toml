@@ -1,0 +1,22 @@
+[package]
+name = "wow-dbc"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/wow-dbc"
+description = "Parser for World of Warcraft DBC (client database) files"
+readme = "README.md"
+keywords = ["wow", "warcraft", "dbc", "database", "gamedev"]
+categories = ["game-development", "parser-implementations"]
+
+[dependencies]
+thiserror = "2.0"
+
+[dev-dependencies]
+
+[features]
+default = []

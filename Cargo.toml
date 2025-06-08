@@ -1,0 +1,48 @@
+[workspace]
+members = [
+    # Archives
+    "file-formats/archives/wow-mpq",
+
+    # World Data
+    "file-formats/world-data/wow-adt",
+    "file-formats/world-data/wow-wdl",
+    "file-formats/world-data/wow-wdt",
+
+    # Graphics
+    "file-formats/graphics/wow-blp",
+    "file-formats/graphics/wow-m2",
+    "file-formats/graphics/wow-wmo",
+
+    # Database
+    "file-formats/database/wow-dbc",
+
+    # CLI
+    "warcraft-rs",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["Daniel S. Reichenbach <daniel@kogito.network>"]
+edition = "2024"
+rust-version = "1.86"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/wowemulation-dev/warcraft-rs"
+homepage = "https://github.com/wowemulation-dev/warcraft-rs"
+
+[workspace.dependencies]
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Data structures and utilities
+rand = "0.9"
+tempfile = "3.20"
+
+# Development
+criterion = { version = "0.6", features = ["html_reports"] }
+pretty_assertions = "1.4"
+proptest = "1.6"

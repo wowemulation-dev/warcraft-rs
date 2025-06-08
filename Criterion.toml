@@ -1,0 +1,27 @@
+# Criterion.toml
+# Configure Criterion.rs
+
+# This is the default configuration file for Criterion.rs
+
+# This section configures the display of the generated plots
+[[plot_config]]
+size = { height = 400, width = 600 }
+scale = 1.0
+
+# The colors section specifies the color scheme for the plots
+# We use an HSL color scheme by default. The colors are specified in the
+# range [0-360] for hue, [0-100] for saturation and [0-100] for lightness
+[colors]
+current_sample = { h = 210, s = 80, l = 50 }
+comparison_sample = { h = 30, s = 80, l = 50 }
+
+# Configuration for reports
+[report]
+# Show detailed information about sample data
+detailed = true
+# Print ASCII histograms in the console output
+histograms = true
+# Generate an HTML report
+html = true
+# Collect additional metrics about the benchmarks
+metrics = true

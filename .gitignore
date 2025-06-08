@@ -1,0 +1,19 @@
+# Add directories, files, and symbolic links which should not be stored within
+# the repository here.
+
+# Helper files requiring special attention
+!.gitignore
+!.gitattributes
+
+# Project files
+/.cache/
+/.fleet/
+/.idea/
+/.vscode/
+
+# OS specific temporary files
+.DS_Store
+Thumbs.db
+
+# Added by cargo
+/target/

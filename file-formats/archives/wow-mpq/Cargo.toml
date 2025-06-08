@@ -1,0 +1,109 @@
+[package]
+name = "wow-mpq"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+readme = "README.md"
+description = "Parser for World of Warcraft MPQ archive files (1.12-5.4)"
+categories = ["game-development", "parser-implementations"]
+keywords = ["wow", "warcraft", "mpq", "archive", "gamedev"]
+
+[dependencies]
+# Error handling
+thiserror = { workspace = true }
+
+# Logging
+log = { workspace = true }
+
+# Hashing and cryptography
+sha1 = "0.10"
+md-5 = "0.10"
+crc32fast = "1.4"
+adler = "1.0"
+rsa = "0.9"
+num-bigint = "0.4"
+num-traits = "0.2"
+
+# Compression algorithms
+flate2 = "1.1"
+bzip2 = "0.5"
+lzma-rs = "0.3"
+pklib = "0.1"
+
+# Data structures and utilities
+bytes = "1.10"
+rand = { workspace = true }
+tempfile = { workspace = true }
+
+
+[dev-dependencies]
+criterion = { workspace = true }
+env_logger = { workspace = true }
+pretty_assertions = { workspace = true }
+proptest = { workspace = true }
+tempfile = { workspace = true }
+assert_cmd = "2.0"
+predicates = "3.0"
+
+[[bench]]
+name = "hash"
+harness = false
+
+[[bench]]
+name = "crypto"
+harness = false
+
+[[bench]]
+name = "compression"
+harness = false
+
+[[bench]]
+name = "builder"
+harness = false
+
+[[bench]]
+name = "archive_creation"
+harness = false
+
+[[bench]]
+name = "archive_extraction"
+harness = false
+
+[features]
+default = []
+
+# Enable all features for docs.rs
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "patch_chain_demo"
+
+[[example]]
+name = "wow_patch_chains"
+
+[[example]]
+name = "patch_chain_dbc_demo"
+
+[[example]]
+name = "patch_analysis"
+
+[[example]]
+name = "tbc_patch_chain_demo"
+
+[[example]]
+name = "tbc_patch_analysis"
+
+[[example]]
+name = "wotlk_patch_chain_demo"
+
+[[example]]
+name = "cata_patch_chain_demo"
+
+[[example]]
+name = "mop_patch_chain_demo"
