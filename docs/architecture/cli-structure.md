@@ -1,14 +1,13 @@
 # CLI Architecture for warcraft-rs
 
-This document outlines the unified CLI structure for the warcraft-rs project.
+This document outlines the CLI structure for the warcraft-rs project.
 
-## Current Status
+## Overview
 
-The project has migrated from individual CLI tools per format to a single unified `warcraft-rs` CLI with subcommands for each format.
+The `warcraft-rs` CLI provides a unified interface for working with World of Warcraft file formats through subcommands for each format type.
 
 Currently implemented:
 
-- ✅ **Unified CLI** - Single tool with subcommands for all formats
 - ✅ **MPQ subcommands** - Full-featured MPQ archive operations
 
 Planned for future releases:
@@ -21,9 +20,9 @@ Planned for future releases:
 - 🚧 **WDT subcommands** - Map definition operations
 - 🚧 **WDL subcommands** - Low-res world operations
 
-## Current Structure
+## Project Structure
 
-The unified CLI is implemented in the warcraft-rs crate:
+The CLI is implemented in the warcraft-rs crate:
 
 ```
 warcraft-rs/
@@ -66,7 +65,7 @@ warcraft-rs blp convert texture.blp --to png
 warcraft-rs m2 info model.m2
 ```
 
-## Current Command Structure
+## Command Structure
 
 ### MPQ Subcommands
 
@@ -109,9 +108,9 @@ wdl = ["dep:wow-wdl"]
 
 ## Implementation Guidelines
 
-### 1. Current Dependencies (MPQ CLI)
+### 1. Dependencies
 
-The MPQ CLI uses these dependencies:
+The CLI uses these dependencies:
 
 ```toml
 # From warcraft-rs/Cargo.toml
@@ -151,9 +150,9 @@ The `utils` module provides common functionality:
 - matches_pattern()      // Wildcard matching
 ```
 
-### 3. Current CLI Structure (MPQ)
+### 3. CLI Structure Example
 
-The MPQ CLI uses this structure:
+Example CLI structure (from MPQ implementation):
 
 ```rust
 // Simplified version of the actual CLI structure
@@ -233,9 +232,9 @@ pub enum Commands {
 }
 ```
 
-## Current Installation
+## Installation
 
-The unified CLI can be built and used as follows:
+The CLI can be built and used as follows:
 
 ```bash
 # Build the CLI with default features (MPQ only)
@@ -259,7 +258,7 @@ warcraft-rs mpq extract archive.mpq --output ./extracted
 
 ## Testing
 
-The unified CLI uses integration tests:
+The CLI includes integration tests:
 
 ```bash
 # Run CLI tests
@@ -276,12 +275,12 @@ warcraft-rs mpq list /path/to/archive.mpq --filter "*.dbc"
 When implementing additional CLI tools, consider:
 
 1. **Consistency**: Follow the same command patterns as the MPQ CLI
-2. **Shared utilities**: Use `warcraft-cli-utils` for common functionality
+2. **Shared utilities**: Use the `utils` module for common functionality
 3. **Error handling**: Use `anyhow` for consistent error reporting
 4. **Testing**: Include both unit and integration tests
 5. **Documentation**: Update this document and usage guides
 
-## Current Limitations
+## Limitations
 
 - Only MPQ subcommands are fully implemented
 - Other format subcommands return "not yet implemented" errors
