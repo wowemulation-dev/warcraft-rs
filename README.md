@@ -7,6 +7,8 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE-APACHE)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
+[![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
+[![codecov](https://img.shields.io/codecov/c/github/wowemulation-dev/warcraft-rs?logo=codecov&style=flat-square&token=BAQ8SOKEST&color=C43AC3)](https://codecov.io/gh/wowemulation-dev/warcraft-rs)
 
 </div>
 
