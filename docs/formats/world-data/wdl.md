@@ -1,6 +1,9 @@
 # WDL Format 🌍
 
-WDL (World Data Low-resolution) files contain low-detail heightmap and water data for entire continents in World of Warcraft. These files are part of the terrain Level of Detail (LoD) system, providing efficient rendering of distant terrain and supporting world map generation.
+WDL (World Data Low-resolution) files contain low-detail heightmap and water data
+for entire continents in World of Warcraft. These files are part of the terrain
+Level of Detail (LoD) system, providing efficient rendering of distant terrain
+and supporting world map generation.
 
 ## Overview
 
@@ -20,13 +23,14 @@ WDL (World Data Low-resolution) files contain low-detail heightmap and water dat
 | 20 | Wrath of the Lich King | Additional chunk types | 3.x |
 | 21+ | Later Expansions | Format refinements | 4.x+ |
 
-⚠️ **Note**: Version history requires validation against actual game files from different expansions.
+⚠️ **Note**: Version history requires validation against actual game files from
+different expansions.
 
 ## File Structure
 
 WDL files follow the standard Blizzard chunk-based format:
 
-```
+```text
 [File Header]
 [Chunk 1: Header + Data]
 [Chunk 2: Header + Data]
@@ -91,7 +95,8 @@ struct MaofChunk {
 
 Contains the actual low-resolution terrain data:
 
-⚠️ **Note**: The internal structure of MARE chunks is not fully documented and requires reverse engineering.
+⚠️ **Note**: The internal structure of MARE chunks is not fully documented and
+requires reverse engineering.
 
 ```rust
 struct MareChunk {
@@ -159,7 +164,7 @@ pub fn wdl_to_world_coords(tile_x: u32, tile_y: u32) -> (f32, f32) {
 
 WDL files are part of WoW's LoD hierarchy:
 
-```
+```text
 WDT (World Directory Table)
 ├── ADT (Area Data Table) - High detail, close terrain
 └── WDL (World LoD) - Low detail, distant terrain
@@ -167,7 +172,8 @@ WDT (World Directory Table)
 
 ### Usage Patterns
 
-1. **Distance-Based Switching**: Engine switches between ADT and WDL based on camera distance
+1. **Distance-Based Switching**: Engine switches between ADT and WDL based on
+   camera distance
 2. **World Map Generation**: WDL data generates world map imagery
 3. **Minimap Support**: Low-resolution data for minimap rendering
 4. **Memory Optimization**: Allows unloading high-detail ADT data when not needed
@@ -175,28 +181,40 @@ WDT (World Directory Table)
 ## Usage Example
 
 ```rust
-use warcraft_rs::wdl::{Wdl, HeightQuery};
+use std::fs::File;
+use std::io::BufReader;
+use wow_wdl::parser::WdlParser;
 
-// Load WDL file
-let wdl = Wdl::open("World/Maps/Azeroth/Azeroth.wdl")?;
+// Open a WDL file
+let file = File::open("World/Maps/Azeroth/Azeroth.wdl")?;
+let mut reader = BufReader::new(file);
 
-// Query height at world coordinates
-let height = wdl.get_height(1234.5, 5678.9)?;
+// Parse the file
+let parser = WdlParser::new();
+let wdl_file = parser.parse(&mut reader)?;
 
-// Get water level
-if let Some(water_height) = wdl.get_water_height(1234.5, 5678.9)? {
-    println!("Water at height: {}", water_height);
+// Use the data
+println!("WDL version: {}", wdl_file.version);
+println!("Map tiles: {}", wdl_file.heightmap_tiles.len());
+
+// Get heightmap for a specific tile
+if let Some(tile) = wdl_file.heightmap_tiles.get(&(32, 32)) {
+    println!("Tile 32,32 has {} outer height values", tile.outer_values.len());
+    println!("Tile 32,32 has {} inner height values", tile.inner_values.len());
 }
 
-// Export low-res heightmap for entire continent
-let heightmap = wdl.export_heightmap();
-heightmap.save("continent_heightmap.png")?;
-
 // Check which ADT tiles have data
-for x in 0..64 {
-    for y in 0..64 {
-        if wdl.has_tile(x, y) {
-            println!("ADT {}_{} exists", x, y);
+for ((x, y), _) in &wdl_file.heightmap_tiles {
+    println!("ADT {}_{} has heightmap data", x, y);
+}
+
+// Check for holes data
+if let Some(holes) = wdl_file.holes_data.get(&(32, 32)) {
+    for row in 0..16 {
+        for col in 0..16 {
+            if holes.has_hole(row, col) {
+                println!("Hole at tile 32,32 position ({}, {})", row, col);
+            }
         }
     }
 }
@@ -204,94 +222,157 @@ for x in 0..64 {
 
 ## Advanced Features
 
-### Minimap Generation
+### Version Conversion
 
 ```rust
-use warcraft_rs::wdl::MinimapGenerator;
+use wow_wdl::parser::WdlParser;
+use wow_wdl::version::WdlVersion;
+use wow_wdl::conversion::convert_wdl_file;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
-let generator = MinimapGenerator::new(&wdl);
-generator.set_water_color(Color::rgba(0, 100, 200, 128));
-generator.set_terrain_gradient(TerrainGradient::realistic());
+// Parse an existing file
+let file = File::open("input.wdl")?;
+let mut reader = BufReader::new(file);
+let parser = WdlParser::new();
+let wdl_file = parser.parse(&mut reader)?;
 
-let minimap = generator.generate(2048, 2048)?;
-minimap.save("world_minimap.png")?;
+// Convert to Legion version
+let legion_file = convert_wdl_file(&wdl_file, WdlVersion::Legion)?;
+
+// Save the converted file
+let output = File::create("output.wdl")?;
+let mut writer = BufWriter::new(output);
+let legion_parser = WdlParser::with_version(WdlVersion::Legion);
+legion_parser.write(&mut writer, &legion_file)?;
 ```
 
-### Height Interpolation
+### Creating New WDL Files
 
 ```rust
-// Bilinear interpolation for smooth height queries
-let smooth_height = wdl.get_height_interpolated(x, y)?;
+use wow_wdl::types::{WdlFile, HeightMapTile, HolesData};
+use wow_wdl::version::WdlVersion;
+use wow_wdl::parser::WdlParser;
+use std::io::Cursor;
 
-// Get terrain normal at position
-let normal = wdl.get_normal(x, y)?;
+// Create a new WDL file with WotLK version
+let mut file = WdlFile::with_version(WdlVersion::Wotlk);
+
+// Add a heightmap tile
+let mut heightmap = HeightMapTile::new();
+for i in 0..HeightMapTile::OUTER_COUNT {
+    heightmap.outer_values[i] = (i as i16) % 100;
+}
+for i in 0..HeightMapTile::INNER_COUNT {
+    heightmap.inner_values[i] = ((i + 100) as i16) % 100;
+}
+file.heightmap_tiles.insert((10, 20), heightmap);
+
+// Add holes data
+let mut holes = HolesData::new();
+holes.set_hole(5, 7, true);
+holes.set_hole(8, 9, true);
+file.holes_data.insert((10, 20), holes);
+
+// Write the file
+let parser = WdlParser::with_version(WdlVersion::Wotlk);
+let mut buffer = Vec::new();
+let mut cursor = Cursor::new(&mut buffer);
+parser.write(&mut cursor, &file)?;
 ```
 
-### LoD Management
+### Working with WMO Placements
 
 ```rust
-pub struct LodManager {
-    wdt_data: WdtFile,
-    loaded_adts: HashMap<(u32, u32), AdtFile>,
-    wdl_data: WdlFile,
-}
+use wow_wdl::types::{ModelPlacement, Vec3d, BoundingBox};
 
-impl LodManager {
-    /// Determine which data to use based on distance
-    pub fn get_terrain_data(&self, world_pos: (f32, f32), camera_distance: f32) -> TerrainData {
-        const LOD_SWITCH_DISTANCE: f32 = 1000.0;
+// Add WMO data to WDL file
+let mut wdl_file = WdlFile::with_version(WdlVersion::Wotlk);
 
-        if camera_distance < LOD_SWITCH_DISTANCE {
-            // Use high-detail ADT data
-            self.get_adt_data(world_pos)
-        } else {
-            // Use low-detail WDL data
-            self.get_wdl_data(world_pos)
-        }
-    }
-}
+// Add a WMO filename and index
+wdl_file.wmo_filenames.push("World/wmo/Azeroth/Buildings/Human_Farm/Farm.wmo".to_string());
+wdl_file.wmo_indices.push(0);
+
+// Add a WMO placement
+let placement = ModelPlacement {
+    id: 1,
+    wmo_id: 0,
+    position: Vec3d::new(100.0, 200.0, 50.0),
+    rotation: Vec3d::new(0.0, 0.0, 0.0),
+    bounds: BoundingBox {
+        min: Vec3d::new(-10.0, -10.0, -10.0),
+        max: Vec3d::new(10.0, 10.0, 10.0),
+    },
+    flags: 0,
+    doodad_set: 0,
+    name_set: 0,
+    padding: 0,
+};
+wdl_file.wmo_placements.push(placement);
 ```
 
 ## Common Patterns
 
-### Map View Implementation
+### Iterating Over Heightmap Data
 
 ```rust
-struct MapView {
-    wdl: Wdl,
-    zoom_level: f32,
-    center: Vec2,
-}
+use wow_wdl::types::WdlFile;
 
-impl MapView {
-    fn render(&self, viewport: &Viewport) -> Image {
-        let bounds = self.calculate_visible_bounds(viewport);
+fn analyze_heightmap(wdl_file: &WdlFile) {
+    // Iterate over all tiles with heightmap data
+    for ((tile_x, tile_y), heightmap) in &wdl_file.heightmap_tiles {
+        println!("Tile ({}, {}):", tile_x, tile_y);
 
-        for x in bounds.min_x..bounds.max_x {
-            for y in bounds.min_y..bounds.max_y {
-                let height = self.wdl.get_height(x, y)?;
-                let color = self.height_to_color(height);
-                // Draw pixel
-            }
+        // Find min/max heights in the tile
+        let mut min_height = i16::MAX;
+        let mut max_height = i16::MIN;
+
+        for &height in &heightmap.outer_values {
+            min_height = min_height.min(height);
+            max_height = max_height.max(height);
         }
+
+        for &height in &heightmap.inner_values {
+            min_height = min_height.min(height);
+            max_height = max_height.max(height);
+        }
+
+        println!("  Height range: {} to {}", min_height, max_height);
     }
 }
 ```
 
-### Flight Path Validation
+### Checking for Data Coverage
 
 ```rust
-// Ensure flight path stays above terrain
-fn validate_flight_path(wdl: &Wdl, path: &[Vec3]) -> Result<()> {
-    let min_clearance = 50.0;
+use wow_wdl::types::WdlFile;
 
-    for point in path {
-        let terrain_height = wdl.get_height(point.x, point.y)?;
-        if point.z < terrain_height + min_clearance {
-            return Err("Flight path too low");
+fn check_continent_coverage(wdl_file: &WdlFile) {
+    let mut covered_tiles = 0;
+    let mut total_tiles = 0;
+
+    // Check all possible tile positions (64x64 grid)
+    for x in 0..64 {
+        for y in 0..64 {
+            total_tiles += 1;
+            if wdl_file.heightmap_tiles.contains_key(&(x, y)) {
+                covered_tiles += 1;
+            }
         }
     }
-    Ok(())
+
+    let coverage = (covered_tiles as f32 / total_tiles as f32) * 100.0;
+    println!("Continent coverage: {:.1}% ({}/{} tiles)", coverage, covered_tiles, total_tiles);
+
+    // Check which tiles have holes
+    let mut tiles_with_holes = 0;
+    for (coord, _) in &wdl_file.holes_data {
+        if wdl_file.heightmap_tiles.contains_key(coord) {
+            tiles_with_holes += 1;
+        }
+    }
+
+    println!("Tiles with hole data: {}", tiles_with_holes);
 }
 ```
 
@@ -300,43 +381,63 @@ fn validate_flight_path(wdl: &Wdl, path: &[Vec3]) -> Result<()> {
 ### Error Handling
 
 ```rust
-#[derive(Debug, thiserror::Error)]
-pub enum WdlError {
-    #[error("Invalid chunk magic: {0:?}")]
-    InvalidChunkMagic([u8; 4]),
+use wow_wdl::{WdlError, Result};
+use std::fs::File;
+use std::io::BufReader;
+use wow_wdl::parser::WdlParser;
 
-    #[error("Invalid chunk size: {0}")]
-    InvalidChunkSize(u32),
+fn safe_wdl_load(path: &str) -> Result<wow_wdl::WdlFile> {
+    match File::open(path) {
+        Ok(file) => {
+            let mut reader = BufReader::new(file);
+            let parser = WdlParser::new();
 
-    #[error("Unsupported version: {0}")]
-    UnsupportedVersion(u32),
-
-    #[error("Chunk not found: {0:?}")]
-    ChunkNotFound([u8; 4]),
-
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("Invalid file format")]
-    InvalidFormat,
+            match parser.parse(&mut reader) {
+                Ok(wdl) => {
+                    println!("Successfully loaded WDL version {}", wdl.version);
+                    Ok(wdl)
+                }
+                Err(WdlError::UnsupportedVersion(ver)) => {
+                    eprintln!("WDL version {} is not supported", ver);
+                    Err(WdlError::UnsupportedVersion(ver))
+                }
+                Err(e) => {
+                    eprintln!("Failed to parse WDL: {}", e);
+                    Err(e)
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to open file: {}", e);
+            Err(WdlError::Io(e))
+        }
+    }
 }
 ```
 
-### Memory Management
+### Validation
 
 ```rust
-/// WDL file representation optimized for memory usage
-pub struct WdlFile {
-    version: u32,
-    chunks: HashMap<[u8; 4], ChunkData>,
-}
+use wow_wdl::validation::{validate_wdl_file, ValidationError};
+use wow_wdl::types::WdlFile;
 
-/// Chunk data with lazy loading support
-pub enum ChunkData {
-    /// Raw chunk data (not parsed)
-    Raw(Vec<u8>),
-    /// Parsed chunk data
-    Parsed(Box<dyn ChunkContent>),
+fn validate_wdl_data(wdl_file: &WdlFile) -> std::result::Result<(), ValidationError> {
+    // Use the built-in validation
+    validate_wdl_file(wdl_file)?;
+
+    // Additional custom validation
+    if wdl_file.heightmap_tiles.is_empty() {
+        return Err(ValidationError::MissingRequiredData("No heightmap tiles found".into()));
+    }
+
+    // Validate tile coordinates are within bounds
+    for ((x, y), _) in &wdl_file.heightmap_tiles {
+        if *x >= 64 || *y >= 64 {
+            return Err(ValidationError::InvalidCoordinates(*x, *y));
+        }
+    }
+
+    Ok(())
 }
 ```
 

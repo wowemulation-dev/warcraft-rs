@@ -43,37 +43,33 @@ DBC files have a consistent structure:
 ### 1. Extracting DBC Files from MPQ
 
 ```rust
-use warcraft_rs::mpq::Archive;
-use warcraft_rs::dbc::{DbcFile, DbcError};
+use wow_mpq::Archive;
 use std::path::Path;
+use std::fs;
+use std::io::Write;
 
 fn extract_dbc_files(mpq_path: &str, output_dir: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let mut archive = Archive::open(mpq_path)?;
+    let archive = Archive::open(mpq_path)?;
     let mut extracted_files = Vec::new();
 
-    // Common DBC file locations
-    let dbc_patterns = vec![
-        "DBFilesClient/*.dbc",
-        "DBFilesClient/*/*.dbc", // Some expansions use subdirectories
-    ];
-
     // Create output directory
-    std::fs::create_dir_all(output_dir)?;
+    fs::create_dir_all(output_dir)?;
 
-    // List all files matching DBC patterns
-    let entries = archive.list_files()?;
+    // List all files in the archive
+    let entries = archive.list()?;
     for entry in entries {
-        if entry.ends_with(".dbc") {
-            match archive.extract(&entry) {
+        if entry.name.ends_with(".dbc") && entry.name.contains("DBFilesClient") {
+            match archive.read_file(&entry.name) {
                 Ok(data) => {
-                    let filename = Path::new(&entry).file_name().unwrap().to_str().unwrap();
+                    let filename = Path::new(&entry.name).file_name().unwrap().to_str().unwrap();
                     let output_path = Path::new(output_dir).join(filename);
 
-                    std::fs::write(&output_path, data)?;
+                    let mut file = fs::File::create(&output_path)?;
+                    file.write_all(&data)?;
                     extracted_files.push(filename.to_string());
                     println!("Extracted: {}", filename);
                 }
-                Err(e) => eprintln!("Failed to extract {}: {}", entry, e),
+                Err(e) => eprintln!("Failed to extract {}: {}", entry.name, e),
             }
         }
     }
@@ -84,46 +80,87 @@ fn extract_dbc_files(mpq_path: &str, output_dir: &str) -> Result<Vec<String>, Bo
 
 ### 2. Parsing DBC Files
 
+Note: The DBC parsing implementation is still under development. For now, you can extract the raw DBC files and use external tools or implement basic parsing:
+
 ```rust
-use warcraft_rs::dbc::{DbcFile, DbcHeader, DbcRecord};
-use std::io::Cursor;
-
-fn parse_dbc_file(file_path: &str) -> Result<DbcFile, Box<dyn std::error::Error>> {
-    let data = std::fs::read(file_path)?;
-    let dbc = DbcFile::from_bytes(&data)?;
-
-    println!("DBC File: {}", file_path);
-    println!("Records: {}", dbc.header.record_count);
-    println!("Fields: {}", dbc.header.field_count);
-    println!("Record Size: {} bytes", dbc.header.record_size);
-    println!("String Block Size: {} bytes", dbc.header.string_block_size);
-
-    Ok(dbc)
+// Basic DBC header structure (for reference)
+#[repr(C, packed)]
+struct DbcHeader {
+    signature: [u8; 4],    // 'WDBC'
+    record_count: u32,     // Number of records
+    field_count: u32,      // Number of fields per record
+    record_size: u32,      // Size of each record in bytes
+    string_block_size: u32, // Size of string block
 }
 
-// Generic DBC reading
-fn read_dbc_records<T: DbcRecord>(file_path: &str) -> Result<Vec<T>, Box<dyn std::error::Error>> {
-    let data = std::fs::read(file_path)?;
-    let dbc = DbcFile::from_bytes(&data)?;
-
-    let mut records = Vec::with_capacity(dbc.header.record_count as usize);
-    let mut cursor = Cursor::new(&dbc.records);
-
-    for _ in 0..dbc.header.record_count {
-        let record = T::read(&mut cursor, &dbc.strings)?;
-        records.push(record);
+fn parse_dbc_header(data: &[u8]) -> Option<DbcHeader> {
+    if data.len() < 20 || &data[0..4] != b"WDBC" {
+        return None;
     }
 
-    Ok(records)
-}
-```
+    // Parse header manually for now
+    let record_count = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
+    let field_count = u32::from_le_bytes([data[8], data[9], data[10], data[11]]);
+    let record_size = u32::from_le_bytes([data[12], data[13], data[14], data[15]]);
+    let string_block_size = u32::from_le_bytes([data[16], data[17], data[18], data[19]]);
 
-### 3. Defining DBC Structures
+    Some(DbcHeader {
+        signature: [data[0], data[1], data[2], data[3]],
+        record_count,
+        field_count,
+        record_size,
+        string_block_size,
+    })
+}
+
+fn analyze_dbc_file(file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let data = std::fs::read(file_path)?;
+
+    if let Some(header) = parse_dbc_header(&data) {
+        println!("DBC File: {}", file_path);
+        println!("Records: {}", header.record_count);
+        println!("Fields: {}", header.field_count);
+        println!("Record Size: {} bytes", header.record_size);
+        println!("String Block Size: {} bytes", header.string_block_size);
+
+        let records_start = 20; // After header
+        let records_end = records_start + (header.record_count * header.record_size) as usize;
+        let strings_start = records_end;
+
+        println!("Total file size: {} bytes", data.len());
+        println!("Records section: {} - {} bytes", records_start, records_end);
+        println!("String block: {} - {} bytes", strings_start, data.len());
+    } else {
+        println!("Invalid DBC file: {}", file_path);
+    }
+
+    Ok(())
+}
+### 3. Working with Extracted DBC Files
+
+Once you have extracted DBC files, you can work with them using external tools or implement custom parsing logic:
 
 ```rust
-use warcraft_rs::dbc::{DbcRecord, DbcString};
-use byteorder::{LittleEndian, ReadBytesExt};
-use std::io::{Cursor, Result};
+use std::fs;
+
+// Example: Basic DBC analysis
+fn analyze_extracted_dbc_files(dbc_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let entries = fs::read_dir(dbc_dir)?;
+
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.extension().map_or(false, |ext| ext == "dbc") {
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                println!("\n=== {} ===", filename);
+                analyze_dbc_file(path.to_str().unwrap())?;
+            }
+        }
+    }
+
+    Ok(())
+}
 
 // Example: Spell.dbc structure
 #[derive(Debug, Clone)]

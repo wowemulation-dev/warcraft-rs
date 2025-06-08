@@ -1,24 +1,33 @@
 # WDT Format 🗺️
 
-WDT (World Data Table) files are fundamental components of World of Warcraft's world rendering system. They serve as master indexes that define which map tiles (ADT files) exist in a world and can optionally reference a global World Map Object (WMO) for WMO-only maps like instances.
+WDT (World Data Table) files are fundamental components of World of Warcraft's
+world rendering system. They serve as master indexes that define which map tiles
+(ADT files) exist in a world and can optionally reference a global World Map
+Object (WMO) for WMO-only maps like instances.
 
 ## Overview
 
 - **Extension**: `.wdt` (main file) and multiple auxiliary files
 - **Magic**: Chunk-based format with standard IFF structure
-- **Purpose**: Map tile presence, global WMO reference, map properties, lighting, fog, and occlusion data
+- **Purpose**: Map tile presence, global WMO reference, map properties, lighting,
+  fog, and occlusion data
 - **Grid**: 64×64 possible ADT tiles
 - **Version**: Always 18 for WDT files
 - **Related**: Works with ADT files to form complete maps
 
 ## Key Features
 
-1. **Map Tile Presence**: Define which of the potential 64×64 ADT tiles actually exist for a given map
-2. **Global WMO Reference**: For indoor/instance maps, reference a single global WMO
-3. **Map Properties**: Store various flags and properties that affect how the entire map is rendered
-4. **Lighting Information**: Define global lighting properties and light sources (_lgt.wdt)
+1. **Map Tile Presence**: Define which of the potential 64×64 ADT tiles actually
+   exist for a given map
+2. **Global WMO Reference**: For indoor/instance maps, reference a single global
+   WMO
+3. **Map Properties**: Store various flags and properties that affect how the
+   entire map is rendered
+4. **Lighting Information**: Define global lighting properties and light sources
+   (_lgt.wdt)
 5. **Fog Effects**: Control volumetric fog and atmospheric effects (_fogs.wdt)
-6. **Occlusion Data**: Provide low-resolution occlusion information for improved rendering performance (_occ.wdt)
+6. **Occlusion Data**: Provide low-resolution occlusion information for improved
+   rendering performance (_occ.wdt)
 
 ## Coordinate Systems
 
@@ -498,7 +507,8 @@ impl WdtReader {
 
 ### Issue 1: Missing MWMO Chunk
 
-**Problem**: Some map editing tools don't generate MWMO chunks for terrain-based maps.
+**Problem**: Some map editing tools don't generate MWMO chunks for terrain-based
+maps.
 
 **Solution**: Make MWMO optional for terrain maps (required for WMO-only maps):
 

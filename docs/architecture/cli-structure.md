@@ -4,7 +4,8 @@ This document outlines the CLI structure for the warcraft-rs project.
 
 ## Overview
 
-The `warcraft-rs` CLI provides a unified interface for working with World of Warcraft file formats through subcommands for each format type.
+The `warcraft-rs` CLI provides a unified interface for working with World of
+Warcraft file formats through subcommands for each format type.
 
 Currently implemented:
 
@@ -24,7 +25,7 @@ Planned for future releases:
 
 The CLI is implemented in the warcraft-rs crate:
 
-```
+```text
 warcraft-rs/
 ├── Cargo.toml
 ├── src/

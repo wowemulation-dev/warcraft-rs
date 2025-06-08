@@ -1,6 +1,9 @@
 # ADT Format 🏔️
 
-ADT (Area Data Terrain) files contain the terrain and object information for a single map tile in World of Warcraft. The world is divided into a grid of 64x64 maps, with each map consisting of 16x16 chunks. Each ADT file represents one map tile, which is 533.33333 yards (1600 feet) on each side.
+ADT (Area Data Terrain) files contain the terrain and object information for a
+single map tile in World of Warcraft. The world is divided into a grid of 64x64
+maps, with each map consisting of 16x16 chunks. Each ADT file represents one map
+tile, which is 533.33333 yards (1600 feet) on each side.
 
 ## Overview
 
@@ -388,7 +391,7 @@ struct MCVTChunk {
 
 Vertex layout:
 
-```
+```text
 Outer vertices (9x9): Grid corners
 Inner vertices (8x8): Center of each quad
 ```
@@ -490,7 +493,8 @@ struct MCSHChunk {
 
 ### MCAL - Alpha Maps
 
-Alpha maps control texture blending. The first texture layer has no alpha map (it's the base):
+Alpha maps control texture blending. The first texture layer has no alpha map
+(it's the base):
 
 ```rust
 enum AlphaMapFormat {

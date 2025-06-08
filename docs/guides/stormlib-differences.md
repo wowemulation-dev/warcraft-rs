@@ -1,10 +1,14 @@
 # StormLib vs wow-mpq: Technical Differences Guide
 
-This guide outlines the technical differences between StormLib (the reference C++ implementation) and wow-mpq (our Rust implementation). Understanding these differences helps users migrate from StormLib or implement missing features.
+This guide outlines the technical differences between StormLib (the reference C++
+implementation) and wow-mpq (our Rust implementation). Understanding these differences
+helps users migrate from StormLib or implement missing features.
 
 ## Overview
 
-StormLib has evolved over 20+ years to handle various edge cases, game-specific quirks, and optimizations. Our wow-mpq implementation provides a clean, safe Rust alternative focusing on core MPQ functionality while omitting some specialized features.
+StormLib has evolved over 20+ years to handle various edge cases, game-specific
+quirks, and optimizations. Our wow-mpq implementation provides a clean, safe Rust
+alternative focusing on core MPQ functionality while omitting some specialized features.
 
 ## 1. Header Structure and Parsing
 

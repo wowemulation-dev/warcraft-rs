@@ -1,6 +1,7 @@
 # MPQ CLI Usage Guide
 
-The `warcraft-rs` command-line tool provides MPQ archive operations through the `mpq` subcommand.
+The `warcraft-rs` command-line tool provides MPQ archive operations through the
+`mpq` subcommand.
 
 ## Installation
 
@@ -87,7 +88,8 @@ warcraft-rs mpq create new.mpq --with-listfile --add file1.txt --add file2.txt
 
 ### Rebuild Archives
 
-Rebuild MPQ archives 1:1 while preserving original structure and optionally upgrading format:
+Rebuild MPQ archives 1:1 while preserving original structure and optionally
+upgrading format:
 
 ```bash
 # Basic rebuild (preserves original format)
@@ -143,7 +145,8 @@ warcraft-rs mpq compare source.mpq target.mpq --filter "*Interface*"
 warcraft-rs mpq compare source.mpq target.mpq --output json
 ```
 
-**Note**: Archive modification features (add/remove files to existing archives) are planned for future releases.
+**Note**: Archive modification features (add/remove files to existing archives)
+are planned for future releases.
 
 ## Advanced Usage
 

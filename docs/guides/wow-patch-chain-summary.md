@@ -1,10 +1,15 @@
 # WoW Patch Chain Summary
 
-This document provides a comprehensive overview of how patch chaining works in each World of Warcraft version from 1.12.1 through 5.4.8, based on analysis of actual game archives.
+This document provides a comprehensive overview of how patch chaining works in
+each World of Warcraft version from 1.12.1 through 5.4.8, based on analysis of
+actual game archives.
 
 ## Overview
 
-WoW's MPQ patch chain system allows the game to override base content with patches, following a strict priority order. Higher priority archives override files from lower priority archives, enabling Blizzard to update game content without redistributing entire archives.
+WoW's MPQ patch chain system allows the game to override base content with patches,
+following a strict priority order. Higher priority archives override files from
+lower priority archives, enabling Blizzard to update game content without redistributing
+entire archives.
 
 ## Version-by-Version Analysis
 

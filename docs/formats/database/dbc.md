@@ -1,6 +1,9 @@
 # DBC Format 📊
 
-DBC (DataBase Client) files are binary data files used by World of Warcraft to store game data that needs to be accessible by the client. These files contain structured records with information about spells, items, zones, creatures, and many other game elements.
+DBC (DataBase Client) files are binary data files used by World of Warcraft to
+store game data that needs to be accessible by the client. These files contain
+structured records with information about spells, items, zones, creatures, and
+many other game elements.
 
 ## Overview
 
@@ -927,7 +930,7 @@ impl DbcDatabase {
 
 Valid DBC header bytes:
 
-```
+```text
 57 44 42 43  // "WDBC"
 0A 00 00 00  // 10 records
 05 00 00 00  // 5 fields
@@ -939,7 +942,7 @@ Valid DBC header bytes:
 
 String block with test data:
 
-```
+```text
 Offset  Hex                          ASCII
 0x0000  00                           .           (null string)
 0x0001  48 65 6C 6C 6F 00            Hello.
@@ -958,7 +961,7 @@ Test cases:
 
 LocalizedString test data (17 fields):
 
-```
+```text
 Field   Value       Description
 0-15    StringRef   Locale strings
 16      0x0009      Locale mask (enUS and deDE present)

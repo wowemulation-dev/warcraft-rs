@@ -2,7 +2,10 @@
 
 ## Overview
 
-The Level of Detail (LoD) system in World of Warcraft optimizes terrain rendering by using different levels of detail based on viewing distance. This guide explains how to implement terrain LoD using the warcraft-rs library, focusing on the WDL/ADT system.
+The Level of Detail (LoD) system in World of Warcraft optimizes terrain rendering
+by using different levels of detail based on viewing distance. This guide explains
+how to implement terrain LoD using the warcraft-rs library, focusing on the
+WDL/ADT system.
 
 ## Prerequisites
 

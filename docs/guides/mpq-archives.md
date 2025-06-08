@@ -69,26 +69,22 @@ fn list_archive_contents(archive: &Archive) -> Result<(), Box<dyn std::error::Er
             println!("Archive contains {} files:", entries.len());
 
             for entry in entries {
-                println!("  - {} ({} bytes)", entry.name, entry.uncompressed_size);
+                println!("  - {} ({} bytes)", entry.name, entry.size);
 
-                // Check file attributes
-                if entry.is_compressed() {
+                // Check file attributes using the flags field
+                if entry.compressed_size < entry.size {
                     println!("    Compressed: {} -> {} bytes",
-                        entry.compressed_size, entry.uncompressed_size);
+                        entry.compressed_size, entry.size);
                 }
-                if entry.is_encrypted() {
-                    println!("    Encrypted: yes");
+                if entry.flags != 0 {
+                    println!("    Flags: 0x{:08X}", entry.flags);
                 }
             }
         }
         Err(_) => {
-            // No listfile found, list with generic names
-            let entries = archive.list_all()?;
-            println!("Archive contains {} files (using generic names):", entries.len());
-
-            for entry in entries {
-                println!("  - {} ({} bytes)", entry.name, entry.uncompressed_size);
-            }
+            println!("No listfile found in archive");
+            // Note: list_all() method doesn't exist in the actual API
+            // You need to know filenames or have a listfile
         }
     }
 
@@ -123,8 +119,8 @@ fn extract_all_files(archive: &Archive, output_dir: &str) -> Result<(), Box<dyn 
     // Create output directory
     fs::create_dir_all(output_dir)?;
 
-    // Try to get listfile first, fall back to generic names
-    let entries = archive.list().or_else(|_| archive.list_all())?;
+    // Get file list (requires listfile)
+    let entries = archive.list()?;
 
     for entry in entries {
         let filename = &entry.name;
@@ -154,22 +150,23 @@ fn extract_all_files(archive: &Archive, output_dir: &str) -> Result<(), Box<dyn 
 
 ### 4. Working with Multiple Archives using PatchChain
 
-The `PatchChain` struct provides automatic priority-based file resolution across multiple MPQ archives,
-mimicking how World of Warcraft handles patches.
+The `PatchChain` struct provides automatic priority-based file resolution across
+multiple MPQ archives, mimicking how World of Warcraft handles patches.
 
 ```rust
 use wow_mpq::{PatchChain, Archive};
+use std::path::PathBuf;
 
 fn work_with_patch_chain() -> Result<(), Box<dyn std::error::Error>> {
     // Create a patch chain
     let mut chain = PatchChain::new();
 
     // Add archives with priority (higher numbers override lower)
-    chain.add_archive("Data/common.MPQ", 0)?;       // Base content
-    chain.add_archive("Data/expansion.MPQ", 100)?;  // Expansion content
-    chain.add_archive("Data/patch.MPQ", 200)?;      // Patch 1
-    chain.add_archive("Data/patch-2.MPQ", 300)?;    // Patch 2
-    chain.add_archive("Data/patch-3.MPQ", 400)?;    // Patch 3 (highest priority)
+    chain.add_archive(PathBuf::from("Data/common.MPQ"), 0)?;       // Base content
+    chain.add_archive(PathBuf::from("Data/expansion.MPQ"), 100)?;  // Expansion content
+    chain.add_archive(PathBuf::from("Data/patch.MPQ"), 200)?;      // Patch 1
+    chain.add_archive(PathBuf::from("Data/patch-2.MPQ"), 300)?;    // Patch 2
+    chain.add_archive(PathBuf::from("Data/patch-3.MPQ"), 400)?;    // Patch 3 (highest priority)
 
     // Extract a file - automatically uses the highest priority version
     let filename = "Interface/Icons/INV_Misc_QuestionMark.blp";
@@ -182,12 +179,12 @@ fn work_with_patch_chain() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // List all unique files across all archives
-    let all_files = chain.list()?;
+    let all_files = chain.list_all_files()?;
     println!("Total unique files: {}", all_files.len());
 
     // Get information about all archives in the chain
     let chain_info = chain.get_chain_info();
-    for info in chain_info {
+    for info in &chain_info {
         println!("{} (priority {}): {} files",
             info.path.display(),
             info.priority,
@@ -239,41 +236,39 @@ use wow_mpq::{ArchiveBuilder, FormatVersion, ListfileOption};
 fn create_simple_archive() -> Result<(), Box<dyn std::error::Error>> {
     // Create a basic archive
     ArchiveBuilder::new()
-        .add_file("readme.txt", "README.txt")?
-        .add_file_data(b"Hello World".to_vec(), "hello.txt")?
+        .add_file("readme.txt", "README.txt")
+        .add_file_data(b"Hello World".to_vec(), "hello.txt")
         .build("simple.mpq")?;
 
     Ok(())
 }
 
 fn create_advanced_archive() -> Result<(), Box<dyn std::error::Error>> {
-    use wow_mpq::compression;
+    use wow_mpq::compression::flags;
 
     ArchiveBuilder::new()
         // Configure archive settings
         .version(FormatVersion::V2)
         .block_size(7)  // 64KB sectors
-        .default_compression(compression::flags::ZLIB)
+        .default_compression(flags::ZLIB)
         .listfile_option(ListfileOption::Generate)
-        .generate_crcs(true)
 
         // Add files with different options
-        .add_file("data/texture.blp", "Textures/MyTexture.blp")?
+        .add_file("data/texture.blp", "Textures/MyTexture.blp")
         .add_file_data_with_options(
             b"Important data".to_vec(),
             "Data/config.ini",
-            compression::flags::BZIP2,  // Better compression
+            flags::BZIP2,  // Better compression
             false,  // no encryption
             0,      // default locale
-        )?
-        .add_file_with_encryption(
-            "secret.key",
+        )
+        .add_file_data_with_options(
+            b"Secret data".to_vec(),
             "Keys/secret.key",
-            compression::flags::ZLIB,
+            flags::ZLIB,
             true,   // encrypt
-            false,  // don't use FIX_KEY
             0,      // locale
-        )?
+        )
 
         // Build the archive
         .build("advanced.mpq")?;
@@ -284,11 +279,13 @@ fn create_advanced_archive() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 6. Rebuilding and Comparing Archives
 
-The `warcraft-rs` CLI provides powerful tools for rebuilding MPQ archives and comparing them for differences.
+The `warcraft-rs` CLI provides powerful tools for rebuilding MPQ archives and
+comparing them for differences.
 
 #### Rebuilding Archives
 
-Archive rebuilding allows you to recreate MPQ archives 1:1 while optionally upgrading formats or changing compression:
+Archive rebuilding allows you to recreate MPQ archives 1:1 while optionally
+upgrading formats or changing compression:
 
 ```rust
 use wow_mpq::{rebuild_archive, RebuildOptions, FormatVersion};
@@ -336,11 +333,11 @@ fn rebuild_with_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         "old_v1.mpq",
         "modern_v4.mpq",
         options,
-        Some(Box::new(|current, total, file| {
+        Some(&|current, total, file| {
             if current % 100 == 0 {
                 println!("Processing [{}/{}]: {}", current, total, file);
             }
-        }))
+        })
     )?;
 
     println!("Rebuild completed:");
@@ -476,8 +473,8 @@ use regex::Regex;
 fn search_files(archive: &Archive, pattern: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let re = Regex::new(pattern)?;
 
-    // Try to get listfile first, fall back to generic names
-    let entries = archive.list().or_else(|_| archive.list_all())?;
+    // Get listfile (required for file enumeration)
+    let entries = archive.list()?;
 
     let matches: Vec<String> = entries
         .iter()
@@ -500,7 +497,7 @@ fn find_textures(archive: &Archive) -> Result<Vec<String>, Box<dyn std::error::E
 
 // Example: Find a specific file if you know part of the name
 fn find_specific_file(archive: &Archive, partial_name: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let entries = archive.list().or_else(|_| archive.list_all())?;
+    let entries = archive.list()?;
 
     for entry in entries {
         if entry.name.contains(partial_name) {
@@ -536,16 +533,13 @@ impl MpqExplorer {
         println!("  Path: {}", info.path.display());
         println!("  Format Version: {:?}", info.format_version);
         println!("  File Count: {}", info.file_count);
-        println!("  Archive Size: {:.2} MB", info.file_size as f64 / 1024.0 / 1024.0);
-        println!("  Sector Size: {} bytes", info.sector_size);
+        println!("  Archive Size: {:.2} MB", info.archive_size as f64 / 1024.0 / 1024.0);
+        println!("  Block Size: {} bytes", info.block_size);
         Ok(())
     }
 
     fn list(&self, filter: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-        let entries = self.archive.list().or_else(|_| {
-            println!("No listfile found, using generic names...");
-            self.archive.list_all()
-        })?;
+        let entries = self.archive.list()?;
 
         for entry in entries {
             let filename = &entry.name;
@@ -556,7 +550,7 @@ impl MpqExplorer {
                 }
             }
 
-            println!("{} ({} bytes)", filename, entry.uncompressed_size);
+            println!("{} ({} bytes)", filename, entry.size);
         }
 
         Ok(())
@@ -618,10 +612,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 use wow_mpq::Archive;
 
 fn extract_with_size_check(archive: &Archive, filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // Check if file exists and get its size
-    if let Ok(file_info) = archive.find_file(filename) {
-        if file_info.uncompressed_size > 100 * 1024 * 1024 { // 100MB
-            println!("Warning: File {} is large ({} bytes)", filename, file_info.uncompressed_size);
+    // Get file list and check size
+    let entries = archive.list()?;
+    for entry in &entries {
+        if entry.name == filename {
+            if entry.size > 100 * 1024 * 1024 { // 100MB
+                println!("Warning: File {} is large ({} bytes)", filename, entry.size);
+            }
+            break;
         }
     }
 
@@ -698,7 +696,7 @@ impl CachedArchive {
 ```rust
 // Debug file lookup
 fn debug_file_lookup(archive: &Archive, partial_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let entries = archive.list().or_else(|_| archive.list_all())?;
+    let entries = archive.list()?;
 
     println!("Files containing '{}':", partial_name);
     for entry in entries {
@@ -712,10 +710,13 @@ fn debug_file_lookup(archive: &Archive, partial_name: &str) -> Result<(), Box<dy
 
 // Check if file exists before extraction
 fn safe_file_check(archive: &Archive, filename: &str) -> Result<bool, Box<dyn std::error::Error>> {
-    match archive.find_file(filename) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
+    let entries = archive.list()?;
+    for entry in &entries {
+        if entry.name == filename {
+            return Ok(true);
+        }
     }
+    Ok(false)
 }
 ```
 
@@ -725,7 +726,7 @@ fn safe_file_check(archive: &Archive, filename: &str) -> Result<bool, Box<dyn st
 
 **Solutions**:
 
-1. Use `list_all()` to get files with generic names
+1. Add a listfile to the archive manually
 2. Extract files by their exact known names
 3. Some archives don't have listfiles - this is normal
 
@@ -739,11 +740,11 @@ fn handle_missing_listfile(archive: &Archive) -> Result<(), Box<dyn std::error::
             }
         }
         Err(_) => {
-            println!("No listfile found, using generic names:");
-            let entries = archive.list_all()?;
-            for entry in entries.iter().take(10) {
-                println!("  - {}", entry.name);
-            }
+            println!("No listfile found in archive");
+            println!("You can:");
+            println!("1. Add a listfile to the archive");
+            println!("2. Extract specific files by exact name");
+            println!("3. Use external listfile references");
         }
     }
 
@@ -769,10 +770,7 @@ fn basic_archive_test(archive: &Archive) -> Result<(), Box<dyn std::error::Error
     // Try to list files as a basic integrity test
     match archive.list() {
         Ok(entries) => println!("Listfile found with {} entries", entries.len()),
-        Err(_) => {
-            let entries = archive.list_all()?;
-            println!("No listfile, found {} entries with generic names", entries.len());
-        }
+        Err(_) => println!("No listfile found - cannot enumerate files without exact names"),
     }
 
     Ok(())
@@ -783,11 +781,14 @@ fn basic_archive_test(archive: &Archive) -> Result<(), Box<dyn std::error::Error
 
 ### Understanding Patch Chains
 
-World of Warcraft uses a patch chain system where newer patches override files in older archives. The `PatchChain` struct automates this process, ensuring you always get the most recent version of a file.
+World of Warcraft uses a patch chain system where newer patches override files
+in older archives. The `PatchChain` struct automates this process, ensuring you
+always get the most recent version of a file.
 
 ### Critical Loading Order Rules
 
-Based on TrinityCore's implementation and the official WoW client behavior, archives **must** be loaded in a specific order:
+Based on TrinityCore's implementation and the official WoW client behavior,
+archives **must** be loaded in a specific order:
 
 1. **Base Archives First**: Common game data (common.MPQ, common-2.MPQ)
 2. **Expansion Archives**: Each expansion adds its archives (expansion.MPQ, lichking.MPQ)
@@ -806,6 +807,7 @@ Based on TrinityCore's implementation and the official WoW client behavior, arch
 
 ```rust
 use wow_mpq::{PatchChain, ChainInfo};
+use std::path::PathBuf;
 
 fn advanced_patch_chain_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut chain = PatchChain::new();
@@ -815,14 +817,14 @@ fn advanced_patch_chain_example() -> Result<(), Box<dyn std::error::Error>> {
     const EXPANSION_PRIORITY: i32 = 1000;
     const PATCH_PRIORITY_BASE: i32 = 2000;
 
-    chain.add_archive("Data/common.MPQ", BASE_PRIORITY)?;
-    chain.add_archive("Data/expansion.MPQ", EXPANSION_PRIORITY)?;
+    chain.add_archive(PathBuf::from("Data/common.MPQ"), BASE_PRIORITY)?;
+    chain.add_archive(PathBuf::from("Data/expansion.MPQ"), EXPANSION_PRIORITY)?;
 
     // Add patches in order
     for (i, patch_file) in vec!["patch.MPQ", "patch-2.MPQ", "patch-3.MPQ"].iter().enumerate() {
-        let path = format!("Data/{}", patch_file);
+        let path = PathBuf::from(format!("Data/{}", patch_file));
         let priority = PATCH_PRIORITY_BASE + (i as i32 * 100);
-        chain.add_archive(&path, priority)?;
+        chain.add_archive(path, priority)?;
     }
 
     // Extract multiple files efficiently
@@ -832,20 +834,17 @@ fn advanced_patch_chain_example() -> Result<(), Box<dyn std::error::Error>> {
         "DBFilesClient/Spell.dbc",
     ];
 
-    let results = chain.extract_files(&files_to_extract);
-    for (filename, result) in results {
-        match result {
+    for filename in &files_to_extract {
+        match chain.read_file(filename) {
             Ok(data) => println!("Extracted {}: {} bytes", filename, data.len()),
             Err(e) => eprintln!("Failed to extract {}: {}", filename, e),
         }
     }
 
-    // Dynamically update priorities
-    chain.set_priority("Data/patch-2.MPQ", 5000)?; // Make patch-2 highest priority
-
-    // Remove an archive from the chain
-    if chain.remove_archive("Data/patch.MPQ")? {
-        println!("Removed patch.MPQ from chain");
+    // Get chain information
+    let chain_info = chain.get_chain_info();
+    for info in &chain_info {
+        println!("Archive: {} (priority: {})", info.path.display(), info.priority);
     }
 
     Ok(())
@@ -854,7 +853,9 @@ fn advanced_patch_chain_example() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Patch Chain for Different WoW Versions
 
-⚠️ **Important**: The loading order below matches the exact order used by the WoW client, as documented by TrinityCore. Archives must be loaded in this specific order for correct file resolution.
+⚠️ **Important**: The loading order below matches the exact order used by the WoW
+client, as documented by TrinityCore. Archives must be loaded in this specific
+order for correct file resolution.
 
 ```rust
 use wow_mpq::PatchChain;
@@ -866,29 +867,29 @@ fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain, Box<
 
     // The exact loading order from TrinityCore:
     // 1-4: Base and expansion archives
-    chain.add_archive(data_path.join("common.MPQ"), 0)?;
-    chain.add_archive(data_path.join("common-2.MPQ"), 1)?;
-    chain.add_archive(data_path.join("expansion.MPQ"), 2)?;
-    chain.add_archive(data_path.join("lichking.MPQ"), 3)?;
+    chain.add_archive(data_path.join("common.MPQ").to_path_buf(), 0)?;
+    chain.add_archive(data_path.join("common-2.MPQ").to_path_buf(), 1)?;
+    chain.add_archive(data_path.join("expansion.MPQ").to_path_buf(), 2)?;
+    chain.add_archive(data_path.join("lichking.MPQ").to_path_buf(), 3)?;
 
     // 5-10: Locale and speech archives
-    chain.add_archive(data_path.join(format!("locale-{}.MPQ", locale)), 4)?;
-    chain.add_archive(data_path.join(format!("speech-{}.MPQ", locale)), 5)?;
-    chain.add_archive(data_path.join(format!("expansion-locale-{}.MPQ", locale)), 6)?;
-    chain.add_archive(data_path.join(format!("lichking-locale-{}.MPQ", locale)), 7)?;
-    chain.add_archive(data_path.join(format!("expansion-speech-{}.MPQ", locale)), 8)?;
-    chain.add_archive(data_path.join(format!("lichking-speech-{}.MPQ", locale)), 9)?;
+    chain.add_archive(data_path.join(format!("locale-{}.MPQ", locale)).to_path_buf(), 4)?;
+    chain.add_archive(data_path.join(format!("speech-{}.MPQ", locale)).to_path_buf(), 5)?;
+    chain.add_archive(data_path.join(format!("expansion-locale-{}.MPQ", locale)).to_path_buf(), 6)?;
+    chain.add_archive(data_path.join(format!("lichking-locale-{}.MPQ", locale)).to_path_buf(), 7)?;
+    chain.add_archive(data_path.join(format!("expansion-speech-{}.MPQ", locale)).to_path_buf(), 8)?;
+    chain.add_archive(data_path.join(format!("lichking-speech-{}.MPQ", locale)).to_path_buf(), 9)?;
 
     // 11-13: General patches
-    chain.add_archive(data_path.join("patch.MPQ"), 10)?;
-    chain.add_archive(data_path.join("patch-2.MPQ"), 11)?;
-    chain.add_archive(data_path.join("patch-3.MPQ"), 12)?;
+    chain.add_archive(data_path.join("patch.MPQ").to_path_buf(), 10)?;
+    chain.add_archive(data_path.join("patch-2.MPQ").to_path_buf(), 11)?;
+    chain.add_archive(data_path.join("patch-3.MPQ").to_path_buf(), 12)?;
 
     // 14-16: Locale patches (in locale subdirectory)
     let locale_path = data_path.join(locale);
-    chain.add_archive(locale_path.join(format!("patch-{}.MPQ", locale)), 13)?;
-    chain.add_archive(locale_path.join(format!("patch-{}-2.MPQ", locale)), 14)?;
-    chain.add_archive(locale_path.join(format!("patch-{}-3.MPQ", locale)), 15)?;
+    chain.add_archive(locale_path.join(format!("patch-{}.MPQ", locale)).to_path_buf(), 13)?;
+    chain.add_archive(locale_path.join(format!("patch-{}-2.MPQ", locale)).to_path_buf(), 14)?;
+    chain.add_archive(locale_path.join(format!("patch-{}-3.MPQ", locale)).to_path_buf(), 15)?;
 
     Ok(chain)
 }
@@ -1074,8 +1075,8 @@ fn smart_extract(archive: &Archive, filename: &str) -> Result<Option<Vec<u8>>, B
   archives
 - [🎭 Loading M2 Models](./m2-models.md) - Extract and load M2 model files
 - [🏛️ WMO Rendering Guide](./wmo-rendering.md) - Extract and render WMO files
-- [📦 WoW Patch Chain Summary](./wow-patch-chain-summary.md) - Comprehensive guide to
-  patch chaining across all WoW versions
+- [📦 WoW Patch Chain Summary](./wow-patch-chain-summary.md) - Comprehensive guide
+  to patch chaining across all WoW versions
 
 ## References
 
