@@ -9,6 +9,7 @@ StormLib has evolved over 20+ years to handle various edge cases, game-specific 
 ## 1. Header Structure and Parsing
 
 ### StormLib Approach
+
 - **Unified structure**: Single header struct containing all fields for all versions
 - **64-bit fields**: Uses 64-bit fields from the start for forward compatibility
 - **Platform handling**: Special logic for different platforms and file types
@@ -18,6 +19,7 @@ StormLib has evolved over 20+ years to handle various edge cases, game-specific 
   - Separate 64-bit size fields for all tables
 
 ### wow-mpq Approach
+
 - **Version-specific**: Optional fields added progressively based on version
 - **Modular design**: V4 data wrapped in separate struct
 - **Simpler parsing**: Focus on standard MPQ format without platform quirks
@@ -72,6 +74,7 @@ struct MpqHeader {
 5. Build file index
 
 **Missing features**:
+
 - Game-specific file type detection
 - Automatic defragmentation
 - Malformed archive recovery
@@ -80,6 +83,7 @@ struct MpqHeader {
 ## 3. HET/BET Table Implementation
 
 ### StormLib Features
+
 - **Jenkins hash masking**: Uses `and_mask_64` and `or_mask_64` for optimization
 - **Bit-packed storage**: Custom `BitArray` implementation for memory efficiency
 - **Detailed bit tracking**: Precise bit positions for all fields
@@ -100,6 +104,7 @@ struct HetTable {
 ```
 
 ### wow-mpq Implementation
+
 - Simpler structure without optimization masks
 - Standard byte arrays instead of bit packing
 - Less granular field tracking
@@ -123,22 +128,23 @@ fn detect_encryption_key(file: &MpqFile) -> Option<u32> {
     if let Some(key) = try_filename_key(file) {
         return Some(key);
     }
-    
+
     // Try sector size detection
     if let Some(key) = detect_key_by_sector_size(file) {
         return Some(key);
     }
-    
+
     // Try known content patterns
     if let Some(key) = detect_key_by_content(file) {
         return Some(key);
     }
-    
+
     None
 }
 ```
 
 ### wow-mpq: Basic Encryption
+
 - Standard filename-based key calculation
 - No automatic key detection
 - No content-based recovery
@@ -146,12 +152,14 @@ fn detect_encryption_key(file: &MpqFile) -> Option<u32> {
 ## 5. Sector-Based File Reading
 
 ### StormLib Optimizations
+
 - **Compression detection**: Analyzes sector size to determine if compressed
 - **ADLER32 verification**: Validates each sector's checksum
 - **Dynamic loading**: Loads sector offset tables on demand
 - **Caching**: LRU cache for frequently accessed sectors
 
 ### wow-mpq Implementation
+
 - Basic sector reading and decompression
 - No checksum verification
 - Simple sequential processing
@@ -161,6 +169,7 @@ fn detect_encryption_key(file: &MpqFile) -> Option<u32> {
 ### StormLib: Game-Specific Handling
 
 #### Map Type Detection
+
 ```rust
 enum MapType {
     NotRecognized,
@@ -172,12 +181,14 @@ enum MapType {
 ```
 
 #### Protection Bypasses
+
 - **BOBA protector**: Handles negative table offsets
 - **w3xMaster**: Fixes invalid hi-word positions
 - **Integer overflow**: Masks table sizes to prevent overflow
 - **Starcraft Beta**: Special handling for specific archive sizes
 
 ### wow-mpq: Standard Format Only
+
 - No game-specific detection
 - No protection bypass mechanisms
 - Assumes well-formed archives
@@ -202,6 +213,7 @@ pub struct ThreadSafeMpqArchive {
 ```
 
 ### wow-mpq: Standard Rust Patterns
+
 - Standard `Arc<Mutex<>>` for thread safety
 - No specialized memory mapping
 - Basic caching strategies
@@ -217,6 +229,7 @@ pub struct ThreadSafeMpqArchive {
 - **Graceful degradation**: Continues operation with reduced functionality
 
 ### wow-mpq: Fail-Fast Approach
+
 - Returns errors on malformed data
 - No automatic recovery mechanisms
 - Clear error messages
@@ -227,18 +240,21 @@ pub struct ThreadSafeMpqArchive {
 ### StormLib: Full Read/Write Support
 
 #### Advanced Write Features
+
 - **Atomic writes**: File writer with Drop trait finalization
 - **Free space management**: Finds optimal positions for new files
 - **Incremental updates**: Modifies archives without full rebuild
 - **Automatic compression**: Chooses best compression method
 
 #### Metadata Support
+
 - MD5 calculation during write
 - CRC32 for integrity
 - Timestamp preservation
 - Extended attributes
 
 ### wow-mpq: Read-Focused Design
+
 - Comprehensive read support
 - Basic write functionality
 - Archive creation support
@@ -260,6 +276,7 @@ pub struct ThreadSafeMpqArchive {
 ### Implementation Considerations
 
 If you need these features, consider:
+
 - Implementing them as separate crates
 - Using FFI to call StormLib for specific operations
 - Contributing implementations to wow-mpq
@@ -304,14 +321,16 @@ let archive = match Archive::open("archive.mpq") {
 
 ## Recommendations
 
-### Use StormLib when:
+### Use StormLib when
+
 - Working with protected archives
 - Need game-specific features
 - Require key recovery
 - Handle malformed archives
 - Need all compression methods
 
-### Use wow-mpq when:
+### Use wow-mpq when
+
 - Want memory safety guarantees
 - Prefer Rust ecosystem
 - Work with standard MPQ files

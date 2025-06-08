@@ -24,7 +24,8 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 - **M2 Models** - Work with character and creature models
 - **WMO Objects** - Process world map objects
 - **ADT Terrain** - Parse terrain and map data
-- **WDT/WDL Maps** - Handle world map definitions
+- **WDT Maps** - Handle world map definitions
+- **WDL Maps** - Low-resolution terrain heightmaps
 
 ### 🛠️ Command-Line Tools
 

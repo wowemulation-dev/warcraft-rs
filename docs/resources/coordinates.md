@@ -54,14 +54,14 @@ Within each ADT, terrain is divided into 16×16 chunks:
 The global coordinate system with origin at the center of the map:
 
 ```text
-              -Y (North)
+              +X (North)
                ↑
                │
-    ←──────────┼──────────→ +X (East)
-    -X (West)  │ (0,0,0)
+    ←──────────┼──────────→ -Y (East)
+    +Y (West)  │ (0,0,0)
                │
                ↓
-              +Y (South)
+              -X (South)
 ```
 
 - **Origin**: Center of the world (32,32 in grid coordinates)
@@ -73,17 +73,17 @@ The global coordinate system with origin at the center of the map:
 The coordinate system used in-game (displayed on maps):
 
 ```text
-         North (+Y)
+         North (+X)
              ↑
              │
-West ←───────┼───────→ East (+X)
-(-X)         │
+West ←───────┼───────→ East (-Y)
+(+Y)         │
              │
              ↓
-         South (-Y)
+         South (-X)
 ```
 
-**Note**: This is flipped from world coordinates!
+**Note**: This matches the world coordinate system!
 
 ## Conversion Formulas
 
@@ -94,6 +94,9 @@ fn grid_to_world(grid_x: u32, grid_y: u32) -> (f32, f32) {
     const TILE_SIZE: f32 = 533.33333;
     const GRID_CENTER: f32 = 32.0;
 
+    // Grid (0,0) is at the northwest corner
+    // X points North (grid_y increases southward)
+    // Y points West (grid_x increases eastward)
     let world_x = (GRID_CENTER - grid_y as f32) * TILE_SIZE;
     let world_y = (GRID_CENTER - grid_x as f32) * TILE_SIZE;
 
@@ -108,8 +111,9 @@ fn world_to_grid(world_x: f32, world_y: f32) -> (u32, u32) {
     const TILE_SIZE: f32 = 533.33333;
     const GRID_CENTER: f32 = 32.0;
 
-    let grid_x = (GRID_CENTER - world_y / TILE_SIZE) as u32;
+    // Inverse of grid_to_world
     let grid_y = (GRID_CENTER - world_x / TILE_SIZE) as u32;
+    let grid_x = (GRID_CENTER - world_y / TILE_SIZE) as u32;
 
     (grid_x, grid_y)
 }
@@ -148,20 +152,20 @@ fn adt_local_to_world(
 | System | Origin | X Direction | Y Direction | Notes |
 |--------|--------|-------------|-------------|-------|
 | Grid | Top-left (0,0) | Right → | Down ↓ | File naming |
-| World | Center (0,0,0) | East → | South ↓ | Internal coords |
-| Client | Center (0,0) | East → | North ↑ | UI display |
+| World | Center (0,0,0) | North → | West → | Internal coords |
+| Client | Center (0,0) | North → | West → | UI display |
 | ADT Local | Top-left (0,0) | Right → | Down ↓ | Per-tile |
 
 ## Common Pitfalls
 
-### 1. Y-Axis Confusion
+### 1. Coordinate System Consistency
 
-World and client coordinates have opposite Y directions:
+World and client coordinates use the same system, so no conversion is needed:
 
 ```rust
-// Convert world to client coordinates
+// World and client coordinates are the same
 fn world_to_client(world_x: f32, world_y: f32) -> (f32, f32) {
-    (world_x, -world_y)  // Flip Y!
+    (world_x, world_y)  // No conversion needed!
 }
 ```
 

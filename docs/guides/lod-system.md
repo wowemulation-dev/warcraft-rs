@@ -1,11 +1,8 @@
-# 📊 LOD System Guide
+# 📊 Level of Detail (LoD) System Guide
 
 ## Overview
 
-Level of Detail (LOD) systems are crucial for rendering large-scale World of Warcraft
-environments efficiently. This guide covers implementing comprehensive LOD systems
-using `warcraft-rs`, including mesh LODs, terrain LODs, shader LODs, and dynamic
-LOD selection strategies for optimal performance.
+The Level of Detail (LoD) system in World of Warcraft optimizes terrain rendering by using different levels of detail based on viewing distance. This guide explains how to implement terrain LoD using the warcraft-rs library, focusing on the WDL/ADT system.
 
 ## Prerequisites
 

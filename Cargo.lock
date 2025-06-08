@@ -1955,6 +1955,8 @@ dependencies = [
 name = "wow-wdl"
 version = "0.1.0"
 dependencies = [
+ "criterion",
+ "memchr",
  "thiserror 2.0.12",
 ]
 

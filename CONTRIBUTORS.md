@@ -21,12 +21,14 @@ We welcome contributions from the community! Here are some ways you can help:
 3. **Add tests** for any new functionality
 4. **Ensure all tests pass** (`cargo test --all-features`)
 5. **Run quality checks**:
+
    ```bash
    cargo fmt --all
    cargo check --all-features --all-targets
    cargo clippy --all-targets --all-features
    cargo test
    ```
+
 6. **Update documentation** if you're changing public APIs
 7. **Commit your changes** with descriptive commit messages
 8. **Push to your branch** and open a Pull Request
@@ -191,18 +193,22 @@ Here are specific areas where contributions would be especially valuable:
 
 ### Recognition
 
-All contributors will be recognized in this file. Significant contributions may also be highlighted in:
+All contributors will be recognized in this file. Significant contributions may
+also be highlighted in:
+
 - Release notes
 - Project README
 - Documentation credits
 
 ## License
 
-By contributing to this project, you agree that your contributions will be licensed under the same terms as the project (MIT OR Apache-2.0).
+By contributing to this project, you agree that your contributions will be licensed
+under the same terms as the project (MIT OR Apache-2.0).
 
 ## Code of Conduct
 
-Please note that this project follows our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+Please note that this project follows our [Code of Conduct](CODE_OF_CONDUCT.md).
+By participating, you are expected to uphold this code.
 
 ## Contact
 
@@ -211,4 +217,5 @@ Please note that this project follows our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ---
 
-*Want to see your name here? We'd love to have your contribution! Check the issues labeled "good first issue" to get started.*
+*Want to see your name here? We'd love to have your contribution! Check the issues
+labeled "good first issue" to get started.*

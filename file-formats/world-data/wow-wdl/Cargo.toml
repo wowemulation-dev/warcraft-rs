@@ -15,8 +15,14 @@ categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 thiserror = { workspace = true }
+memchr = "2.7"
 
 [dev-dependencies]
+criterion = { workspace = true }
 
 [features]
 default = []
+
+[[bench]]
+name = "parser_benchmark"
+harness = false

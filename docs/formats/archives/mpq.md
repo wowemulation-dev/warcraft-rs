@@ -696,11 +696,14 @@ fn decrypt_block_table(table_data: &mut [u32]) {
 
 ## Patch Chaining in World of Warcraft
 
-MPQ archives in World of Warcraft use a patch chain system where multiple archives are loaded in a specific order, with higher priority archives overriding files from lower priority ones. This system evolved significantly across WoW versions.
+MPQ archives in World of Warcraft use a patch chain system where multiple archives
+are loaded in a specific order, with higher priority archives overriding files
+from lower priority ones. This system evolved significantly across WoW versions.
 
 ### Loading Order and Priorities
 
-The patch chain system uses numeric priorities where higher numbers override lower ones:
+The patch chain system uses numeric priorities where higher numbers override
+lower ones:
 
 - **0-99**: Base game archives
 - **100-999**: Locale-specific base archives
@@ -740,7 +743,8 @@ The patch chain system uses numeric priorities where higher numbers override low
 - Extensive `wow-update` system (13156-18500)
 - Last version before switching to CASC (6.0)
 
-For detailed information about patch chaining implementation and examples, see the [WoW Patch Chain Summary](../../guides/wow-patch-chain-summary.md).
+For detailed information about patch chaining implementation and examples, see
+the [WoW Patch Chain Summary](../../guides/wow-patch-chain-summary.md).
 
 ## See Also
 

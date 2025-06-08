@@ -7,7 +7,8 @@ The `wow-mpq` crate provides robust MPQ support with limited gaps:
 
 - **Archive Reading**: 98% complete ✅ (Excellent StormLib compatibility)
 - **Archive Creation**: 95% complete ✅ (HET/BET tables are 100% implemented)
-- **Archive Modification**: 10% complete ❌ (Only rebuild capability, no in-place operations)
+- **Archive Modification**: 10% complete ❌ (Only rebuild capability, no in-place
+  operations)
 - **Compression**: 100% complete ✅ (All algorithms implemented)
 - **Cryptography**: 95% complete ✅ (Signature verification is 100% StormLib compatible)
 - **Advanced Features**: 85% complete ✅ (Patch chains implemented, missing streaming/protection)
@@ -183,7 +184,7 @@ archive managers.
 
 ### Phase 1: Archive Modification (Est. 2-3 weeks)
 
-1. **In-Place Modification Architecture** 
+1. **In-Place Modification Architecture**
    - Design efficient table update mechanisms
    - Implement file addition to existing archives
    - Add file removal with proper cleanup
@@ -225,7 +226,8 @@ archive managers.
 6. **Testing**: Extensive test suite with real game files and StormLib comparison
 7. **Rebuild Capability**: Complete 1:1 archive rebuild with format upgrades
 8. **Complete Compression**: All MPQ compression algorithms fully implemented
-9. **Patch Chain Support**: Full WoW-style patch archive management with priority ordering
+9. **Patch Chain Support**: Full WoW-style patch archive management with priority
+  ordering
 
 ## Recent Improvements
 
@@ -255,17 +257,19 @@ archive managers.
 ## Conclusion
 
 The `wow-mpq` project provides a solid, safe Rust implementation of MPQ archives
-with excellent support for reading, creating, and chaining archives. It includes all
-compression algorithms and patch chain support, making it nearly feature-complete.
+with excellent support for reading, creating, and chaining archives. It includes
+all compression algorithms and patch chain support, making it nearly feature-complete.
 
-The core functionality is well-implemented with comprehensive testing. The main remaining gaps are:
+The core functionality is well-implemented with comprehensive testing. The main
+remaining gaps are:
 
 1. In-place archive modification (add/remove/rename files)
 2. Advanced performance features (streaming, memory mapping)
 3. Protected archive support
 
 Despite these gaps, the library is production-ready for most MPQ operations and provides
-a clean, safe alternative to StormLib for Rust applications. With full compression support
-and patch chain functionality, it can handle all World of Warcraft MPQ archives from
-versions 1.12.1 through 5.4.8. The rebuild functionality offers a workaround for
-modification scenarios, though with performance implications for large archives.
+a clean, safe alternative to StormLib for Rust applications. With full compression
+support and patch chain functionality, it can handle all World of Warcraft MPQ
+archives from versions 1.12.1 through 5.4.8. The rebuild functionality offers a
+workaround for modification scenarios, though with performance implications for
+large archives.
