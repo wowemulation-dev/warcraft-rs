@@ -46,3 +46,5 @@ tempfile = "3.20"
 criterion = { version = "0.6", features = ["html_reports"] }
 pretty_assertions = "1.4"
 proptest = "1.7"
+assert_cmd = "2.0"
+predicates = "3.1"

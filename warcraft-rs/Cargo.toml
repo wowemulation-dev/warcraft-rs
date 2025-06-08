@@ -1,13 +1,13 @@
 [package]
 name = "warcraft-rs"
 version = "0.1.0"
-authors = ["Daniel S. Reichenbach <daniel@kogito.network>"]
-edition = "2024"
-rust-version = "1.86"
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Command-line tools for World of Warcraft file formats"
-repository = "https://github.com/wowemulation-dev/warcraft-rs"
-homepage = "https://github.com/wowemulation-dev/warcraft-rs"
 keywords = ["wow", "warcraft", "mpq", "blp", "dbc"]
 categories = ["command-line-utilities", "game-development"]
 
@@ -27,10 +27,10 @@ wow-wdt = { path = "../file-formats/world-data/wow-wdt", optional = true }
 wow-wdl = { path = "../file-formats/world-data/wow-wdl", optional = true }
 
 # Error handling and logging
-anyhow = "1.0"
-thiserror = "2.0"
-log = "0.4"
-env_logger = "0.11"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
 
 # UI and formatting
 indicatif = "0.17"
@@ -59,6 +59,6 @@ name = "warcraft-rs"
 path = "src/main.rs"
 
 [dev-dependencies]
-assert_cmd = "2.0"
-predicates = "3.1"
-tempfile = "3.20"
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+tempfile = { workspace = true }

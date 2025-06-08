@@ -14,7 +14,7 @@ keywords = ["wow", "warcraft", "adt", "terrain", "gamedev"]
 categories = ["game-development", "parser-implementations"]
 
 [dependencies]
-thiserror = "2.0"
+thiserror = { workspace = true }
 
 [dev-dependencies]
 
