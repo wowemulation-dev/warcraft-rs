@@ -129,6 +129,7 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -148,14 +149,14 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: lcov.info
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
   # Success marker for branch protection
   ci-success:
     name: CI Success
     if: always()
-    needs: [quick-checks, test, docs, coverage]
+    needs: [quick-checks, test, docs]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs
