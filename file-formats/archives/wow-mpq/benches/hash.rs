@@ -3,6 +3,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use wow_mpq::{hash_string, hash_type, jenkins_hash};
+use wow_mpq::crypto::het_hash;
 
 fn bench_hash_string_short(c: &mut Criterion) {
     let filename = "file.txt";
@@ -74,6 +75,30 @@ fn bench_hash_case_conversion(c: &mut Criterion) {
     });
 }
 
+fn bench_het_hash_48bit(c: &mut Criterion) {
+    let filename = "(attributes)";
+
+    c.bench_function("het_hash_48bit", |b| {
+        b.iter(|| het_hash(black_box(filename), black_box(48)));
+    });
+}
+
+fn bench_het_hash_64bit(c: &mut Criterion) {
+    let filename = "units\\human\\footman\\footman.mdx";
+
+    c.bench_function("het_hash_64bit", |b| {
+        b.iter(|| het_hash(black_box(filename), black_box(64)));
+    });
+}
+
+fn bench_het_hash_8bit(c: &mut Criterion) {
+    let filename = "war3map.j";
+
+    c.bench_function("het_hash_8bit", |b| {
+        b.iter(|| het_hash(black_box(filename), black_box(8)));
+    });
+}
+
 criterion_group!(
     benches,
     bench_hash_string_short,
@@ -83,6 +108,9 @@ criterion_group!(
     bench_jenkins_hash_short,
     bench_jenkins_hash_long,
     bench_hash_with_path_conversion,
-    bench_hash_case_conversion
+    bench_hash_case_conversion,
+    bench_het_hash_48bit,
+    bench_het_hash_64bit,
+    bench_het_hash_8bit
 );
 criterion_main!(benches);

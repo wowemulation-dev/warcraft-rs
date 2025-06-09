@@ -88,6 +88,7 @@ struct MpqHeader {
 
 ### StormLib Features
 
+- **Hash algorithms**: Uses Jenkins hashlittle2 for HET, Jenkins one-at-a-time for BET
 - **Jenkins hash masking**: Uses `and_mask_64` and `or_mask_64` for optimization
 - **Bit-packed storage**: Custom `BitArray` implementation for memory efficiency
 - **Detailed bit tracking**: Precise bit positions for all fields

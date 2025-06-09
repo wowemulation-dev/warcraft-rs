@@ -2,7 +2,7 @@
 
 use super::common::{ReadLittleEndian, decrypt_table_data};
 use crate::compression::decompress;
-use crate::crypto::jenkins_hash;
+use crate::crypto::het_hash;
 use crate::{Error, Result};
 use std::io::{Read, Seek, SeekFrom};
 
@@ -237,31 +237,18 @@ impl HetTable {
 
     /// Find a file in the HET table
     pub fn find_file(&self, filename: &str) -> Option<u32> {
-        let hash = jenkins_hash(filename);
+        // Copy values from packed struct to avoid alignment issues
+        let hash_entry_size = self.header.hash_entry_size;
+        let max_file_count = self.header.max_file_count;
 
-        // Calculate masks based on the stored sizes
-        let hash_mask = if self.header.hash_entry_size >= 64 {
-            u64::MAX
-        } else {
-            (1u64 << self.header.hash_entry_size) - 1
-        };
-
-        // Apply the hash mask
-        let masked_hash = hash & hash_mask;
-
-        // Extract the upper 8 bits of the hash (NameHash1 in StormLib)
-        let name_hash1 = if self.header.hash_entry_size >= 8 {
-            (masked_hash >> (self.header.hash_entry_size - 8)) as u8
-        } else {
-            // If hash entry size is less than 8 bits, use all bits
-            masked_hash as u8
-        };
+        // Use the correct Jenkins hashlittle2 algorithm for HET tables
+        let (hash, name_hash1) = het_hash(filename, hash_entry_size);
 
         log::debug!(
-            "HET find_file: filename='{}', full_hash=0x{:016X}, masked_hash=0x{:016X}, name_hash1=0x{:02X}",
+            "HET find_file: filename='{}', hash_bits={}, full_hash=0x{:016X}, name_hash1=0x{:02X}",
             filename,
+            hash_entry_size,
             hash,
-            masked_hash,
             name_hash1
         );
 
@@ -272,7 +259,7 @@ impl HetTable {
         }
 
         // Starting index for linear probing
-        let start_index = (masked_hash % (total_count as u64)) as usize;
+        let start_index = (hash % (total_count as u64)) as usize;
 
         log::debug!(
             "HET find_file: total_count={}, start_index={}",
@@ -303,43 +290,6 @@ impl HetTable {
                 name_hash1
             );
 
-            if stored_hash == name_hash1 {
-                log::debug!(
-                    "HET find_file: found matching name_hash1 at index {}",
-                    index
-                );
-
-                // Read the file index from the bit-packed file indices
-                match self.read_file_index(index) {
-                    Some(file_index) => {
-                        log::debug!("HET find_file: extracted file_index={}", file_index);
-
-                        // Verify file index is valid
-                        let max_file_count = self.header.max_file_count;
-                        if file_index < max_file_count {
-                            // Note: In StormLib, they would verify the full hash against
-                            // the file table entry here. Since we don't have access to the
-                            // file table from within HET, we return the file index and let
-                            // the caller verify if needed.
-                            log::debug!("HET find_file: found file at index {}", file_index);
-                            return Some(file_index);
-                        } else {
-                            log::debug!(
-                                "HET find_file: invalid file_index {} >= max_file_count {}",
-                                file_index,
-                                max_file_count
-                            );
-                        }
-                    }
-                    None => {
-                        log::debug!(
-                            "HET find_file: failed to read file index at position {}",
-                            index
-                        );
-                    }
-                }
-            }
-
             // Check for empty slot (0xFF = HET_TABLE_EMPTY)
             if stored_hash == 0xFF {
                 log::debug!(
@@ -348,9 +298,40 @@ impl HetTable {
                 );
                 break;
             }
+
+            if stored_hash == name_hash1 {
+                // Read the file index from the bit-packed file indices
+                match self.read_file_index(index) {
+                    Some(file_index) => {
+                        if file_index < max_file_count {
+                            log::debug!(
+                                "HET find_file: found match at table_index={}, file_index={}",
+                                index,
+                                file_index
+                            );
+                            // TODO: Verify this is the correct file (e.g., via BET table)
+                            // For now, return the first match with correct hash
+                            return Some(file_index);
+                        } else {
+                            log::debug!(
+                                "HET find_file: invalid file_index {} >= max_file_count {} at table_index={}",
+                                file_index,
+                                max_file_count,
+                                index
+                            );
+                        }
+                    }
+                    None => {
+                        log::debug!(
+                            "HET find_file: failed to read file index at table_index={}",
+                            index
+                        );
+                    }
+                }
+            }
         }
 
-        log::debug!("HET find_file: file not found after exhaustive search");
+        log::debug!("HET find_file: file not found");
         None
     }
 

@@ -5,7 +5,10 @@
 //! ## Features
 //!
 //! - **Encryption/Decryption**: Block and single-value encryption using MPQ's custom algorithm
-//! - **Hashing**: String hashing for file name lookup in hash tables
+//! - **Hashing**: Multiple hash algorithms for different table types:
+//!   - MPQ hash algorithm: Classic hash for hash/block tables and encryption keys
+//!   - Jenkins one-at-a-time: Used for BET table hashes in MPQ v3+
+//!   - Jenkins hashlittle2: Used for HET table lookups in MPQ v3+
 //! - **Digital Signatures**: Support for both weak (512-bit RSA) and strong (2048-bit RSA) signatures
 //!
 //! ## Digital Signatures
@@ -22,7 +25,26 @@
 //! - Appended after the archive data with "NGIS" header
 //! - Generation requires private key (not publicly available)
 //!
-//! ## Example
+//! ## Examples
+//!
+//! ### Hash Algorithms
+//!
+//! ```no_run
+//! use wow_mpq::crypto::{hash_string, hash_type, jenkins_hash, het_hash};
+//!
+//! // MPQ hash for hash table lookups
+//! let table_hash = hash_string("Units\\Human\\Footman.mdx", hash_type::TABLE_OFFSET);
+//! let name_a = hash_string("Units\\Human\\Footman.mdx", hash_type::NAME_A);
+//! let name_b = hash_string("Units\\Human\\Footman.mdx", hash_type::NAME_B);
+//!
+//! // Jenkins one-at-a-time for BET tables
+//! let bet_hash = jenkins_hash("Units\\Human\\Footman.mdx");
+//!
+//! // Jenkins hashlittle2 for HET tables
+//! let (het_file_hash, het_name_hash) = het_hash("Units\\Human\\Footman.mdx", 48);
+//! ```
+//!
+//! ### Digital Signatures
 //!
 //! ```no_run
 //! use wow_mpq::crypto::{generate_weak_signature, verify_weak_signature_stormlib, SignatureInfo};
@@ -48,6 +70,7 @@
 mod decryption;
 mod encryption;
 mod hash;
+mod jenkins;
 mod keys;
 mod signature;
 mod types;
@@ -55,7 +78,8 @@ mod types;
 // Re-export public API
 pub use decryption::{decrypt_block, decrypt_dword};
 pub use encryption::encrypt_block;
-pub use hash::{hash_string, jenkins_hash};
+pub use hash::hash_string;
+pub use jenkins::{jenkins_hashlittle2 as het_hash, jenkins_one_at_a_time as jenkins_hash};
 pub use signature::{
     DIGEST_UNIT_SIZE, STRONG_SIGNATURE_HEADER, STRONG_SIGNATURE_SIZE, SignatureInfo, SignatureType,
     StrongSignatureTailType, WEAK_SIGNATURE_FILE_SIZE, WEAK_SIGNATURE_SIZE, calculate_mpq_hash_md5,

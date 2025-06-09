@@ -358,9 +358,17 @@ struct BetTable {
 
 ## Algorithms
 
-### Hash Calculation
+### Hash Algorithms Overview
 
-MPQ uses a custom hashing algorithm to convert filenames into hash table entries:
+MPQ archives use different hash algorithms depending on the table type:
+
+1. **MPQ Hash Algorithm** - Used for hash and block tables (v1/v2)
+2. **Jenkins one-at-a-time** - Used for BET tables (v3+)
+3. **Jenkins hashlittle2** - Used for HET tables (v3+)
+
+### MPQ Hash Calculation
+
+The classic MPQ hash algorithm is used for hash table lookups and encryption keys:
 
 ```rust
 use wow_mpq::crypto::{hash_string, hash_type};
@@ -382,6 +390,45 @@ fn calculate_hashes(filename: &str) -> (u32, u32, u32) {
 
 // The hash_string function is implemented in wow_mpq and uses
 // a pre-computed encryption table for performance
+```
+
+### Jenkins Hash Algorithms (v3+)
+
+MPQ v3+ archives use Jenkins hash algorithms for the HET and BET tables:
+
+#### Jenkins one-at-a-time (BET tables)
+
+```rust
+use wow_mpq::crypto::jenkins_hash;
+
+// Used for BET table name hashes
+let bet_hash = jenkins_hash("Units\\Human\\Footman.mdx");
+
+// The algorithm:
+// 1. Normalizes path separators (/ to \)
+// 2. Converts to lowercase
+// 3. Applies Jenkins one-at-a-time hash
+// 4. Returns 64-bit hash value
+```
+
+#### Jenkins hashlittle2 (HET tables)
+
+```rust
+use wow_mpq::crypto::het_hash;
+
+// Used for HET table lookups
+let (file_hash, name_hash1) = het_hash("(attributes)", 48);
+
+// The algorithm:
+// 1. Normalizes path separators and case
+// 2. Applies Jenkins hashlittle2 with seeds 1 and 2
+// 3. Combines results into 64-bit hash
+// 4. Applies bit masking based on hash_bits parameter
+// 5. Extracts 8-bit NameHash1 for quick comparison
+
+// Example with different hash sizes:
+let (hash_48bit, name1_48) = het_hash("file.txt", 48);  // 48-bit hash
+let (hash_64bit, name1_64) = het_hash("file.txt", 64);  // 64-bit hash
 ```
 
 ### File Search Algorithm
@@ -438,7 +485,7 @@ fn find_file_manual(archive: &Archive, filename: &str) -> Option<FileInfo> {
 For MPQ v3+ archives using HET/BET tables:
 
 ```rust
-use wow_mpq::{Archive, crypto::jenkins_hash};
+use wow_mpq::{Archive, crypto::{het_hash, jenkins_hash}};
 
 // HET/BET tables provide more efficient file lookup for v3+ archives
 fn find_file_het_bet_example(archive: &Archive, filename: &str) -> Option<FileInfo> {
@@ -448,11 +495,14 @@ fn find_file_het_bet_example(archive: &Archive, filename: &str) -> Option<FileIn
 
 // Educational example of the HET/BET algorithm:
 fn het_bet_algorithm_overview(archive: &Archive, filename: &str) {
-    // Jenkins hash is used for HET/BET tables
-    let name_hash = jenkins_hash(filename.to_uppercase().as_bytes());
+    // HET tables use Jenkins hashlittle2 algorithm
+    let (het_file_hash, het_name_hash1) = het_hash(filename, 48); // 48-bit hash example
+    
+    // BET tables use Jenkins one-at-a-time algorithm  
+    let bet_name_hash = jenkins_hash(filename);
 
-    // The HET table stores 8-bit hashes for quick lookup
-    // The BET table stores extended file information
+    // The HET table stores 8-bit name hashes for quick lookup
+    // The BET table stores extended file information with 64-bit hashes
 
     // In practice, the Archive implementation handles all of this
     // complexity internally when you call find_file()

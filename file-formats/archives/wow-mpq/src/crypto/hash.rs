@@ -1,6 +1,12 @@
-//! Hash algorithms for MPQ file name hashing
+//! MPQ hash algorithm for file name hashing in hash and block tables
+//!
+//! This module contains the classic MPQ hash algorithm used for:
+//! - Hash table lookups (NAME_A, NAME_B, TABLE_OFFSET)
+//! - Encryption keys (FILE_KEY)
+//!
+//! For Jenkins hash algorithms used in HET/BET tables, see the `jenkins` module.
 
-use super::keys::{ASCII_TO_LOWER, ASCII_TO_UPPER, ENCRYPTION_TABLE};
+use super::keys::{ASCII_TO_UPPER, ENCRYPTION_TABLE};
 
 /// Hash a string using the MPQ hash algorithm
 pub fn hash_string(filename: &str, hash_type: u32) -> u32 {
@@ -30,35 +36,6 @@ pub fn hash_string(filename: &str, hash_type: u32) -> u32 {
     }
 
     seed1
-}
-
-/// Jenkins hash function for HET tables
-pub fn jenkins_hash(filename: &str) -> u64 {
-    let mut hash: u64 = 0;
-
-    for &byte in filename.as_bytes() {
-        // Get the next character and normalize it
-        let mut ch = byte;
-
-        // Convert path separators to backslash
-        if ch == b'/' {
-            ch = b'\\';
-        }
-
-        // Convert to lowercase using the table
-        ch = ASCII_TO_LOWER[ch as usize];
-
-        // Jenkins one-at-a-time hash algorithm
-        hash = hash.wrapping_add(ch as u64);
-        hash = hash.wrapping_add(hash << 10);
-        hash ^= hash >> 6;
-    }
-
-    hash = hash.wrapping_add(hash << 3);
-    hash ^= hash >> 11;
-    hash = hash.wrapping_add(hash << 15);
-
-    hash
 }
 
 #[cfg(test)]
@@ -135,31 +112,6 @@ mod tests {
         assert_eq!(
             hash_string("path\\to\\FILE", hash_type::TABLE_OFFSET),
             0x534CC8EE
-        );
-    }
-
-    #[test]
-    fn test_jenkins_hash() {
-        // Test Jenkins hash for HET tables
-        let hash = jenkins_hash("unit\\neutral\\chicken.mdx");
-        assert_ne!(hash, 0); // Basic sanity check
-
-        // Test case insensitivity - Jenkins uses lowercase conversion
-        let hash1 = jenkins_hash("File.txt");
-        let hash2 = jenkins_hash("FILE.TXT");
-        assert_eq!(hash1, hash2, "Jenkins hash should be case-insensitive");
-
-        // Test path normalization
-        let hash1 = jenkins_hash("path/to/file");
-        let hash2 = jenkins_hash("path\\to\\file");
-        assert_eq!(hash1, hash2, "Path separators should be normalized");
-
-        // Test that different files produce different hashes
-        let hash1 = jenkins_hash("file1.txt");
-        let hash2 = jenkins_hash("file2.txt");
-        assert_ne!(
-            hash1, hash2,
-            "Different files should produce different hashes"
         );
     }
 

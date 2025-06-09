@@ -3,7 +3,7 @@
 use crate::{
     Error, Result,
     compression::{compress, flags as compression_flags},
-    crypto::{encrypt_block, hash_string, hash_type, jenkins_hash},
+    crypto::{encrypt_block, hash_string, hash_type, het_hash, jenkins_hash},
     header::{FormatVersion, MpqHeaderV4Data},
     tables::{BetHeader, BlockEntry, BlockTable, HashEntry, HashTable, HetHeader, HiBlockTable},
 };
@@ -1460,17 +1460,13 @@ impl ArchiveBuilder {
 
         // Process each file
         for (file_index, pending_file) in self.pending_files.iter().enumerate() {
-            let hash = jenkins_hash(&pending_file.archive_name);
+            // TODO: Make hash_entry_size configurable instead of hardcoding to 8
+            // Real MPQ archives can use different sizes (e.g., 48-bit)
+            let hash_bits = 8; // Must match hash_entry_size in header
+            let (hash, name_hash1) = het_hash(&pending_file.archive_name, hash_bits);
 
-            // Apply the same masking as the reader does
-            let hash_mask = (1u64 << 8) - 1; // hash_entry_size is 8
-            let masked_hash = hash & hash_mask;
-
-            // Extract NameHash1 - with hash_entry_size=8, this is just the masked hash
-            let name_hash1 = masked_hash as u8;
-
-            // Calculate starting position for linear probing using masked_hash (not full hash)
-            let start_index = (masked_hash % hash_table_entries as u64) as usize;
+            // Calculate starting position for linear probing
+            let start_index = (hash % hash_table_entries as u64) as usize;
 
             // Linear probing for collision resolution
             let mut current_index = start_index;
@@ -1489,10 +1485,9 @@ impl ArchiveBuilder {
                     )?;
 
                     log::debug!(
-                        "HET: file '{}' -> hash=0x{:016X}, masked=0x{:02X}, start={}, index={}, name_hash1=0x{:02X}, file_index={}",
+                        "HET: file '{}' -> hash=0x{:016X}, start={}, index={}, name_hash1=0x{:02X}, file_index={}",
                         pending_file.archive_name,
                         hash,
-                        masked_hash,
                         start_index,
                         current_index,
                         name_hash1,
@@ -1849,7 +1844,8 @@ impl ArchiveBuilder {
                 // Write to file table
                 self.write_bit_entry(&mut file_table, i, entry_bits, table_entry_size)?;
 
-                // Generate BET hash (Jenkins hash of filename)
+                // Generate BET hash (Jenkins one-at-a-time hash of filename)
+                // Note: BET uses Jenkins one-at-a-time, not hashlittle2 like HET
                 let hash = jenkins_hash(&pending_file.archive_name);
                 bet_hashes.push(hash);
             }
