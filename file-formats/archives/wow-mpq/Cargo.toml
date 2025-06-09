@@ -107,3 +107,6 @@ name = "cata_patch_chain_demo"
 
 [[example]]
 name = "mop_patch_chain_demo"
+
+[[example]]
+name = "signature_demo"

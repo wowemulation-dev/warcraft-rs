@@ -37,10 +37,26 @@ them.
 
 ## 📖 Guides
 
+### MPQ Archives
+
 - [Working with MPQ Archives](guides/mpq-archives.md)
+- [MPQ CLI Usage](guides/mpq-cli-usage.md)
+- [MPQ Digital Signatures](guides/mpq-signatures.md) 🔐
 - [StormLib vs wow-mpq Differences](guides/stormlib-differences.md)
+- [WoW Patch Chain Summary](guides/wow-patch-chain-summary.md)
+
+### Graphics & Rendering
+
 - [Rendering ADT Terrain](guides/adt-rendering.md)
 - [Loading M2 Models](guides/m2-models.md)
+- [Model Rendering Guide](guides/model-rendering.md)
+- [WMO Rendering Guide](guides/wmo-rendering.md)
+- [Texture Loading](guides/texture-loading.md)
+- [Animation System](guides/animation-system.md)
+- [LOD System](guides/lod-system.md)
+
+### Database
+
 - [DBC Data Extraction](guides/dbc-extraction.md)
 
 ## 🔧 API Reference

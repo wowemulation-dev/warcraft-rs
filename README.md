@@ -18,7 +18,10 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 
 - **MPQ Archives** - Read, write, rebuild and compare MPQ archive files (v1-v4)
   - 🔄 **Archive Rebuilding** - Recreate archives 1:1 with format upgrades and optimization
-  - 🔍 **Archive Comparison** - Compare archives for differences in metadata, files, and content
+  - 🔍 **Archive Comparison** - Compare archives for differences in metadata, files,
+    and content
+  - 🔐 **Digital Signatures** - Generate and verify archive signatures for
+    integrity protection
 - **DBC Database** - Parse client database files
 - **BLP Textures** - Handle texture files
 - **M2 Models** - Work with character and creature models
@@ -118,13 +121,17 @@ Comprehensive documentation is available in the `docs/` directory:
 - [Format Documentation](docs/formats/)
 - [API Reference](docs/api/)
 - [Examples and Guides](docs/guides/)
-  - **[📦 MPQ CLI Usage Guide](docs/guides/mpq-cli-usage.md)** - Complete CLI reference with rebuild and compare examples
-  - **[📦 MPQ Archives Guide](docs/guides/mpq-archives.md)** - Programming guide with rebuild and comparison APIs
-  - **[🔍 StormLib vs wow-mpq](docs/guides/stormlib-differences.md)** - Technical comparison with the reference implementation
+  - **[📦 MPQ CLI Usage Guide](docs/guides/mpq-cli-usage.md)** - Complete CLI
+    reference with rebuild and compare examples
+  - **[📦 MPQ Archives Guide](docs/guides/mpq-archives.md)** - Programming guide
+    with rebuild and comparison APIs
+  - **[🔍 StormLib vs wow-mpq](docs/guides/stormlib-differences.md)** - Technical
+    comparison with the reference implementation
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for
+details on:
 
 - Setting up your development environment
 - Finding issues to work on

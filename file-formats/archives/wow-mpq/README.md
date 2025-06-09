@@ -27,6 +27,7 @@ comprehensive support for all format versions and features.
 - 🗜️ **All Compression Algorithms** - Zlib, BZip2, LZMA, Sparse, ADPCM, PKWare,
   Huffman
 - 🔐 **Full Cryptography** - File encryption/decryption, signature verification
+  and generation
 - 🔗 **Patch Chain Support** - Complete World of Warcraft patch archive management
 - 📊 **Advanced Tables** - HET/BET tables for v3+ archives with optimal compression
 - 🚀 **High Performance** - Efficient I/O, zero-copy where possible, comprehensive
@@ -103,11 +104,14 @@ let options = RebuildOptions::new()
 rebuild_archive("old.mpq", "optimized.mpq", &options)?;
 ```
 
-### Signature Verification
+### Digital Signatures
 
-Verify archive integrity with Blizzard's digital signatures:
+Verify and generate archive signatures for integrity protection:
 
 ```rust
+use wow_mpq::crypto::{generate_weak_signature, SignatureInfo, WEAK_SIGNATURE_FILE_SIZE};
+
+// Verify existing signatures
 let archive = Archive::open("signed.mpq")?;
 match archive.verify_signature()? {
     SignatureStatus::None => println!("No signature"),
@@ -115,6 +119,21 @@ match archive.verify_signature()? {
     SignatureStatus::Strong => println!("Strong signature (2048-bit RSA)"),
     SignatureStatus::Invalid => println!("Invalid signature!"),
 }
+
+// Generate new weak signature
+let archive_data = std::fs::read("archive.mpq")?;
+let sig_info = SignatureInfo::new_weak(
+    0,                               // Archive start
+    archive_data.len() as u64,       // Archive size
+    archive_data.len() as u64,       // Signature position
+    WEAK_SIGNATURE_FILE_SIZE as u64, // Signature file size
+    vec![],
+);
+
+let signature = generate_weak_signature(
+    std::io::Cursor::new(&archive_data),
+    &sig_info
+)?;
 ```
 
 ## Performance
@@ -134,6 +153,7 @@ The crate includes numerous examples demonstrating real-world usage:
 - `patch_chain_demo` - Working with WoW patch archives
 - `wotlk_patch_chain_demo` - Complete WotLK patch handling
 - `patch_analysis` - Analyze patch archive contents
+- `signature_demo` - Digital signature generation and verification
 - And many more...
 
 Run examples with:
@@ -152,6 +172,7 @@ yet implemented:
 - **Memory-mapped I/O** - Standard I/O only
 - **Streaming API** - No chunked reading for very large files
 - **Protected Archives** - Copy-protected MPQ support
+- **Strong Signature Generation** - Requires private key not publicly available
 
 See [STATUS.md](STATUS.md) for detailed feature compatibility information.
 

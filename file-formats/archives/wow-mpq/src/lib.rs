@@ -13,11 +13,14 @@
 //! - Support for all MPQ format versions (v1-v4)
 //! - Full compatibility with StormLib API through FFI
 //! - Multiple compression algorithms (zlib, bzip2, LZMA, etc.)
+//! - Digital signature support (verification and generation)
 //! - Strong security with signature verification
 //! - Memory-mapped I/O support for performance
 //! - Comprehensive error handling
 //!
-//! ## Example
+//! ## Examples
+//!
+//! ### Basic Usage
 //!
 //! ```no_run
 //! use wow_mpq::{Archive, OpenOptions};
@@ -33,6 +36,31 @@
 //!
 //! // Extract a specific file
 //! let data = archive.read_file("war3map.j")?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Digital Signatures
+//!
+//! ```no_run
+//! use wow_mpq::crypto::{generate_weak_signature, SignatureInfo, WEAK_SIGNATURE_FILE_SIZE};
+//! use std::io::Cursor;
+//!
+//! # fn main() -> Result<(), wow_mpq::Error> {
+//! // Generate a weak signature for an archive
+//! let archive_data = std::fs::read("archive.mpq")?;
+//! let archive_size = archive_data.len() as u64;
+//!
+//! let sig_info = SignatureInfo::new_weak(
+//!     0,                               // Archive start offset
+//!     archive_size,                    // Archive size
+//!     archive_size,                    // Signature position (at end)
+//!     WEAK_SIGNATURE_FILE_SIZE as u64, // Signature file size
+//!     vec![],                          // Empty initially
+//! );
+//!
+//! let cursor = Cursor::new(&archive_data);
+//! let signature_file = generate_weak_signature(cursor, &sig_info)?;
 //! # Ok(())
 //! # }
 //! ```

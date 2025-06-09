@@ -1,7 +1,7 @@
 # wow-mpq - Complete MPQ Feature Implementation Status
 
-**Last Updated:** 2025-06-08
-**Overall StormLib Compatibility:** ~92%
+**Last Updated:** 2025-06-09
+**Overall StormLib Compatibility:** ~95%
 
 The `wow-mpq` crate provides robust MPQ support with limited gaps:
 
@@ -10,7 +10,7 @@ The `wow-mpq` crate provides robust MPQ support with limited gaps:
 - **Archive Modification**: 10% complete ❌ (Only rebuild capability, no in-place
   operations)
 - **Compression**: 100% complete ✅ (All algorithms implemented)
-- **Cryptography**: 95% complete ✅ (Signature verification is 100% StormLib compatible)
+- **Cryptography**: 98% complete ✅ (Signature verification and generation fully implemented)
 - **Advanced Features**: 85% complete ✅ (Patch chains implemented, missing streaming/protection)
 - **Testing**: 95% complete ✅ (Comprehensive coverage with real MPQ files)
 
@@ -99,10 +99,12 @@ support where multiple algorithms can be chained together.
 | **Jenkins Hash** | ✅ Complete | 100% | For HET tables |
 | **Weak Signature Verification** | ✅ Complete | 100% | 512-bit RSA + MD5, StormLib compatible |
 | **Strong Signature Verification** | ✅ Complete | 100% | 2048-bit RSA + SHA-1 |
-| **Signature Creation** | ❌ Missing | 0% | Both weak and strong |
+| **Weak Signature Generation** | ✅ Complete | 100% | Using well-known Blizzard private key |
+| **Strong Signature Generation** | ⚠️ Partial | 50% | Framework complete, requires private key |
 
-**Highlight:** Signature verification is 100% StormLib compatible with chunk-based
-MD5 hashing.
+**Highlight:** Digital signature support is now comprehensive with both verification
+and generation capabilities. Weak signature generation is fully implemented using the
+well-known Blizzard private key, maintaining 100% StormLib compatibility.
 
 ### 🚀 Performance & I/O - 70% Complete ⚠️
 
@@ -197,9 +199,10 @@ archive managers.
    - Add streaming read/write interfaces
    - Full progress callback system
 
-2. **Signature Creation** (1 week)
-   - Add weak and strong signature generation
-   - Implement private key handling
+2. ~~**Signature Creation**~~ ✅ **COMPLETED**
+   - ✅ Weak signature generation implemented
+   - ✅ Private key handling added
+   - ⚠️ Strong signature framework complete (needs private key)
 
 3. **Performance Features** (1 week)
    - Memory-mapped file support
@@ -249,10 +252,18 @@ archive managers.
    - Multi-compression chaining support
    - Optimal algorithm selection
 
-4. **Documentation**: Added detailed StormLib differences guide explaining:
+4. **Digital Signature Support**: Complete signature implementation added:
+   - ✅ Weak signature generation (512-bit RSA + MD5)
+   - ✅ Strong signature verification (2048-bit RSA + SHA-1)
+   - ✅ StormLib-compatible hash calculation
+   - ✅ PKCS#1 v1.5 padding support
+   - ✅ Private key handling for weak signatures
+
+5. **Documentation**: Added detailed StormLib differences guide explaining:
    - Technical implementation differences
    - Feature gaps and workarounds
    - Migration guidance
+   - Comprehensive signature module documentation
 
 ## Conclusion
 
