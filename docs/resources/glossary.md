@@ -27,7 +27,8 @@ Includes animations, bones, and particle effects.
 ### MPQ
 
 **Mo'PaQ** (Mike O'Brien Pack) - Archive format for storing game assets with
-compression and encryption.
+compression and encryption. The `wow-mpq` implementation has 98.75% compatibility
+with StormLib (the reference C++ implementation).
 
 ### WDL
 

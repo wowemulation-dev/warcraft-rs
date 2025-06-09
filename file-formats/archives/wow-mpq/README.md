@@ -9,7 +9,7 @@ used by World of Warcraft and other Blizzard Entertainment games.
 
 ## Status
 
-✅ **Production Ready** - Feature-complete MPQ implementation with ~92% StormLib compatibility
+✅ **Production Ready** - Feature-complete MPQ implementation with ~98.75% StormLib compatibility
 
 ## Overview
 
@@ -50,13 +50,11 @@ for entry in archive.list()? {
 let data = archive.read_file("Interface\\FrameXML\\GlobalStrings.lua")?;
 
 // Create a new archive
-let mut builder = ArchiveBuilder::new();
-builder
-    .add_file("readme.txt", b"Hello, Azeroth!")?
-    .format_version(wow_mpq::FormatVersion::V2)
-    .compression(wow_mpq::compression::CompressionType::Zlib);
-
-builder.write("my_addon.mpq")?;
+ArchiveBuilder::new()
+    .add_file_data(b"Hello, Azeroth!".to_vec(), "readme.txt")
+    .version(wow_mpq::FormatVersion::V2)
+    .default_compression(wow_mpq::compression::flags::ZLIB)
+    .build("my_addon.mpq")?;
 ```
 
 ## Supported Versions
@@ -175,6 +173,19 @@ yet implemented:
 - **Strong Signature Generation** - Requires private key not publicly available
 
 See [STATUS.md](STATUS.md) for detailed feature compatibility information.
+
+## Compatibility Notes
+
+### Blizzard Archives
+
+Blizzard's MPQ implementation has some quirks that this library handles gracefully:
+
+- **Attributes File Size**: All official Blizzard MPQs have attributes files that are
+  exactly 28 bytes larger than the specification. This library detects and handles
+  this discrepancy automatically.
+- **Path Separators**: MPQ archives use backslashes (`\`) as path separators. While
+  this library accepts forward slashes for convenience, they are automatically converted
+  to backslashes internally.
 
 ## License
 

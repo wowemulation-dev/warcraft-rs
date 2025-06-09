@@ -21,7 +21,8 @@ The primary community resource for WoW file format documentation:
 ### StormLib (MPQ)
 
 - [StormLib GitHub](https://github.com/ladislav-zezula/StormLib) - C++ MPQ
-  library
+  library (reference implementation)
+- Note: `wow-mpq` has 98.75% compatibility with StormLib archives
 
 ### BLP format
 

@@ -2,6 +2,16 @@
 
 Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft files.
 
+**Current Support Status:**
+- ✅ **MPQ Archives** - Fully implemented with 98.75% StormLib compatibility
+- ✅ **WDL Format** - Low-resolution terrain heightmaps (basic implementation)
+- 🚧 **ADT Format** - Terrain data (planned)
+- 🚧 **WDT Format** - World tables (planned)
+- 🚧 **BLP Format** - Textures (planned)
+- 🚧 **M2 Format** - Models (planned)
+- 🚧 **WMO Format** - World objects (planned)
+- 🚧 **DBC Format** - Databases (planned)
+
 ## Core Concepts
 
 ### File Loading Pattern
@@ -53,75 +63,87 @@ fn load_model(path: &str) -> Result<Model, Error> {
 ### Opening and Reading Files
 
 ```rust
-use warcraft_rs::mpq::Archive;
+use wow_mpq::Archive;
 
 // Open an MPQ archive
 let mut archive = Archive::open("Data/patch.mpq")?;
 
+// Read file data (both path styles work - auto-converted)
+let data = archive.read_file("Interface/FrameXML/UIParent.lua")?;
+// or: archive.read_file("Interface\\FrameXML\\UIParent.lua")?;
+println!("File size: {} bytes", data.len());
+
 // Check if file exists
-if archive.has_file("Interface\\FrameXML\\UIParent.lua") {
-    // Read file data
-    let data = archive.read_file("Interface\\FrameXML\\UIParent.lua")?;
-    println!("File size: {} bytes", data.len());
+if let Ok(Some(file_info)) = archive.find_file("Interface/FrameXML/UIParent.lua") {
+    println!("File found: {} bytes", file_info.file_size);
 }
 
-// List all files
-for file_info in archive.list_files() {
-    println!("{}: {} bytes (compressed: {} bytes)",
-        file_info.name,
-        file_info.uncompressed_size,
-        file_info.compressed_size
-    );
+// List all files (requires listfile)
+if let Ok(entries) = archive.list() {
+    for entry in entries {
+        println!("{}: {} bytes (compressed: {} bytes)",
+            entry.name,
+            entry.size,
+            entry.compressed_size
+        );
+    }
 }
 ```
 
 ### Extracting Archives
 
 ```rust
-use warcraft_rs::mpq::{Archive, ExtractionProgress};
+use wow_mpq::{Archive, path::mpq_path_to_system};
 use std::path::Path;
+use std::fs;
 
 let mut archive = Archive::open("Data/art.mpq")?;
 
 // Extract all files
-archive.extract_all("output/directory")?;
-
-// Extract with progress callback
-archive.extract_all_with_progress("output/", |progress| {
-    match progress {
-        ExtractionProgress::FileStart(name) => {
-            println!("Extracting: {}", name);
-        }
-        ExtractionProgress::FileComplete(name, size) => {
-            println!("  Done: {} ({} bytes)", name, size);
-        }
-        ExtractionProgress::Error(name, err) => {
-            eprintln!("  Failed: {} - {}", name, err);
+if let Ok(entries) = archive.list() {
+    for entry in entries {
+        if let Ok(data) = archive.read_file(&entry.name) {
+            // Convert MPQ path to system path
+            let system_path = mpq_path_to_system(&entry.name);
+            let output_path = Path::new("output").join(&system_path);
+            
+            // Create directories
+            if let Some(parent) = output_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            
+            // Write file
+            fs::write(output_path, data)?;
+            println!("Extracted: {}", entry.name);
         }
     }
-})?;
+}
 
-// Extract specific files
+// Extract specific files with proper path handling
 let files = vec![
-    "Character\\Human\\Male\\HumanMale.m2",
-    "Character\\Human\\Male\\HumanMaleSkin00.skin",
+    "Character/Human/Male/HumanMale.m2",
+    "Character/Human/Male/HumanMaleSkin00.skin",
 ];
 
 for file in files {
     if let Ok(data) = archive.read_file(file) {
-        let output_path = Path::new("extracted").join(file);
-        std::fs::create_dir_all(output_path.parent().unwrap())?;
-        std::fs::write(output_path, data)?;
+        let system_path = mpq_path_to_system(file);
+        let output_path = Path::new("extracted").join(&system_path);
+        fs::create_dir_all(output_path.parent().unwrap())?;
+        fs::write(output_path, data)?;
     }
 }
 ```
 
 ## Loading Textures (BLP)
 
-### Basic Texture Loading
+*Note: BLP support is planned but not yet implemented in the current release.*
+
+### Basic Texture Loading (Coming Soon)
 
 ```rust
-use warcraft_rs::blp::{Blp, MipLevel};
+// Future API preview
+use wow_blp::Blp;
 
 // Load BLP texture
 let blp = Blp::open("Textures/Minimap/MinimapMask.blp")?;
@@ -132,38 +154,12 @@ println!("  Format: {:?}", blp.format());
 println!("  Mipmap levels: {}", blp.mipmap_count());
 
 // Get RGBA data for use with graphics APIs
-let rgba_data = blp.to_rgba8(MipLevel(0))?;
-
-// Save as PNG (requires image crate)
-use image::{ImageBuffer, Rgba};
-let image = ImageBuffer::<Rgba<u8>, _>::from_raw(
-    blp.width(),
-    blp.height(),
-    rgba_data
-).unwrap();
-image.save("texture.png")?;
-```
-
-### Working with Mipmaps
-
-```rust
-// Iterate through mipmap levels
-for level in 0..blp.mipmap_count() {
-    let mip_data = blp.to_rgba8(MipLevel(level))?;
-    let (width, height) = blp.mipmap_dimensions(MipLevel(level));
-
-    println!("Mipmap {}: {}x{}", level, width, height);
-
-    // Use mipmap data...
-}
-
-// Get specific mipmap for LOD
-let lod_distance = 100.0;
-let mip_level = (lod_distance / 50.0).log2().max(0.0) as u8;
-let texture_data = blp.to_rgba8(MipLevel(mip_level.min(blp.mipmap_count() - 1)))?;
+let rgba_data = blp.to_rgba8(0)?; // mipmap level 0
 ```
 
 ## Loading Models (M2)
+
+*Note: M2 support is planned but not yet implemented in the current release.*
 
 ### Basic Model Loading
 

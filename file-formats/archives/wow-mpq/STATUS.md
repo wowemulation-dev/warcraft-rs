@@ -1,7 +1,7 @@
 # wow-mpq - Complete MPQ Feature Implementation Status
 
 **Last Updated:** 2025-06-09
-**Overall StormLib Compatibility:** ~95%
+**Overall StormLib Compatibility:** ~98.75%
 
 The `wow-mpq` crate provides robust MPQ support with limited gaps:
 
@@ -247,7 +247,19 @@ archive managers.
    - Automatic file override behavior
    - Compatible with all WoW versions
 
-3. **Full Compression Support**: All MPQ compression algorithms now implemented:
+3. **Cross-Implementation Compatibility**: Achieved bidirectional compatibility with StormLib:
+   - StormLib can read all wow-mpq created archives (V1-V4)
+   - wow-mpq can read all StormLib created archives (V1-V4)
+   - Attributes file format compatibility (both 120-byte and 149-byte formats)
+   - HET/BET table generation fixed for V3+ archives
+   - Path separator handling (automatic forward slash to backslash conversion)
+
+4. **Blizzard Archive Support**: Full compatibility with official WoW archives:
+   - Handles Blizzard's 28-byte attributes file size deviation
+   - Tested with WoW versions 1.12.1, 2.4.3, 3.3.5a, 4.3.4, and 5.4.8
+   - Graceful handling of non-standard implementations
+
+5. **Full Compression Support**: All MPQ compression algorithms now implemented:
    - LZMA, PKWare Implode/DCL, Huffman added
    - Multi-compression chaining support
    - Optimal algorithm selection

@@ -28,22 +28,17 @@ This guide will walk you through installing `warcraft-rs` and its dependencies.
 
 ## Installation Methods
 
-### From crates.io (Recommended)
+### From crates.io (When Published)
 
-Add warcraft-rs to your project:
+*Note: The crates are not yet published to crates.io. Use the "From Source" method below.*
 
-```toml
-[dependencies]
-warcraft-rs = "0.1.0"
-```
-
-Or install individual crates:
+Once published, you'll be able to add individual crates:
 
 ```toml
 [dependencies]
-wow-mpq = "0.1.0"
-wow-blp = "0.1.0"
-wow-m2 = "0.1.0"
+wow-mpq = "0.1.0"    # MPQ archive support (currently implemented)
+wow-wdl = "0.1.0"    # WDL support (currently implemented)
+# Other crates will be available as they're implemented
 ```
 
 ### From Source
@@ -61,8 +56,8 @@ cargo build --release
 # Run tests
 cargo test
 
-# Install CLI tools
-cargo install --path crates/tools/warcraft-cli
+# Install CLI tool
+cargo install --path warcraft-rs
 ```
 
 ### Development Setup
@@ -128,16 +123,24 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-warcraft-rs = "0.1.0"
+wow-mpq = { path = "../warcraft-rs/file-formats/archives/wow-mpq" }
+# Or use git dependency until published:
+# wow-mpq = { git = "https://github.com/wowemulation-dev/warcraft-rs" }
 ```
 
 Create `src/main.rs`:
 
 ```rust
-use warcraft_rs::mpq::Archive;
+use wow_mpq::Archive;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("warcraft-rs installed successfully!");
+    println!("wow-mpq installed successfully!");
+    
+    // Test opening an MPQ if you have one
+    if let Ok(mut archive) = Archive::open("path/to/archive.mpq") {
+        println!("Successfully opened MPQ archive!");
+    }
+    
     Ok(())
 }
 ```

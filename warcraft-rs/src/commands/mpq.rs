@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 use wow_mpq::{
     Archive, ArchiveBuilder, FormatVersion, RebuildOptions,
-    compare_archives as mpq_compare_archives, rebuild_archive,
+    compare_archives as mpq_compare_archives, path::mpq_path_to_system, rebuild_archive,
 };
 
 use crate::utils::{
@@ -334,9 +334,14 @@ fn extract_files(
         match archive.read_file(file) {
             Ok(data) => {
                 let output_path = if preserve_paths {
-                    Path::new(output_dir).join(file)
+                    // Convert MPQ path separators to system path separators
+                    let system_path = mpq_path_to_system(file);
+                    Path::new(output_dir).join(system_path)
                 } else {
-                    Path::new(output_dir).join(Path::new(file).file_name().unwrap_or_default())
+                    // Convert MPQ path to system path, then extract just the filename
+                    let system_path = mpq_path_to_system(file);
+                    let filename = Path::new(&system_path).file_name().unwrap_or_default();
+                    Path::new(output_dir).join(filename)
                 };
 
                 if let Some(parent) = output_path.parent() {

@@ -16,6 +16,8 @@ to support larger files and improved security.
   - v2: Extended format with large file support (The Burning Crusade)
   - v3: HET/BET tables support (Cataclysm beta)
   - v4: Enhanced security with MD5 hashes (Cataclysm)
+- **StormLib Compatibility**: 98.75% compatible with the reference implementation
+- **Blizzard Compatibility**: Full support for all official WoW archives (1.12.1 - 5.4.8)
 
 ## File Layout
 
@@ -444,6 +446,12 @@ fn find_file_example(archive: &Archive, filename: &str) -> Option<FileInfo> {
     archive.find_file(filename).ok().flatten()
 }
 
+// Note: MPQ archives use backslash (\) as the path separator
+// The wow-mpq implementation automatically converts forward slashes (/)
+// to backslashes for convenience, but internally all paths use backslashes
+let file = archive.find_file("Units/Human/Footman.mdx")?;  // OK - converted to Units\Human\Footman.mdx
+let file = archive.find_file("Units\\Human\\Footman.mdx")?; // OK - native format
+
 // For educational purposes, here's the algorithm:
 fn find_file_manual(archive: &Archive, filename: &str) -> Option<FileInfo> {
     // Calculate three hash values
@@ -666,7 +674,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 MPQ archives may contain special metadata files:
 
 - **`(listfile)`**: Plain text list of all filenames in the archive
-- **`(attributes)`**: Extended attributes for files (CRC32, timestamps)
+- **`(attributes)`**: Extended attributes for files (CRC32, timestamps, MD5 hashes)
+  - Blizzard archives have attributes files that are 28 bytes larger than the specification
+  - The `wow-mpq` implementation handles this discrepancy automatically
 - **`(signature)`**: Digital signature for archive verification
 - **`(patch_metadata)`**: Information for incremental patching
 

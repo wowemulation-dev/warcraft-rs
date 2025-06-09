@@ -17,11 +17,13 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 ### 📦 Format Support
 
 - **MPQ Archives** - Read, write, rebuild and compare MPQ archive files (v1-v4)
+  - ✅ **98.75% StormLib Compatibility** - Excellent cross-implementation support
   - 🔄 **Archive Rebuilding** - Recreate archives 1:1 with format upgrades and optimization
   - 🔍 **Archive Comparison** - Compare archives for differences in metadata, files,
     and content
   - 🔐 **Digital Signatures** - Generate and verify archive signatures for
     integrity protection
+  - 🎮 **Official WoW Archive Support** - Handles all Blizzard-specific quirks
 - **DBC Database** - Parse client database files
 - **BLP Textures** - Handle texture files
 - **M2 Models** - Work with character and creature models

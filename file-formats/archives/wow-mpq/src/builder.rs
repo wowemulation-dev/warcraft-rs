@@ -5,6 +5,7 @@ use crate::{
     compression::{compress, flags as compression_flags},
     crypto::{encrypt_block, hash_string, hash_type, het_hash, jenkins_hash},
     header::{FormatVersion, MpqHeaderV4Data},
+    special_files::{AttributeFlags, Attributes, FileAttributes},
     tables::{BetHeader, BlockEntry, BlockTable, HashEntry, HashTable, HetHeader, HiBlockTable},
 };
 use md5::{Digest, Md5};
@@ -101,6 +102,19 @@ pub enum ListfileOption {
     None,
 }
 
+/// Options for attributes file generation
+#[derive(Debug, Clone)]
+pub enum AttributesOption {
+    /// Generate attributes with CRC32 checksums
+    GenerateCrc32,
+    /// Generate attributes with CRC32 and MD5
+    GenerateFull,
+    /// Use external attributes file
+    External(PathBuf),
+    /// Don't include attributes file
+    None,
+}
+
 /// Builder for creating new MPQ archives
 ///
 /// `ArchiveBuilder` provides a fluent interface for creating MPQ archives with
@@ -152,6 +166,8 @@ pub struct ArchiveBuilder {
     pending_files: Vec<PendingFile>,
     /// Listfile option
     listfile_option: ListfileOption,
+    /// Attributes option
+    attributes_option: AttributesOption,
     /// Default compression method
     default_compression: u8,
     /// Whether to generate sector CRCs for files
@@ -170,6 +186,7 @@ impl ArchiveBuilder {
             block_size: 3, // Default 4KB sectors
             pending_files: Vec::new(),
             listfile_option: ListfileOption::Generate,
+            attributes_option: AttributesOption::None,
             default_compression: compression_flags::ZLIB,
             generate_crcs: false,
             compress_tables: false, // Default to uncompressed for compatibility
@@ -244,6 +261,40 @@ impl ArchiveBuilder {
     /// where integrity verification is important.
     pub fn generate_crcs(mut self, generate: bool) -> Self {
         self.generate_crcs = generate;
+        // Also enable attributes if CRCs are requested
+        if generate && matches!(self.attributes_option, AttributesOption::None) {
+            self.attributes_option = AttributesOption::GenerateCrc32;
+        }
+        self
+    }
+
+    /// Set the attributes file option
+    ///
+    /// Controls how the (attributes) special file is generated, which stores
+    /// metadata like CRC32 checksums, MD5 hashes, and file timestamps.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use wow_mpq::{ArchiveBuilder, AttributesOption};
+    ///
+    /// // Generate attributes with CRC32 checksums
+    /// let builder = ArchiveBuilder::new()
+    ///     .attributes_option(AttributesOption::GenerateCrc32);
+    ///
+    /// // Generate full attributes with CRC32 and MD5
+    /// let builder = ArchiveBuilder::new()
+    ///     .attributes_option(AttributesOption::GenerateFull);
+    /// # Ok::<(), wow_mpq::Error>(())
+    /// ```
+    pub fn attributes_option(mut self, option: AttributesOption) -> Self {
+        // Enable CRC generation if attributes are requested
+        if matches!(
+            option,
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
+        ) {
+            self.generate_crcs = true;
+        }
+        self.attributes_option = option;
         self
     }
 
@@ -512,6 +563,12 @@ impl ArchiveBuilder {
             + match &self.listfile_option {
                 ListfileOption::Generate | ListfileOption::External(_) => 1,
                 ListfileOption::None => 0,
+            }
+            + match &self.attributes_option {
+                AttributesOption::GenerateCrc32
+                | AttributesOption::GenerateFull
+                | AttributesOption::External(_) => 1,
+                AttributesOption::None => 0,
             };
 
         // Use 2x the file count for good performance, minimum 16
@@ -530,6 +587,9 @@ impl ArchiveBuilder {
 
         // Add listfile if needed
         self.prepare_listfile()?;
+
+        // Add attributes file if needed
+        self.prepare_attributes()?;
 
         // Write the archive directly to the temp file
         {
@@ -602,8 +662,16 @@ impl ArchiveBuilder {
                     content.push('\n');
                 }
 
-                // Add the listfile itself
+                // Add special files
                 content.push_str("(listfile)\r\n");
+
+                // Add attributes file if it will be generated
+                if matches!(
+                    self.attributes_option,
+                    AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
+                ) {
+                    content.push_str("(attributes)\r\n");
+                }
 
                 self.pending_files.push(PendingFile {
                     source: FileSource::Data(content.into_bytes()),
@@ -633,6 +701,35 @@ impl ArchiveBuilder {
         Ok(())
     }
 
+    /// Prepare the attributes file based on the option
+    fn prepare_attributes(&mut self) -> Result<()> {
+        // Import required types (will be used when we implement generation)
+        // use crate::special_files::{Attributes, FileAttributes, AttributeFlags};
+
+        match &self.attributes_option {
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull => {
+                // We'll generate attributes after all files are written
+                // For now, just mark that we need to generate them
+                // The actual generation happens in write_archive methods
+            }
+            AttributesOption::External(path) => {
+                // Read external attributes file
+                let content = fs::read(path)?;
+                self.pending_files.push(PendingFile {
+                    source: FileSource::Data(content),
+                    archive_name: "(attributes)".to_string(),
+                    compression: 0, // Attributes are not compressed
+                    encrypt: false,
+                    use_fix_key: false,
+                    locale: 0,
+                });
+            }
+            AttributesOption::None => {}
+        }
+
+        Ok(())
+    }
+
     /// Write the complete archive
     fn write_archive<W: Write + Seek + Read>(&self, writer: &mut W) -> Result<()> {
         // For v3+, we should create HET/BET tables instead of/in addition to hash/block
@@ -643,7 +740,15 @@ impl ArchiveBuilder {
         }
 
         let hash_table_size = self.calculate_hash_table_size();
-        let block_table_size = self.pending_files.len() as u32;
+        let mut block_table_size = self.pending_files.len() as u32;
+
+        // Account for attributes file if it will be generated
+        if matches!(
+            self.attributes_option,
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
+        ) {
+            block_table_size += 1;
+        }
 
         // Calculate sector size
         let sector_size = crate::calculate_sector_size(self.block_size);
@@ -661,8 +766,25 @@ impl ArchiveBuilder {
             None
         };
 
+        // Prepare to collect attributes if needed
+        let collect_attributes = matches!(
+            self.attributes_option,
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
+        );
+        let mut collected_attributes = if collect_attributes {
+            Some(Vec::new())
+        } else {
+            None
+        };
+
         // Write all files and populate tables
-        for (block_index, pending_file) in self.pending_files.iter().enumerate() {
+        let mut actual_block_index = 0;
+        for pending_file in self.pending_files.iter() {
+            // Skip (attributes) file if it's being generated - we'll write it later
+            if pending_file.archive_name == "(attributes)" && collect_attributes {
+                continue;
+            }
+
             let file_pos = writer.stream_position()?;
 
             // Read file data
@@ -681,13 +803,24 @@ impl ArchiveBuilder {
                 sector_size,
                 file_pos,
             };
-            let (compressed_size, flags) = self.write_file(writer, &params)?;
+
+            let (compressed_size, flags, file_attr) = if collect_attributes {
+                self.write_file_with_attributes(writer, &params)?
+            } else {
+                let (size, flags) = self.write_file(writer, &params)?;
+                (size, flags, FileAttributes::new())
+            };
+
+            // Collect attributes if needed
+            if let Some(ref mut attrs) = collected_attributes {
+                attrs.push(file_attr);
+            }
 
             // Add to hash table
             self.add_to_hash_table(
                 &mut hash_table,
                 &pending_file.archive_name,
-                block_index as u32,
+                actual_block_index as u32,
                 pending_file.locale,
             )?;
 
@@ -702,15 +835,29 @@ impl ArchiveBuilder {
             // Store high 16 bits in hi-block table if needed
             if let Some(ref mut hi_table) = hi_block_table {
                 let high_bits = (file_pos >> 32) as u16;
-                hi_table.set(block_index, high_bits);
+                hi_table.set(actual_block_index, high_bits);
             }
 
             // Get mutable reference and update
-            if let Some(entry) = block_table.get_mut(block_index) {
+            if let Some(entry) = block_table.get_mut(actual_block_index) {
                 *entry = block_entry;
             } else {
                 return Err(Error::invalid_format("Block index out of bounds"));
             }
+
+            actual_block_index += 1;
+        }
+
+        // Generate and write attributes file if needed
+        if let Some(attrs) = collected_attributes {
+            log::debug!("Writing attributes for {} files", attrs.len());
+            self.write_attributes_file(
+                writer,
+                &mut hash_table,
+                &mut block_table,
+                attrs,
+                actual_block_index,
+            )?;
         }
 
         // Write hash table
@@ -761,7 +908,15 @@ impl ArchiveBuilder {
 
     /// Write archive with HET/BET tables (v3+)
     fn write_archive_with_het_bet<W: Write + Seek + Read>(&self, writer: &mut W) -> Result<()> {
-        let block_table_size = self.pending_files.len() as u32;
+        let mut block_table_size = self.pending_files.len() as u32;
+
+        // Account for attributes file if it will be generated
+        if matches!(
+            self.attributes_option,
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
+        ) {
+            block_table_size += 1;
+        }
 
         // Calculate sector size
         let sector_size = crate::calculate_sector_size(self.block_size);
@@ -774,8 +929,25 @@ impl ArchiveBuilder {
         let mut block_table = BlockTable::new(block_table_size as usize)?;
         let mut hi_block_table = Some(HiBlockTable::new(block_table_size as usize));
 
+        // Prepare to collect attributes if needed
+        let collect_attributes = matches!(
+            self.attributes_option,
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
+        );
+        let mut collected_attributes = if collect_attributes {
+            Some(Vec::new())
+        } else {
+            None
+        };
+
         // Write all files and populate block table
-        for (block_index, pending_file) in self.pending_files.iter().enumerate() {
+        let mut actual_block_index = 0;
+        for pending_file in self.pending_files.iter() {
+            // Skip (attributes) file if it's being generated - we'll write it later
+            if pending_file.archive_name == "(attributes)" && collect_attributes {
+                continue;
+            }
+
             let file_pos = writer.stream_position()?;
 
             // Read file data
@@ -794,7 +966,18 @@ impl ArchiveBuilder {
                 sector_size,
                 file_pos,
             };
-            let (compressed_size, flags) = self.write_file(writer, &params)?;
+
+            let (compressed_size, flags, file_attr) = if collect_attributes {
+                self.write_file_with_attributes(writer, &params)?
+            } else {
+                let (size, flags) = self.write_file(writer, &params)?;
+                (size, flags, FileAttributes::new())
+            };
+
+            // Collect attributes if needed
+            if let Some(ref mut attrs) = collected_attributes {
+                attrs.push(file_attr);
+            }
 
             // Add to block table
             let block_entry = BlockEntry {
@@ -807,40 +990,64 @@ impl ArchiveBuilder {
             // Store high 16 bits in hi-block table
             if let Some(ref mut hi_table) = hi_block_table {
                 let high_bits = (file_pos >> 32) as u16;
-                hi_table.set(block_index, high_bits);
+                hi_table.set(actual_block_index, high_bits);
             }
 
             // Update block table entry
-            if let Some(entry) = block_table.get_mut(block_index) {
+            if let Some(entry) = block_table.get_mut(actual_block_index) {
                 *entry = block_entry;
             } else {
                 return Err(Error::invalid_format("Block index out of bounds"));
             }
+
+            actual_block_index += 1;
         }
 
-        // Create HET table
-        let het_table_pos = writer.stream_position()?;
-        let (het_data, _het_header) = self.create_het_table()?;
-        let (het_table_size, het_table_md5) = self.write_het_table(writer, &het_data, true)?;
-
-        // Create BET table
-        let bet_table_pos = writer.stream_position()?;
-        let (bet_data, _bet_header) = self.create_bet_table(&block_table)?;
-        let (bet_table_size, bet_table_md5) = self.write_bet_table(writer, &bet_data, true)?;
+        // Track if we have collected attributes
+        let has_collected_attributes = collected_attributes.is_some();
 
         // For compatibility, also write classic tables
         let hash_table_size = self.calculate_hash_table_size();
         let mut hash_table = HashTable::new(hash_table_size as usize)?;
 
         // Populate hash table
-        for (block_index, pending_file) in self.pending_files.iter().enumerate() {
+        let mut hash_block_index = 0;
+        for pending_file in self.pending_files.iter() {
+            // Skip (attributes) file if it's being generated - already processed
+            if pending_file.archive_name == "(attributes)" && has_collected_attributes {
+                continue;
+            }
+
             self.add_to_hash_table(
                 &mut hash_table,
                 &pending_file.archive_name,
-                block_index as u32,
+                hash_block_index as u32,
                 pending_file.locale,
             )?;
+
+            hash_block_index += 1;
         }
+
+        // Write attributes file if we collected them
+        if let Some(attrs) = collected_attributes {
+            self.write_attributes_file(
+                writer,
+                &mut hash_table,
+                &mut block_table,
+                attrs,
+                actual_block_index,
+            )?;
+        }
+
+        // Create HET table (now includes proper attributes file info)
+        let het_table_pos = writer.stream_position()?;
+        let (het_data, _het_header) = self.create_het_table_with_hash_table(&hash_table)?;
+        let (het_table_size, het_table_md5) = self.write_het_table(writer, &het_data, true)?;
+
+        // Create BET table (now includes proper attributes file info)
+        let bet_table_pos = writer.stream_position()?;
+        let (bet_data, _bet_header) = self.create_bet_table(&block_table)?;
+        let (bet_table_size, bet_table_md5) = self.write_bet_table(writer, &bet_data, true)?;
 
         // Write hash table
         let hash_table_pos = writer.stream_position()?;
@@ -873,12 +1080,17 @@ impl ArchiveBuilder {
         writer.seek(SeekFrom::Start(0))?;
 
         // For V4, we need to use the MD5 checksums calculated during table writes
+        let actual_file_count = block_table_size; // This includes attributes file
         let v4_data = if self.version == FormatVersion::V4 {
             Some(MpqHeaderV4Data {
                 hash_table_size_64: hash_table_size as u64 * 16, // 16 bytes per hash entry
-                block_table_size_64: self.pending_files.len() as u64 * 16, // 16 bytes per block entry
-                hi_block_table_size_64: if hi_block_table.is_some() {
-                    self.pending_files.len() as u64 * 2 // 2 bytes per hi-block entry
+                block_table_size_64: actual_file_count as u64 * 16, // 16 bytes per block entry (includes attributes)
+                hi_block_table_size_64: if let Some(ref hi_table) = hi_block_table {
+                    if hi_table.is_needed() {
+                        actual_file_count as u64 * 2 // 2 bytes per hi-block entry (includes attributes)
+                    } else {
+                        0
+                    }
                 } else {
                     0
                 },
@@ -901,7 +1113,7 @@ impl ArchiveBuilder {
             hash_table_pos,
             block_table_pos,
             hash_table_size,
-            block_table_size: self.pending_files.len() as u32,
+            block_table_size: actual_file_count,
             hi_block_table_pos,
             het_table_pos: Some(het_table_pos),
             bet_table_pos: Some(bet_table_pos),
@@ -919,6 +1131,51 @@ impl ArchiveBuilder {
         }
 
         Ok(())
+    }
+
+    /// Write a single file to the archive and collect attributes
+    fn write_file_with_attributes<W: Write>(
+        &self,
+        writer: &mut W,
+        params: &FileWriteParams<'_>,
+    ) -> Result<(usize, u32, FileAttributes)> {
+        let (size, flags) = self.write_file(writer, params)?;
+
+        // Create file attributes based on what we calculated
+        let mut file_attr = FileAttributes::new();
+
+        // CRC32 is calculated from uncompressed data
+        if matches!(
+            self.attributes_option,
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
+        ) {
+            let crc32 = crc32fast::hash(params.file_data);
+            file_attr.crc32 = Some(crc32);
+        }
+
+        // MD5 if requested
+        if matches!(self.attributes_option, AttributesOption::GenerateFull) {
+            let mut hasher = Md5::new();
+            hasher.update(params.file_data);
+            let md5_result = hasher.finalize();
+            let mut md5_bytes = [0u8; 16];
+            md5_bytes.copy_from_slice(&md5_result);
+            file_attr.md5 = Some(md5_bytes);
+        }
+
+        // File time (use current time for now)
+        if matches!(self.attributes_option, AttributesOption::GenerateFull) {
+            // Convert current time to Windows FILETIME (100-nanosecond intervals since 1601-01-01)
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+            let unix_seconds = duration.as_secs();
+            // Windows epoch is 11644473600 seconds before Unix epoch
+            let windows_seconds = unix_seconds + 11644473600;
+            let filetime = windows_seconds * 10_000_000; // Convert to 100-nanosecond intervals
+            file_attr.filetime = Some(filetime);
+        }
+
+        Ok((size, flags, file_attr))
     }
 
     /// Write a single file to the archive
@@ -1134,6 +1391,62 @@ impl ArchiveBuilder {
             let total_size = offset_table_size + sector_data.len();
             Ok((total_size, flags))
         }
+    }
+
+    /// Write the attributes file to the archive
+    fn write_attributes_file<W: Write + Seek>(
+        &self,
+        writer: &mut W,
+        hash_table: &mut HashTable,
+        block_table: &mut BlockTable,
+        file_attributes: Vec<FileAttributes>,
+        block_index: usize,
+    ) -> Result<()> {
+        // Check if we're actually generating attributes
+        let flags = match self.attributes_option {
+            AttributesOption::GenerateCrc32 => AttributeFlags::CRC32,
+            AttributesOption::GenerateFull => {
+                AttributeFlags::CRC32 | AttributeFlags::MD5 | AttributeFlags::FILETIME
+            }
+            _ => return Ok(()), // Should not happen due to earlier checks
+        };
+
+        // Create attributes structure
+        let attributes = Attributes {
+            version: Attributes::EXPECTED_VERSION,
+            flags: AttributeFlags::new(flags),
+            file_attributes,
+        };
+
+        // Convert to bytes
+        let attributes_data = attributes.to_bytes()?;
+
+        // Write the attributes file
+        let file_pos = writer.stream_position()?;
+        writer.write_all(&attributes_data)?;
+
+        // Use the provided block index
+
+        let block_entry = BlockEntry {
+            file_pos: file_pos as u32,
+            compressed_size: attributes_data.len() as u32,
+            file_size: attributes_data.len() as u32,
+            flags: BlockEntry::FLAG_EXISTS,
+        };
+
+        // Update the block table entry
+        if let Some(entry) = block_table.get_mut(block_index) {
+            *entry = block_entry;
+        } else {
+            return Err(Error::invalid_format(
+                "Invalid block index for attributes file",
+            ));
+        }
+
+        // Add to hash table
+        self.add_to_hash_table(hash_table, "(attributes)", block_index as u32, 0)?;
+
+        Ok(())
     }
 
     /// Add a file to the hash table
@@ -1432,32 +1745,39 @@ impl ArchiveBuilder {
         Ok(())
     }
 
-    /// Create HET table data
-    fn create_het_table(&self) -> Result<(Vec<u8>, HetHeader)> {
-        // Calculate required sizes
-        let max_file_count = self.pending_files.len() as u32;
-        let hash_table_entries = (max_file_count * 2).next_power_of_two();
+    /// Create HET table data using the final hash table (includes attributes file)
+    fn create_het_table_with_hash_table(
+        &self,
+        hash_table: &HashTable,
+    ) -> Result<(Vec<u8>, HetHeader)> {
+        // Count actual files from the hash table
+        let mut file_count = 0u32;
+
+        // Extract filenames from hash table entries
+        for entry in hash_table.entries() {
+            if !entry.is_empty() {
+                file_count += 1;
+            }
+        }
+
+        // For simplicity, let's use the same logic as create_het_table but with proper file count
+        let hash_table_entries = (file_count * 2).next_power_of_two();
 
         log::debug!(
-            "Creating HET table: {} files, {} hash entries",
-            max_file_count,
+            "Creating HET table from hash_table: {} files, {} hash entries",
+            file_count,
             hash_table_entries
         );
-
-        // HET table structure:
-        // - Hash table: Array of 8-bit name hashes (one per entry)
-        // - File indices: Bit-packed array of file indices
 
         // Create header
         let header = HetHeader {
             table_size: 0, // Will be calculated later
-            max_file_count,
+            max_file_count: file_count,
             hash_table_size: hash_table_entries, // Number of hash entries (in bytes)
             hash_entry_size: 8,                  // Always 8 bits for the name hash
-            total_index_size: hash_table_entries
-                * Self::calculate_bits_needed(max_file_count as u64),
+            total_index_size: hash_table_entries * Self::calculate_bits_needed(file_count as u64),
             index_size_extra: 0,
-            index_size: Self::calculate_bits_needed(max_file_count as u64),
+            index_size: Self::calculate_bits_needed(file_count as u64),
             block_table_size: 0, // Not used
         };
 
@@ -1465,31 +1785,34 @@ impl ArchiveBuilder {
         let index_size = header.index_size;
 
         // Create hash table (8-bit name hashes)
-        let mut hash_table = vec![0xFFu8; hash_table_entries as usize]; // Initialize with 0xFF (empty)
+        let mut het_hash_table = vec![0xFFu8; hash_table_entries as usize]; // Initialize with 0xFF (empty)
 
         // Create file indices array
         let file_indices_size = (header.total_index_size as usize).div_ceil(8);
         let mut file_indices = vec![0u8; file_indices_size]; // Initialize with 0
 
         // Pre-fill with invalid indices (all bits set)
-        // We need to write max value for each index_size bits
         let invalid_index = (1u64 << index_size) - 1; // e.g., 0b111 for 3 bits = 7
         for i in 0..hash_table_entries {
             self.write_bit_entry(&mut file_indices, i as usize, invalid_index, index_size)?;
         }
 
-        log::debug!(
-            "HET table: {} hash entries, {} bytes for indices, index_size={} bits",
-            hash_table_entries,
-            file_indices_size,
-            index_size
+        // Process files from the original pending_files plus attributes if present
+        let mut file_index = 0;
+
+        // Process pending files (excluding attributes to match write order)
+        let collect_attributes = matches!(
+            self.attributes_option,
+            AttributesOption::GenerateCrc32 | AttributesOption::GenerateFull
         );
 
-        // Process each file
-        for (file_index, pending_file) in self.pending_files.iter().enumerate() {
-            // TODO: Make hash_entry_size configurable instead of hardcoding to 8
-            // Real MPQ archives can use different sizes (e.g., 48-bit)
-            let hash_bits = 8; // Must match hash_entry_size in header
+        for pending_file in self.pending_files.iter() {
+            // Skip (attributes) file if it's being generated - we'll add it later
+            if pending_file.archive_name == "(attributes)" && collect_attributes {
+                continue;
+            }
+
+            let hash_bits = 8;
             let (hash, name_hash1) = het_hash(&pending_file.archive_name, hash_bits);
 
             // Calculate starting position for linear probing
@@ -1499,9 +1822,9 @@ impl ArchiveBuilder {
             let mut current_index = start_index;
             loop {
                 // Check if slot is empty (0xFF)
-                if hash_table[current_index] == 0xFF {
+                if het_hash_table[current_index] == 0xFF {
                     // Store the 8-bit name hash
-                    hash_table[current_index] = name_hash1;
+                    het_hash_table[current_index] = name_hash1;
 
                     // Store the file index in the bit-packed array
                     self.write_bit_entry(
@@ -1511,6 +1834,33 @@ impl ArchiveBuilder {
                         index_size,
                     )?;
 
+                    break;
+                }
+
+                current_index = (current_index + 1) % hash_table_entries as usize;
+                if current_index == start_index {
+                    return Err(Error::invalid_format("HET table full"));
+                }
+            }
+            file_index += 1;
+        }
+
+        // Add attributes file if it was generated (use the same file_index that write_attributes_file used)
+        if collect_attributes {
+            let hash_bits = 8;
+            let (hash, name_hash1) = het_hash("(attributes)", hash_bits);
+            let start_index = (hash % hash_table_entries as u64) as usize;
+
+            let mut current_index = start_index;
+            loop {
+                if het_hash_table[current_index] == 0xFF {
+                    het_hash_table[current_index] = name_hash1;
+                    self.write_bit_entry(
+                        &mut file_indices,
+                        current_index,
+                        file_index as u64,
+                        index_size,
+                    )?;
                     break;
                 }
 
@@ -1549,60 +1899,13 @@ impl ArchiveBuilder {
         result.write_u32_le(final_header.block_table_size)?;
 
         // Write hash table and file indices
-        log::debug!(
-            "Writing hash table at offset {}, {} bytes",
-            result.len(),
-            hash_table.len()
-        );
-        result.extend_from_slice(&hash_table);
-        log::debug!(
-            "Writing file indices at offset {}, {} bytes",
-            result.len(),
-            file_indices.len()
-        );
+        result.extend_from_slice(&het_hash_table);
         result.extend_from_slice(&file_indices);
-        log::debug!("Total HET data size: {} bytes", result.len());
 
-        // Debug: Show hash table contents
-        log::debug!("HET hash table contents:");
-        for (i, &hash_byte) in hash_table.iter().enumerate() {
-            log::debug!("  hash_table[{}] = 0x{:02X}", i, hash_byte);
-        }
-
-        // Debug: Show first few bytes of file indices
         log::debug!(
-            "HET file indices (first {} bytes): {:?}",
-            file_indices.len().min(10),
-            &file_indices[..file_indices.len().min(10)]
+            "HET table created with {} files (including attributes)",
+            file_count
         );
-
-        // Debug: Verify file indices by reading them back
-        log::debug!("Verifying file indices before encryption:");
-        for i in 0..4 {
-            let bit_offset = i * index_size as usize;
-            let byte_offset = bit_offset / 8;
-            let bit_shift = bit_offset % 8;
-
-            if byte_offset < file_indices.len() {
-                let mut value = 0u64;
-                let bytes_needed = ((bit_shift + index_size as usize).div_ceil(8)).min(8);
-                for j in 0..bytes_needed {
-                    if byte_offset + j < file_indices.len() {
-                        value |= (file_indices[byte_offset + j] as u64) << (j * 8);
-                    }
-                }
-                let extracted = ((value >> bit_shift) & ((1u64 << index_size) - 1)) as u32;
-                log::debug!(
-                    "  Position {}: bit_offset={}, byte_offset={}, bit_shift={}, value=0x{:X}, extracted={}",
-                    i,
-                    bit_offset,
-                    byte_offset,
-                    bit_shift,
-                    value,
-                    extracted
-                );
-            }
-        }
 
         Ok((result, final_header))
     }
@@ -1757,7 +2060,8 @@ impl ArchiveBuilder {
 
     /// Create BET table data
     fn create_bet_table(&self, block_table: &BlockTable) -> Result<(Vec<u8>, BetHeader)> {
-        let file_count = self.pending_files.len() as u32;
+        // Get actual file count from block table entries (includes attributes if generated)
+        let file_count = block_table.entries().len() as u32;
 
         // Analyze block table to determine optimal bit widths
         let mut max_file_pos = 0u64;
@@ -1846,7 +2150,7 @@ impl ArchiveBuilder {
         let mut bet_hashes = Vec::with_capacity(file_count as usize);
 
         // Fill tables
-        for (i, pending_file) in self.pending_files.iter().enumerate() {
+        for i in 0..file_count as usize {
             if let Some(entry) = block_table.get(i) {
                 // Get flag index
                 let flag_index = flag_index_map.get(&entry.flags).unwrap();
@@ -1863,7 +2167,13 @@ impl ArchiveBuilder {
 
                 // Generate BET hash (Jenkins one-at-a-time hash of filename)
                 // Note: BET uses Jenkins one-at-a-time, not hashlittle2 like HET
-                let hash = jenkins_hash(&pending_file.archive_name);
+                let filename = if i < self.pending_files.len() {
+                    &self.pending_files[i].archive_name
+                } else {
+                    // This must be the attributes file
+                    "(attributes)"
+                };
+                let hash = jenkins_hash(filename);
                 bet_hashes.push(hash);
             }
         }

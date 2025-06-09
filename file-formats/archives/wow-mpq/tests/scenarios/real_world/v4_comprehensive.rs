@@ -73,7 +73,7 @@ fn test_v4_comprehensive() {
 
     // List files
     let files = archive.list().unwrap();
-    assert_eq!(files.len(), 5); // 4 files + listfile
+    assert_eq!(files.len(), 6); // 4 files + listfile + attributes
 
     // Verify file contents
     let content1 = archive.read_file("files/test1.txt").unwrap();

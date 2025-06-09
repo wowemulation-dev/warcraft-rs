@@ -1304,7 +1304,7 @@ impl Archive {
             // Try to find the file using traditional hash lookup
             if let Some((hash_index, hash_entry)) = hash_table.find_file(filename, 0) {
                 // The block_index from hash table should match one of our candidates
-                let block_index = hash_entry.block_index as u32;
+                let block_index = hash_entry.block_index;
 
                 log::debug!(
                     "Traditional hash lookup for '{}': hash_index={}, block_index={}",
@@ -2029,10 +2029,14 @@ impl Archive {
         match self.read_file("(attributes)") {
             Ok(mut data) => {
                 // Get block count for parsing
+                // Note: The attributes file doesn't contain attributes for itself,
+                // so we need to subtract 1 from the total block count
                 let block_count = if let Some(ref block_table) = self.block_table {
-                    block_table.entries().len()
+                    // Count files that have attributes (exclude the attributes file itself)
+                    block_table.entries().len().saturating_sub(1)
                 } else if let Some(ref bet_table) = self.bet_table {
-                    bet_table.header.file_count as usize
+                    // BET table file count might also include attributes, so subtract 1
+                    (bet_table.header.file_count as usize).saturating_sub(1)
                 } else {
                     return Err(Error::invalid_format(
                         "No block/BET table available for attributes",

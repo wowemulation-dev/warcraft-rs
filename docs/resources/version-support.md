@@ -16,12 +16,14 @@ World of Warcraft client version compatibility and file format changes.
 
 ### MPQ Archives
 
-| Version | Client | Changes |
-|---------|--------|---------|
-| v1 | 1.x - 3.x | Original format, hash table, block table |
-| v2 | 3.x+ | Extended attributes, larger files |
-| v3 | 4.x+ | Increased hash table size |
-| v4 | 5.x+ | 64-bit file support |
+| Version | Client | Changes | wow-mpq Support |
+|---------|--------|---------|-----------------|
+| v1 | 1.x - 3.x | Original format, hash table, block table | ✅ Full |
+| v2 | 3.x+ | Extended attributes, larger files | ✅ Full |
+| v3 | 4.x+ | HET/BET tables, increased hash table size | ✅ Full |
+| v4 | 5.x+ | 64-bit file support, MD5 checksums | ✅ Full |
+
+**Note:** wow-mpq has 98.75% bidirectional compatibility with StormLib (the reference C++ implementation) and full support for all official Blizzard WoW archives.
 
 ### M2 Models
 

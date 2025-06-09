@@ -95,7 +95,7 @@ pub use archive::{
     Archive, ArchiveInfo, FileEntry, FileInfo, Md5Status, OpenOptions, SignatureStatus, TableInfo,
     UserDataInfo,
 };
-pub use builder::{ArchiveBuilder, ListfileOption};
+pub use builder::{ArchiveBuilder, AttributesOption, ListfileOption};
 pub use compare::{
     CompareOptions, ComparisonResult, ComparisonSummary, FileComparison, MetadataComparison,
     compare_archives,

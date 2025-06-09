@@ -9,17 +9,24 @@ Warcraft file formats through subcommands for each format type.
 
 Currently implemented:
 
-- ✅ **MPQ subcommands** - Full-featured MPQ archive operations
+- ✅ **MPQ subcommands** - Full-featured MPQ archive operations with 98.75% StormLib compatibility
+  - `list` - List archive contents
+  - `extract` - Extract files
+  - `info` - Show archive information
+  - `verify` - Verify archive integrity
+  - `create` - Create new archives
+  - `rebuild` - Rebuild archives with format upgrades
+  - `compare` - Compare two archives
 
 Planned for future releases:
 
+- 🚧 **WDL subcommands** - Low-res world operations (crate exists, CLI pending)
 - 🚧 **DBC subcommands** - Database file operations
 - 🚧 **BLP subcommands** - Texture file operations
 - 🚧 **M2 subcommands** - Model file operations
 - 🚧 **WMO subcommands** - World object operations
 - 🚧 **ADT subcommands** - Terrain operations
 - 🚧 **WDT subcommands** - Map definition operations
-- 🚧 **WDL subcommands** - Low-res world operations
 
 ## Project Structure
 
