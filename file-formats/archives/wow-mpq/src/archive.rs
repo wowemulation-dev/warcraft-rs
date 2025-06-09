@@ -1223,18 +1223,60 @@ impl Archive {
         if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table) {
             // Check if tables have actual entries
             if het.header.max_file_count > 0 && bet.header.file_count > 0 {
-                if let Some(file_index) = het.find_file(filename) {
-                    if let Some(bet_info) = bet.get_file_info(file_index) {
-                        return Ok(Some(FileInfo {
-                            filename: filename.to_string(),
-                            hash_index: 0, // Not applicable for HET/BET
-                            block_index: file_index as usize,
-                            file_pos: self.archive_offset + bet_info.file_pos,
-                            compressed_size: bet_info.compressed_size,
-                            file_size: bet_info.file_size,
-                            flags: bet_info.flags,
-                            locale: 0, // HET/BET don't store locale separately
-                        }));
+                let (file_index_opt, collision_candidates) =
+                    het.find_file_with_collision_info(filename);
+
+                if let Some(file_index) = file_index_opt {
+                    // Check if we have hash collisions that need verification
+                    if collision_candidates.len() > 1 {
+                        log::debug!(
+                            "HET collision detected for '{}': {} candidates {:?}",
+                            filename,
+                            collision_candidates.len(),
+                            collision_candidates
+                        );
+
+                        // Use traditional hash table to verify the correct file
+                        if let Some(verified_index) =
+                            self.verify_collision_candidates(filename, &collision_candidates)
+                        {
+                            log::debug!(
+                                "Collision resolved: '{}' -> verified file_index={}",
+                                filename,
+                                verified_index
+                            );
+                            if let Some(bet_info) = bet.get_file_info(verified_index) {
+                                return Ok(Some(FileInfo {
+                                    filename: filename.to_string(),
+                                    hash_index: 0, // Not applicable for HET/BET
+                                    block_index: verified_index as usize,
+                                    file_pos: self.archive_offset + bet_info.file_pos,
+                                    compressed_size: bet_info.compressed_size,
+                                    file_size: bet_info.file_size,
+                                    flags: bet_info.flags,
+                                    locale: 0, // HET/BET don't store locale separately
+                                }));
+                            }
+                        } else {
+                            log::warn!(
+                                "Failed to verify collision candidates for '{}', falling back to classic lookup",
+                                filename
+                            );
+                        }
+                    } else {
+                        // No collision, use the unique match
+                        if let Some(bet_info) = bet.get_file_info(file_index) {
+                            return Ok(Some(FileInfo {
+                                filename: filename.to_string(),
+                                hash_index: 0, // Not applicable for HET/BET
+                                block_index: file_index as usize,
+                                file_pos: self.archive_offset + bet_info.file_pos,
+                                compressed_size: bet_info.compressed_size,
+                                file_size: bet_info.file_size,
+                                flags: bet_info.flags,
+                                locale: 0, // HET/BET don't store locale separately
+                            }));
+                        }
                     }
                 }
 
@@ -1252,6 +1294,51 @@ impl Archive {
         // 3. File wasn't found in HET/BET but we're looking for a special file
         // 4. File wasn't found in HET/BET but hash/block tables exist
         self.find_file_classic(filename)
+    }
+
+    /// Verify collision candidates using traditional hash table lookup
+    /// Returns the file_index that corresponds to the actual filename
+    fn verify_collision_candidates(&self, filename: &str, candidates: &[u32]) -> Option<u32> {
+        // Use traditional hash table to verify which candidate is correct
+        if let (Some(hash_table), Some(_block_table)) = (&self.hash_table, &self.block_table) {
+            // Try to find the file using traditional hash lookup
+            if let Some((hash_index, hash_entry)) = hash_table.find_file(filename, 0) {
+                // The block_index from hash table should match one of our candidates
+                let block_index = hash_entry.block_index as u32;
+
+                log::debug!(
+                    "Traditional hash lookup for '{}': hash_index={}, block_index={}",
+                    filename,
+                    hash_index,
+                    block_index
+                );
+
+                // Check if this block_index matches any of our HET candidates
+                if candidates.contains(&block_index) {
+                    log::debug!(
+                        "Collision verification success: '{}' confirmed as file_index={}",
+                        filename,
+                        block_index
+                    );
+                    return Some(block_index);
+                } else {
+                    log::warn!(
+                        "Collision verification mismatch: traditional lookup returned block_index={}, but candidates are {:?}",
+                        block_index,
+                        candidates
+                    );
+                }
+            } else {
+                log::debug!(
+                    "Traditional hash lookup failed for '{}', cannot verify collision candidates",
+                    filename
+                );
+            }
+        } else {
+            log::debug!("No traditional hash/block tables available for collision verification");
+        }
+
+        None
     }
 
     /// Classic file lookup using hash/block tables
@@ -1673,24 +1760,56 @@ impl Archive {
 
             // Decompress if needed
             if file_info.is_compressed() {
-                // All compressed files should have a compression type byte prefix
-                // This matches StormLib's behavior
-                if !data.is_empty() {
-                    let compression_type = data[0];
-                    let compressed_data = &data[1..];
-                    log::debug!(
-                        "Decompressing file: type=0x{:02X}, compressed_size={}, expected_size={}",
-                        compression_type,
-                        compressed_data.len(),
-                        actual_file_size
-                    );
-                    compression::decompress(
-                        compressed_data,
-                        compression_type,
-                        actual_file_size as usize,
-                    )
+                if file_info.is_single_unit() {
+                    // SINGLE_UNIT files: Get compression method from block table flags
+                    // NO compression type byte prefix in the data
+
+                    // Special case: If compressed_size == file_size, the file might be stored uncompressed
+                    // despite having the COMPRESS flag set
+                    if data.len() == actual_file_size as usize {
+                        log::debug!(
+                            "SINGLE_UNIT file has equal compressed/uncompressed size ({} bytes), trying uncompressed first",
+                            data.len()
+                        );
+
+                        // Try treating as uncompressed data first
+                        // This handles cases where the COMPRESS flag is set but data is actually uncompressed
+                        Ok(data)
+                    } else if let Some(compression_method) = file_info.get_compression_method() {
+                        // SINGLE_UNIT files DO have compression method byte prefix!
+                        // This was our bug - we thought they didn't
+                        if !data.is_empty() {
+                            let actual_compression_method = data[0];
+                            let compressed_data = &data[1..];
+
+                            log::debug!(
+                                "Decompressing SINGLE_UNIT file: method_from_flags=0x{:02X}, actual_method_byte=0x{:02X}, compressed_size={}, expected_size={}",
+                                compression_method,
+                                actual_compression_method,
+                                compressed_data.len(),
+                                actual_file_size
+                            );
+
+                            // Use the actual compression method from the data, not from flags
+                            // This ensures we handle multi-compression correctly
+                            compression::decompress(
+                                compressed_data,
+                                actual_compression_method,
+                                actual_file_size as usize,
+                            )
+                        } else {
+                            Err(Error::compression("Empty compressed data"))
+                        }
+                    } else {
+                        Err(Error::compression(
+                            "Could not determine compression method from flags",
+                        ))
+                    }
                 } else {
-                    Err(Error::compression("Empty compressed data"))
+                    // SECTORED files: Should not reach here for single-unit code path
+                    // This will be handled in read_sectored_file()
+                    log::warn!("Non-single-unit compressed file in single-unit code path");
+                    Ok(data)
                 }
             } else {
                 Ok(data)
@@ -2326,6 +2445,43 @@ impl FileInfo {
     pub fn has_sector_crc(&self) -> bool {
         use crate::tables::BlockEntry;
         (self.flags & BlockEntry::FLAG_SECTOR_CRC) != 0
+    }
+
+    /// Extract compression method from block table flags
+    /// Returns the compression method byte that should be used for decompression
+    pub fn get_compression_method(&self) -> Option<u8> {
+        use crate::compression::flags;
+
+        if !self.is_compressed() {
+            return None;
+        }
+
+        // Extract compression method from flags (MPQ_FILE_COMPRESS_MASK = 0x0000FF00)
+        let compression_mask = (self.flags & 0x0000FF00) >> 8;
+
+        log::debug!(
+            "Compression method extraction: flags=0x{:08X}, mask=0x{:02X}",
+            self.flags,
+            compression_mask
+        );
+
+        // Convert from StormLib block table flag format to compression method byte format
+        match compression_mask {
+            0x02 => Some(flags::ZLIB),         // ZLIB/DEFLATE
+            0x01 => Some(flags::IMPLODE),      // IMPLODE
+            0x08 => Some(flags::PKWARE),       // PKWARE
+            0x10 => Some(flags::BZIP2),        // BZIP2
+            0x20 => Some(flags::SPARSE),       // SPARSE
+            0x40 => Some(flags::ADPCM_MONO),   // ADPCM_MONO
+            0x80 => Some(flags::ADPCM_STEREO), // ADPCM_STEREO
+            _ => {
+                log::warn!(
+                    "Unknown compression method in flags: 0x{:02X}",
+                    compression_mask
+                );
+                None
+            }
+        }
     }
 }
 

@@ -2,8 +2,8 @@
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use wow_mpq::{hash_string, hash_type, jenkins_hash};
 use wow_mpq::crypto::het_hash;
+use wow_mpq::{hash_string, hash_type, jenkins_hash};
 
 fn bench_hash_string_short(c: &mut Criterion) {
     let filename = "file.txt";

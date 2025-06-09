@@ -153,7 +153,7 @@ fn test_v4_large_file_support() {
     let temp_file = NamedTempFile::new().unwrap();
     let path = temp_file.path();
 
-    // Create several files to push offsets beyond 32-bit range
+    // Test v4's ability to handle large file offsets
     let mut builder = ArchiveBuilder::new()
         .version(FormatVersion::V4)
         .listfile_option(ListfileOption::None);
@@ -168,9 +168,91 @@ fn test_v4_large_file_support() {
 
     // Verify all files can be read
     let mut archive = Archive::open(path).unwrap();
+
+    // First, let's examine the archive structure
+    println!("Archive info:");
+    let info = archive.get_info().unwrap();
+    println!("  Version: {:?}", info.format_version);
+    println!("  Files: {}", info.file_count);
+    println!("  Archive size: {} bytes", info.file_size);
+
+    // List all files and their info
+    println!("File information in archive:");
     for i in 0..10 {
-        let data = archive.read_file(&format!("large_{}.dat", i)).unwrap();
-        assert_eq!(data.len(), 1024 * 1024);
-        assert!(data.iter().all(|&b| b == i as u8));
+        let filename = format!("large_{}.dat", i);
+        if let Some(file_info) = archive.find_file(&filename).unwrap() {
+            println!(
+                "  {}: size={}, compressed_size={}, flags=0x{:08X}, pos=0x{:X}",
+                filename,
+                file_info.file_size,
+                file_info.compressed_size,
+                file_info.flags,
+                file_info.file_pos
+            );
+        } else {
+            println!("  {}: NOT FOUND", filename);
+        }
+    }
+    println!();
+
+    for i in 0..10 {
+        let filename = format!("large_{}.dat", i);
+        println!("Testing file {}: {}", i, filename);
+
+        let data = archive.read_file(&filename).unwrap();
+        assert_eq!(data.len(), 1024 * 1024, "File {} has wrong size", i);
+
+        // Check data integrity with detailed error reporting
+        let mut corruption_found = false;
+        let mut first_corruption_offset = None;
+        let mut corruption_count = 0;
+
+        for (offset, &byte) in data.iter().enumerate() {
+            if byte != i as u8 {
+                if !corruption_found {
+                    first_corruption_offset = Some(offset);
+                    corruption_found = true;
+                }
+                corruption_count += 1;
+
+                // Show first few corruptions for analysis
+                if corruption_count <= 10 {
+                    println!(
+                        "  Corruption at offset {}: expected 0x{:02X}, got 0x{:02X}",
+                        offset, i as u8, byte
+                    );
+                }
+            }
+        }
+
+        if corruption_found {
+            println!(
+                "File {} corrupted: {} out of {} bytes incorrect",
+                i,
+                corruption_count,
+                data.len()
+            );
+            println!("First corruption at offset: {:?}", first_corruption_offset);
+
+            // Show pattern around first corruption
+            if let Some(offset) = first_corruption_offset {
+                let start = offset.saturating_sub(16);
+                let end = (offset + 32).min(data.len());
+                println!("Data around first corruption (offset {}):", offset);
+                print!("  ");
+                for j in start..end {
+                    if j == offset {
+                        print!("[{:02X}] ", data[j]);
+                    } else {
+                        print!("{:02X} ", data[j]);
+                    }
+                }
+                println!();
+            }
+
+            panic!("File {} data integrity check failed", i);
+        } else {
+            println!("File {} integrity check passed", i);
+        }
     }
 }

@@ -539,9 +539,36 @@ impl ArchiveBuilder {
             // For v3+ archives that need read-back support, we need to write everything
             // to a buffer first, then copy to file
             if self.version >= FormatVersion::V3 {
-                // Pre-allocate buffer with header space
+                // For v3+, we need to write everything to a buffer first
+                // Estimate total size needed to avoid buffer reallocation issues
                 let header_size = self.version.header_size() as usize;
-                let vec = vec![0u8; header_size];
+
+                // Estimate file data size (assuming 10:1 compression ratio average)
+                let estimated_file_data_size: usize = self
+                    .pending_files
+                    .iter()
+                    .map(|f| match &f.source {
+                        FileSource::Data(data) => data.len() / 10 + 1000, // Assume 10:1 compression + overhead
+                        FileSource::Path(_) => 100_000,                   // Conservative estimate
+                    })
+                    .sum();
+
+                // Add table sizes (conservative estimates)
+                let estimated_table_size = self.pending_files.len() * 1000; // Conservative per-file overhead
+
+                let total_estimated_size =
+                    header_size + estimated_file_data_size + estimated_table_size;
+
+                log::debug!(
+                    "Pre-allocating buffer of {} bytes for v3+ archive (header: {}, estimated data: {}, tables: {})",
+                    total_estimated_size,
+                    header_size,
+                    estimated_file_data_size,
+                    estimated_table_size
+                );
+
+                let mut vec = Vec::with_capacity(total_estimated_size);
+                vec.resize(header_size, 0u8);
                 let mut buffer = std::io::Cursor::new(vec);
                 buffer.seek(SeekFrom::Start(header_size as u64))?;
 
@@ -1483,16 +1510,6 @@ impl ArchiveBuilder {
                         file_index as u64,
                         index_size,
                     )?;
-
-                    log::debug!(
-                        "HET: file '{}' -> hash=0x{:016X}, start={}, index={}, name_hash1=0x{:02X}, file_index={}",
-                        pending_file.archive_name,
-                        hash,
-                        start_index,
-                        current_index,
-                        name_hash1,
-                        file_index
-                    );
 
                     break;
                 }

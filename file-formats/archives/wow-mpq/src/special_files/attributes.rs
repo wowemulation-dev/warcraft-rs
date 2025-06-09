@@ -137,12 +137,35 @@ impl Attributes {
             expected_size += block_count.div_ceil(8);
         }
 
-        if data.len() < expected_size {
+        // Be more lenient with size validation to handle real-world MPQ variations
+        // Some MPQ files may have slightly different patch bit calculations
+        let min_required_size = 8 + // header
+            if flags.has_crc32() { block_count * 4 } else { 0 } +
+            if flags.has_filetime() { block_count * 8 } else { 0 } +
+            if flags.has_md5() { block_count * 16 } else { 0 } +
+            if flags.has_patch_bit() {
+                // Allow for off-by-one variations in patch bit calculations
+                let ideal_patch_bytes = block_count.div_ceil(8);
+                if ideal_patch_bytes > 0 { ideal_patch_bytes - 1 } else { 0 }
+            } else { 0 };
+
+        if data.len() < min_required_size {
             return Err(Error::invalid_format(format!(
-                "Attributes file too small: {} bytes (expected at least {})",
+                "Attributes file too small: {} bytes (expected at least {}, ideally {})",
                 data.len(),
+                min_required_size,
                 expected_size
             )));
+        }
+
+        // Log when we encounter size discrepancies for debugging
+        if data.len() != expected_size {
+            log::warn!(
+                "Attributes file size mismatch: actual={}, expected={}, difference={} (tolerating for compatibility)",
+                data.len(),
+                expected_size,
+                expected_size as i32 - data.len() as i32
+            );
         }
 
         // Parse attributes for each file
@@ -185,9 +208,30 @@ impl Attributes {
 
         // Parse patch bits if present
         let patch_bits = if flags.has_patch_bit() {
-            let byte_count = block_count.div_ceil(8);
-            let mut bits = vec![0u8; byte_count];
-            read_exact(&mut cursor, &mut bits)?;
+            let ideal_byte_count = block_count.div_ceil(8);
+            // Calculate how many bytes are actually available for patch bits
+            let position = cursor.position() as usize;
+            let available_bytes = if data.len() > position {
+                data.len() - position
+            } else {
+                0
+            };
+            let actual_byte_count = available_bytes.min(ideal_byte_count);
+
+            log::debug!(
+                "Patch bits: ideal={} bytes, available={} bytes, reading={} bytes",
+                ideal_byte_count,
+                available_bytes,
+                actual_byte_count
+            );
+
+            let mut bits = vec![0u8; ideal_byte_count]; // Always allocate the ideal size
+            if actual_byte_count > 0 {
+                let mut actual_bits = vec![0u8; actual_byte_count];
+                read_exact(&mut cursor, &mut actual_bits)?;
+                bits[..actual_byte_count].copy_from_slice(&actual_bits);
+                // Remaining bytes in bits stay as 0, which is safe for patch bit interpretation
+            }
             Some(bits)
         } else {
             None

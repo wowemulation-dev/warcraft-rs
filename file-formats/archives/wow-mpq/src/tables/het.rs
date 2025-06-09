@@ -237,6 +237,13 @@ impl HetTable {
 
     /// Find a file in the HET table
     pub fn find_file(&self, filename: &str) -> Option<u32> {
+        self.find_file_with_collision_info(filename).0
+    }
+
+    /// Find a file in the HET table, returning collision information
+    /// Returns (Option<file_index>, collision_candidates)
+    /// If collision_candidates.len() > 1, caller should verify using additional methods
+    pub fn find_file_with_collision_info(&self, filename: &str) -> (Option<u32>, Vec<u32>) {
         // Copy values from packed struct to avoid alignment issues
         let hash_entry_size = self.header.hash_entry_size;
         let max_file_count = self.header.max_file_count;
@@ -255,26 +262,29 @@ impl HetTable {
         // Calculate the total number of hash entries
         let total_count = self.header.hash_table_size as usize;
         if total_count == 0 {
-            return None;
+            return (None, Vec::new());
         }
 
         // Starting index for linear probing
         let start_index = (hash % (total_count as u64)) as usize;
 
         log::debug!(
-            "HET find_file: total_count={}, start_index={}",
+            "HET find_file_with_collision_info: total_count={}, start_index={}",
             total_count,
             start_index
         );
 
-        // Linear probing to find matching hash
+        // Collect ALL collision candidates during linear probing
+        let mut collision_candidates = Vec::new();
+
+        // Linear probing to find ALL matching hashes
         for i in 0..total_count {
             let index = (start_index + i) % total_count;
 
             // The hash table stores 8-bit name hashes
             if index >= self.hash_table.len() {
                 log::debug!(
-                    "HET find_file: index {} out of bounds (hash_table.len()={})",
+                    "HET find_file_with_collision_info: index {} out of bounds (hash_table.len()={})",
                     index,
                     self.hash_table.len()
                 );
@@ -284,7 +294,7 @@ impl HetTable {
             let stored_hash = self.hash_table[index];
 
             log::trace!(
-                "HET find_file: checking index {}, stored_hash=0x{:02X}, looking for=0x{:02X}",
+                "HET find_file_with_collision_info: checking index {}, stored_hash=0x{:02X}, looking for=0x{:02X}",
                 index,
                 stored_hash,
                 name_hash1
@@ -293,7 +303,7 @@ impl HetTable {
             // Check for empty slot (0xFF = HET_TABLE_EMPTY)
             if stored_hash == 0xFF {
                 log::debug!(
-                    "HET find_file: hit empty slot at index {}, file not found",
+                    "HET find_file_with_collision_info: hit empty slot at index {}, search complete",
                     index
                 );
                 break;
@@ -305,16 +315,14 @@ impl HetTable {
                     Some(file_index) => {
                         if file_index < max_file_count {
                             log::debug!(
-                                "HET find_file: found match at table_index={}, file_index={}",
+                                "HET find_file_with_collision_info: found collision candidate at table_index={}, file_index={}",
                                 index,
                                 file_index
                             );
-                            // TODO: Verify this is the correct file (e.g., via BET table)
-                            // For now, return the first match with correct hash
-                            return Some(file_index);
+                            collision_candidates.push(file_index);
                         } else {
                             log::debug!(
-                                "HET find_file: invalid file_index {} >= max_file_count {} at table_index={}",
+                                "HET find_file_with_collision_info: invalid file_index {} >= max_file_count {} at table_index={}",
                                 file_index,
                                 max_file_count,
                                 index
@@ -323,7 +331,7 @@ impl HetTable {
                     }
                     None => {
                         log::debug!(
-                            "HET find_file: failed to read file index at table_index={}",
+                            "HET find_file_with_collision_info: failed to read file_index at table_index={}",
                             index
                         );
                     }
@@ -331,8 +339,30 @@ impl HetTable {
             }
         }
 
-        log::debug!("HET find_file: file not found");
-        None
+        // Return results based on collision detection
+        match collision_candidates.len() {
+            0 => {
+                log::debug!("HET find_file_with_collision_info: file not found");
+                (None, collision_candidates)
+            }
+            1 => {
+                let file_index = collision_candidates[0];
+                log::debug!(
+                    "HET find_file_with_collision_info: unique match found, file_index={}",
+                    file_index
+                );
+                (Some(file_index), collision_candidates)
+            }
+            _ => {
+                log::debug!(
+                    "HET find_file_with_collision_info: {} collision candidates found: {:?}",
+                    collision_candidates.len(),
+                    collision_candidates
+                );
+                // Return first candidate but indicate collision for caller to resolve
+                (Some(collision_candidates[0]), collision_candidates)
+            }
+        }
     }
 
     /// Read a file index from the bit-packed file indices array

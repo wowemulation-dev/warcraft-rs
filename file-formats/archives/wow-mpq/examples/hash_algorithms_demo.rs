@@ -95,6 +95,9 @@ fn main() {
         println!("{}:", filename);
         println!("  MPQ TABLE_OFFSET: 0x{:08X}", hash_offset);
         println!("  MPQ FILE_KEY:     0x{:08X}", file_key);
-        println!("  HET 48-bit:       0x{:016X} (NameHash1: 0x{:02X})", het_hash_48, name_hash);
+        println!(
+            "  HET 48-bit:       0x{:016X} (NameHash1: 0x{:02X})",
+            het_hash_48, name_hash
+        );
     }
 }
