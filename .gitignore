@@ -17,3 +17,7 @@ Thumbs.db
 
 # Added by cargo
 /target/
+
+# Test data
+*.mpq
+*.MPQ
