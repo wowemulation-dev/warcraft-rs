@@ -1,3 +1,4 @@
+---
 name: CI
 
 on:
@@ -103,7 +104,7 @@ jobs:
           cargo test -p wow-wdl --all-features
           cargo test -p wow-wdt --all-features
           cargo test -p wow-dbc --all-features
-          cargo test -p warcraft-cli-utils --all-features
+          cargo test -p warcraft-rs --all-features
 
   # Documentation build - runs in parallel
   docs:

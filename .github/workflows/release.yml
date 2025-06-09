@@ -1,3 +1,4 @@
+---
 name: Release
 
 on:
@@ -171,14 +172,7 @@ jobs:
           cache-on-failure: true
 
       # Publish crates in dependency order
-      # Core crates first
-      - name: Publish warcraft-cli-utils
-        run: cargo publish -p warcraft-cli-utils --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      # File format crates (can be published in parallel conceptually, but we do them sequentially)
+      # File format crates first (no interdependencies)
       - name: Publish wow-mpq
         run: cargo publish -p wow-mpq --no-verify
         env:
