@@ -1,8 +1,6 @@
 //! Test recompressing files that showed errors
 
-use wow_mpq::{
-    Archive, ArchiveBuilder, FormatVersion, ListfileOption, compression::CompressionMethod,
-};
+use wow_mpq::{Archive, ArchiveBuilder, FormatVersion, ListfileOption};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Recompression Test for Problematic Files");
@@ -35,7 +33,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Step 2: Create a new archive with this file
         let test_archive = format!(
             "test_recompress_{}.mpq",
-            file_name.split('\\').last().unwrap().replace(".blp", "")
+            file_name
+                .split('\\')
+                .next_back()
+                .unwrap()
+                .replace(".blp", "")
         );
 
         println!("Creating test archive: {}", test_archive);
@@ -71,7 +73,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Try uncompressed
         let test_uncompressed = format!(
             "test_uncompressed_{}.mpq",
-            file_name.split('\\').last().unwrap().replace(".blp", "")
+            file_name
+                .split('\\')
+                .next_back()
+                .unwrap()
+                .replace(".blp", "")
         );
 
         let mut builder = ArchiveBuilder::new()

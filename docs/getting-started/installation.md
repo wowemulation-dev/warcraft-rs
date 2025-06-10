@@ -38,6 +38,7 @@ Once published, you'll be able to add individual crates:
 [dependencies]
 wow-mpq = "0.1.0"    # MPQ archive support (currently implemented)
 wow-wdl = "0.1.0"    # WDL support (currently implemented)
+wow-wdt = "0.1.0"    # WDT support (currently implemented)
 # Other crates will be available as they're implemented
 ```
 
@@ -60,7 +61,7 @@ cargo test
 cargo install --path warcraft-rs --features full
 
 # Or install with specific features only
-cargo install --path warcraft-rs --features "mpq wdl"
+cargo install --path warcraft-rs --features "mpq wdl wdt"
 ```
 
 ### Development Setup
@@ -95,20 +96,20 @@ cargo build --release
 cargo build --release --features full
 
 # Build with specific features
-cargo build --release --features "mpq wdl"
-cargo run --features wdl -- wdl info terrain.wdl
+cargo build --release --features "mpq wdl wdt"
+cargo run --features wdt -- wdt info map.wdt
 ```
 
 Available features:
 
 - `mpq` - MPQ archive support (enabled by default)
 - `wdl` - WDL low-resolution terrain support
+- `wdt` - WDT map definition support
 - `dbc` - DBC database support (planned)
 - `blp` - BLP texture support (planned)
 - `m2` - M2 model support (planned)
 - `wmo` - WMO object support (planned)
 - `adt` - ADT terrain support (planned)
-- `wdt` - WDT map support (planned)
 - `full` - All available features
 
 ## Platform-Specific Notes

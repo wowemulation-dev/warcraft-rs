@@ -56,14 +56,18 @@ fn add_files_to_archive() -> Result<(), Box<dyn std::error::Error>> {
     let mut mutable = MutableArchive::open(TEST_ARCHIVE)?;
 
     // Add first test file
-    let mut options1 = AddFileOptions::default();
-    options1.compression = wow_mpq::compression::CompressionMethod::Zlib;
+    let options1 = AddFileOptions {
+        compression: wow_mpq::compression::CompressionMethod::Zlib,
+        ..Default::default()
+    };
     mutable.add_file_data(TEST_DATA_1, TEST_FILE_1, options1)?;
     println!("  ✅ Added {}", TEST_FILE_1);
 
     // Add second test file
-    let mut options2 = AddFileOptions::default();
-    options2.compression = wow_mpq::compression::CompressionMethod::Zlib;
+    let options2 = AddFileOptions {
+        compression: wow_mpq::compression::CompressionMethod::Zlib,
+        ..Default::default()
+    };
     mutable.add_file_data(TEST_DATA_2, TEST_FILE_2, options2)?;
     println!("  ✅ Added {}", TEST_FILE_2);
 

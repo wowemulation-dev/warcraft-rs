@@ -13,7 +13,7 @@ Currently implemented:
   - `list` - List archive contents
   - `extract` - Extract files
   - `info` - Show archive information
-  - `verify` - Verify archive integrity
+  - `validate` - Validate archive integrity
   - `create` - Create new archives
   - `rebuild` - Rebuild archives with format upgrades
   - `compare` - Compare two archives
@@ -21,6 +21,11 @@ Currently implemented:
   - `validate` - Validate WDL file format
   - `info` - Show WDL file information
   - `convert` - Convert between WDL versions
+- ✅ **WDT subcommands** - Map definition operations
+  - `info` - Display WDT file information
+  - `validate` - Validate WDT file structure
+  - `convert` - Convert between WDT versions
+  - `tiles` - List tiles with ADT data
 
 Planned for future releases:
 
@@ -29,7 +34,6 @@ Planned for future releases:
 - 🚧 **M2 subcommands** - Model file operations
 - 🚧 **WMO subcommands** - World object operations
 - 🚧 **ADT subcommands** - Terrain operations
-- 🚧 **WDT subcommands** - Map definition operations
 
 ## Project Structure
 
@@ -50,7 +54,7 @@ warcraft-rs/
 │   │   ├── m2.rs          # M2 subcommands (planned)
 │   │   ├── wmo.rs         # WMO subcommands (planned)
 │   │   ├── adt.rs         # ADT subcommands (planned)
-│   │   └── wdt.rs         # WDT subcommands (planned)
+│   │   └── wdt.rs         # WDT subcommands (implemented)
 │   └── utils/             # Shared utilities
 │       ├── mod.rs
 │       ├── progress.rs    # Progress bars
@@ -97,8 +101,8 @@ warcraft-rs mpq create new.mpq --add files... [--version v2] [--compression zlib
 # Show archive information
 warcraft-rs mpq info archive.mpq [--show-hash-table] [--show-block-table]
 
-# Verify archive integrity
-warcraft-rs mpq verify archive.mpq [--check-checksums]
+# Validate archive integrity
+warcraft-rs mpq validate archive.mpq [--check-checksums]
 ```
 
 ## Feature Flags
@@ -234,8 +238,8 @@ pub enum Commands {
         show_block_table: bool,
     },
 
-    /// Verify integrity of an MPQ archive
-    Verify {
+    /// Validate integrity of an MPQ archive
+    Validate {
         /// Path to the MPQ archive
         archive: String,
     },

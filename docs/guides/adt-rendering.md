@@ -13,9 +13,10 @@ Before rendering ADT terrain, ensure you have:
 
 - Understanding of 3D graphics programming (OpenGL/Vulkan/DirectX)
 - Basic knowledge of terrain rendering techniques
-- `warcraft-rs` installed with the `adt` feature enabled
+- `warcraft-rs` installed with the `adt` and `wdt` features enabled
 - A graphics rendering framework (wgpu, glow, etc.)
 - Understanding of height maps and texture blending
+- Knowledge of WDT files to determine which ADT tiles exist
 
 ## Understanding ADT Files
 
@@ -42,7 +43,51 @@ Each ADT file contains:
 
 ## Step-by-Step Instructions
 
-### 1. Loading ADT Files
+### 1. Discovering ADT Tiles with WDT
+
+Before loading ADT files, use the WDT file to determine which tiles exist:
+
+```rust
+use wow_wdt::{WdtReader, version::WowVersion};
+use std::io::BufReader;
+use std::fs::File;
+use std::collections::HashSet;
+
+fn discover_adt_tiles(map_name: &str, version: WowVersion) -> Result<HashSet<(usize, usize)>, Box<dyn std::error::Error>> {
+    let wdt_path = format!("World/Maps/{}/{}.wdt", map_name, map_name);
+    let file = File::open(wdt_path)?;
+    let mut reader = WdtReader::new(BufReader::new(file), version);
+    let wdt = reader.read()?;
+
+    let mut existing_tiles = HashSet::new();
+
+    // Skip WMO-only maps (dungeons, instances)
+    if wdt.is_wmo_only() {
+        println!("Map {} is WMO-only (no terrain tiles)", map_name);
+        return Ok(existing_tiles);
+    }
+
+    // Find all tiles that have ADT data
+    for y in 0..64 {
+        for x in 0..64 {
+            if let Some(tile_info) = wdt.get_tile(x, y) {
+                if tile_info.has_adt {
+                    existing_tiles.insert((x, y));
+                    println!("Found ADT tile at [{}, {}] - Area ID: {}", x, y, tile_info.area_id);
+                }
+            }
+        }
+    }
+
+    println!("Map {} has {} ADT tiles", map_name, existing_tiles.len());
+    Ok(existing_tiles)
+}
+
+// Example usage
+let existing_tiles = discover_adt_tiles("Azeroth", WowVersion::WotLK)?;
+```
+
+### 2. Loading ADT Files
 
 ```rust
 use warcraft_rs::adt::{Adt, AdtFlags};
@@ -419,6 +464,9 @@ impl TerrainRenderer {
         self.terrain_meshes.clear();
         self.water_meshes.clear();
 
+        // First, discover which tiles exist using WDT
+        let existing_tiles = discover_adt_tiles(&map.internal_name, map.wow_version)?;
+
         // Load ADTs in radius around center
         for dy in -radius..=radius {
             for dx in -radius..=radius {
@@ -427,6 +475,11 @@ impl TerrainRenderer {
 
                 // Check bounds
                 if tile_x < 0 || tile_x >= 64 || tile_y < 0 || tile_y >= 64 {
+                    continue;
+                }
+
+                // Only try to load tiles that actually exist
+                if !existing_tiles.contains(&(tile_x as usize, tile_y as usize)) {
                     continue;
                 }
 

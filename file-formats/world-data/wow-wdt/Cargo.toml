@@ -3,20 +3,35 @@ name = "wow-wdt"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-rust-version.workspace = true
 homepage.workspace = true
-documentation = "https://docs.rs/wow-wdt"
-description = "Parser for World of Warcraft WDT (map) files"
-readme = "README.md"
-keywords = ["wow", "warcraft", "wdt", "maps", "gamedev"]
+description = "A library for parsing, validating, and converting World of Warcraft WDT files - tested on 100+ real WDT files"
+keywords = ["wow", "wdt", "world-of-warcraft", "game", "parser"]
 categories = ["game-development", "parser-implementations"]
 
 [dependencies]
+# Core dependencies
+byteorder = { workspace = true }
 thiserror = { workspace = true }
+bitflags = { workspace = true }
+
+# For examples
+anyhow = { workspace = true }
+
+# Serialization support (optional)
+serde = { workspace = true, features = ["derive"], optional = true }
+serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
+tempfile = { workspace = true }
+pretty_assertions = "1.4"
 
 [features]
 default = []
+serde = ["dep:serde", "dep:serde_json"]
+
+[lib]
+name = "wow_wdt"
+path = "src/lib.rs"

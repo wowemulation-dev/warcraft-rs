@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         // Check if this might be ADPCM compressed
                                         // ADPCM files are typically WAV files
                                         if file_entry.name.to_lowercase().ends_with(".wav")
-                                            && data.len() > 0
+                                            && !data.is_empty()
                                         {
                                             // Store for later testing
                                             adpcm_files.push((
@@ -197,7 +197,7 @@ int main() {{
         printf("Failed to open archive\n");
         return 1;
     }}
-    
+
     SFILE_FIND_DATA fd;
     HANDLE hFind = SFileFindFirstFile(hMpq, "*.wav", &fd, NULL);
     if (hFind) {{
@@ -206,7 +206,7 @@ int main() {{
         }} while (SFileFindNextFile(hFind, &fd));
         SFileFindClose(hFind);
     }}
-    
+
     SFileCloseArchive(hMpq);
     printf("StormLib test passed\n");
     return 0;
@@ -218,7 +218,7 @@ int main() {{
     std::fs::write("test_audio.c", test_code)?;
 
     let compile = Command::new("gcc")
-        .args(&[
+        .args([
             "-o",
             "test_audio",
             "test_audio.c",

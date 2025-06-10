@@ -86,6 +86,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
 name = "patch_chain_demo"
+required-features = ["test-utils"]
 
 [[example]]
 name = "wow_patch_chains"
@@ -113,3 +114,27 @@ name = "mop_patch_chain_demo"
 
 [[example]]
 name = "signature_demo"
+
+[[example]]
+name = "comprehensive_archive_verification"
+required-features = ["test-utils"]
+
+[[example]]
+name = "verify_wow_files"
+required-features = ["test-utils"]
+
+[[example]]
+name = "test_cataclysm_files_comprehensive"
+required-features = ["test-utils"]
+
+[[example]]
+name = "test_tbc_files_comprehensive"
+required-features = ["test-utils"]
+
+[[example]]
+name = "test_wotlk_files_comprehensive"
+required-features = ["test-utils"]
+
+[[example]]
+name = "test_mop_files_comprehensive"
+required-features = ["test-utils"]

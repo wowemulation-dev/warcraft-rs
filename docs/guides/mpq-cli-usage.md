@@ -68,11 +68,11 @@ warcraft-rs mpq info archive.mpq --show-hash-table
 warcraft-rs mpq info archive.mpq --show-block-table
 ```
 
-### Verify Archives
+### Validate Archives
 
 ```bash
-# Basic verification
-warcraft-rs mpq verify archive.mpq
+# Basic validation
+warcraft-rs mpq validate archive.mpq
 ```
 
 ### Create Archives
@@ -264,13 +264,45 @@ warcraft-rs mpq list archive.mpq --filter "*Interface*"
 ### Archive Exploration
 
 ```bash
-# Verify archive integrity
-warcraft-rs mpq verify archive.mpq
+# Validate archive integrity
+warcraft-rs mpq validate archive.mpq
 
 # Extract specific content for analysis
 warcraft-rs mpq extract archive.mpq --filter "DBFilesClient/*" --output ./database_files --preserve-paths
 warcraft-rs mpq extract archive.mpq --filter "Interface/Icons/*" --output ./icons --preserve-paths
 ```
+
+### Tree Visualization
+
+Visualize the structure of MPQ archives using the tree command:
+
+```bash
+# Basic tree view
+warcraft-rs mpq tree archive.mpq
+
+# Limit depth for large archives
+warcraft-rs mpq tree archive.mpq --depth 3
+
+# Compact mode without metadata
+warcraft-rs mpq tree archive.mpq --compact
+
+# Show external file references
+warcraft-rs mpq tree archive.mpq --show-refs
+
+# No color output for piping
+warcraft-rs mpq tree archive.mpq --no-color
+
+# Hide file sizes and metadata
+warcraft-rs mpq tree archive.mpq --no-metadata
+```
+
+The tree view shows:
+
+- 📦 Archive structure with header, tables, and files
+- 📁 Directory hierarchy
+- 📄 Individual files with sizes
+- 🔗 External file references (e.g., M2 models referencing .skin files)
+- 🎨 Color-coded output for better readability
 
 ### Data Extraction Workflow
 
@@ -390,6 +422,35 @@ warcraft-rs wdl convert Azeroth.wdl --format color --output colorized.png
 warcraft-rs wdl convert Azeroth.wdl --output-dir ./heightmaps/
 ```
 
+### WDL Tree Visualization
+
+Visualize the structure of WDL files:
+
+```bash
+# Basic tree view showing chunk structure
+warcraft-rs wdl tree Azeroth.wdl
+
+# Limit depth for focused view
+warcraft-rs wdl tree Azeroth.wdl --depth 2
+
+# Show external file references (WMO models)
+warcraft-rs wdl tree Azeroth.wdl --show-refs
+
+# Compact mode for quick overview
+warcraft-rs wdl tree Azeroth.wdl --compact
+
+# No color output (for piping)
+warcraft-rs wdl tree Azeroth.wdl --no-color
+```
+
+The tree view shows:
+
+- 📦 WDL file structure with all chunks
+- 🗂️ Chunk hierarchy (MVER, MAOF, MARE, etc.)
+- 📊 Chunk sizes and metadata
+- 🏛️ WMO model references if present
+- 🎨 Color-coded output for readability
+
 ### WDL Batch Operations
 
 ```bash
@@ -442,9 +503,9 @@ rebuilt="rebuilt.mpq"
 
 echo "=== Quality Assurance Workflow ==="
 
-# 1. Verify original archive integrity
-echo "1. Verifying original archive..."
-warcraft-rs mpq verify "$original"
+# 1. Validate original archive integrity
+echo "1. Validating original archive..."
+warcraft-rs mpq validate "$original"
 
 # 2. Rebuild archive
 echo "2. Rebuilding archive..."

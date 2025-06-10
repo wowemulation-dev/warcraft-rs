@@ -284,8 +284,8 @@ fn verify_all_archives(directory: &Path) -> Result<(), Box<dyn std::error::Error
 The warcraft-rs CLI supports signature operations:
 
 ```bash
-# Verify archive signature
-warcraft-rs mpq verify-signature archive.mpq
+# Validate archive signature
+warcraft-rs mpq validate archive.mpq --check-checksums
 
 # Rebuild with signature
 warcraft-rs mpq rebuild input.mpq output.mpq --add-signature

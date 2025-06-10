@@ -1,10 +1,7 @@
 //! Test the round-trip process: extract file, create archive, read back
 
 use std::fs;
-use wow_mpq::{
-    Archive, ArchiveBuilder, AttributesOption, FormatVersion, ListfileOption,
-    compression::CompressionMethod,
-};
+use wow_mpq::{Archive, ArchiveBuilder, AttributesOption, FormatVersion, ListfileOption};
 
 const PROBLEMATIC_FILE: &str = "World\\Maps\\Azeroth\\Azeroth_28_51_tex1.adt";
 const CATA_ARCHIVE: &str = "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/world.MPQ";

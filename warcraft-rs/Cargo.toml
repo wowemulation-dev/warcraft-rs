@@ -42,17 +42,22 @@ console = "0.15"
 chrono = "0.4"
 glob = "0.3"
 
+# Optional serialization for data export
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
 [features]
 default = ["mpq"]
-full = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl"]
+full = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl", "serde"]
 mpq = []
 dbc = ["dep:wow-dbc"]
 blp = ["dep:wow-blp"]
 m2 = ["dep:wow-m2"]
 wmo = ["dep:wow-wmo"]
 adt = ["dep:wow-adt"]
-wdt = ["dep:wow-wdt"]
+wdt = ["dep:wow-wdt", "serde"]
 wdl = ["dep:wow-wdl"]
+serde = ["dep:serde", "dep:serde_json"]
 
 [[bin]]
 name = "warcraft-rs"

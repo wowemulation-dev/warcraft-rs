@@ -1,23 +1,23 @@
 [workspace]
 members = [
-    # Archives
-    "file-formats/archives/wow-mpq",
+  # Archives
+  "file-formats/archives/wow-mpq",
 
-    # World Data
-    "file-formats/world-data/wow-adt",
-    "file-formats/world-data/wow-wdl",
-    "file-formats/world-data/wow-wdt",
+  # World Data
+  "file-formats/world-data/wow-adt",
+  "file-formats/world-data/wow-wdl",
+  "file-formats/world-data/wow-wdt",
 
-    # Graphics
-    "file-formats/graphics/wow-blp",
-    "file-formats/graphics/wow-m2",
-    "file-formats/graphics/wow-wmo",
+  # Graphics
+  "file-formats/graphics/wow-blp",
+  "file-formats/graphics/wow-m2",
+  "file-formats/graphics/wow-wmo",
 
-    # Database
-    "file-formats/database/wow-dbc",
+  # Database
+  "file-formats/database/wow-dbc",
 
-    # CLI
-    "warcraft-rs",
+  # CLI
+  "warcraft-rs",
 ]
 resolver = "2"
 
@@ -41,6 +41,12 @@ env_logger = "0.11"
 # Data structures and utilities
 rand = "0.9"
 tempfile = "3.20"
+byteorder = "1.5"
+bitflags = "2.9"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 # Development
 criterion = { version = "0.6", features = ["html_reports"] }

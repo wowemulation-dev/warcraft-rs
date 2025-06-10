@@ -6,8 +6,8 @@ Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft fi
 
 - ✅ **MPQ Archives** - Fully implemented with 100% StormLib compatibility
 - ✅ **WDL Format** - Low-resolution terrain heightmaps (basic implementation)
+- ✅ **WDT Format** - World table files (full implementation)
 - 🚧 **ADT Format** - Terrain data (planned)
-- 🚧 **WDT Format** - World tables (planned)
 - 🚧 **BLP Format** - Textures (planned)
 - 🚧 **M2 Format** - Models (planned)
 - 🚧 **WMO Format** - World objects (planned)
@@ -243,6 +243,59 @@ let animated_vertices = model.apply_skinning(&bones)?;
 ```
 
 ## Loading World Data
+
+### Working with World Tables (WDT)
+
+```rust
+use wow_wdt::{WdtReader, version::WowVersion};
+use std::io::BufReader;
+use std::fs::File;
+
+// Load a WDT file to see which ADT tiles exist
+let file = File::open("World/Maps/Azeroth/Azeroth.wdt")?;
+let mut reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
+let wdt = reader.read()?;
+
+// Check map properties
+println!("Map info:");
+println!("  Is WMO-only: {}", wdt.is_wmo_only());
+println!("  Existing tiles: {}", wdt.count_existing_tiles());
+
+// Check which ADT tiles exist
+for y in 0..64 {
+    for x in 0..64 {
+        if let Some(tile_info) = wdt.get_tile(x, y) {
+            if tile_info.has_adt {
+                println!("ADT tile exists at [{}, {}] - Area ID: {}",
+                    x, y, tile_info.area_id);
+            }
+        }
+    }
+}
+
+// For WMO-only maps (like dungeons)
+if wdt.is_wmo_only() {
+    if let Some(ref mwmo) = wdt.mwmo {
+        println!("Global WMO: {}", mwmo.filename());
+    }
+    if let Some(ref modf) = wdt.modf {
+        for placement in modf.entries() {
+            println!("WMO placed at: {:?}", placement.position);
+        }
+    }
+}
+
+// Convert coordinates between systems
+use wow_wdt::{tile_to_world, world_to_tile};
+
+// Convert tile coordinates to world coordinates
+let (world_x, world_y) = tile_to_world(32, 32); // Map center
+println!("Tile [32, 32] is at world coordinates ({}, {})", world_x, world_y);
+
+// Convert world coordinates back to tile coordinates
+let (tile_x, tile_y) = world_to_tile(world_x, world_y);
+println!("World coords ({}, {}) is tile [{}, {}]", world_x, world_y, tile_x, tile_y);
+```
 
 ### Working with Terrain (ADT)
 

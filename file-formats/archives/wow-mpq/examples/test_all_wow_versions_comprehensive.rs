@@ -14,6 +14,7 @@ struct WowVersion {
     name: &'static str,
     path: &'static str,
     format: FormatVersion,
+    #[allow(dead_code)]
     expected_archives: &'static [&'static str],
 }
 
@@ -66,30 +67,30 @@ fn test_stormlib_compatibility(archive_path: &str) -> Result<bool, Box<dyn std::
 
 int main() {{
     HANDLE hMpq = NULL;
-    
+
     // Try to open the archive
     if (!SFileOpenArchive("{}", 0, 0, &hMpq)) {{
         printf("Failed to open archive with StormLib\n");
         return 1;
     }}
-    
+
     printf("StormLib successfully opened the archive\n");
-    
+
     // Try to enumerate files
     SFILE_FIND_DATA findData;
     HANDLE hFind = SFileFindFirstFile(hMpq, "*", &findData, NULL);
-    
+
     if (hFind != NULL) {{
         int fileCount = 0;
         do {{
             fileCount++;
             printf("Found file: %s\n", findData.cFileName);
         }} while (SFileFindNextFile(hFind, &findData));
-        
+
         SFileFindClose(hFind);
         printf("Total files found: %d\n", fileCount);
     }}
-    
+
     // Try to read a specific file
     HANDLE hFile;
     if (SFileOpenFileEx(hMpq, "(listfile)", 0, &hFile)) {{
@@ -97,7 +98,7 @@ int main() {{
         printf("Successfully opened (listfile), size: %u bytes\n", fileSize);
         SFileCloseFile(hFile);
     }}
-    
+
     SFileCloseArchive(hMpq);
     printf("StormLib compatibility test PASSED\n");
     return 0;
@@ -112,7 +113,7 @@ int main() {{
 
     // Compile with StormLib
     let compile_result = Command::new("gcc")
-        .args(&[
+        .args([
             "-o",
             "stormlib_test",
             test_file,
@@ -239,7 +240,7 @@ fn test_wow_version(version: &WowVersion) -> Result<bool, Box<dyn std::error::Er
 
                             match archive.read_file(&file_entry.name) {
                                 Ok(data) => {
-                                    if data.len() > 0 && data.len() < 1024 * 1024 {
+                                    if !data.is_empty() && data.len() < 1024 * 1024 {
                                         // Skip empty/huge files
                                         println!("    ✓ {}: {} bytes", file_entry.name, data.len());
                                         extracted_files.insert(file_entry.name.clone(), data);

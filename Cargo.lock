@@ -1618,6 +1618,8 @@ dependencies = [
  "log",
  "predicates",
  "prettytable-rs",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.12",
  "wow-adt",
@@ -1964,6 +1966,13 @@ dependencies = [
 name = "wow-wdt"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bitflags",
+ "byteorder",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "tempfile",
  "thiserror 2.0.12",
 ]
 

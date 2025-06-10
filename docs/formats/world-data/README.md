@@ -60,28 +60,92 @@ World/
 ### Loading a Map Section
 
 ```rust
-use warcraft_rs::{Wdt, Adt};
+use wow_wdt::{WdtReader, version::WowVersion};
+use std::fs::File;
+use std::io::BufReader;
 
 // Load map definition
-let wdt = Wdt::open("World/Maps/Azeroth/Azeroth.wdt")?;
+let file = File::open("World/Maps/Azeroth/Azeroth.wdt")?;
+let mut reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
+let wdt = reader.read()?;
 
 // Check if tile exists
-if wdt.has_adt(32, 48) {
-    // Load the terrain tile
-    let adt = Adt::open("World/Maps/Azeroth/Azeroth_32_48.adt")?;
+if let Some(tile_info) = wdt.get_tile(32, 48) {
+    if tile_info.has_adt {
+        // Load the terrain tile
+        // let adt = Adt::open("World/Maps/Azeroth/Azeroth_32_48.adt")?;
+        println!("ADT tile exists at [32, 48] - Area ID: {}", tile_info.area_id);
+    }
 }
 ```
 
 ### Streaming Large Worlds
 
 ```rust
-use warcraft_rs::world::WorldManager;
+use wow_wdt::{WdtReader, version::WowVersion, tile_to_world, world_to_tile};
+use std::collections::HashSet;
 
-let mut world = WorldManager::new("World/Maps/Azeroth")?;
-world.set_view_distance(5); // Load 5x5 ADT grid
+// This example shows how you might implement world streaming
+// (actual implementation would be in your game engine)
 
-// Update based on player position
-world.update(player_x, player_y);
+struct WorldStreamer {
+    existing_tiles: HashSet<(usize, usize)>,
+    loaded_tiles: HashSet<(usize, usize)>,
+    view_distance: usize,
+}
+
+impl WorldStreamer {
+    fn new(wdt_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let file = std::fs::File::open(wdt_path)?;
+        let mut reader = WdtReader::new(std::io::BufReader::new(file), WowVersion::WotLK);
+        let wdt = reader.read()?;
+
+        let mut existing_tiles = HashSet::new();
+        for y in 0..64 {
+            for x in 0..64 {
+                if let Some(tile_info) = wdt.get_tile(x, y) {
+                    if tile_info.has_adt {
+                        existing_tiles.insert((x, y));
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            existing_tiles,
+            loaded_tiles: HashSet::new(),
+            view_distance: 5,
+        })
+    }
+
+    fn update(&mut self, player_x: f32, player_y: f32) {
+        let (center_tile_x, center_tile_y) = world_to_tile(player_x, player_y);
+
+        // Determine which tiles should be loaded
+        let mut needed_tiles = HashSet::new();
+        for dy in -(self.view_distance as i32)..=(self.view_distance as i32) {
+            for dx in -(self.view_distance as i32)..=(self.view_distance as i32) {
+                let tile_x = (center_tile_x as i32 + dx).max(0).min(63) as usize;
+                let tile_y = (center_tile_y as i32 + dy).max(0).min(63) as usize;
+
+                if self.existing_tiles.contains(&(tile_x, tile_y)) {
+                    needed_tiles.insert((tile_x, tile_y));
+                }
+            }
+        }
+
+        // Load new tiles, unload distant ones
+        for &tile in &needed_tiles {
+            if !self.loaded_tiles.contains(&tile) {
+                // Load ADT tile here
+                println!("Loading tile {:?}", tile);
+                self.loaded_tiles.insert(tile);
+            }
+        }
+
+        self.loaded_tiles.retain(|tile| needed_tiles.contains(tile));
+    }
+}
 ```
 
 ## Rendering Considerations

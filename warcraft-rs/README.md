@@ -46,7 +46,7 @@ warcraft-rs <format> <command> [options]
 - `m2` - M2 model operations (planned)
 - `wmo` - WMO object operations (planned)
 - `adt` - ADT terrain operations (planned)
-- `wdt` - WDT map operations (planned)
+- `wdt` - WDT map operations (basic implementation, CLI planned)
 - `wdl` - WDL world operations (implemented)
 
 ### MPQ Commands
@@ -70,8 +70,8 @@ warcraft-rs mpq create new.mpq --add *.txt --version v2 --compression zlib
 warcraft-rs mpq info archive.mpq
 warcraft-rs mpq info archive.mpq --show-hash-table
 
-# Verify archive integrity
-warcraft-rs mpq verify archive.mpq
+# Validate archive integrity
+warcraft-rs mpq validate archive.mpq
 ```
 
 ### Global Options
@@ -129,10 +129,10 @@ warcraft-rs mpq create my_mod.mpq \
   --compression zlib \
   --with-listfile
 
-# Verify multiple archives
+# Validate multiple archives
 for mpq in *.mpq; do
   echo "Checking $mpq..."
-  warcraft-rs mpq verify "$mpq"
+  warcraft-rs mpq validate "$mpq"
 done
 ```
 

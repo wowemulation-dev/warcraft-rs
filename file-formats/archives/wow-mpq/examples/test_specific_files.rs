@@ -38,8 +38,8 @@ fn test_file(archive_path: &str, file_name: &str) {
 
                     // Show first few bytes
                     print!("First 16 bytes: ");
-                    for i in 0..16.min(data.len()) {
-                        print!("{:02X} ", data[i]);
+                    for byte in data.iter().take(16) {
+                        print!("{:02X} ", byte);
                     }
                     println!();
                 }

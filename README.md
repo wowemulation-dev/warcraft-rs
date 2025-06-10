@@ -29,7 +29,7 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 - **M2 Models** - Work with character and creature models
 - **WMO Objects** - Process world map objects
 - **ADT Terrain** - Parse terrain and map data
-- **WDT Maps** - Handle world map definitions
+- **WDT Maps** - World map definitions and tile layouts (under development)
 - **WDL Maps** - Low-resolution terrain heightmaps
 
 ### 🛠️ Command-Line Tools
@@ -42,6 +42,7 @@ warcraft-rs mpq list archive.mpq
 warcraft-rs mpq extract archive.mpq --output ./extracted
 warcraft-rs mpq create new.mpq --add file1.txt --add file2.dat
 warcraft-rs mpq info archive.mpq
+warcraft-rs mpq tree archive.mpq  # NEW! Visualize archive structure
 
 # Archive rebuild and comparison (NEW!)
 warcraft-rs mpq rebuild original.mpq rebuilt.mpq --upgrade-to v4
@@ -51,6 +52,14 @@ warcraft-rs mpq compare original.mpq rebuilt.mpq --content-check
 warcraft-rs wdl validate terrain.wdl
 warcraft-rs wdl info terrain.wdl
 warcraft-rs wdl convert terrain.wdl terrain_new.wdl --to wotlk
+warcraft-rs wdl tree terrain.wdl  # NEW! Visualize WDL structure
+
+# WDT map operations
+warcraft-rs wdt info map.wdt
+warcraft-rs wdt validate map.wdt
+warcraft-rs wdt convert map.wdt map_new.wdt --to wotlk
+warcraft-rs wdt tiles map.wdt
+warcraft-rs wdt tree map.wdt  # NEW! Visualize WDT structure
 
 # Other tools (when implemented)
 warcraft-rs dbc list items.dbc
@@ -80,6 +89,17 @@ mutable.add_file_data(b"New content".as_ref(), "new_file.txt", AddFileOptions::d
 mutable.remove_file("old_file.txt")?;
 mutable.rename_file("file.txt", "renamed.txt")?;
 mutable.flush()?; // Save changes
+```
+
+```rust
+// WDT parsing example (basic implementation in development)
+// use wow_wdt::{WdtReader, WdtFile, version::WowVersion};
+// use std::fs::File;
+// use std::io::BufReader;
+//
+// let file = File::open("map.wdt")?;
+// let mut reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
+// let wdt = reader.read()?;
 ```
 
 ## Installation
@@ -116,6 +136,7 @@ cargo install --path .
 # Analyze an MPQ archive
 warcraft-rs mpq info patch.mpq
 warcraft-rs mpq list patch.mpq --filter "*.dbc" --long
+warcraft-rs mpq tree patch.mpq --depth 3  # Visualize archive structure
 
 # Extract files
 warcraft-rs mpq extract patch.mpq --output ./extracted --preserve-paths
@@ -125,6 +146,10 @@ warcraft-rs mpq rebuild old.mpq modern.mpq --upgrade-to v4 --compression lzma
 
 # Verify the rebuild
 warcraft-rs mpq compare old.mpq modern.mpq --content-check --output summary
+
+# Visualize WDT/WDL file structures
+warcraft-rs wdt tree Azeroth.wdt --show-refs  # See ADT tile references
+warcraft-rs wdl tree Azeroth.wdl --compact     # Compact view of WDL chunks
 ```
 
 ## Documentation

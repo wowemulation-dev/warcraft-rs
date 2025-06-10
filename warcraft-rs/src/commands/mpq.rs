@@ -10,8 +10,9 @@ use wow_mpq::{
 };
 
 use crate::utils::{
-    add_table_row, create_progress_bar, create_spinner, create_table, format_bytes,
-    format_compression_ratio, matches_pattern, truncate_path,
+    NodeType, TreeNode, TreeOptions, add_table_row, create_progress_bar, create_spinner,
+    create_table, detect_ref_type, format_bytes, format_compression_ratio, matches_pattern,
+    render_tree, truncate_path,
 };
 
 #[derive(ValueEnum, Clone, Debug)]
@@ -102,8 +103,8 @@ pub enum MpqCommands {
         show_block_table: bool,
     },
 
-    /// Verify integrity of an MPQ archive
-    Verify {
+    /// Validate integrity of an MPQ archive
+    Validate {
         /// Path to the MPQ archive
         archive: String,
 
@@ -185,6 +186,32 @@ pub enum MpqCommands {
         #[arg(short, long)]
         filter: Option<String>,
     },
+
+    /// Show tree structure of an MPQ archive
+    Tree {
+        /// Path to the MPQ archive
+        archive: String,
+
+        /// Maximum depth to display
+        #[arg(long)]
+        depth: Option<usize>,
+
+        /// Hide external file references
+        #[arg(long)]
+        no_external_refs: bool,
+
+        /// Disable colored output
+        #[arg(long)]
+        no_color: bool,
+
+        /// Show compact metadata inline
+        #[arg(long)]
+        compact: bool,
+
+        /// Filter files by pattern (supports wildcards)
+        #[arg(short, long)]
+        filter: Option<String>,
+    },
 }
 
 pub fn execute(command: MpqCommands) -> Result<()> {
@@ -212,10 +239,10 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             show_hash_table,
             show_block_table,
         } => show_info(&archive, show_hash_table, show_block_table),
-        MpqCommands::Verify {
+        MpqCommands::Validate {
             archive,
             check_checksums,
-        } => verify_archive(&archive, check_checksums),
+        } => validate_archive(&archive, check_checksums),
         MpqCommands::Rebuild {
             source,
             target,
@@ -258,6 +285,21 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             output_format: &output,
             filter,
         }),
+        MpqCommands::Tree {
+            archive,
+            depth,
+            no_external_refs,
+            no_color,
+            compact,
+            filter,
+        } => show_tree(
+            &archive,
+            depth,
+            !no_external_refs,
+            no_color,
+            compact,
+            filter,
+        ),
     }
 }
 
@@ -448,24 +490,24 @@ fn show_info(path: &str, show_hash_table: bool, show_block_table: bool) -> Resul
     Ok(())
 }
 
-fn verify_archive(path: &str, check_checksums: bool) -> Result<()> {
+fn validate_archive(path: &str, check_checksums: bool) -> Result<()> {
     let spinner = create_spinner("Opening archive...");
     let mut archive = Archive::open(path).context("Failed to open archive")?;
     spinner.finish_and_clear();
 
     let files: Vec<String> = archive.list()?.into_iter().map(|e| e.name).collect();
-    let pb = create_progress_bar(files.len() as u64, "Verifying files");
+    let pb = create_progress_bar(files.len() as u64, "Validating files");
 
     let mut errors = 0;
 
     for file in &files {
-        pb.set_message(format!("Verifying: {}", file));
+        pb.set_message(format!("Validating: {}", file));
 
         match archive.read_file(file) {
             Ok(_) => {
                 // File read successfully
                 if check_checksums {
-                    // TODO: Implement checksum verification
+                    // TODO: Implement checksum validation
                 }
             }
             Err(e) => {
@@ -480,9 +522,9 @@ fn verify_archive(path: &str, check_checksums: bool) -> Result<()> {
     pb.finish_and_clear();
 
     if errors == 0 {
-        println!("✓ Archive verification passed");
+        println!("✓ Archive validation passed");
     } else {
-        println!("✗ Archive verification failed with {} errors", errors);
+        println!("✗ Archive validation failed with {} errors", errors);
     }
 
     Ok(())
@@ -928,4 +970,240 @@ fn display_json_output(result: &wow_mpq::ComparisonResult) -> Result<()> {
     // In a real implementation, you'd use serde_json
     println!("{:#?}", result);
     Ok(())
+}
+
+fn show_tree(
+    path: &str,
+    max_depth: Option<usize>,
+    show_external_refs: bool,
+    no_color: bool,
+    compact: bool,
+    filter: Option<String>,
+) -> Result<()> {
+    let spinner = create_spinner("Analyzing archive structure...");
+    let mut archive = Archive::open(path).context("Failed to open archive")?;
+    let info = archive.get_info()?;
+    spinner.finish_and_clear();
+
+    // Create root node with archive information
+    let mut root = TreeNode::new(
+        format!(
+            "{}",
+            std::path::Path::new(path)
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+        ),
+        NodeType::Root,
+    )
+    .with_size(info.file_size)
+    .with_metadata("format", &format!("{:?}", info.format_version))
+    .with_metadata("files", &info.file_count.to_string());
+
+    // Add header information
+    let header = TreeNode::new("Header".to_string(), NodeType::Header)
+        .with_size(32) // Typical MPQ header size
+        .with_metadata("version", &format!("{:?}", info.format_version))
+        .with_metadata("sector_size", &format!("{}", info.sector_size));
+
+    root = root.add_child(header);
+
+    // Add hash table information
+    if let Some(hash_table) = archive.hash_table() {
+        let hash_node = TreeNode::new("Hash Table".to_string(), NodeType::Table)
+            .with_size((hash_table.size() * 16) as u64) // Each hash entry is 16 bytes
+            .with_metadata("entries", &hash_table.size().to_string())
+            .with_metadata("encrypted", "true");
+        root = root.add_child(hash_node);
+    }
+
+    // Add block table information
+    if let Some(block_table) = archive.block_table() {
+        let block_node = TreeNode::new("Block Table".to_string(), NodeType::Table)
+            .with_size((block_table.size() * 16) as u64) // Each block entry is 16 bytes
+            .with_metadata("entries", &block_table.size().to_string())
+            .with_metadata("encrypted", "true");
+        root = root.add_child(block_node);
+    }
+
+    // Add HET/BET tables if present
+    if archive.het_table().is_some() {
+        let het_node = TreeNode::new("HET Table".to_string(), NodeType::Table)
+            .with_metadata("type", "Extended Hash Table")
+            .with_metadata("version", "v4");
+        root = root.add_child(het_node);
+    }
+
+    if archive.bet_table().is_some() {
+        let bet_node = TreeNode::new("BET Table".to_string(), NodeType::Table)
+            .with_metadata("type", "Extended Block Table")
+            .with_metadata("version", "v4");
+        root = root.add_child(bet_node);
+    }
+
+    // Build file tree
+    let files: Vec<String> = archive.list()?.into_iter().map(|e| e.name).collect();
+    let pattern = filter.as_deref().unwrap_or("*");
+    let filtered_files: Vec<_> = files
+        .iter()
+        .filter(|f| matches_pattern(f, pattern))
+        .collect();
+
+    if !filtered_files.is_empty() {
+        let mut files_node = TreeNode::new("Files".to_string(), NodeType::Directory)
+            .with_metadata("count", &filtered_files.len().to_string());
+
+        // Build directory structure
+        let mut dir_structure = std::collections::BTreeMap::<String, Vec<&String>>::new();
+
+        for file in &filtered_files {
+            let path_parts: Vec<&str> = file.split('\\').collect();
+            if path_parts.len() > 1 {
+                let dir = path_parts[..path_parts.len() - 1].join("\\");
+                dir_structure.entry(dir).or_default().push(file);
+            } else {
+                dir_structure.entry("/".to_string()).or_default().push(file);
+            }
+        }
+
+        // Add directories and files to tree
+        for (dir_path, dir_files) in dir_structure {
+            if dir_path == "/" {
+                // Root level files
+                for file in dir_files {
+                    let file_node = create_file_node(file, &mut archive, show_external_refs)?;
+                    files_node = files_node.add_child(file_node);
+                }
+            } else {
+                // Directory with files
+                let mut dir_node = TreeNode::new(
+                    format!("{}/", dir_path.split('\\').next_back().unwrap_or(&dir_path)),
+                    NodeType::Directory,
+                )
+                .with_metadata("files", &dir_files.len().to_string());
+
+                for file in dir_files {
+                    let file_node = create_file_node(file, &mut archive, show_external_refs)?;
+                    dir_node = dir_node.add_child(file_node);
+                }
+
+                files_node = files_node.add_child(dir_node);
+            }
+        }
+
+        root = root.add_child(files_node);
+    }
+
+    // Add special files
+    let special_files = vec!["(listfile)", "(attributes)", "(signature)"];
+    for special_file in special_files {
+        if archive.read_file(special_file).is_ok() {
+            let special_node = match special_file {
+                "(listfile)" => TreeNode::new("(listfile)".to_string(), NodeType::File)
+                    .with_metadata("type", "Auto-generated file list")
+                    .with_metadata("purpose", "File enumeration"),
+                "(attributes)" => TreeNode::new("(attributes)".to_string(), NodeType::File)
+                    .with_metadata("type", "File attributes")
+                    .with_metadata("purpose", "CRC checksums and timestamps"),
+                "(signature)" => TreeNode::new("(signature)".to_string(), NodeType::File)
+                    .with_metadata("type", "Digital signature")
+                    .with_metadata("purpose", "Archive integrity verification"),
+                _ => continue,
+            };
+            root = root.add_child(special_node);
+        }
+    }
+
+    // Render the tree
+    let options = TreeOptions {
+        max_depth,
+        show_external_refs,
+        no_color,
+        show_metadata: true,
+        compact,
+    };
+
+    println!("{}", render_tree(&root, &options));
+    Ok(())
+}
+
+fn create_file_node(
+    file_path: &str,
+    archive: &mut Archive,
+    show_external_refs: bool,
+) -> Result<TreeNode> {
+    let file_name = file_path.split('\\').next_back().unwrap_or(file_path);
+    let extension = std::path::Path::new(file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+
+    let mut node = TreeNode::new(file_name.to_string(), NodeType::File);
+
+    // Add file size if available
+    if let Ok(entries) = archive.list() {
+        if let Some(entry) = entries.iter().find(|e| e.name == file_path) {
+            node = node
+                .with_size(entry.size)
+                .with_metadata("compressed_size", &format_bytes(entry.compressed_size))
+                .with_metadata(
+                    "compression_ratio",
+                    &format_compression_ratio(entry.size, entry.compressed_size),
+                );
+        }
+    }
+
+    // Add file type metadata
+    let file_type = match extension.to_lowercase().as_str() {
+        "blp" => "Texture",
+        "m2" | "mdx" => "Model",
+        "wdt" => "World Map Definition",
+        "adt" => "Terrain Data",
+        "wdl" => "Low-res Terrain",
+        "dbc" => "Database",
+        "lua" => "Script",
+        "xml" => "Interface Definition",
+        "toc" => "AddOn Manifest",
+        "wav" | "mp3" => "Audio",
+        _ => "Data",
+    };
+    node = node.with_metadata("type", file_type);
+
+    // Add external references for certain file types
+    if show_external_refs {
+        match extension.to_lowercase().as_str() {
+            "wdt" => {
+                // WDT files reference ADT files
+                let base_name = file_name.trim_end_matches(".wdt");
+                node = node.with_external_ref(
+                    &format!("{}/*.adt", base_name),
+                    detect_ref_type("file.adt"),
+                );
+            }
+            "adt" => {
+                // ADT files might reference textures and models
+                node = node.with_external_ref("*.blp", detect_ref_type("file.blp"));
+                node = node.with_external_ref("*.m2", detect_ref_type("file.m2"));
+            }
+            "m2" => {
+                // M2 files reference textures and animations
+                let base_name = file_name.trim_end_matches(".m2");
+                node = node.with_external_ref(
+                    &format!("{}.skin", base_name),
+                    detect_ref_type("file.skin"),
+                );
+                node = node.with_external_ref("*.blp", detect_ref_type("file.blp"));
+            }
+            "dbc" => {
+                // Some DBC files reference other files
+                if file_name.to_lowercase().contains("item") {
+                    node = node
+                        .with_external_ref("Interface/Icons/*.blp", detect_ref_type("file.blp"));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(node)
 }

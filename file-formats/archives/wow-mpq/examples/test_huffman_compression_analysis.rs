@@ -99,11 +99,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Error type: {:?}", e);
 
             // Try to get more detailed error information
-            match &e {
-                wow_mpq::Error::Compression(comp_err) => {
-                    println!("  Compression error details: {}", comp_err);
-                }
-                _ => {}
+            if let wow_mpq::Error::Compression(comp_err) = &e {
+                println!("  Compression error details: {}", comp_err);
             }
         }
     }

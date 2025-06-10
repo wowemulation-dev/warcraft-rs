@@ -138,14 +138,14 @@ int main() {{
         printf("Failed to open archive\n");
         return 1;
     }}
-    
+
     printf("StormLib opened archive successfully\n");
-    
+
     const char* files[] = {{
         "Fonts\\MORPHEUS.TTF",
         "Interface\\Glues\\Credits\\TrollBanner4.blp"
     }};
-    
+
     for (int i = 0; i < 2; i++) {{
         HANDLE hFile;
         if (SFileOpenFileEx(hMpq, files[i], 0, &hFile)) {{
@@ -156,7 +156,7 @@ int main() {{
             printf("  ❌ %s: Failed to open\n", files[i]);
         }}
     }}
-    
+
     SFileCloseArchive(hMpq);
     return 0;
 }}
@@ -167,7 +167,7 @@ int main() {{
     std::fs::write("test_mod.c", test_code)?;
 
     let compile = Command::new("gcc")
-        .args(&[
+        .args([
             "-o",
             "test_mod",
             "test_mod.c",

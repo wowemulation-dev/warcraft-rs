@@ -45,6 +45,10 @@ them.
 - [StormLib vs wow-mpq Differences](guides/stormlib-differences.md)
 - [WoW Patch Chain Summary](guides/wow-patch-chain-summary.md)
 
+### World Data
+
+- [WDT CLI Usage](guides/wdt-cli-usage.md)
+
 ### Graphics & Rendering
 
 - [Rendering ADT Terrain](guides/adt-rendering.md)

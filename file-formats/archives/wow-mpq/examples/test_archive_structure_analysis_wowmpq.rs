@@ -46,8 +46,8 @@ fn analyze_archive(path: &str, label: &str) -> Result<(), Box<dyn std::error::Er
                     let mut total_compressed = 0;
 
                     for (i, file) in files.iter().enumerate() {
-                        total_uncompressed += file.size as u64;
-                        total_compressed += file.compressed_size as u64;
+                        total_uncompressed += file.size;
+                        total_compressed += file.compressed_size;
 
                         if i < 5 {
                             // Show first 5 files
@@ -100,14 +100,18 @@ fn compare_archives() {
         let diff = wowmpq_size as i64 - stormlib_size as i64;
         print!("Difference:       {} bytes", diff);
 
-        if diff > 0 {
-            let overhead = diff as f64 / stormlib_size as f64 * 100.0;
-            println!(" ({:.2}% overhead)", overhead);
-        } else if diff < 0 {
-            let savings = (-diff) as f64 / stormlib_size as f64 * 100.0;
-            println!(" ({:.2}% smaller)", savings);
-        } else {
-            println!(" (identical)");
+        match diff.cmp(&0) {
+            std::cmp::Ordering::Greater => {
+                let overhead = diff as f64 / stormlib_size as f64 * 100.0;
+                println!(" ({:.2}% overhead)", overhead);
+            }
+            std::cmp::Ordering::Less => {
+                let savings = (-diff) as f64 / stormlib_size as f64 * 100.0;
+                println!(" ({:.2}% smaller)", savings);
+            }
+            std::cmp::Ordering::Equal => {
+                println!(" (identical)");
+            }
         }
 
         // Test cross-compatibility

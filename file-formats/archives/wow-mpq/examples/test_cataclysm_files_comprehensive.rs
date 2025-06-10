@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // Step 1: Extract random files from first batch
     println!("\n🎲 Step 1: Extracting random files from Cataclysm archives...");

@@ -96,13 +96,11 @@ WDL files use a chunk-based structure:
 
 ### Height Interpolation
 
-```rust,ignore
-use wow_wdl::types::WdlFile;
+Height interpolation features are planned for future implementation:
 
-// Get interpolated height at any world position (not yet implemented)
+```text
+These features will be available in a future version:
 let height = wdl.get_height_at(1234.5, 5678.9)?;
-
-// Get height gradient for normal calculation (not yet implemented)
 let (dx, dy) = wdl.get_height_gradient(1234.5, 5678.9)?;
 ```
 

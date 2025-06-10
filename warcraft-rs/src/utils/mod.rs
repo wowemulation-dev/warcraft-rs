@@ -4,6 +4,7 @@ pub mod format;
 pub mod io;
 pub mod progress;
 pub mod table;
+pub mod tree;
 
 #[cfg(any(
     feature = "mpq",
@@ -49,3 +50,14 @@ pub use progress::*;
     feature = "wdl"
 ))]
 pub use table::*;
+#[cfg(any(
+    feature = "mpq",
+    feature = "dbc",
+    feature = "blp",
+    feature = "m2",
+    feature = "wmo",
+    feature = "adt",
+    feature = "wdt",
+    feature = "wdl"
+))]
+pub use tree::*;

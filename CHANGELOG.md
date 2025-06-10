@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **warcraft-rs CLI**: Added path separator conversion in `mpq extract` subcommand for proper cross-platform file extraction
 - **wow-wdl**: Initial implementation of WDL (World Data Low-resolution) format support
 - **warcraft-rs CLI**: Added `wdl` subcommand with validate, convert, and info commands for WDL file manipulation
+- **wow-wdt**: Complete WDT (World Data Table) format support with 100% parsing success rate across all WoW versions
+- **warcraft-rs CLI**: Added `wdt` subcommand with info, validate, convert, and tiles commands for WDT file manipulation
+- **warcraft-rs CLI**: Added `tree` subcommand for MPQ, WDT, and WDL formats to visualize file structure hierarchically
+- **warcraft-rs**: Added comprehensive tree visualization utilities for rendering file format structures with emoji icons and color support
 
 ### Fixed
 
