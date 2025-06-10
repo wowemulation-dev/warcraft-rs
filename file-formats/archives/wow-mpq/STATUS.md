@@ -155,12 +155,14 @@ The following features are not critical for typical use cases but represent area
 where StormLib has additional capabilities:
 
 ### Performance Features
+
 - Memory-mapped I/O (standard I/O works well for most cases)
 - Streaming APIs for very large files (full file loading is sufficient)
 - Async I/O support (synchronous operations are adequate)
 - Parallel compression (single-threaded compression is fast enough)
 
 ### Specialized Features
+
 - Protected MPQ support (copy-protected archives are rare)
 - Archive compacting (rebuild achieves same result)
 - Strong signature generation (requires unavailable private key)

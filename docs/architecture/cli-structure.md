@@ -9,7 +9,7 @@ Warcraft file formats through subcommands for each format type.
 
 Currently implemented:
 
-- ✅ **MPQ subcommands** - Full-featured MPQ archive operations with 98.75% StormLib compatibility
+- ✅ **MPQ subcommands** - Full-featured MPQ archive operations with 100% StormLib compatibility
   - `list` - List archive contents
   - `extract` - Extract files
   - `info` - Show archive information
@@ -17,10 +17,13 @@ Currently implemented:
   - `create` - Create new archives
   - `rebuild` - Rebuild archives with format upgrades
   - `compare` - Compare two archives
+- ✅ **WDL subcommands** - Low-res world operations
+  - `validate` - Validate WDL file format
+  - `info` - Show WDL file information
+  - `convert` - Convert between WDL versions
 
 Planned for future releases:
 
-- 🚧 **WDL subcommands** - Low-res world operations (crate exists, CLI pending)
 - 🚧 **DBC subcommands** - Database file operations
 - 🚧 **BLP subcommands** - Texture file operations
 - 🚧 **M2 subcommands** - Model file operations
@@ -41,13 +44,13 @@ warcraft-rs/
 │   ├── commands/          # Format-specific commands
 │   │   ├── mod.rs
 │   │   ├── mpq.rs         # MPQ subcommands (implemented)
+│   │   ├── wdl.rs         # WDL subcommands (implemented)
 │   │   ├── dbc.rs         # DBC subcommands (planned)
 │   │   ├── blp.rs         # BLP subcommands (planned)
 │   │   ├── m2.rs          # M2 subcommands (planned)
 │   │   ├── wmo.rs         # WMO subcommands (planned)
 │   │   ├── adt.rs         # ADT subcommands (planned)
-│   │   ├── wdt.rs         # WDT subcommands (planned)
-│   │   └── wdl.rs         # WDL subcommands (planned)
+│   │   └── wdt.rs         # WDT subcommands (planned)
 │   └── utils/             # Shared utilities
 │       ├── mod.rs
 │       ├── progress.rs    # Progress bars
@@ -68,6 +71,8 @@ Examples:
 
 ```bash
 warcraft-rs mpq list archive.mpq
+warcraft-rs wdl info terrain.wdl
+warcraft-rs wdl convert old.wdl new.wdl --to wotlk
 warcraft-rs dbc export items.dbc --format json
 warcraft-rs blp convert texture.blp --to png
 warcraft-rs m2 info model.m2

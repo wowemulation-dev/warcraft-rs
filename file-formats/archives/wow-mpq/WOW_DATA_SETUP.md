@@ -40,6 +40,7 @@ The library checks for these environment variables in order of preference:
 If environment variables aren't set, the library will search common installation paths:
 
 ### Linux/Unix
+
 ```
 ~/wow/[version]/Data
 ~/Downloads/wow/[version]/Data
@@ -48,6 +49,7 @@ If environment variables aren't set, the library will search common installation
 ```
 
 ### Windows
+
 ```
 C:\Program Files\World of Warcraft\[version]\Data
 C:\Program Files (x86)\World of Warcraft\[version]\Data
@@ -55,6 +57,7 @@ C:\Games\World of Warcraft\[version]\Data
 ```
 
 ### macOS
+
 ```
 /Applications/World of Warcraft/[version]/Data
 ~/Applications/World of Warcraft/[version]/Data
@@ -141,6 +144,7 @@ Examples will look for these MPQ files (in order of preference):
 ### No WoW Data Found
 
 If you see this error:
+
 ```
 No WoW game data found!
 ```
@@ -160,6 +164,7 @@ chmod -R +r /path/to/wow/Data
 ### Case Sensitivity
 
 On Linux/Unix systems, file names are case-sensitive. MPQ files might be named:
+
 - `patch.MPQ` (uppercase)
 - `patch.mpq` (lowercase)
 
@@ -169,15 +174,20 @@ The library checks for both variants.
 
 1. Extract or copy your WoW 1.12.1 client to `/home/user/wow/1.12.1/`
 2. Set the environment variable:
+
    ```bash
    echo 'export WOW_VANILLA_DATA="/home/user/wow/1.12.1/Data"' >> ~/.bashrc
    source ~/.bashrc
    ```
+
 3. Verify the setup:
+
    ```bash
    ls "$WOW_VANILLA_DATA"  # Should show MPQ files
    ```
+
 4. Run examples:
+
    ```bash
    cargo run --example patch_chain_demo
    ```

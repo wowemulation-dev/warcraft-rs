@@ -3,7 +3,8 @@
 Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft files.
 
 **Current Support Status:**
-- ✅ **MPQ Archives** - Fully implemented with 98.75% StormLib compatibility
+
+- ✅ **MPQ Archives** - Fully implemented with 100% StormLib compatibility
 - ✅ **WDL Format** - Low-resolution terrain heightmaps (basic implementation)
 - 🚧 **ADT Format** - Terrain data (planned)
 - 🚧 **WDT Format** - World tables (planned)
@@ -106,12 +107,12 @@ if let Ok(entries) = archive.list() {
             // Convert MPQ path to system path
             let system_path = mpq_path_to_system(&entry.name);
             let output_path = Path::new("output").join(&system_path);
-            
+
             // Create directories
             if let Some(parent) = output_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            
+
             // Write file
             fs::write(output_path, data)?;
             println!("Extracted: {}", entry.name);
@@ -155,6 +156,35 @@ println!("  Mipmap levels: {}", blp.mipmap_count());
 
 // Get RGBA data for use with graphics APIs
 let rgba_data = blp.to_rgba8(0)?; // mipmap level 0
+```
+
+## Working with World Data (WDL)
+
+### Basic WDL Operations
+
+```rust
+use wow_wdl::Wdl;
+
+// Load a WDL file
+let wdl = Wdl::from_file("World/Maps/Azeroth/Azeroth.wdl")?;
+
+// Get basic information
+println!("WDL version: {}", wdl.version());
+println!("Map size: {}x{} tiles", wdl.map_width(), wdl.map_height());
+
+// Access heightmap data
+for y in 0..64 {
+    for x in 0..64 {
+        if let Some(height_data) = wdl.get_tile(x, y) {
+            println!("Tile [{}, {}] has {} height values",
+                x, y, height_data.len());
+        }
+    }
+}
+
+// Export to heightmap image
+let heightmap = wdl.to_heightmap()?;
+heightmap.save("azeroth_heightmap.png")?;
 ```
 
 ## Loading Models (M2)

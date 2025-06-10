@@ -9,7 +9,7 @@ used by World of Warcraft and other Blizzard Entertainment games.
 
 ## Status
 
-✅ **Production Ready** - Feature-complete MPQ implementation with full StormLib bidirectional compatibility
+✅ **Production Ready** - Feature-complete MPQ implementation with 100% StormLib bidirectional compatibility
 
 ## Overview
 
@@ -28,7 +28,7 @@ comprehensive support for all format versions and features.
 - 🔐 **Full Cryptography** - File encryption/decryption, signature verification and generation
 - 🔗 **Patch Chain Support** - Complete World of Warcraft patch archive management
 - 📊 **Advanced Tables** - HET/BET tables for v3+ archives with optimal compression
-- 🤝 **StormLib Compatibility** - Full bidirectional compatibility with the reference implementation
+- 🤝 **StormLib Compatibility** - 100% bidirectional compatibility with the reference implementation
 - 🚀 **High Performance** - Efficient I/O, zero-copy where possible, comprehensive benchmarks
 
 ## Quick Start
@@ -166,15 +166,15 @@ cargo run --example patch_chain_demo
 
 ## Limitations
 
-While feature-complete for most use cases, the following StormLib features are not
-yet implemented:
+While achieving 100% StormLib compatibility for core functionality, the following
+performance and specialized features are not implemented:
 
-- **In-place Modification** - Cannot add/remove files from existing archives (use
-  rebuild instead)
-- **Memory-mapped I/O** - Standard I/O only
+- **Memory-mapped I/O** - Standard I/O only (sufficient for most use cases)
 - **Streaming API** - No chunked reading for very large files
-- **Protected Archives** - Copy-protected MPQ support
+- **Protected Archives** - Copy-protected MPQ support (rarely used)
 - **Strong Signature Generation** - Requires private key not publicly available
+- **Archive Compacting** - Use rebuild instead for optimization
+- **Async I/O** - Synchronous operations only
 
 See [STATUS.md](STATUS.md) for detailed feature compatibility information.
 

@@ -16,7 +16,7 @@ to support larger files and improved security.
   - v2: Extended format with large file support (The Burning Crusade)
   - v3: HET/BET tables support (Cataclysm beta)
   - v4: Enhanced security with MD5 hashes (Cataclysm)
-- **StormLib Compatibility**: 98.75% compatible with the reference implementation
+- **StormLib Compatibility**: 100% compatible with the reference implementation
 - **Blizzard Compatibility**: Full support for all official WoW archives (1.12.1 - 5.4.8)
 
 ## File Layout
@@ -505,8 +505,8 @@ fn find_file_het_bet_example(archive: &Archive, filename: &str) -> Option<FileIn
 fn het_bet_algorithm_overview(archive: &Archive, filename: &str) {
     // HET tables use Jenkins hashlittle2 algorithm
     let (het_file_hash, het_name_hash1) = het_hash(filename, 48); // 48-bit hash example
-    
-    // BET tables use Jenkins one-at-a-time algorithm  
+
+    // BET tables use Jenkins one-at-a-time algorithm
     let bet_name_hash = jenkins_hash(filename);
 
     // The HET table stores 8-bit name hashes for quick lookup

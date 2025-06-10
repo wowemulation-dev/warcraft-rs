@@ -3,6 +3,7 @@
 ## Overview
 
 This document outlines the design for adding archive modification capabilities to wow-mpq. The API should be:
+
 - Safe and idiomatic Rust
 - Efficient for both small and large operations
 - Compatible with existing read-only operations
@@ -32,7 +33,7 @@ pub struct MutableArchive {
 impl MutableArchive {
     /// Open an archive for modification
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self>;
-    
+
     /// Add a file from disk
     pub fn add_file<P: AsRef<Path>>(
         &mut self,
@@ -40,7 +41,7 @@ impl MutableArchive {
         archive_name: &str,
         options: AddFileOptions,
     ) -> Result<()>;
-    
+
     /// Add a file from memory
     pub fn add_file_data(
         &mut self,
@@ -48,19 +49,19 @@ impl MutableArchive {
         archive_name: &str,
         options: AddFileOptions,
     ) -> Result<()>;
-    
+
     /// Remove a file
     pub fn remove_file(&mut self, archive_name: &str) -> Result<()>;
-    
+
     /// Rename a file
     pub fn rename_file(&mut self, old_name: &str, new_name: &str) -> Result<()>;
-    
+
     /// Compact the archive (remove deleted file space)
     pub fn compact(&mut self) -> Result<()>;
-    
+
     /// Flush pending changes to disk
     pub fn flush(&mut self) -> Result<()>;
-    
+
     /// Get immutable access to the underlying archive
     pub fn archive(&self) -> &Archive;
 }
@@ -74,12 +75,13 @@ Extend the existing `Archive` type with modification methods that require mutabl
 impl Archive {
     /// Reopen the archive for writing
     pub fn make_writable(&mut self) -> Result<()>;
-    
+
     /// Add/remove/rename methods as above...
 }
 ```
 
 **Recommendation**: Option 1 is preferred because:
+
 - Clear separation between read-only and mutable operations
 - Prevents accidental modifications
 - Can optimize for different access patterns
@@ -108,17 +110,17 @@ pub struct AddFileOptions {
 
 impl AddFileOptions {
     pub fn new() -> Self { Default::default() }
-    
+
     pub fn compression(mut self, method: CompressionMethod) -> Self {
         self.compression = method;
         self
     }
-    
+
     pub fn encrypt(mut self) -> Self {
         self.encrypt = true;
         self
     }
-    
+
     // ... other builder methods
 }
 ```
@@ -188,16 +190,16 @@ pub enum Operation {
 pub enum ModificationError {
     #[error("Archive is read-only")]
     ReadOnly,
-    
+
     #[error("File already exists: {0}")]
     FileExists(String),
-    
+
     #[error("File not found: {0}")]
     FileNotFound(String),
-    
+
     #[error("No space available in hash table")]
     HashTableFull,
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }

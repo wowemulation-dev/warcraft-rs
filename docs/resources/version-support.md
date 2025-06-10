@@ -23,7 +23,7 @@ World of Warcraft client version compatibility and file format changes.
 | v3 | 4.x+ | HET/BET tables, increased hash table size | ✅ Full |
 | v4 | 5.x+ | 64-bit file support, MD5 checksums | ✅ Full |
 
-**Note:** wow-mpq has 98.75% bidirectional compatibility with StormLib (the reference C++ implementation) and full support for all official Blizzard WoW archives.
+**Note:** wow-mpq has 100% bidirectional compatibility with StormLib (the reference C++ implementation) and full support for all official Blizzard WoW archives.
 
 ### M2 Models
 

@@ -8,6 +8,7 @@ MPQ archives using `warcraft-rs`, including reading, extracting, and managing
 files within these archives.
 
 **Key Features:**
+
 - ✅ **100% StormLib Compatibility** - Full cross-implementation support
 - ✅ **Full Blizzard Archive Support** - Handles all official WoW archives (1.12.1 - 5.4.8)
 - ✅ **Bidirectional Compatibility** - Archives created by either implementation can be read by both

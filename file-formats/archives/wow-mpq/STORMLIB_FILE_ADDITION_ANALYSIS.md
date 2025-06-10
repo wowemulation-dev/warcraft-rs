@@ -33,6 +33,7 @@ Based on the C++ test program output, here's how StormLib handles file addition:
 ### Phase 1: Basic Addition (Current Task)
 
 1. **Find Free Space**:
+
    ```rust
    fn find_free_space(&self, required_size: u64) -> Result<u64> {
        // Option 1: Append to end of archive
@@ -41,6 +42,7 @@ Based on the C++ test program output, here's how StormLib handles file addition:
    ```
 
 2. **Update Hash Table**:
+
    ```rust
    fn add_to_hash_table(&mut self, filename: &str, block_index: u32) -> Result<usize> {
        // Calculate hash values
@@ -50,6 +52,7 @@ Based on the C++ test program output, here's how StormLib handles file addition:
    ```
 
 3. **Add Block Entry**:
+
    ```rust
    fn add_block_entry(&mut self, file_offset: u64, size: u32, flags: u32) -> Result<u32> {
        // Add new block table entry
@@ -58,6 +61,7 @@ Based on the C++ test program output, here's how StormLib handles file addition:
    ```
 
 4. **Write File Data**:
+
    ```rust
    fn write_file_data(&mut self, data: &[u8], offset: u64, options: &AddFileOptions) -> Result<u32> {
        // Compress if requested
@@ -83,7 +87,7 @@ Based on the C++ test program output, here's how StormLib handles file addition:
 
 ### Critical Details
 
-1. **Path Normalization**: 
+1. **Path Normalization**:
    - Convert `/` to `\` before hashing
    - Store with backslashes in listfile
 
@@ -105,6 +109,7 @@ Based on the C++ test program output, here's how StormLib handles file addition:
 ## Test-Driven Implementation
 
 The test shows:
+
 1. Add 4 files with SFileAddFileEx
 2. Add 1 file from memory with SFileCreateFile
 3. Files are accessible immediately after addition

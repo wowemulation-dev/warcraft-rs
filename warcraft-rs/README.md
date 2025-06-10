@@ -47,7 +47,7 @@ warcraft-rs <format> <command> [options]
 - `wmo` - WMO object operations (planned)
 - `adt` - ADT terrain operations (planned)
 - `wdt` - WDT map operations (planned)
-- `wdl` - WDL world operations (planned)
+- `wdl` - WDL world operations (implemented)
 
 ### MPQ Commands
 

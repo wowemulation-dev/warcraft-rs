@@ -56,8 +56,11 @@ cargo build --release
 # Run tests
 cargo test
 
-# Install CLI tool
-cargo install --path warcraft-rs
+# Install CLI tool with all features
+cargo install --path warcraft-rs --features full
+
+# Or install with specific features only
+cargo install --path warcraft-rs --features "mpq wdl"
 ```
 
 ### Development Setup
@@ -79,6 +82,34 @@ cargo check --all-features --all-targets
 cargo clippy --all-targets --all-features
 cargo test
 ```
+
+## Feature Flags
+
+The `warcraft-rs` CLI supports feature flags to include only the formats you need:
+
+```bash
+# Default build (MPQ only)
+cargo build --release
+
+# Build with all implemented features
+cargo build --release --features full
+
+# Build with specific features
+cargo build --release --features "mpq wdl"
+cargo run --features wdl -- wdl info terrain.wdl
+```
+
+Available features:
+
+- `mpq` - MPQ archive support (enabled by default)
+- `wdl` - WDL low-resolution terrain support
+- `dbc` - DBC database support (planned)
+- `blp` - BLP texture support (planned)
+- `m2` - M2 model support (planned)
+- `wmo` - WMO object support (planned)
+- `adt` - ADT terrain support (planned)
+- `wdt` - WDT map support (planned)
+- `full` - All available features
 
 ## Platform-Specific Notes
 
@@ -135,12 +166,12 @@ use wow_mpq::Archive;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("wow-mpq installed successfully!");
-    
+
     // Test opening an MPQ if you have one
     if let Ok(mut archive) = Archive::open("path/to/archive.mpq") {
         println!("Successfully opened MPQ archive!");
     }
-    
+
     Ok(())
 }
 ```

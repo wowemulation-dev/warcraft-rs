@@ -47,6 +47,11 @@ warcraft-rs mpq info archive.mpq
 warcraft-rs mpq rebuild original.mpq rebuilt.mpq --upgrade-to v4
 warcraft-rs mpq compare original.mpq rebuilt.mpq --content-check
 
+# WDL terrain data manipulation
+warcraft-rs wdl validate terrain.wdl
+warcraft-rs wdl info terrain.wdl
+warcraft-rs wdl convert terrain.wdl terrain_new.wdl --to wotlk
+
 # Other tools (when implemented)
 warcraft-rs dbc list items.dbc
 warcraft-rs blp convert texture.blp --format png

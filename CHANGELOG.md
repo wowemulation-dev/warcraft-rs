@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - **wow-mpq**: Complete archive modification API with `MutableArchive` for adding, removing, and renaming files
 - **wow-mpq**: Automatic listfile and attributes updates during archive modifications
 - **wow-mpq**: Full StormLib bidirectional compatibility - archives created/modified by wow-mpq are readable by StormLib and vice versa
@@ -24,8 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-mpq**: Added ADPCM audio compression support with overflow protection
 - **warcraft-rs CLI**: Added path separator conversion in `mpq extract` subcommand for proper cross-platform file extraction
 - **wow-wdl**: Initial implementation of WDL (World Data Low-resolution) format support
+- **warcraft-rs CLI**: Added `wdl` subcommand with validate, convert, and info commands for WDL file manipulation
 
 ### Fixed
+
 - **wow-mpq**: Fixed critical sector reading bug that was truncating large files in archives
 - **wow-mpq**: Fixed archive modification to properly update both listfile and attributes
 - **wow-mpq**: Fixed sector offset validation that was causing false positive truncation errors
@@ -37,9 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-mpq**: Fixed test expecting wrong file count (now correctly includes attributes file)
 
 ### Changed
+
 - **wow-mpq**: Attributes files now use StormLib-compatible 149-byte format instead of 24-byte format
-- **Documentation**: Comprehensively updated all documentation to reflect 98.75% StormLib compatibility
+- **Documentation**: Comprehensively updated all documentation to reflect 100% StormLib compatibility
 - **Documentation**: Added notes about Blizzard archive compatibility and common warnings
 
 ### Removed
+
 - **wow-mpq**: Removed redundant `create_het_table()` method that was replaced by `create_het_table_with_hash_table()`

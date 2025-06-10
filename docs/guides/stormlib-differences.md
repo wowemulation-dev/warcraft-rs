@@ -8,7 +8,7 @@ helps users migrate from StormLib or implement missing features.
 
 StormLib has evolved over 20+ years to handle various edge cases, game-specific
 quirks, and optimizations. Our wow-mpq implementation provides a clean, safe Rust
-alternative focusing on core MPQ functionality while achieving **98.75% compatibility**
+alternative focusing on core MPQ functionality while achieving **100% compatibility**
 with StormLib.
 
 ### Key Achievements
@@ -399,6 +399,7 @@ let archive = Archive::open("Data/patch.mpq")?;
 ### Tested WoW Versions
 
 Full compatibility confirmed with official archives from:
+
 - WoW 1.12.1 (Vanilla)
 - WoW 2.4.3 (The Burning Crusade)
 - WoW 3.3.5a (Wrath of the Lich King)

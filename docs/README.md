@@ -14,7 +14,7 @@ them.
 
 ### Archives
 
-- [MPQ Format](formats/archives/mpq.md) - Blizzard's archive format (98.75% StormLib compatible)
+- [MPQ Format](formats/archives/mpq.md) - Blizzard's archive format (100% StormLib compatible)
 
 ### World Data
 

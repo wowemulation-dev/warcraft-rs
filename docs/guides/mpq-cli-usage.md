@@ -4,7 +4,8 @@ The `warcraft-rs` command-line tool provides MPQ archive operations through the
 `mpq` subcommand with excellent compatibility for all World of Warcraft MPQ archives.
 
 **Key Features:**
-- ✅ **98.75% StormLib Compatibility** - Works with archives from both implementations
+
+- ✅ **100% StormLib Compatibility** - Works with archives from both implementations
 - ✅ **Full Blizzard Support** - Handles all official WoW archives (1.12.1 - 5.4.8)
 - ✅ **Automatic Path Conversion** - Cross-platform path handling
 - ✅ **Archive Rebuild & Compare** - Advanced archive management capabilities
@@ -328,6 +329,88 @@ for archive in *.mpq; do
     echo "Upgrading $archive..."
     warcraft-rs mpq rebuild "$archive" "v4_${archive}" --upgrade-to v4
     warcraft-rs mpq compare "$archive" "v4_${archive}" --metadata-only
+done
+```
+
+## WDL Subcommand Usage
+
+> **Note**: WDL support requires enabling the WDL feature when building or running the CLI:
+>
+> ```bash
+> # Build with WDL support
+> cargo build --features wdl
+> cargo build --features full  # Includes all format features
+>
+> # Run with WDL support
+> cargo run --features wdl -- wdl validate Azeroth.wdl
+> cargo run --features full -- wdl validate Azeroth.wdl
+> ```
+
+The `warcraft-rs` tool also provides WDL (World of Warcraft Low-resolution terrain) file operations:
+
+### WDL Validation
+
+```bash
+# Validate WDL file structure
+warcraft-rs wdl validate Azeroth.wdl
+
+# Validate with verbose output
+warcraft-rs wdl validate Azeroth.wdl --verbose
+
+# Validate multiple files
+warcraft-rs wdl validate *.wdl
+```
+
+### WDL Information
+
+```bash
+# Show basic WDL information
+warcraft-rs wdl info Azeroth.wdl
+
+# Detailed information with tile data
+warcraft-rs wdl info Azeroth.wdl --detailed
+
+# Show version and format details
+warcraft-rs wdl info Azeroth.wdl --show-version
+```
+
+### WDL Conversion
+
+```bash
+# Convert WDL to heightmap image
+warcraft-rs wdl convert Azeroth.wdl --output azeroth_heightmap.png
+
+# Convert to grayscale heightmap
+warcraft-rs wdl convert Azeroth.wdl --format grayscale --output heightmap.png
+
+# Convert to colorized heightmap
+warcraft-rs wdl convert Azeroth.wdl --format color --output colorized.png
+
+# Specify custom output directory
+warcraft-rs wdl convert Azeroth.wdl --output-dir ./heightmaps/
+```
+
+### WDL Batch Operations
+
+```bash
+# Convert all WDL files in a directory
+for wdl in *.wdl; do
+    echo "Converting $wdl..."
+    warcraft-rs wdl convert "$wdl" --output "${wdl%.wdl}_heightmap.png"
+done
+
+# Validate all WDL files and generate report
+echo "WDL Validation Report" > wdl_report.txt
+for wdl in *.wdl; do
+    echo "=== $wdl ===" >> wdl_report.txt
+    warcraft-rs wdl validate "$wdl" >> wdl_report.txt 2>&1
+    echo >> wdl_report.txt
+done
+
+# Extract WDL files from MPQ and convert
+warcraft-rs mpq extract world.mpq --filter "*.wdl" --output ./extracted_wdl/
+for wdl in ./extracted_wdl/*.wdl; do
+    warcraft-rs wdl convert "$wdl" --output "${wdl%.wdl}_heightmap.png"
 done
 ```
 
