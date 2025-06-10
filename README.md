@@ -16,14 +16,14 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 
 ### 📦 Format Support
 
-- **MPQ Archives** - Read, write, rebuild and compare MPQ archive files (v1-v4)
-  - ✅ **98.75% StormLib Compatibility** - Excellent cross-implementation support
+- **MPQ Archives** - Read, write, modify, rebuild and compare MPQ archive files (v1-v4)
+  - ✅ **Full StormLib Compatibility** - 100% bidirectional compatibility with reference implementation
+  - ✅ **100% WoW Version Support** - Tested with all versions from 1.12.1 through 5.4.8
+  - ✏️ **Archive Modification** - Add, remove, and rename files with automatic listfile/attributes updates
   - 🔄 **Archive Rebuilding** - Recreate archives 1:1 with format upgrades and optimization
-  - 🔍 **Archive Comparison** - Compare archives for differences in metadata, files,
-    and content
-  - 🔐 **Digital Signatures** - Generate and verify archive signatures for
-    integrity protection
-  - 🎮 **Official WoW Archive Support** - Handles all Blizzard-specific quirks
+  - 🔍 **Archive Comparison** - Compare archives for differences in metadata, files, and content
+  - 🔐 **Digital Signatures** - Generate and verify archive signatures for integrity protection
+  - 🎮 **Official WoW Archive Support** - Handles all Blizzard-specific quirks and format variations
 - **DBC Database** - Parse client database files
 - **BLP Textures** - Handle texture files
 - **M2 Models** - Work with character and creature models
@@ -58,7 +58,7 @@ warcraft-rs m2 info model.m2
 All formats can also be used as Rust libraries:
 
 ```rust
-use wow_mpq::{Archive, ArchiveBuilder};
+use wow_mpq::{Archive, ArchiveBuilder, MutableArchive, AddFileOptions};
 
 // Open and read from MPQ
 let mut archive = Archive::open("patch.mpq")?;
@@ -68,6 +68,13 @@ let data = archive.read_file("path/to/file.txt")?;
 ArchiveBuilder::new()
     .add_file_data(b"Hello, WoW!".to_vec(), "greeting.txt")
     .build("output.mpq")?;
+
+// Modify existing MPQ
+let mut mutable = MutableArchive::open("existing.mpq")?;
+mutable.add_file_data(b"New content".as_ref(), "new_file.txt", AddFileOptions::default())?;
+mutable.remove_file("old_file.txt")?;
+mutable.rename_file("file.txt", "renamed.txt")?;
+mutable.flush()?; // Save changes
 ```
 
 ## Installation

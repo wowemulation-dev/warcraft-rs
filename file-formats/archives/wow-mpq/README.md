@@ -9,7 +9,7 @@ used by World of Warcraft and other Blizzard Entertainment games.
 
 ## Status
 
-✅ **Production Ready** - Feature-complete MPQ implementation with ~98.75% StormLib compatibility
+✅ **Production Ready** - Feature-complete MPQ implementation with full StormLib bidirectional compatibility
 
 ## Overview
 
@@ -20,23 +20,21 @@ comprehensive support for all format versions and features.
 
 ## Features
 
-- 📖 **Complete Archive Reading** - All MPQ versions (v1-v4) with 98% feature coverage
-- 🔨 **Archive Creation** - Build new archives with full control over format and
-  compression
+- 📖 **Complete Archive Reading** - All MPQ versions (v1-v4) with full feature coverage
+- 🔨 **Archive Creation** - Build new archives with full control over format and compression
+- ✏️ **Archive Modification** - Add, remove, and rename files with automatic listfile/attributes updates
 - 🔧 **Archive Rebuilding** - Comprehensive rebuild with format upgrades and optimization
-- 🗜️ **All Compression Algorithms** - Zlib, BZip2, LZMA, Sparse, ADPCM, PKWare,
-  Huffman
-- 🔐 **Full Cryptography** - File encryption/decryption, signature verification
-  and generation
+- 🗜️ **All Compression Algorithms** - Zlib, BZip2, LZMA, Sparse, ADPCM, PKWare, Huffman
+- 🔐 **Full Cryptography** - File encryption/decryption, signature verification and generation
 - 🔗 **Patch Chain Support** - Complete World of Warcraft patch archive management
 - 📊 **Advanced Tables** - HET/BET tables for v3+ archives with optimal compression
-- 🚀 **High Performance** - Efficient I/O, zero-copy where possible, comprehensive
-  benchmarks
+- 🤝 **StormLib Compatibility** - Full bidirectional compatibility with the reference implementation
+- 🚀 **High Performance** - Efficient I/O, zero-copy where possible, comprehensive benchmarks
 
 ## Quick Start
 
 ```rust
-use wow_mpq::{Archive, ArchiveBuilder};
+use wow_mpq::{Archive, ArchiveBuilder, MutableArchive, AddFileOptions};
 
 // Read an existing archive
 let mut archive = Archive::open("Data/common.MPQ")?;
@@ -53,8 +51,14 @@ let data = archive.read_file("Interface\\FrameXML\\GlobalStrings.lua")?;
 ArchiveBuilder::new()
     .add_file_data(b"Hello, Azeroth!".to_vec(), "readme.txt")
     .version(wow_mpq::FormatVersion::V2)
-    .default_compression(wow_mpq::compression::flags::ZLIB)
     .build("my_addon.mpq")?;
+
+// Modify an existing archive
+let mut mutable = MutableArchive::open("my_addon.mpq")?;
+mutable.add_file_data(b"Updated content".as_ref(), "changelog.txt", AddFileOptions::default())?;
+mutable.remove_file("old_file.txt")?;
+mutable.rename_file("readme.txt", "README.txt")?;
+mutable.flush()?; // Save all changes
 ```
 
 ## Supported Versions

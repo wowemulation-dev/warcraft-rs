@@ -183,7 +183,7 @@ impl ArchiveBuilder {
     pub fn new() -> Self {
         Self {
             version: FormatVersion::V1,
-            block_size: 3, // Default 4KB sectors
+            block_size: 5, // Default 16KB sectors for StormLib compatibility
             pending_files: Vec::new(),
             listfile_option: ListfileOption::Generate,
             attributes_option: AttributesOption::None,
@@ -1623,8 +1623,8 @@ impl ArchiveBuilder {
 
                 // V3 fields
                 writer.write_u64_le(params.archive_size)?; // archive_size_64
-                writer.write_u64_le(params.bet_table_pos.unwrap_or(0))?; // bet_table_pos
                 writer.write_u64_le(params.het_table_pos.unwrap_or(0))?; // het_table_pos
+                writer.write_u64_le(params.bet_table_pos.unwrap_or(0))?; // bet_table_pos
             }
             FormatVersion::V4 => {
                 // V2 fields
@@ -1634,8 +1634,8 @@ impl ArchiveBuilder {
 
                 // V3 fields
                 writer.write_u64_le(params.archive_size)?; // archive_size_64
-                writer.write_u64_le(params.bet_table_pos.unwrap_or(0))?; // bet_table_pos
                 writer.write_u64_le(params.het_table_pos.unwrap_or(0))?; // het_table_pos
+                writer.write_u64_le(params.bet_table_pos.unwrap_or(0))?; // bet_table_pos
 
                 // V4 fields
                 if let Some(v4_data) = &params.v4_data {

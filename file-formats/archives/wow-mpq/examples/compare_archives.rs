@@ -25,7 +25,7 @@ fn hexdump(data: &[u8], offset: usize, max_len: usize) {
         for j in 0..16 {
             if i + j < len {
                 let c = data[i + j];
-                if c >= 0x20 && c < 0x7F {
+                if (0x20..0x7F).contains(&c) {
                     print!("{}", c as char);
                 } else {
                     print!(".");

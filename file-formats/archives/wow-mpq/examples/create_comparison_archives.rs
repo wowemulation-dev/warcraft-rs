@@ -13,15 +13,15 @@ fn generate_test_files() -> Vec<(&'static str, Vec<u8>)> {
 
     // Binary file with pattern
     let mut binary_data = vec![0u8; 1024];
-    for i in 0..binary_data.len() {
-        binary_data[i] = (i & 0xFF) as u8;
+    for (i, byte) in binary_data.iter_mut().enumerate() {
+        *byte = (i & 0xFF) as u8;
     }
     files.push(("data/binary.dat", binary_data));
 
     // Larger file (100KB)
     let mut large_data = vec![0u8; 100 * 1024];
-    for i in 0..large_data.len() {
-        large_data[i] = ((i * 7) & 0xFF) as u8;
+    for (i, byte) in large_data.iter_mut().enumerate() {
+        *byte = ((i * 7) & 0xFF) as u8;
     }
     files.push(("assets/large.bin", large_data));
 

@@ -1,6 +1,6 @@
 //! Demonstrates patch chain functionality for handling multiple MPQ archives
 
-use std::path::Path;
+use wow_mpq::test_utils::{WowVersion, find_wow_data, print_setup_instructions};
 use wow_mpq::{PatchChain, Result};
 
 fn main() -> Result<()> {
@@ -10,13 +10,19 @@ fn main() -> Result<()> {
     println!("MPQ Patch Chain Demo");
     println!("====================");
 
-    // Check if we have WoW data available
-    let wow_path = Path::new("/home/danielsreichenbach/Downloads/wow/1.12.1/Data");
-    if !wow_path.exists() {
-        println!("WoW 1.12.1 data not found at: {}", wow_path.display());
-        println!("This demo requires actual WoW MPQ files to demonstrate patch chains.");
-        return Ok(());
-    }
+    // Find WoW data directory using environment variables or common paths
+    let wow_path = match find_wow_data(WowVersion::Vanilla) {
+        Some(path) => {
+            println!("Found WoW 1.12.1 data at: {}", path.display());
+            path
+        }
+        None => {
+            println!("WoW 1.12.1 data not found!");
+            println!();
+            print_setup_instructions();
+            return Ok(());
+        }
+    };
 
     // Create a patch chain
     let mut chain = PatchChain::new();

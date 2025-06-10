@@ -8,7 +8,7 @@ MPQ archives using `warcraft-rs`, including reading, extracting, and managing
 files within these archives.
 
 **Key Features:**
-- ✅ **98.75% StormLib Compatibility** - Excellent cross-implementation support
+- ✅ **100% StormLib Compatibility** - Full cross-implementation support
 - ✅ **Full Blizzard Archive Support** - Handles all official WoW archives (1.12.1 - 5.4.8)
 - ✅ **Bidirectional Compatibility** - Archives created by either implementation can be read by both
 - ✅ **Automatic Path Conversion** - Forward slashes automatically converted to backslashes
@@ -52,7 +52,7 @@ use wow_mpq::{Archive, OpenOptions};
 
 fn open_mpq_archive() -> Result<Archive, Box<dyn std::error::Error>> {
     // Open an MPQ archive for reading
-    let archive = Archive::open("Data/common.MPQ")?;
+    let mut archive = Archive::open("Data/common.MPQ")?;
 
     // Open with specific options
     let options = OpenOptions::new()
@@ -68,7 +68,7 @@ fn open_mpq_archive() -> Result<Archive, Box<dyn std::error::Error>> {
 ```rust
 use wow_mpq::Archive;
 
-fn list_archive_contents(archive: &Archive) -> Result<(), Box<dyn std::error::Error>> {
+fn list_archive_contents(archive: &mut Archive) -> Result<(), Box<dyn std::error::Error>> {
     // List files (requires listfile to be present)
     match archive.list() {
         Ok(entries) => {
@@ -89,8 +89,7 @@ fn list_archive_contents(archive: &Archive) -> Result<(), Box<dyn std::error::Er
         }
         Err(_) => {
             println!("No listfile found in archive");
-            // Note: list_all() method doesn't exist in the actual API
-            // You need to know filenames or have a listfile
+            // You'll need to know exact filenames to extract without a listfile
         }
     }
 
@@ -105,7 +104,7 @@ use wow_mpq::Archive;
 use std::fs::File;
 use std::io::Write;
 
-fn extract_file(archive: &Archive, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn extract_file(archive: &mut Archive, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Extract a single file
     let data = archive.read_file(filename)?;
 
@@ -118,7 +117,7 @@ fn extract_file(archive: &Archive, filename: &str) -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-fn extract_all_files(archive: &Archive, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn extract_all_files(archive: &mut Archive, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
     use std::path::Path;
 
@@ -185,7 +184,7 @@ fn work_with_patch_chain() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // List all unique files across all archives
-    let all_files = chain.list_all_files()?;
+    let all_files = chain.list()?;
     println!("Total unique files: {}", all_files.len());
 
     // Get information about all archives in the chain
@@ -695,9 +694,9 @@ impl CachedArchive {
 **Solutions**:
 
 1. Check the exact filename (case-sensitive)
-2. Use `find_file()` to check if file exists
+2. Check if archive has a listfile (use `archive.list()`)
 3. Check if using correct patch archive
-4. Try using `list_all()` if no listfile is available
+4. For archives without listfiles, you need to know exact filenames
 
 ```rust
 // Debug file lookup
@@ -1025,7 +1024,7 @@ use wow_mpq::Archive;
 
 fn efficient_file_search(archive: &Archive, pattern: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     // Get file list once and reuse it
-    let entries = archive.list().or_else(|_| archive.list_all())?;
+    let entries = archive.list()?;
 
     let matches: Vec<String> = entries
         .into_iter()
@@ -1074,12 +1073,12 @@ use wow_mpq::Archive;
 
 fn smart_extract(archive: &Archive, filename: &str) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>> {
     // Check if file exists first (cheaper than attempting extraction)
-    match archive.find_file(filename) {
-        Ok(file_info) => {
-            println!("File {} exists ({} bytes), extracting...", filename, file_info.uncompressed_size);
+    match archive.find_file(filename)? {
+        Some(file_info) => {
+            println!("File {} exists ({} bytes), extracting...", filename, file_info.file_size);
             Ok(Some(archive.read_file(filename)?))
         }
-        Err(_) => {
+        None => {
             println!("File {} not found", filename);
             Ok(None)
         }

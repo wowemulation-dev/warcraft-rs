@@ -214,6 +214,16 @@ fn decompress_internal(input: &[u8], output_size: usize, channel_count: usize) -
     let bit_shift = input[input_pos];
     input_pos += 1;
 
+    // Validate bit_shift to prevent overflow
+    // In practice, bit_shift values should be small (typically 0-8)
+    // We'll cap at 31 to prevent shift overflow on i32
+    if bit_shift > 31 {
+        return Err(Error::compression(format!(
+            "Invalid ADPCM bit shift value: {}. Maximum allowed is 31",
+            bit_shift
+        )));
+    }
+
     // Initialize state for each channel
     let mut predicted_samples = vec![0i16; channel_count];
     let mut step_indexes = vec![INITIAL_ADPCM_STEP_INDEX; channel_count];
@@ -261,11 +271,17 @@ fn decompress_internal(input: &[u8], output_size: usize, channel_count: usize) -
         } else {
             // Decode the sample
             let step_size = STEP_SIZE_TABLE[step_indexes[channel_index]];
+            // Safely calculate the shifted step size
+            let shifted_step_size = if bit_shift < 32 {
+                step_size >> bit_shift as i32
+            } else {
+                0 // If shift is too large, result would be 0 anyway
+            };
             predicted_samples[channel_index] = decode_sample(
                 predicted_samples[channel_index] as i32,
                 encoded_sample,
                 step_size,
-                step_size >> bit_shift as i32,
+                shifted_step_size,
             ) as i16;
 
             write_sample(&mut output, predicted_samples[channel_index]);

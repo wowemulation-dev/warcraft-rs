@@ -240,11 +240,12 @@ fn test_v4_large_file_support() {
                 let end = (offset + 32).min(data.len());
                 println!("Data around first corruption (offset {}):", offset);
                 print!("  ");
-                for j in start..end {
-                    if j == offset {
-                        print!("[{:02X}] ", data[j]);
+                for (j, &byte) in data[start..end].iter().enumerate() {
+                    let idx = start + j;
+                    if idx == offset {
+                        print!("[{:02X}] ", byte);
                     } else {
-                        print!("{:02X} ", data[j]);
+                        print!("{:02X} ", byte);
                     }
                 }
                 println!();

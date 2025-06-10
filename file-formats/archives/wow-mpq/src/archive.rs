@@ -1812,6 +1812,10 @@ impl Archive {
                     Ok(data)
                 }
             } else {
+                // For encrypted files, trim to original file size to remove padding
+                if file_info.is_encrypted() && data.len() > actual_file_size as usize {
+                    data.truncate(actual_file_size as usize);
+                }
                 Ok(data)
             }
         } else {
@@ -1926,26 +1930,6 @@ impl Archive {
             }
 
             let sector_size_compressed = (sector_end - sector_start) as usize;
-
-            // Validate sector bounds
-            if sector_end > file_info.compressed_size {
-                log::warn!(
-                    "Sector {} end offset {} exceeds compressed size {}. Truncating.",
-                    i,
-                    sector_end,
-                    file_info.compressed_size
-                );
-                // Try to read what we can
-                let actual_end = file_info.compressed_size.min(sector_end);
-                let sector_size_compressed = (actual_end - sector_start) as usize;
-                if sector_size_compressed == 0 {
-                    // No data available for this sector
-                    let remaining = file_info.file_size as usize - decompressed_data.len();
-                    let expected_size = remaining.min(sector_size);
-                    decompressed_data.extend(vec![0u8; expected_size]);
-                    continue;
-                }
-            }
 
             // Calculate expected decompressed size for this sector
             let remaining = file_info.file_size as usize - decompressed_data.len();
@@ -2343,7 +2327,7 @@ impl Archive {
 }
 
 /// Decrypt file data in-place
-fn decrypt_file_data(data: &mut [u8], key: u32) {
+pub fn decrypt_file_data(data: &mut [u8], key: u32) {
     if data.is_empty() || key == 0 {
         return;
     }

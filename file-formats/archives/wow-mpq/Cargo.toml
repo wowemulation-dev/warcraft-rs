@@ -76,6 +76,9 @@ harness = false
 [features]
 default = []
 
+# Utilities for testing and examples with WoW game data
+test-utils = []
+
 # Enable all features for docs.rs
 [package.metadata.docs.rs]
 all-features = true

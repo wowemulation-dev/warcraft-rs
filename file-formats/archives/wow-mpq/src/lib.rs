@@ -81,13 +81,14 @@ pub mod crypto;
 pub mod error;
 pub mod header;
 pub mod io;
+pub mod modification;
 pub mod patch_chain;
 pub mod path;
 pub mod rebuild;
 pub mod special_files;
 pub mod tables;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils", doc))]
 pub mod test_utils;
 
 // Re-export commonly used types
@@ -102,6 +103,7 @@ pub use compare::{
 };
 pub use error::{Error, Result};
 pub use header::{FormatVersion, MpqHeader};
+pub use modification::{AddFileOptions, MutableArchive};
 pub use patch_chain::{ChainInfo, PatchChain};
 pub use rebuild::{RebuildOptions, RebuildSummary, rebuild_archive};
 pub use tables::{BetFileInfo, BetTable, BlockEntry, BlockTable, HashEntry, HashTable, HetTable};
@@ -113,6 +115,9 @@ pub use crypto::{
 
 // Re-export compression for testing
 pub use compression::{compress, decompress};
+
+// Re-export decryption for testing
+pub use archive::decrypt_file_data;
 
 /// MPQ signature constants
 pub mod signatures {

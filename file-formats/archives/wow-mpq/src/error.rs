@@ -25,6 +25,10 @@ pub enum Error {
     #[error("File not found: {0}")]
     FileNotFound(String),
 
+    /// File already exists in archive
+    #[error("File already exists: {0}")]
+    FileExists(String),
+
     /// Hash table error
     #[error("Hash table error: {0}")]
     HashTable(String),
@@ -100,6 +104,10 @@ pub enum Error {
         /// Table name
         table: String,
     },
+
+    /// Feature not yet implemented
+    #[error("Not implemented: {0}")]
+    NotImplemented(&'static str),
 }
 
 impl Error {
