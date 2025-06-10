@@ -5,11 +5,11 @@ use wow_mpq::Archive;
 fn test_file(archive_path: &str, file_name: &str) {
     println!("\n=== Testing: {} ===", file_name);
     println!("Archive: {}", archive_path);
-    
+
     match Archive::open(archive_path) {
         Ok(mut archive) => {
             println!("✓ Archive opened successfully");
-            
+
             // Check if file exists
             match archive.list() {
                 Ok(files) => {
@@ -26,16 +26,16 @@ fn test_file(archive_path: &str, file_name: &str) {
                     return;
                 }
             }
-            
+
             // Try to read the file
             match archive.read_file(file_name) {
                 Ok(data) => {
                     println!("✓ Successfully read {} bytes", data.len());
-                    
+
                     // Calculate simple checksum
                     let checksum: u32 = data.iter().map(|&b| b as u32).sum();
                     println!("Simple checksum: 0x{:08X}", checksum);
-                    
+
                     // Show first few bytes
                     print!("First 16 bytes: ");
                     for i in 0..16.min(data.len()) {
@@ -45,7 +45,7 @@ fn test_file(archive_path: &str, file_name: &str) {
                 }
                 Err(e) => {
                     println!("❌ Failed to read file: {}", e);
-                    
+
                     // Try to get more details about the error
                     match e {
                         wow_mpq::Error::Compression(msg) => {
@@ -70,22 +70,22 @@ fn test_file(archive_path: &str, file_name: &str) {
 fn main() {
     println!("wow-mpq Specific File Test");
     println!("==========================");
-    
+
     // Test the two files that showed errors
     test_file(
         "/home/danielsreichenbach/Downloads/wow/1.12.1/Data/interface.MPQ",
-        "Interface\\Glues\\Credits\\TrollBanner4.blp"
+        "Interface\\Glues\\Credits\\TrollBanner4.blp",
     );
-    
+
     test_file(
         "/home/danielsreichenbach/Downloads/wow/2.4.3/Data/common.MPQ",
-        "Item\\TextureComponents\\LegLowerTexture\\Leather_Horde_A_01Blue_Pant_LL_M.blp"
+        "Item\\TextureComponents\\LegLowerTexture\\Leather_Horde_A_01Blue_Pant_LL_M.blp",
     );
-    
+
     // Test a known good file for comparison
     println!("\n=== Testing a known good file for comparison ===");
     test_file(
         "/home/danielsreichenbach/Downloads/wow/1.12.1/Data/fonts.MPQ",
-        "Fonts\\MORPHEUS.TTF"
+        "Fonts\\MORPHEUS.TTF",
     );
 }
