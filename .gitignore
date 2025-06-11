@@ -20,5 +20,8 @@ Thumbs.db
 
 # Test data
 *.mpq
-*.MPQ
+*.adt
 *.wdl
+*.wdt
+*.m2
+*.wmo

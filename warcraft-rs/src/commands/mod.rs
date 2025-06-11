@@ -6,6 +6,9 @@ pub mod mpq;
 #[cfg(feature = "dbc")]
 pub mod dbc;
 
+#[cfg(feature = "dbc")]
+pub mod dbd;
+
 #[cfg(feature = "blp")]
 pub mod blp;
 

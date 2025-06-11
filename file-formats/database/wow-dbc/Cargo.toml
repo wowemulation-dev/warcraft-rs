@@ -8,15 +8,58 @@ repository.workspace = true
 rust-version.workspace = true
 homepage.workspace = true
 documentation = "https://docs.rs/wow-dbc"
-description = "Parser for World of Warcraft DBC (client database) files"
+description = "A parser for World of Warcraft DBC files"
 readme = "README.md"
 keywords = ["wow", "warcraft", "dbc", "database", "gamedev"]
 categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 thiserror = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+serde_yaml_ng = { workspace = true, optional = true }
+binrw = { workspace = true }                          # Binary reading/writing
+log = { workspace = true }
+clap = { workspace = true, optional = true }
+csv = { workspace = true, optional = true }
+memmap2 = { workspace = true, optional = true }
+rayon = { workspace = true, optional = true }
+env_logger = { workspace = true, optional = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }
+test-case = { workspace = true }
 
 [features]
 default = []
+serde = ["dep:serde", "dep:serde_json"]
+yaml = ["dep:serde_yaml_ng", "serde"]
+csv_export = ["dep:csv", "serde"]
+cli = ["dep:clap", "yaml", "serde", "csv_export", "dep:env_logger"]
+mmap = ["dep:memmap2"]
+parallel = ["dep:rayon"]
+
+[[bench]]
+name = "parse_benchmark"
+harness = false
+
+[[bench]]
+name = "performance_benchmark"
+harness = false
+
+[[bin]]
+name = "dbc_tool"
+path = "src/bin/dbc_tool.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "dbc_schema_discovery_tool"
+path = "src/bin/dbc_schema_discovery_tool.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "dbd_to_yaml"
+path = "src/bin/dbd_to_yaml.rs"
+required-features = ["cli"]

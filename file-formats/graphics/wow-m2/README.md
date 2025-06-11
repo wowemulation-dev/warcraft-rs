@@ -1,41 +1,121 @@
 # wow-m2
 
-[![Crates.io](https://img.shields.io/crates/v/wow-m2.svg)](https://crates.io/crates/wow-m2)
-[![Documentation](https://docs.rs/wow-m2/badge.svg)](https://docs.rs/wow-m2)
-[![License](https://img.shields.io/crates/l/wow-m2.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
-
-Parser for World of Warcraft M2 (model) files.
-
-## Status
-
-🚧 **Under Construction** - This crate is not yet implemented.
+A Rust library for parsing, validating, and converting World of Warcraft M2 model files.
 
 ## Overview
 
-M2 files contain 3D models for characters, creatures, and doodads in World of Warcraft.
-They include geometry, animations, textures, and skeletal data.
+`wow-m2` provides comprehensive support for M2 model files across all World of Warcraft expansions from Classic (1.12.1) through The War Within (11.x). The library handles:
 
-Related files:
+- **M2 Models** (`.m2`/`.mdx`) - 3D character, creature, and object models
+- **Skin Files** (`.skin`) - Level-of-detail and submesh information
+- **Animation Files** (`.anim`) - External animation sequences
+- **BLP Textures** (`.blp`) - Texture files used by models
 
-- `.anim` - External animation sequences
-- `.skin` - Level of detail and mesh data
-- `.phys` - Physics data
-- `.bone` - Bone/skeleton data
-- `.skel` - Additional skeletal information
+## Features
+
+- ✅ Parse and validate M2 models from all WoW versions
+- ✅ Convert models between different game versions
+- ✅ Support for all chunk types (bones, animations, textures, etc.)
+- ✅ Comprehensive error handling with detailed context
+- ✅ Zero-copy parsing where possible for performance
+- ✅ Optional serde support for serialization
+
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+wow-m2 = "0.1"
+```
+
+### Basic Example
+
+```rust
+use wow_m2::{M2Model, M2Version, M2Converter};
+
+// Load a model
+let model = M2Model::load("path/to/model.m2")?;
+
+// Print basic information
+println!("Model version: {:?}", model.header.version());
+println!("Vertices: {}", model.vertices.len());
+println!("Bones: {}", model.bones.len());
+
+// Convert to a different version
+let converter = M2Converter::new();
+let converted = converter.convert(&model, M2Version::WotLK)?;
+converted.save("path/to/converted.m2")?;
+```
+
+### Working with Skin Files
+
+```rust
+use wow_m2::Skin;
+
+// Load a skin file
+let skin = Skin::load("path/to/model00.skin")?;
+
+// Access submesh information
+for submesh in &skin.submeshes {
+    println!("Submesh {}: {} vertices, {} triangles",
+        submesh.id, submesh.vertex_count, submesh.triangle_count);
+}
+```
+
+### Version Support
+
+The library supports parsing versions by both numeric format and expansion names:
+
+```rust
+use wow_m2::M2Version;
+
+// Using version numbers
+let version = M2Version::from_string("3.3.5a")?;  // WotLK
+
+// Using expansion names
+let version = M2Version::from_expansion_name("wotlk")?;
+let version = M2Version::from_expansion_name("MoP")?;
+```
 
 ## Supported Versions
 
-- [ ] Classic (1.12.1)
-- [ ] The Burning Crusade (2.4.3)
-- [ ] Wrath of the Lich King (3.3.5a)
-- [ ] Cataclysm (4.3.4)
-- [ ] Mists of Pandaria (5.4.8)
+| Expansion | Version Range | Support |
+|-----------|---------------|---------|
+| Classic | 1.12.x | ✅ Full |
+| TBC | 2.4.x | ✅ Full |
+| WotLK | 3.3.x | ✅ Full |
+| Cataclysm | 4.3.x | ✅ Full |
+| MoP | 5.4.x | ✅ Full |
+| WoD | 6.2.x | ✅ Full |
+| Legion | 7.3.x | ✅ Full |
+| BfA | 8.3.x | ✅ Full |
+| Shadowlands | 9.x | ✅ Full |
+| Dragonflight | 10.x | ✅ Full |
+| The War Within | 11.x | ✅ Full |
+
+## Examples
+
+See the `examples/` directory for more detailed examples:
+
+- `convert_model.rs` - Convert models between versions
+- `analyze_model.rs` - Analyze model structure and contents
+- `validate_model.rs` - Validate model integrity
 
 ## License
 
-Licensed under either of
+Licensed under either of:
 
-- Apache License, Version 2.0, ([LICENSE-APACHE](../../LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
-- MIT license ([LICENSE-MIT](../../LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+- Apache License, Version 2.0 ([LICENSE-APACHE](../../../LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](../../../LICENSE-MIT))
 
 at your option.
+
+## Contributing
+
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for guidelines.
+
+## References
+
+- [WoWDev.wiki M2 Format](https://wowdev.wiki/M2)
+- [WoWDev.wiki SKIN Format](https://wowdev.wiki/M2/.skin)

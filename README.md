@@ -1,7 +1,7 @@
 # warcraft-rs
 
 A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
-2.4.3, 3.3.5a, 4.3.4 an 5.4.8 (from Vanilla to Mists of Pandaria).
+2.4.3, 3.3.5a, 4.3.4 and 5.4.8 (from Vanilla to Mists of Pandaria).
 
 <div align="center">
 
@@ -32,9 +32,14 @@ projects and a link to official WoW Rust Discord.
 - **DBC Database** - Parse client database files
 - **BLP Textures** - Handle texture files
 - **M2 Models** - Work with character and creature models
-- **WMO Objects** - Process world map objects
+- **WMO Objects** - Process world map objects (buildings, structures)
+  - ✅ **Full Format Support** - Parse and write root and group files
+  - ✅ **All WoW Versions** - Supports v17 (Classic) through v27 (The War Within)
+  - 🔄 **Version Conversion** - Convert between expansions (Classic → Cataclysm, etc.)
+  - 🏗️ **Builder API** - Create WMO files programmatically
+  - 🔍 **Comprehensive Validation** - Field-level and structural checks
 - **ADT Terrain** - Parse terrain and map data
-- **WDT Maps** - World map definitions and tile layouts (under development)
+- **WDT Maps** - World map definitions and tile layouts
 - **WDL Maps** - Low-resolution terrain heightmaps
 
 ### 🛠️ Command-Line Tools
@@ -71,6 +76,14 @@ warcraft-rs adt info terrain.adt
 warcraft-rs adt validate terrain.adt --level strict
 warcraft-rs adt convert classic.adt cata.adt --to cataclysm
 warcraft-rs adt tree terrain.adt  # NEW! Visualize ADT structure
+
+# WMO object operations
+warcraft-rs wmo info building.wmo
+warcraft-rs wmo validate building.wmo --warnings
+warcraft-rs wmo convert classic.wmo modern.wmo --to 21
+warcraft-rs wmo tree building.wmo  # NEW! Visualize WMO structure
+warcraft-rs wmo edit building.wmo --set-flag has-fog
+warcraft-rs wmo build new.wmo --from config.yaml
 
 # Other tools (when implemented)
 warcraft-rs dbc list items.dbc
@@ -116,6 +129,29 @@ println!("Terrain chunks: {}", adt.mcnk_chunks().len());
 adt.validate_with_report(ValidationLevel::Standard)?;
 ```
 
+```rust
+// WMO object parsing and manipulation
+use wow_wmo::{WmoRoot, WmoGroup, WmoParser, WmoWriter, WmoVersion};
+use std::fs;
+
+// Parse WMO root file
+let data = fs::read("building.wmo")?;
+let wmo = WmoParser::parse_root(&data)?;
+println!("WMO version: v{}", wmo.version.to_raw());
+println!("Groups: {}", wmo.groups.len());
+println!("Materials: {}", wmo.materials.len());
+
+// Convert to a different version
+let mut wmo = wmo;
+wmo.convert_to(WmoVersion::Cataclysm)?;
+
+// Save the converted file
+let writer = WmoWriter::new();
+let mut output = Vec::new();
+writer.write_root(&mut output, &wmo, WmoVersion::Cataclysm)?;
+fs::write("building_cata.wmo", output)?;
+```
+
 ## Installation
 
 ### CLI Tools
@@ -140,6 +176,7 @@ wow-mpq = "0.1"
 wow-adt = "0.1"
 wow-wdt = "0.1"
 wow-wdl = "0.1"
+wow-wmo = "0.1"
 wow-dbc = "0.1"
 wow-blp = "0.1"
 ```
@@ -168,6 +205,7 @@ warcraft-rs mpq compare old.mpq modern.mpq --content-check --output summary
 warcraft-rs wdt tree Azeroth.wdt --show-refs  # See ADT tile references
 warcraft-rs wdl tree Azeroth.wdl --compact     # Compact view of WDL chunks
 warcraft-rs adt tree terrain.adt --show-refs  # See terrain chunk structure
+warcraft-rs wmo tree building.wmo --show-refs # See WMO structure with references
 ```
 
 ## Documentation
@@ -184,6 +222,8 @@ Comprehensive documentation is available in the `docs/` directory:
     with rebuild and comparison APIs
   - **[🔍 StormLib vs wow-mpq](docs/guides/stormlib-differences.md)** - Technical
     comparison with the reference implementation
+  - **[🏰 WMO CLI Usage Guide](docs/guides/wmo-cli-usage.md)** - Complete guide
+    for working with World Map Objects
 
 ## 🤝 Contributing
 

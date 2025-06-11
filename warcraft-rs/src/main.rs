@@ -38,6 +38,9 @@ fn main() -> Result<()> {
         #[cfg(feature = "dbc")]
         Commands::Dbc { command } => commands::dbc::execute(command),
 
+        #[cfg(feature = "dbc")]
+        Commands::Dbd { command } => command.execute(),
+
         #[cfg(feature = "blp")]
         Commands::Blp { command } => commands::blp::execute(command),
 

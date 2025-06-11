@@ -202,13 +202,13 @@ done
 
 ```bash
 # Find all model files
-warcraft-rs mpq list archive.warcraft-rs mpq --filter "*.m2" --long
+warcraft-rs mpq list archive.mpq --filter "*.m2" --long
 
 # Look for specific content
-warcraft-rs mpq list archive.warcraft-rs mpq --filter "*Stormwind*"
+warcraft-rs mpq list archive.mpq --filter "*Stormwind*"
 
 # Extract database files for analysis
-warcraft-rs mpq extract common.warcraft-rs mpq --filter "*.dbc" --output ./dbc_files
+warcraft-rs mpq extract common.mpq --filter "*.dbc" --output ./dbc_files
 ```
 
 ## Global Options

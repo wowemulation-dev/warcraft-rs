@@ -18,7 +18,11 @@ clap_complete = "4.5"
 
 # File format crates
 wow-mpq = { path = "../file-formats/archives/wow-mpq" }
-wow-dbc = { path = "../file-formats/database/wow-dbc", optional = true }
+wow-dbc = { path = "../file-formats/database/wow-dbc", optional = true, features = [
+  "cli",
+  "mmap",
+  "yaml",
+] }
 wow-blp = { path = "../file-formats/graphics/wow-blp", optional = true }
 wow-m2 = { path = "../file-formats/graphics/wow-m2", optional = true }
 wow-wmo = { path = "../file-formats/graphics/wow-wmo", optional = true }
@@ -33,7 +37,7 @@ log = { workspace = true }
 env_logger = { workspace = true }
 
 # UI and formatting
-indicatif = "0.17"
+indicatif = { workspace = true }
 prettytable-rs = "0.10"
 humansize = "2.1"
 console = "0.15"
@@ -48,10 +52,24 @@ rayon = { version = "1.10", optional = true }
 # Optional serialization for data export
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+serde_yaml_ng = { version = "0.10", optional = true }
 
 [features]
-default = ["mpq", "adt", "wdt", "wdl"]
-full = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl", "serde", "extract", "parallel"]
+default = ["mpq", "adt", "wdt", "wdl", "m2", "wmo"]
+full = [
+  "mpq",
+  "dbc",
+  "blp",
+  "m2",
+  "wmo",
+  "adt",
+  "wdt",
+  "wdl",
+  "serde",
+  "extract",
+  "parallel",
+  "yaml",
+]
 mpq = []
 dbc = ["dep:wow-dbc"]
 blp = ["dep:wow-blp"]
@@ -63,6 +81,7 @@ wdl = ["dep:wow-wdl"]
 serde = ["dep:serde", "dep:serde_json"]
 extract = ["wow-adt?/extract"]
 parallel = ["wow-adt?/parallel", "dep:rayon"]
+yaml = ["dbc", "serde", "dep:serde_yaml_ng"]
 
 [[bin]]
 name = "warcraft-rs"

@@ -48,20 +48,16 @@ WMO files follow a chunk-based format where each chunk has:
 - Chunk data
 
 ```rust
-#[repr(C, packed)]
-struct ChunkHeader {
-    /// Chunk identifier (4 characters, reversed)
-    id: [u8; 4],
-    /// Size of chunk data in bytes
-    size: u32,
-}
+use wow_wmo::{ChunkHeader, ChunkId};
 
-impl ChunkHeader {
-    pub fn id_string(&self) -> String {
-        // Reverse the bytes to get the readable ID
-        String::from_utf8_lossy(&[self.id[3], self.id[2], self.id[1], self.id[0]]).to_string()
-    }
-}
+// Example of reading a chunk header
+let header = ChunkHeader {
+    id: ChunkId::from_str("MVER"),
+    size: 4,
+};
+
+println!("Chunk ID: {}", header.id);
+println!("Size: {}", header.size);
 ```
 
 ## Chunk Specifications
@@ -75,9 +71,13 @@ The root WMO file contains global information about the entire model.
 Always the first chunk in the file.
 
 ```rust
-#[repr(C, packed)]
-struct MVERChunk {
-    version: u32,  // Usually 17 for modern WoW
+// Version information is part of WmoRoot
+use wow_wmo::{WmoVersion, WmoRoot};
+
+// Example accessing version from parsed WMO
+fn check_version(wmo: &WmoRoot) {
+    println!("WMO Version: {}", wmo.version.to_raw());
+    println!("Expansion: {}", wmo.version.expansion_name());
 }
 ```
 
@@ -86,54 +86,24 @@ struct MVERChunk {
 Contains general information about the WMO.
 
 ```rust
-#[repr(C, packed)]
-struct MOHDChunk {
-    /// Number of textures used
-    texture_count: u32,
+use wow_wmo::{WmoHeader, WmoFlags, Color};
 
-    /// Number of groups
-    group_count: u32,
+// Example accessing WMO header information
+fn analyze_wmo_header(header: &WmoHeader) {
+    println!("Materials: {}", header.n_materials);
+    println!("Groups: {}", header.n_groups);
+    println!("Portals: {}", header.n_portals);
+    println!("Lights: {}", header.n_lights);
+    println!("Doodad Defs: {}", header.n_doodad_defs);
+    println!("Doodad Sets: {}", header.n_doodad_sets);
 
-    /// Number of portals
-    portal_count: u32,
+    if header.flags.contains(WmoFlags::HAS_SKYBOX) {
+        println!("WMO has skybox");
+    }
 
-    /// Number of lights
-    light_count: u32,
-
-    /// Number of doodad names
-    doodad_name_count: u32,
-
-    /// Number of doodad definitions
-    doodad_def_count: u32,
-
-    /// Number of doodad sets
-    doodad_set_count: u32,
-
-    /// Ambient color (BGRA)
-    ambient_color: u32,
-
-    /// WMO ID (used in ADT files)
-    wmo_id: u32,
-
-    /// Bounding box corners
-    bounding_box_min: [f32; 3],
-    bounding_box_max: [f32; 3],
-
-    /// Flags
-    flags: u32,
-
-    /// Number of Level of Detail sets
-    lod_count: u16,
-}
-
-impl MOHDChunk {
-    // Flag constants
-    pub const FLAG_DO_NOT_ATTENUATE_VERTICES: u32 = 0x01;
-    pub const FLAG_USE_UNIFIED_RENDER_PATH: u32 = 0x02;
-    pub const FLAG_USE_LIQUID_FROM_DBC: u32 = 0x04;
-    pub const FLAG_DO_NOT_FIX_VERTEX_COLOR_ALPHA: u32 = 0x08;
-    pub const FLAG_LOD: u32 = 0x10;
-    pub const FLAG_DEFAULT_MAX_LOD: u32 = 0x20;
+    if header.flags.contains(WmoFlags::INDOOR_MAP) {
+        println!("WMO is an indoor map");
+    }
 }
 ```
 
@@ -142,23 +112,13 @@ impl MOHDChunk {
 Null-terminated texture filenames used by this WMO.
 
 ```rust
-/// Parse MOTX chunk data
-fn parse_motx(data: &[u8]) -> Vec<String> {
-    let mut textures = Vec::new();
-    let mut start = 0;
+// Textures are automatically parsed and available in WmoRoot
+use wow_wmo::WmoRoot;
 
-    for (i, &byte) in data.iter().enumerate() {
-        if byte == 0 {
-            if i > start {
-                if let Ok(s) = std::str::from_utf8(&data[start..i]) {
-                    textures.push(s.to_string());
-                }
-            }
-            start = i + 1;
-        }
+fn list_textures(wmo: &WmoRoot) {
+    for (i, texture) in wmo.textures.iter().enumerate() {
+        println!("Texture {}: {}", i, texture);
     }
-
-    textures
 }
 ```
 
@@ -167,63 +127,26 @@ fn parse_motx(data: &[u8]) -> Vec<String> {
 Material definitions for all textures.
 
 ```rust
-#[repr(C, packed)]
-struct MOMTEntry {
-    /// Flags
-    flags: u32,
+use wow_wmo::{WmoMaterial, WmoMaterialFlags};
 
-    /// Specular mode
-    specular_mode: u32,
+// Example analyzing WMO materials
+fn analyze_material(material: &WmoMaterial) {
+    if material.flags.contains(WmoMaterialFlags::UNLIT) {
+        println!("Material is unlit");
+    }
 
-    /// Blend mode
-    blend_mode: u32,
+    if material.flags.contains(WmoMaterialFlags::TWO_SIDED) {
+        println!("Material is two-sided");
+    }
 
-    /// First texture index
-    texture_1: u32,
+    if material.flags.contains(WmoMaterialFlags::UNFOGGED) {
+        println!("Material is unfogged");
+    }
 
-    /// Emissive color (BGRA)
-    side_dn: u32,
-
-    /// Frame blend alpha
-    frame_blend_alpha: u32,
-
-    /// Second texture index
-    texture_2: u32,
-
-    /// Diffuse color (BGRA)
-    diff_color: u32,
-
-    /// Terrain type for footsteps
-    ground_type: u32,
-
-    /// Third texture index
-    texture_3: u32,
-
-    /// Two colors (BGRA each)
-    color_2: u32,
-    unknown_3: u32,
-
-    /// Runtime data
-    runtime_data: [u32; 4],
-}
-
-impl MOMTEntry {
-    // Shader flags
-    pub const SHADER_DIFFUSE: u32 = 0x00000001;
-    pub const SHADER_SPECULAR: u32 = 0x00000002;
-    pub const SHADER_METAL: u32 = 0x00000004;
-    pub const SHADER_ENV: u32 = 0x00000008;
-    pub const SHADER_OPAQUE: u32 = 0x00000010;
-    pub const SHADER_ENV_METAL: u32 = 0x00000020;
-    pub const SHADER_TWO_SIDED: u32 = 0x00000040;
-    pub const SHADER_DARKENED: u32 = 0x00000080;
-    pub const SHADER_UNSHADED: u32 = 0x00000100;
-    pub const SHADER_NO_FADE: u32 = 0x00000200;
-    pub const SHADER_UNFOGGED: u32 = 0x00000400;
-    pub const SHADER_IGNORE_VERTEX_ALPHA: u32 = 0x00000800;
-    pub const SHADER_IGNORE_VERTEX_COLOR: u32 = 0x00001000;
-    pub const SHADER_CLAMP_S: u32 = 0x00004000;
-    pub const SHADER_CLAMP_T: u32 = 0x00008000;
+    println!("Texture 1 index: {}", material.texture1);
+    println!("Texture 2 index: {}", material.texture2);
+    println!("Blend mode: {}", material.blend_mode);
+    println!("Ground type: {}", material.ground_type);
 }
 ```
 
@@ -232,9 +155,13 @@ impl MOMTEntry {
 Null-terminated strings for group names (primarily for debugging).
 
 ```rust
-/// Parse MOGN chunk data (same format as MOTX)
-fn parse_mogn(data: &[u8]) -> Vec<String> {
-    parse_motx(data) // Same null-terminated string format
+// Group names are automatically parsed and available in WmoGroupInfo
+use wow_wmo::{WmoRoot, WmoGroupInfo};
+
+fn list_group_names(wmo: &WmoRoot) {
+    for (i, group_info) in wmo.groups.iter().enumerate() {
+        println!("Group {}: {}", i, group_info.name);
+    }
 }
 ```
 
@@ -243,40 +170,28 @@ fn parse_mogn(data: &[u8]) -> Vec<String> {
 Information about each group in the WMO.
 
 ```rust
-#[repr(C, packed)]
-struct MOGIEntry {
-    /// Flags
-    flags: u32,
+use wow_wmo::{WmoGroupInfo, WmoGroupFlags};
 
-    /// Bounding box for this group
-    bounding_box_min: [f32; 3],
-    bounding_box_max: [f32; 3],
+// Example analyzing group information
+fn analyze_group_info(group_info: &WmoGroupInfo) {
+    println!("Group name: {}", group_info.name);
+    println!("Bounding box: {:?}", group_info.bounding_box);
 
-    /// Name offset in MOGN chunk (-1 if none)
-    name_offset: i32,
-}
+    if group_info.flags.contains(WmoGroupFlags::INDOOR) {
+        println!("Group is indoor");
+    }
 
-impl MOGIEntry {
-    // Group flags
-    pub const FLAG_HAS_BSP: u32 = 0x00000001;
-    pub const FLAG_HAS_LIGHT_MAP: u32 = 0x00000002;
-    pub const FLAG_HAS_VERTEX_COLORS: u32 = 0x00000004;
-    pub const FLAG_OUTDOOR: u32 = 0x00000008;
-    pub const FLAG_DO_NOT_USE_LOCAL_LIGHTING: u32 = 0x00000040;
-    pub const FLAG_HAS_LIGHTS: u32 = 0x00000200;
-    pub const FLAG_HAS_LOD: u32 = 0x00000400;
-    pub const FLAG_HAS_DOODADS: u32 = 0x00000800;
-    pub const FLAG_HAS_LIQUID: u32 = 0x00001000;
-    pub const FLAG_INDOOR: u32 = 0x00002000;
-    pub const FLAG_ALWAYS_DRAW: u32 = 0x00010000;
-    pub const FLAG_HAS_THREE_MOTV: u32 = 0x00040000;
-    pub const FLAG_SHOW_SKYBOX: u32 = 0x00080000;
-    pub const FLAG_OCEANIC: u32 = 0x00100000;
-    pub const FLAG_UNDERWATER: u32 = 0x00200000;
-    pub const FLAG_HAS_TWO_MOCV: u32 = 0x01000000;
-    pub const FLAG_HAS_TWO_MOTV: u32 = 0x02000000;
-    pub const FLAG_FORCE_CLAMP_S_OUTDOOR: u32 = 0x04000000;
-    pub const FLAG_FORCE_CLAMP_T_OUTDOOR: u32 = 0x08000000;
+    if group_info.flags.contains(WmoGroupFlags::HAS_VERTEX_COLORS) {
+        println!("Group has vertex colors");
+    }
+
+    if group_info.flags.contains(WmoGroupFlags::HAS_DOODADS) {
+        println!("Group has doodads");
+    }
+
+    if group_info.flags.contains(WmoGroupFlags::HAS_WATER) {
+        println!("Group has liquid");
+    }
 }
 ```
 
@@ -285,18 +200,15 @@ impl MOGIEntry {
 Skybox model filename (if present).
 
 ```rust
-/// Parse MOSB chunk - contains null-terminated string
-fn parse_mosb(data: &[u8]) -> Option<String> {
-    if data.is_empty() {
-        return None;
+// Skybox information is available in WmoRoot
+use wow_wmo::WmoRoot;
+
+fn check_skybox(wmo: &WmoRoot) {
+    if let Some(skybox) = &wmo.skybox {
+        println!("Skybox model: {}", skybox);
+    } else {
+        println!("No skybox");
     }
-
-    // Find null terminator
-    let end = data.iter().position(|&b| b == 0).unwrap_or(data.len());
-
-    std::str::from_utf8(&data[..end])
-        .ok()
-        .map(|s| s.to_string())
 }
 ```
 
@@ -305,10 +217,16 @@ fn parse_mosb(data: &[u8]) -> Option<String> {
 Vertices used to define portal geometry.
 
 ```rust
-#[repr(C, packed)]
-#[derive(Debug, Clone, Copy)]
-struct MOPVEntry {
-    position: [f32; 3],
+use wow_wmo::{WmoPortal, Vec3};
+
+// Portal vertices are part of WmoPortal structure
+fn analyze_portal(portal: &WmoPortal) {
+    println!("Portal has {} vertices", portal.vertices.len());
+    println!("Portal normal: {:?}", portal.normal);
+
+    for (i, vertex) in portal.vertices.iter().enumerate() {
+        println!("Vertex {}: ({}, {}, {})", i, vertex.x, vertex.y, vertex.z);
+    }
 }
 ```
 
@@ -382,31 +300,33 @@ struct MOVBEntry {
 Light definitions for the WMO.
 
 ```rust
-#[repr(C, packed)]
-struct MOLTEntry {
-    /// Light type: 0 = ambient, 1 = directional, 2 = point, 3 = spot
-    light_type: u8,
+use wow_wmo::{WmoLight, WmoLightType, WmoLightProperties};
 
-    /// Use attenuation
-    use_attenuation: u8,
+// Example analyzing WMO lights
+fn analyze_light(light: &WmoLight) {
+    println!("Light type: {:?}", light.light_type);
+    println!("Position: ({}, {}, {})", light.position.x, light.position.y, light.position.z);
+    println!("Color: {:?}", light.color);
+    println!("Intensity: {}", light.intensity);
 
-    /// Padding
-    _padding: [u8; 2],
+    if light.use_attenuation {
+        println!("Attenuation: {} to {}", light.attenuation_start, light.attenuation_end);
+    }
 
-    /// Color (BGRA)
-    color: u32,
-
-    /// Position
-    position: [f32; 3],
-
-    /// Intensity
-    intensity: f32,
-
-    /// Attenuation start
-    attenuation_start: f32,
-
-    /// Attenuation end
-    attenuation_end: f32,
+    match &light.properties {
+        WmoLightProperties::Spot { direction, hotspot, falloff } => {
+            println!("Spot light: direction {:?}, hotspot {}, falloff {}", direction, hotspot, falloff);
+        }
+        WmoLightProperties::Directional { direction } => {
+            println!("Directional light: direction {:?}", direction);
+        }
+        WmoLightProperties::Omni => {
+            println!("Omni light");
+        }
+        WmoLightProperties::Ambient => {
+            println!("Ambient light");
+        }
+    }
 }
 ```
 
@@ -415,19 +335,13 @@ struct MOLTEntry {
 Doodad set definitions (e.g., "furniture", "decorations").
 
 ```rust
-#[repr(C, packed)]
-struct MODSEntry {
-    /// Name of the set (20 bytes, null-padded)
-    name: [u8; 20],
+use wow_wmo::WmoDoodadSet;
 
-    /// Index of first doodad in this set
-    start_index: u32,
-
-    /// Number of doodads in this set
-    count: u32,
-
-    /// Padding
-    _padding: u32,
+// Example analyzing doodad sets
+fn analyze_doodad_set(doodad_set: &WmoDoodadSet) {
+    println!("Doodad set: {}", doodad_set.name);
+    println!("Start doodad: {}", doodad_set.start_doodad);
+    println!("Number of doodads: {}", doodad_set.n_doodads);
 }
 ```
 
@@ -436,9 +350,17 @@ struct MODSEntry {
 List of null-terminated doodad filenames (M2 models).
 
 ```rust
-/// Parse MODN chunk - same format as MOTX
-fn parse_modn(data: &[u8]) -> Vec<String> {
-    parse_motx(data)
+// Doodad names are automatically parsed and available
+// They would typically be referenced by doodad definitions
+use wow_wmo::WmoRoot;
+
+fn show_doodad_info(wmo: &WmoRoot) {
+    for (i, doodad_def) in wmo.doodad_defs.iter().enumerate() {
+        println!("Doodad {}: position ({}, {}, {})",
+            i, doodad_def.position.x, doodad_def.position.y, doodad_def.position.z);
+        println!("  Scale: {}", doodad_def.scale);
+        println!("  Color: {:?}", doodad_def.color);
+    }
 }
 ```
 
@@ -447,22 +369,19 @@ fn parse_modn(data: &[u8]) -> Vec<String> {
 Placement information for doodads.
 
 ```rust
-#[repr(C, packed)]
-struct MODDEntry {
-    /// Index in MODN of which model to use (or 0xFFFFFFFF to use file_id)
-    name_index: u32,
+use wow_wmo::WmoDoodadDef;
 
-    /// Placement information
-    position: [f32; 3],
-
-    /// Quaternion rotation (WXYZ)
-    rotation: [f32; 4],
-
-    /// Scale factor
-    scale: f32,
-
-    /// Color tinting (BGRA)
-    color: u32,
+// Example analyzing doodad definitions
+fn analyze_doodad_def(doodad_def: &WmoDoodadDef) {
+    println!("Name offset: {}", doodad_def.name_offset);
+    println!("Position: ({}, {}, {})",
+        doodad_def.position.x, doodad_def.position.y, doodad_def.position.z);
+    println!("Orientation: [{}, {}, {}, {}]",
+        doodad_def.orientation[0], doodad_def.orientation[1],
+        doodad_def.orientation[2], doodad_def.orientation[3]);
+    println!("Scale: {}", doodad_def.scale);
+    println!("Color: {:?}", doodad_def.color);
+    println!("Set index: {}", doodad_def.set_index);
 }
 ```
 

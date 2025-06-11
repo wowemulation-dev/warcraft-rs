@@ -7,16 +7,28 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 homepage.workspace = true
-documentation = "https://docs.rs/wow-wmo"
-description = "Parser for World of Warcraft WMO (world map object) files"
 readme = "README.md"
-keywords = ["wow", "warcraft", "wmo", "world-objects", "gamedev"]
+description = "Parser for World of Warcraft WMO (World Model Object) files (1.12-11.0)"
 categories = ["game-development", "parser-implementations"]
+keywords = ["wow", "warcraft", "wmo", "parser", "gamedev"]
 
 [dependencies]
+# Error handling
 thiserror = { workspace = true }
 
-[dev-dependencies]
+# Data structures
+bitflags = { workspace = true }
 
-[features]
-default = []
+# Logging
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+
+[dev-dependencies]
+criterion = { workspace = true }
+tempfile = { workspace = true }
+rstest = "0.25.0"
+test-case = "3.3.1"
+
+[[bench]]
+name = "parser_benchmarks"
+harness = false

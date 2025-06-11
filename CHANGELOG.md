@@ -42,6 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **warcraft-rs CLI**: Added `tree` subcommand for MPQ, WDT, WDL, and ADT formats to visualize file structure hierarchically
 - **warcraft-rs**: Added comprehensive tree visualization utilities for rendering file format structures with emoji icons and color support
 - **All crates**: Replaced byteorder crate usage with native Rust byte order functions
+- **wow-wmo**: Integrated complete WMO (World Map Object) format support from external crate
+- **wow-wmo**: Full parsing and writing support for WMO root and group files
+- **wow-wmo**: Support for all WMO versions from Classic (v17) through The War Within (v27)
+- **wow-wmo**: Version conversion capabilities for upgrading/downgrading WMO files between expansions
+- **wow-wmo**: Comprehensive validation with field-level and structural checks
+- **wow-wmo**: Tree visualization support for hierarchical structure display
+- **wow-wmo**: Builder API for creating WMO files programmatically
+- **wow-wmo**: Fixed integer overflow in group name parsing causing crashes with certain WMO files
+- **wow-wmo**: Fixed header size mismatch (60 vs 64 bytes) causing chunk misalignment
+- **wow-wmo**: Fixed texture validation to handle special marker values (0xFF000000+)
+- **wow-wmo**: Fixed light type parsing to handle unknown types gracefully
+- **wow-wmo**: Fixed doodad structure size to always use 40 bytes for proper round-trip conversion
+- **warcraft-rs CLI**: Added complete WMO command suite: `info`, `validate`, `convert`, `tree`, `edit`, and `build`
 
 ### Fixed
 

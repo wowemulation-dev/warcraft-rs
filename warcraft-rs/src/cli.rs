@@ -37,6 +37,13 @@ pub enum Commands {
         command: crate::commands::dbc::DbcCommands,
     },
 
+    /// DBD (Database Definition) operations
+    #[cfg(feature = "dbc")]
+    Dbd {
+        #[command(subcommand)]
+        command: crate::commands::dbd::DbdCommand,
+    },
+
     /// BLP texture operations
     #[cfg(feature = "blp")]
     Blp {

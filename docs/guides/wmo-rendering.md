@@ -44,15 +44,23 @@ WMO files consist of:
 ### 1. Loading WMO Files
 
 ```rust
-use warcraft_rs::wmo::{Wmo, WmoGroup, WmoRoot};
+use wow_wmo::{WmoRoot, WmoGroup, WmoParser, WmoGroupParser};
+use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 
-fn load_wmo(root_path: &str) -> Result<Wmo, Box<dyn std::error::Error>> {
-    // Load root WMO file
-    let root = WmoRoot::from_file(root_path)?;
+struct LoadedWmo {
+    root: WmoRoot,
+    groups: Vec<WmoGroup>,
+}
 
-    println!("WMO: {}", root.name);
-    println!("Groups: {}", root.group_count);
+fn load_wmo(root_path: &str) -> Result<LoadedWmo, Box<dyn std::error::Error>> {
+    // Load root WMO file
+    let file = File::open(root_path)?;
+    let mut reader = BufReader::new(file);
+    let root = WmoParser::new().parse_root(&mut reader)?;
+
+    println!("Groups: {}", root.groups.len());
     println!("Portals: {}", root.portals.len());
     println!("Materials: {}", root.materials.len());
     println!("Doodad Sets: {}", root.doodad_sets.len());
@@ -61,19 +69,21 @@ fn load_wmo(root_path: &str) -> Result<Wmo, Box<dyn std::error::Error>> {
     let mut groups = Vec::new();
     let base_path = root_path.trim_end_matches(".wmo");
 
-    for i in 0..root.group_count {
+    for i in 0..root.header.n_groups {
         let group_path = format!("{}_{:03}.wmo", base_path, i);
         if Path::new(&group_path).exists() {
-            let group = WmoGroup::from_file(&group_path)?;
+            let group_file = File::open(&group_path)?;
+            let mut group_reader = BufReader::new(group_file);
+            let group = WmoGroupParser::new().parse_group(&mut group_reader, i)?;
             groups.push(group);
         }
     }
 
-    Ok(Wmo { root, groups })
+    Ok(LoadedWmo { root, groups })
 }
 
 // Load with LOD support
-fn load_wmo_with_lod(root_path: &str) -> Result<Vec<Wmo>, Box<dyn std::error::Error>> {
+fn load_wmo_with_lod(root_path: &str) -> Result<Vec<LoadedWmo>, Box<dyn std::error::Error>> {
     let mut lods = Vec::new();
 
     // Try to load LOD versions
@@ -97,16 +107,15 @@ fn load_wmo_with_lod(root_path: &str) -> Result<Vec<Wmo>, Box<dyn std::error::Er
 ### 2. Processing WMO Groups
 
 ```rust
-use warcraft_rs::wmo::{WmoGroup, WmoVertex, RenderBatch};
+use wow_wmo::{WmoGroup, WmoGroupFlags, BoundingBox, WmoBatch};
 
 #[derive(Debug, Clone)]
 struct ProcessedGroup {
     vertices: Vec<GpuVertex>,
     indices: Vec<u32>,
-    batches: Vec<RenderBatch>,
+    batches: Vec<WmoBatch>,
     bounding_box: BoundingBox,
     is_indoor: bool,
-    is_outdoor: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -118,59 +127,53 @@ struct GpuVertex {
     vertex_color: [f32; 4],
 }
 
-fn process_wmo_group(group: &WmoGroup, root: &WmoRoot) -> ProcessedGroup {
+fn process_wmo_group(group: &WmoGroup) -> ProcessedGroup {
     let mut vertices = Vec::with_capacity(group.vertices.len());
 
     // Process vertices
     for (i, vertex) in group.vertices.iter().enumerate() {
-        let vertex_color = if i < group.vertex_colors.len() {
-            let color = &group.vertex_colors[i];
-            [
-                color.r as f32 / 255.0,
-                color.g as f32 / 255.0,
-                color.b as f32 / 255.0,
-                color.a as f32 / 255.0,
-            ]
+        let vertex_color = if let Some(ref colors) = group.vertex_colors {
+            if i < colors.len() {
+                let color = &colors[i];
+                [
+                    color.r as f32 / 255.0,
+                    color.g as f32 / 255.0,
+                    color.b as f32 / 255.0,
+                    color.a as f32 / 255.0,
+                ]
+            } else {
+                [1.0, 1.0, 1.0, 1.0]
+            }
         } else {
             [1.0, 1.0, 1.0, 1.0]
         };
 
+        let normal = if i < group.normals.len() {
+            [group.normals[i].x, group.normals[i].y, group.normals[i].z]
+        } else {
+            [0.0, 0.0, 1.0]
+        };
+
+        let texcoord = if i < group.tex_coords.len() {
+            [group.tex_coords[i].u, group.tex_coords[i].v]
+        } else {
+            [0.0, 0.0]
+        };
+
         vertices.push(GpuVertex {
-            position: [vertex.position.x, vertex.position.y, vertex.position.z],
-            normal: [vertex.normal.x, vertex.normal.y, vertex.normal.z],
-            texcoord: [vertex.texcoord.x, vertex.texcoord.y],
+            position: [vertex.x, vertex.y, vertex.z],
+            normal,
+            texcoord,
             vertex_color,
-        });
-    }
-
-    // Collect all indices from batches
-    let mut all_indices = Vec::new();
-    let mut processed_batches = Vec::new();
-
-    for batch in &group.batches {
-        let start_index = all_indices.len() as u32;
-
-        // Add indices for this batch
-        for i in batch.start_index..(batch.start_index + batch.index_count) {
-            all_indices.push(group.indices[i as usize] as u32);
-        }
-
-        processed_batches.push(RenderBatch {
-            material_id: batch.material_id,
-            start_index,
-            index_count: batch.index_count,
-            vertex_start: batch.vertex_start,
-            vertex_count: batch.vertex_count,
         });
     }
 
     ProcessedGroup {
         vertices,
-        indices: all_indices,
-        batches: processed_batches,
-        bounding_box: group.bounding_box.clone(),
-        is_indoor: group.flags.contains(GroupFlags::INDOOR),
-        is_outdoor: group.flags.contains(GroupFlags::OUTDOOR),
+        indices: group.indices.iter().map(|&i| i as u32).collect(),
+        batches: group.batches.clone(),
+        bounding_box: group.header.bounding_box,
+        is_indoor: group.header.flags.contains(WmoGroupFlags::INDOOR),
     }
 }
 ```
@@ -178,12 +181,12 @@ fn process_wmo_group(group: &WmoGroup, root: &WmoRoot) -> ProcessedGroup {
 ### 3. Implementing Portal Culling
 
 ```rust
-use warcraft_rs::wmo::{Portal, PortalRelation};
-use nalgebra::{Vector3, Point3};
+use wow_wmo::{WmoPortal, WmoPortalReference, Vec3};
+use std::collections::HashSet;
 
 struct PortalSystem {
-    portals: Vec<Portal>,
-    relations: Vec<PortalRelation>,
+    portals: Vec<WmoPortal>,
+    relations: Vec<WmoPortalReference>,
     group_visibility: Vec<bool>,
 }
 
@@ -191,12 +194,12 @@ impl PortalSystem {
     fn new(root: &WmoRoot) -> Self {
         Self {
             portals: root.portals.clone(),
-            relations: root.portal_relations.clone(),
-            group_visibility: vec![false; root.group_count as usize],
+            relations: root.portal_references.clone(),
+            group_visibility: vec![false; root.header.n_groups as usize],
         }
     }
 
-    fn update_visibility(&mut self, camera_pos: Point3<f32>, camera_group: usize) {
+    fn update_visibility(&mut self, camera_pos: Vec3, camera_group: usize) {
         // Reset visibility
         self.group_visibility.fill(false);
 
@@ -219,26 +222,34 @@ impl PortalSystem {
 
                     // Check if camera can see through portal
                     if self.is_portal_visible(portal, camera_pos) {
-                        let other_group = relation.target_group as usize;
-                        self.group_visibility[other_group] = true;
-                        to_check.push(other_group);
+                        // Note: WmoPortalReference doesn't have target_group
+                        // This would need to be determined from portal geometry
+                        // For now, mark all connected groups as visible
+                        // In a real implementation, you'd determine the other group
                     }
                 }
             }
         }
     }
 
-    fn is_portal_visible(&self, portal: &Portal, camera_pos: Point3<f32>) -> bool {
+    fn is_portal_visible(&self, portal: &WmoPortal, camera_pos: Vec3) -> bool {
         // Simple visibility check - can be enhanced with frustum culling
-        let portal_center = Point3::new(
-            portal.vertices.iter().map(|v| v.x).sum::<f32>() / portal.vertices.len() as f32,
-            portal.vertices.iter().map(|v| v.y).sum::<f32>() / portal.vertices.len() as f32,
-            portal.vertices.iter().map(|v| v.z).sum::<f32>() / portal.vertices.len() as f32,
-        );
+        let portal_center = Vec3 {
+            x: portal.vertices.iter().map(|v| v.x).sum::<f32>() / portal.vertices.len() as f32,
+            y: portal.vertices.iter().map(|v| v.y).sum::<f32>() / portal.vertices.len() as f32,
+            z: portal.vertices.iter().map(|v| v.z).sum::<f32>() / portal.vertices.len() as f32,
+        };
 
         // Check if camera is on the positive side of portal plane
-        let to_portal = portal_center - camera_pos;
-        let dot = to_portal.dot(&portal.normal);
+        let to_portal = Vec3 {
+            x: portal_center.x - camera_pos.x,
+            y: portal_center.y - camera_pos.y,
+            z: portal_center.z - camera_pos.z,
+        };
+
+        let dot = to_portal.x * portal.normal.x +
+                  to_portal.y * portal.normal.y +
+                  to_portal.z * portal.normal.z;
 
         dot > 0.0
     }
@@ -248,8 +259,12 @@ impl PortalSystem {
 ### 4. Material and Texture Setup
 
 ```rust
-use warcraft_rs::wmo::{WmoMaterial, MaterialFlags};
-use warcraft_rs::blp::Blp;
+use wow_wmo::{WmoMaterial, WmoMaterialFlags, WmoRoot};
+
+// Mock types for rendering (would be defined by your graphics library)
+type TextureId = u32;
+type BlendMode = u32;
+type CullMode = u32;
 
 struct WmoMaterialSet {
     materials: Vec<GpuMaterial>,
@@ -260,8 +275,17 @@ struct GpuMaterial {
     diffuse_texture: TextureId,
     blend_mode: BlendMode,
     cull_mode: CullMode,
-    flags: MaterialFlags,
+    flags: WmoMaterialFlags,
     shader_id: u32,
+}
+
+// Mock texture manager for example
+struct TextureManager;
+impl TextureManager {
+    fn load_texture(&mut self, path: &str) -> Result<TextureId, Box<dyn std::error::Error>> {
+        // Mock implementation
+        Ok(0)
+    }
 }
 
 fn load_wmo_materials(
@@ -271,25 +295,31 @@ fn load_wmo_materials(
     let mut materials = Vec::new();
     let mut textures = Vec::new();
 
-    for wmo_material in &root.materials {
-        // Load diffuse texture
-        let texture_id = texture_manager.load_texture(&wmo_material.texture)?;
+    for (i, wmo_material) in root.materials.iter().enumerate() {
+        // Load diffuse texture using texture index
+        let texture_path = if wmo_material.texture1 as usize < root.textures.len() {
+            &root.textures[wmo_material.texture1 as usize]
+        } else {
+            "default.blp" // fallback
+        };
+
+        let texture_id = texture_manager.load_texture(texture_path)?;
         textures.push(texture_id);
 
         // Determine blend mode
-        let blend_mode = if wmo_material.flags.contains(MaterialFlags::UNLIT) {
-            BlendMode::Opaque
+        let blend_mode = if wmo_material.flags.contains(WmoMaterialFlags::UNLIT) {
+            0 // Opaque
         } else if wmo_material.blend_mode == 1 {
-            BlendMode::AlphaBlend
+            1 // AlphaBlend
         } else {
-            BlendMode::Opaque
+            0 // Opaque
         };
 
         // Determine cull mode
-        let cull_mode = if wmo_material.flags.contains(MaterialFlags::TWO_SIDED) {
-            CullMode::None
+        let cull_mode = if wmo_material.flags.contains(WmoMaterialFlags::TWO_SIDED) {
+            0 // None
         } else {
-            CullMode::Back
+            1 // Back
         };
 
         materials.push(GpuMaterial {
@@ -304,11 +334,20 @@ fn load_wmo_materials(
     Ok(WmoMaterialSet { materials, textures })
 }
 
+// Mock shader variant enum
+enum ShaderVariant {
+    Unlit,
+    Window,
+    Diffuse,
+    Specular,
+    Standard,
+}
+
 // Shader selection based on material properties
 fn select_shader_for_material(material: &GpuMaterial) -> ShaderVariant {
-    if material.flags.contains(MaterialFlags::UNLIT) {
+    if material.flags.contains(WmoMaterialFlags::UNLIT) {
         ShaderVariant::Unlit
-    } else if material.flags.contains(MaterialFlags::WINDOW) {
+    } else if material.flags.contains(WmoMaterialFlags::WINDOW_LIGHT) {
         ShaderVariant::Window
     } else if material.shader_id == 1 {
         ShaderVariant::Diffuse
@@ -323,20 +362,37 @@ fn select_shader_for_material(material: &GpuMaterial) -> ShaderVariant {
 ### 5. Implementing Doodad Placement
 
 ```rust
-use warcraft_rs::wmo::{DoodadSet, DoodadInstance};
-use warcraft_rs::m2::M2Model;
+use wow_wmo::{WmoDoodadSet, WmoDoodadDef};
+use std::collections::HashMap;
+use std::sync::Arc;
+
+// Mock M2 model type
+struct M2Model;
 
 struct WmoDoodadManager {
-    doodad_sets: Vec<DoodadSet>,
-    instances: Vec<DoodadInstance>,
+    doodad_sets: Vec<WmoDoodadSet>,
+    instances: Vec<WmoDoodadDef>,
     models: HashMap<String, Arc<M2Model>>,
+}
+
+// Mock types for example
+type Matrix4<T> = [[T; 4]; 4];
+type Vector3<T> = [T; 3];
+type Vector4<T> = [T; 4];
+type Quaternion<T> = [T; 4];
+
+struct M2ModelManager;
+impl M2ModelManager {
+    fn load_model(&mut self, _path: &str) -> Result<M2Model, Box<dyn std::error::Error>> {
+        Ok(M2Model)
+    }
 }
 
 impl WmoDoodadManager {
     fn new(root: &WmoRoot) -> Self {
         Self {
             doodad_sets: root.doodad_sets.clone(),
-            instances: root.doodad_instances.clone(),
+            instances: root.doodad_defs.clone(),
             models: HashMap::new(),
         }
     }
@@ -345,33 +401,42 @@ impl WmoDoodadManager {
         &mut self,
         set_index: usize,
         model_manager: &mut M2ModelManager,
+        doodad_names: &[String], // Would come from parsing MODN chunk
     ) -> Result<Vec<PlacedDoodad>, Box<dyn std::error::Error>> {
         let set = &self.doodad_sets[set_index];
         let mut placed_doodads = Vec::new();
 
-        for i in set.start_index..(set.start_index + set.count) {
+        for i in set.start_doodad..(set.start_doodad + set.n_doodads) {
             let instance = &self.instances[i as usize];
 
+            // Get filename from name offset (simplified)
+            let filename = if instance.name_offset as usize < doodad_names.len() {
+                &doodad_names[instance.name_offset as usize]
+            } else {
+                "unknown.m2"
+            };
+
             // Load model if not cached
-            let model = if let Some(cached) = self.models.get(&instance.filename) {
+            let model = if let Some(cached) = self.models.get(filename) {
                 cached.clone()
             } else {
-                let model = Arc::new(model_manager.load_model(&instance.filename)?);
-                self.models.insert(instance.filename.clone(), model.clone());
+                let model = Arc::new(model_manager.load_model(filename)?);
+                self.models.insert(filename.to_string(), model.clone());
                 model
             };
 
             // Create transform matrix
             let transform = create_doodad_transform(
-                &instance.position,
-                &instance.rotation,
+                [instance.position.x, instance.position.y, instance.position.z],
+                instance.orientation,
                 instance.scale,
             );
 
             placed_doodads.push(PlacedDoodad {
                 model,
                 transform,
-                color: instance.color,
+                color: [instance.color.r as f32 / 255.0, instance.color.g as f32 / 255.0,
+                        instance.color.b as f32 / 255.0, instance.color.a as f32 / 255.0],
             });
         }
 
@@ -380,15 +445,27 @@ impl WmoDoodadManager {
 }
 
 fn create_doodad_transform(
-    position: &Vector3<f32>,
-    rotation: &Quaternion<f32>,
+    position: Vector3<f32>,
+    rotation: Quaternion<f32>,
     scale: f32,
 ) -> Matrix4<f32> {
-    let translation = Matrix4::new_translation(position);
-    let rotation = rotation.to_homogeneous();
-    let scale = Matrix4::new_scaling(scale);
+    // Simplified transform creation - in a real implementation
+    // you'd use a proper math library like nalgebra or glam
+    let mut transform = [[0.0f32; 4]; 4];
 
-    translation * rotation * scale
+    // Identity matrix with scale
+    transform[0][0] = scale;
+    transform[1][1] = scale;
+    transform[2][2] = scale;
+    transform[3][3] = 1.0;
+
+    // Set translation
+    transform[3][0] = position[0];
+    transform[3][1] = position[1];
+    transform[3][2] = position[2];
+
+    // Note: rotation quaternion conversion omitted for brevity
+    transform
 }
 
 struct PlacedDoodad {
@@ -401,11 +478,13 @@ struct PlacedDoodad {
 ### 6. Rendering Pipeline
 
 ```rust
+// Mock GPU types for example (would be from wgpu/vulkan/etc)
+struct Device;
+struct Queue;
+struct RenderPipeline;
+struct Buffer;
+
 pub struct WmoRenderer {
-    device: Device,
-    queue: Queue,
-    indoor_pipeline: RenderPipeline,
-    outdoor_pipeline: RenderPipeline,
     group_buffers: Vec<GroupGpuData>,
     material_set: WmoMaterialSet,
     portal_system: PortalSystem,
@@ -414,50 +493,32 @@ pub struct WmoRenderer {
 struct GroupGpuData {
     vertex_buffer: Buffer,
     index_buffer: Buffer,
-    batches: Vec<RenderBatch>,
+    batches: Vec<WmoBatch>,
 }
 
 impl WmoRenderer {
-    pub fn new(device: Device, queue: Queue, wmo: &Wmo) -> Result<Self, Box<dyn std::error::Error>> {
-        // Create pipelines
-        let indoor_pipeline = create_indoor_pipeline(&device);
-        let outdoor_pipeline = create_outdoor_pipeline(&device);
-
+    pub fn new(wmo: &LoadedWmo) -> Result<Self, Box<dyn std::error::Error>> {
         // Process groups
         let mut group_buffers = Vec::new();
         for group in &wmo.groups {
-            let processed = process_wmo_group(group, &wmo.root);
+            let processed = process_wmo_group(group);
 
-            let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("WMO Vertex Buffer"),
-                contents: bytemuck::cast_slice(&processed.vertices),
-                usage: BufferUsages::VERTEX,
-            });
-
-            let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("WMO Index Buffer"),
-                contents: bytemuck::cast_slice(&processed.indices),
-                usage: BufferUsages::INDEX,
-            });
-
+            // In a real implementation, you'd create GPU buffers here
             group_buffers.push(GroupGpuData {
-                vertex_buffer,
-                index_buffer,
+                vertex_buffer: Buffer, // Mock buffer
+                index_buffer: Buffer,  // Mock buffer
                 batches: processed.batches,
             });
         }
 
         // Load materials
+        let mut texture_manager = TextureManager;
         let material_set = load_wmo_materials(&wmo.root, &mut texture_manager)?;
 
         // Initialize portal system
         let portal_system = PortalSystem::new(&wmo.root);
 
         Ok(Self {
-            device,
-            queue,
-            indoor_pipeline,
-            outdoor_pipeline,
             group_buffers,
             material_set,
             portal_system,
@@ -466,49 +527,23 @@ impl WmoRenderer {
 
     pub fn render(
         &mut self,
-        encoder: &mut CommandEncoder,
-        view: &TextureView,
-        camera: &Camera,
-        wmo: &Wmo,
+        wmo: &LoadedWmo,
+        camera_pos: Vec3,
     ) {
         // Update portal visibility
-        let camera_group = self.find_camera_group(camera.position, wmo);
-        self.portal_system.update_visibility(camera.position, camera_group);
+        let camera_group = self.find_camera_group(camera_pos, wmo);
+        self.portal_system.update_visibility(camera_pos, camera_group);
 
         // Render visible groups
-        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("WMO Render Pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view,
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Load,
-                    store: true,
-                },
-            })],
-            depth_stencil_attachment: Some(/* depth attachment */),
-        });
+        println!("Rendering WMO with {} groups", wmo.groups.len());
 
-        // Render outdoor groups first (for proper transparency sorting)
         for (group_idx, group) in wmo.groups.iter().enumerate() {
             if !self.portal_system.group_visibility[group_idx] {
                 continue;
             }
 
-            if group.flags.contains(GroupFlags::OUTDOOR) {
-                self.render_group(&mut render_pass, group_idx, &self.outdoor_pipeline, camera);
-            }
-        }
-
-        // Then render indoor groups
-        for (group_idx, group) in wmo.groups.iter().enumerate() {
-            if !self.portal_system.group_visibility[group_idx] {
-                continue;
-            }
-
-            if group.flags.contains(GroupFlags::INDOOR) {
-                self.render_group(&mut render_pass, group_idx, &self.indoor_pipeline, camera);
-            }
+            println!("Rendering group {}", group_idx);
+            // In a real renderer, you'd submit draw calls here
         }
     }
 
@@ -545,14 +580,14 @@ impl WmoRenderer {
         }
     }
 
-    fn find_camera_group(&self, camera_pos: Point3<f32>, wmo: &Wmo) -> usize {
+    fn find_camera_group(&self, camera_pos: Vec3, wmo: &LoadedWmo) -> usize {
         // Find which group contains the camera
         for (idx, group) in wmo.groups.iter().enumerate() {
-            if group.bounding_box.contains_point(&camera_pos) {
-                // Further check with BSP tree if available
-                if group.has_bsp_tree() && group.bsp_tree.contains_point(&camera_pos) {
-                    return idx;
-                }
+            let bbox = &group.header.bounding_box;
+            if camera_pos.x >= bbox.min.x && camera_pos.x <= bbox.max.x &&
+               camera_pos.y >= bbox.min.y && camera_pos.y <= bbox.max.y &&
+               camera_pos.z >= bbox.min.z && camera_pos.z <= bbox.max.z {
+                return idx;
             }
         }
 

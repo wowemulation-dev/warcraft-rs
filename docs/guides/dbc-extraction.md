@@ -49,7 +49,7 @@ use std::fs;
 use std::io::Write;
 
 fn extract_dbc_files(mpq_path: &str, output_dir: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let archive = Archive::open(mpq_path)?;
+    let mut archive = Archive::open(mpq_path)?;
     let mut extracted_files = Vec::new();
 
     // Create output directory
@@ -278,7 +278,7 @@ impl DbcRecord for SpellRecord {
 
 ```rust
 use std::collections::HashMap;
-use warcraft_rs::dbc::*;
+use wow_dbc::*;
 
 pub struct DbcDatabase {
     spells: HashMap<u32, SpellRecord>,
@@ -495,7 +495,7 @@ fn print_spell_info(spell: &SpellRecord) {
 ### Complete DBC Parser Library
 
 ```rust
-use warcraft_rs::dbc::*;
+use wow_dbc::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -565,7 +565,7 @@ fn read_cstring_at_offset(data: &[u8], offset: usize) -> String {
 ### Localized DBC Support
 
 ```rust
-use warcraft_rs::dbc::{DbcString, LocalizedString};
+use wow_dbc::{DbcString, LocalizedString};
 
 #[derive(Debug)]
 pub struct LocalizedDbcString {

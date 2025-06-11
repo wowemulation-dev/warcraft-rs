@@ -21,6 +21,7 @@ pub enum NodeType {
     Header,
     #[allow(dead_code)]
     Chunk,
+    #[allow(dead_code)]
     Table,
     File,
     Directory,

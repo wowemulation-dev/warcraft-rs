@@ -41,12 +41,12 @@ warcraft-rs <format> <command> [options]
 ### Available Formats
 
 - `mpq` - MPQ archive operations (implemented)
-- `dbc` - DBC database operations (planned)
+- `dbc` - DBC database operations (implemented)
 - `blp` - BLP texture operations (planned)
 - `m2` - M2 model operations (planned)
-- `wmo` - WMO object operations (planned)
-- `adt` - ADT terrain operations (planned)
-- `wdt` - WDT map operations (basic implementation, CLI planned)
+- `wmo` - WMO object operations (implemented)
+- `adt` - ADT terrain operations (implemented)
+- `wdt` - WDT map operations (implemented)
 - `wdl` - WDL world operations (implemented)
 
 ### MPQ Commands
