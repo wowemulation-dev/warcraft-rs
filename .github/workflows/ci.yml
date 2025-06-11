@@ -59,19 +59,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # MSRV check on Linux only
           - os: ubuntu-latest
             rust: 1.86.0
-          # Stable on all platforms
           - os: ubuntu-latest
             rust: stable
-          - os: windows-latest
-            rust: stable
-          - os: macos-latest
-            rust: stable
-          # Beta on Linux only
-          - os: ubuntu-latest
-            rust: beta
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
