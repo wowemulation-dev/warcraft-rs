@@ -1,0 +1,2 @@
+[tools]
+"rust" = { version = "1.86", profile = "default" }
