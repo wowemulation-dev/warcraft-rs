@@ -2,7 +2,6 @@
 
 use crate::chunks::WDT_MAP_SIZE;
 use crate::error::{Error, Result};
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
 /// Section types in MAID chunk
@@ -205,7 +204,9 @@ impl super::Chunk for MaidChunk {
                 let mut row = Vec::with_capacity(WDT_MAP_SIZE);
 
                 for _x in 0..WDT_MAP_SIZE {
-                    let file_data_id = reader.read_u32::<LittleEndian>()?;
+                    let mut buf = [0u8; 4];
+                    reader.read_exact(&mut buf)?;
+                    let file_data_id = u32::from_le_bytes(buf);
                     row.push(file_data_id);
                 }
 
@@ -222,7 +223,7 @@ impl super::Chunk for MaidChunk {
         for section in &self.sections {
             for row in section {
                 for &file_data_id in row {
-                    writer.write_u32::<LittleEndian>(file_data_id)?;
+                    writer.write_all(&file_data_id.to_le_bytes())?;
                 }
             }
         }

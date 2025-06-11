@@ -9,8 +9,13 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
 [![codecov](https://img.shields.io/codecov/c/github/wowemulation-dev/warcraft-rs?logo=codecov&style=flat-square&token=BAQ8SOKEST&color=C43AC3)](https://codecov.io/gh/wowemulation-dev/warcraft-rs)
+[![Awesome WoW Rust](https://awesome.re/badge.svg)](https://github.com/arlyon/awesome-wow-rust)
 
 </div>
+
+`warcraft-rs` is part of a fantastic Rust WoW community. Be sure to check out
+[awesome-wow-rust](https://github.com/arlyon/awesome-wow-rust) for more cool
+projects and a link to official WoW Rust Discord.
 
 ## Features
 
@@ -61,6 +66,12 @@ warcraft-rs wdt convert map.wdt map_new.wdt --to wotlk
 warcraft-rs wdt tiles map.wdt
 warcraft-rs wdt tree map.wdt  # NEW! Visualize WDT structure
 
+# ADT terrain operations
+warcraft-rs adt info terrain.adt
+warcraft-rs adt validate terrain.adt --level strict
+warcraft-rs adt convert classic.adt cata.adt --to cataclysm
+warcraft-rs adt tree terrain.adt  # NEW! Visualize ADT structure
+
 # Other tools (when implemented)
 warcraft-rs dbc list items.dbc
 warcraft-rs blp convert texture.blp --format png
@@ -92,14 +103,17 @@ mutable.flush()?; // Save changes
 ```
 
 ```rust
-// WDT parsing example (basic implementation in development)
-// use wow_wdt::{WdtReader, WdtFile, version::WowVersion};
-// use std::fs::File;
-// use std::io::BufReader;
-//
-// let file = File::open("map.wdt")?;
-// let mut reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
-// let wdt = reader.read()?;
+// ADT terrain parsing
+use wow_adt::{Adt, ValidationLevel};
+use std::fs::File;
+
+let file = File::open("terrain.adt")?;
+let adt = Adt::from_reader(file)?;
+println!("ADT version: {:?}", adt.version);
+println!("Terrain chunks: {}", adt.mcnk_chunks().len());
+
+// Validate the ADT file
+adt.validate_with_report(ValidationLevel::Standard)?;
 ```
 
 ## Installation
@@ -123,6 +137,9 @@ Add the crates you need to your `Cargo.toml`:
 ```toml
 [dependencies]
 wow-mpq = "0.1"
+wow-adt = "0.1"
+wow-wdt = "0.1"
+wow-wdl = "0.1"
 wow-dbc = "0.1"
 wow-blp = "0.1"
 ```
@@ -147,9 +164,10 @@ warcraft-rs mpq rebuild old.mpq modern.mpq --upgrade-to v4 --compression lzma
 # Verify the rebuild
 warcraft-rs mpq compare old.mpq modern.mpq --content-check --output summary
 
-# Visualize WDT/WDL file structures
+# Visualize file structures
 warcraft-rs wdt tree Azeroth.wdt --show-refs  # See ADT tile references
 warcraft-rs wdl tree Azeroth.wdl --compact     # Compact view of WDL chunks
+warcraft-rs adt tree terrain.adt --show-refs  # See terrain chunk structure
 ```
 
 ## Documentation

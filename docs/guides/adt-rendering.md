@@ -48,16 +48,14 @@ Each ADT file contains:
 Before loading ADT files, use the WDT file to determine which tiles exist:
 
 ```rust
-use wow_wdt::{WdtReader, version::WowVersion};
-use std::io::BufReader;
+use wow_wdt::{Wdt, WdtVersion};
 use std::fs::File;
 use std::collections::HashSet;
 
-fn discover_adt_tiles(map_name: &str, version: WowVersion) -> Result<HashSet<(usize, usize)>, Box<dyn std::error::Error>> {
+fn discover_adt_tiles(map_name: &str) -> Result<HashSet<(u8, u8)>, Box<dyn std::error::Error>> {
     let wdt_path = format!("World/Maps/{}/{}.wdt", map_name, map_name);
     let file = File::open(wdt_path)?;
-    let mut reader = WdtReader::new(BufReader::new(file), version);
-    let wdt = reader.read()?;
+    let wdt = Wdt::read(file)?;
 
     let mut existing_tiles = HashSet::new();
 
@@ -68,12 +66,12 @@ fn discover_adt_tiles(map_name: &str, version: WowVersion) -> Result<HashSet<(us
     }
 
     // Find all tiles that have ADT data
-    for y in 0..64 {
-        for x in 0..64 {
-            if let Some(tile_info) = wdt.get_tile(x, y) {
-                if tile_info.has_adt {
-                    existing_tiles.insert((x, y));
-                    println!("Found ADT tile at [{}, {}] - Area ID: {}", x, y, tile_info.area_id);
+    for y in 0..64u8 {
+        for x in 0..64u8 {
+            if wdt.has_adt(x, y) {
+                existing_tiles.insert((x, y));
+                if let Some(area_id) = wdt.get_area_id(x, y) {
+                    println!("Found ADT tile at [{}, {}] - Area ID: {}", x, y, area_id);
                 }
             }
         }
@@ -84,30 +82,35 @@ fn discover_adt_tiles(map_name: &str, version: WowVersion) -> Result<HashSet<(us
 }
 
 // Example usage
-let existing_tiles = discover_adt_tiles("Azeroth", WowVersion::WotLK)?;
+let existing_tiles = discover_adt_tiles("Azeroth")?;
 ```
 
 ### 2. Loading ADT Files
 
 ```rust
-use warcraft_rs::adt::{Adt, AdtFlags};
-use warcraft_rs::common::{Vec3, ChunkId};
+use wow_adt::Adt;
+use std::path::Path;
 
 fn load_adt_file(filename: &str) -> Result<Adt, Box<dyn std::error::Error>> {
     // Load main terrain file
-    let adt = Adt::from_file(filename)?;
+    let adt = Adt::from_path(filename)?;
 
-    // Also load associated files
-    let tex0_file = filename.replace(".adt", "_tex0.adt");
-    let obj0_file = filename.replace(".adt", "_obj0.adt");
-    let obj1_file = filename.replace(".adt", "_obj1.adt");
+    // For Cataclysm+ files, also load associated split files
+    let path = Path::new(filename);
+    let stem = path.file_stem().unwrap().to_str().unwrap();
+    let dir = path.parent().unwrap();
 
-    // Load texture information
-    let adt_tex = Adt::from_file(&tex0_file)?;
+    let tex0_file = dir.join(format!("{}_tex0.adt", stem));
+    let obj0_file = dir.join(format!("{}_obj0.adt", stem));
 
-    // Load object placement
-    let adt_obj0 = Adt::from_file(&obj0_file)?;
-    let adt_obj1 = Adt::from_file(&obj1_file)?;
+    // Note: Split files are automatically handled by wow-adt
+    // These would contain texture and object data respectively
+    if tex0_file.exists() {
+        println!("Found texture file: {}", tex0_file.display());
+    }
+    if obj0_file.exists() {
+        println!("Found object file: {}", obj0_file.display());
+    }
 
     Ok(adt)
 }
@@ -116,7 +119,7 @@ fn load_adt_file(filename: &str) -> Result<Adt, Box<dyn std::error::Error>> {
 ### 2. Generating Terrain Mesh
 
 ```rust
-use warcraft_rs::adt::{Adt, TerrainChunk};
+use wow_adt::{Adt, McnkChunk};
 
 #[derive(Debug, Clone)]
 struct TerrainVertex {
@@ -129,22 +132,21 @@ struct TerrainVertex {
 fn generate_terrain_mesh(adt: &Adt) -> Vec<TerrainVertex> {
     let mut vertices = Vec::new();
 
-    // ADT has 16x16 chunks
-    for chunk_y in 0..16 {
-        for chunk_x in 0..16 {
-            let chunk = &adt.chunks[chunk_y * 16 + chunk_x];
-            vertices.extend(generate_chunk_vertices(chunk, chunk_x, chunk_y));
-        }
+    // ADT has up to 256 chunks (16x16)
+    for (idx, chunk) in adt.mcnk_chunks().iter().enumerate() {
+        let chunk_x = idx % 16;
+        let chunk_y = idx / 16;
+        vertices.extend(generate_chunk_vertices(chunk, chunk_x, chunk_y));
     }
 
     vertices
 }
 
-fn generate_chunk_vertices(chunk: &TerrainChunk, chunk_x: usize, chunk_y: usize) -> Vec<TerrainVertex> {
+fn generate_chunk_vertices(chunk: &McnkChunk, chunk_x: usize, chunk_y: usize) -> Vec<TerrainVertex> {
     let mut vertices = Vec::new();
 
     // Each chunk has 9x9 vertices (including corners shared with neighbors)
-    // But internally uses 17x17 for proper tessellation
+    // Height data is stored in the mcvt subchunk
     const VERTS_PER_SIDE: usize = 9;
 
     for y in 0..VERTS_PER_SIDE {

@@ -15,8 +15,19 @@ categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 thiserror = { workspace = true }
+log = "0.4"
+image = { version = "0.25", optional = true }
+rayon = { version = "1.10", optional = true }
+memmap2 = { version = "0.9", optional = true }
 
 [dev-dependencies]
+criterion = "0.6"
+tempfile = "3.20"
+pretty_assertions = "1.4"
 
 [features]
 default = []
+extract = ["dep:image"]
+parallel = ["dep:rayon"]
+mmap = ["dep:memmap2"]
+image = ["dep:image"]

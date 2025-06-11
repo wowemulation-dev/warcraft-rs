@@ -28,8 +28,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **warcraft-rs CLI**: Added `wdl` subcommand with validate, convert, and info commands for WDL file manipulation
 - **wow-wdt**: Complete WDT (World Data Table) format support with 100% parsing success rate across all WoW versions
 - **warcraft-rs CLI**: Added `wdt` subcommand with info, validate, convert, and tiles commands for WDT file manipulation
-- **warcraft-rs CLI**: Added `tree` subcommand for MPQ, WDT, and WDL formats to visualize file structure hierarchically
+- **wow-adt**: Integrated comprehensive ADT (terrain) file support
+- **wow-adt**: Full parsing support for all ADT chunk types including terrain, textures, water, and object placement
+- **wow-adt**: Version conversion support between Classic, TBC, WotLK, and Cataclysm formats
+- **wow-adt**: Split file support for Cataclysm+ ADT files (_tex0,_obj0, etc.)
+- **wow-adt**: Comprehensive validation with multiple strictness levels
+- **wow-adt**: Tree visualization support for hierarchical chunk structure display
+- **wow-adt**: Added comprehensive examples: parse_adt, validate_adt, and version_info
+- **wow-adt**: Fixed MH2O water chunk parsing for incomplete water data in original Blizzard files
+- **wow-adt**: Fixed MFBO chunk handling for variable sizes between expansions (8 bytes in TBC, 36 bytes in Cataclysm+)
+- **warcraft-rs CLI**: Added complete ADT command suite: `info`, `validate`, `convert`, and `tree`
+- **warcraft-rs CLI**: ADT commands now use expansion names (classic, tbc, wotlk, cataclysm) instead of version numbers
+- **warcraft-rs CLI**: Added `tree` subcommand for MPQ, WDT, WDL, and ADT formats to visualize file structure hierarchically
 - **warcraft-rs**: Added comprehensive tree visualization utilities for rendering file format structures with emoji icons and color support
+- **All crates**: Replaced byteorder crate usage with native Rust byte order functions
 
 ### Fixed
 

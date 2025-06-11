@@ -42,13 +42,16 @@ console = "0.15"
 chrono = "0.4"
 glob = "0.3"
 
+# Optional parallel processing
+rayon = { version = "1.10", optional = true }
+
 # Optional serialization for data export
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 
 [features]
-default = ["mpq"]
-full = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl", "serde"]
+default = ["mpq", "adt", "wdt", "wdl"]
+full = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl", "serde", "extract", "parallel"]
 mpq = []
 dbc = ["dep:wow-dbc"]
 blp = ["dep:wow-blp"]
@@ -58,6 +61,8 @@ adt = ["dep:wow-adt"]
 wdt = ["dep:wow-wdt", "serde"]
 wdl = ["dep:wow-wdl"]
 serde = ["dep:serde", "dep:serde_json"]
+extract = ["wow-adt?/extract"]
+parallel = ["wow-adt?/parallel", "dep:rayon"]
 
 [[bin]]
 name = "warcraft-rs"

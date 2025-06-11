@@ -44,7 +44,6 @@ pub mod version;
 use crate::chunks::{Chunk, MaidChunk, MainChunk, ModfChunk, MphdChunk, MverChunk, MwmoChunk};
 use crate::error::{Error, Result};
 use crate::version::{VersionConfig, WowVersion};
-use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom, Write};
 
 /// A complete WDT file representation
@@ -270,7 +269,9 @@ impl<R: Read + Seek> WdtReader<R> {
         let mut magic = [0u8; 4];
         self.reader.read_exact(&mut magic)?;
 
-        let size = self.reader.read_u32::<LittleEndian>()? as usize;
+        let mut buf = [0u8; 4];
+        self.reader.read_exact(&mut buf)?;
+        let size = u32::from_le_bytes(buf) as usize;
 
         Ok((magic, size))
     }

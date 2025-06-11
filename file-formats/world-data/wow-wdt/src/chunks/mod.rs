@@ -1,7 +1,6 @@
 //! WDT chunk implementations
 
 use crate::error::{Error, Result};
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
 pub mod maid;
@@ -45,7 +44,7 @@ pub trait Chunk: Sized {
     /// Write the complete chunk including header
     fn write_chunk(&self, writer: &mut impl Write) -> Result<()> {
         writer.write_all(Self::magic())?;
-        writer.write_u32::<LittleEndian>(self.size() as u32)?;
+        writer.write_all(&(self.size() as u32).to_le_bytes())?;
         self.write(writer)?;
         Ok(())
     }
@@ -89,7 +88,9 @@ impl Chunk for MverChunk {
             });
         }
 
-        let version = reader.read_u32::<LittleEndian>()?;
+        let mut buf = [0u8; 4];
+        reader.read_exact(&mut buf)?;
+        let version = u32::from_le_bytes(buf);
         if version != WDT_VERSION {
             return Err(Error::InvalidVersion(version));
         }
@@ -98,7 +99,7 @@ impl Chunk for MverChunk {
     }
 
     fn write(&self, writer: &mut impl Write) -> Result<()> {
-        writer.write_u32::<LittleEndian>(self.version)?;
+        writer.write_all(&self.version.to_le_bytes())?;
         Ok(())
     }
 
@@ -211,8 +212,11 @@ impl Chunk for MainChunk {
         for _y in 0..WDT_MAP_SIZE {
             let mut row = Vec::with_capacity(WDT_MAP_SIZE);
             for _x in 0..WDT_MAP_SIZE {
-                let flags = reader.read_u32::<LittleEndian>()?;
-                let area_id = reader.read_u32::<LittleEndian>()?;
+                let mut buf = [0u8; 4];
+                reader.read_exact(&mut buf)?;
+                let flags = u32::from_le_bytes(buf);
+                reader.read_exact(&mut buf)?;
+                let area_id = u32::from_le_bytes(buf);
                 row.push(MainEntry { flags, area_id });
             }
             entries.push(row);
@@ -224,8 +228,8 @@ impl Chunk for MainChunk {
     fn write(&self, writer: &mut impl Write) -> Result<()> {
         for row in &self.entries {
             for entry in row {
-                writer.write_u32::<LittleEndian>(entry.flags)?;
-                writer.write_u32::<LittleEndian>(entry.area_id)?;
+                writer.write_all(&entry.flags.to_le_bytes())?;
+                writer.write_all(&entry.area_id.to_le_bytes())?;
             }
         }
         Ok(())
@@ -315,7 +319,7 @@ impl Chunk for MwmoChunk {
     fn write(&self, writer: &mut impl Write) -> Result<()> {
         for filename in &self.filenames {
             writer.write_all(filename.as_bytes())?;
-            writer.write_u8(0)?; // Null terminator
+            writer.write_all(&[0])?; // Null terminator
         }
         Ok(())
     }
@@ -408,33 +412,49 @@ impl Chunk for ModfChunk {
         let mut entries = Vec::with_capacity(count);
 
         for _ in 0..count {
-            let id = reader.read_u32::<LittleEndian>()?;
-            let unique_id = reader.read_u32::<LittleEndian>()?;
+            let mut buf = [0u8; 4];
+            reader.read_exact(&mut buf)?;
+            let id = u32::from_le_bytes(buf);
+            reader.read_exact(&mut buf)?;
+            let unique_id = u32::from_le_bytes(buf);
 
             let mut position = [0.0f32; 3];
             for item in &mut position {
-                *item = reader.read_f32::<LittleEndian>()?;
+                let mut buf = [0u8; 4];
+                reader.read_exact(&mut buf)?;
+                *item = f32::from_le_bytes(buf);
             }
 
             let mut rotation = [0.0f32; 3];
             for item in &mut rotation {
-                *item = reader.read_f32::<LittleEndian>()?;
+                let mut buf = [0u8; 4];
+                reader.read_exact(&mut buf)?;
+                *item = f32::from_le_bytes(buf);
             }
 
             let mut lower_bounds = [0.0f32; 3];
             for item in &mut lower_bounds {
-                *item = reader.read_f32::<LittleEndian>()?;
+                let mut buf = [0u8; 4];
+                reader.read_exact(&mut buf)?;
+                *item = f32::from_le_bytes(buf);
             }
 
             let mut upper_bounds = [0.0f32; 3];
             for item in &mut upper_bounds {
-                *item = reader.read_f32::<LittleEndian>()?;
+                let mut buf = [0u8; 4];
+                reader.read_exact(&mut buf)?;
+                *item = f32::from_le_bytes(buf);
             }
 
-            let flags = reader.read_u16::<LittleEndian>()?;
-            let doodad_set = reader.read_u16::<LittleEndian>()?;
-            let name_set = reader.read_u16::<LittleEndian>()?;
-            let scale = reader.read_u16::<LittleEndian>()?;
+            let mut buf2 = [0u8; 2];
+            reader.read_exact(&mut buf2)?;
+            let flags = u16::from_le_bytes(buf2);
+            reader.read_exact(&mut buf2)?;
+            let doodad_set = u16::from_le_bytes(buf2);
+            reader.read_exact(&mut buf2)?;
+            let name_set = u16::from_le_bytes(buf2);
+            reader.read_exact(&mut buf2)?;
+            let scale = u16::from_le_bytes(buf2);
 
             entries.push(ModfEntry {
                 id,
@@ -455,29 +475,29 @@ impl Chunk for ModfChunk {
 
     fn write(&self, writer: &mut impl Write) -> Result<()> {
         for entry in &self.entries {
-            writer.write_u32::<LittleEndian>(entry.id)?;
-            writer.write_u32::<LittleEndian>(entry.unique_id)?;
+            writer.write_all(&entry.id.to_le_bytes())?;
+            writer.write_all(&entry.unique_id.to_le_bytes())?;
 
             for &v in &entry.position {
-                writer.write_f32::<LittleEndian>(v)?;
+                writer.write_all(&v.to_le_bytes())?;
             }
 
             for &v in &entry.rotation {
-                writer.write_f32::<LittleEndian>(v)?;
+                writer.write_all(&v.to_le_bytes())?;
             }
 
             for &v in &entry.lower_bounds {
-                writer.write_f32::<LittleEndian>(v)?;
+                writer.write_all(&v.to_le_bytes())?;
             }
 
             for &v in &entry.upper_bounds {
-                writer.write_f32::<LittleEndian>(v)?;
+                writer.write_all(&v.to_le_bytes())?;
             }
 
-            writer.write_u16::<LittleEndian>(entry.flags)?;
-            writer.write_u16::<LittleEndian>(entry.doodad_set)?;
-            writer.write_u16::<LittleEndian>(entry.name_set)?;
-            writer.write_u16::<LittleEndian>(entry.scale)?;
+            writer.write_all(&entry.flags.to_le_bytes())?;
+            writer.write_all(&entry.doodad_set.to_le_bytes())?;
+            writer.write_all(&entry.name_set.to_le_bytes())?;
+            writer.write_all(&entry.scale.to_le_bytes())?;
         }
         Ok(())
     }

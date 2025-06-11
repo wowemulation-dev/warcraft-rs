@@ -3,8 +3,28 @@
 //! This example shows how to use the programmatic tree visualization API
 //! to display the structure of various WoW file formats.
 
+#[cfg(any(
+    feature = "mpq",
+    feature = "dbc",
+    feature = "blp",
+    feature = "m2",
+    feature = "wmo",
+    feature = "adt",
+    feature = "wdt",
+    feature = "wdl"
+))]
 use warcraft_rs::utils::{NodeType, TreeNode, TreeOptions, detect_ref_type, render_tree};
 
+#[cfg(any(
+    feature = "mpq",
+    feature = "dbc",
+    feature = "blp",
+    feature = "m2",
+    feature = "wmo",
+    feature = "adt",
+    feature = "wdt",
+    feature = "wdl"
+))]
 fn main() {
     println!("🌳 Tree Visualization Demo");
     println!("=========================\n");
@@ -32,6 +52,31 @@ fn main() {
     println!("{}", render_tree(&mpq_tree, &compact_options));
 }
 
+#[cfg(not(any(
+    feature = "mpq",
+    feature = "dbc",
+    feature = "blp",
+    feature = "m2",
+    feature = "wmo",
+    feature = "adt",
+    feature = "wdt",
+    feature = "wdl"
+)))]
+fn main() {
+    println!("This example requires at least one file format feature to be enabled.");
+    println!("Try running with: cargo run --example tree_visualization_demo --features mpq");
+}
+
+#[cfg(any(
+    feature = "mpq",
+    feature = "dbc",
+    feature = "blp",
+    feature = "m2",
+    feature = "wmo",
+    feature = "adt",
+    feature = "wdt",
+    feature = "wdl"
+))]
 fn create_sample_mpq_tree() -> TreeNode {
     TreeNode::new("example.mpq".to_string(), NodeType::Root)
         .with_size(1024 * 1024) // 1MB
@@ -92,6 +137,16 @@ fn create_sample_mpq_tree() -> TreeNode {
         )
 }
 
+#[cfg(any(
+    feature = "mpq",
+    feature = "dbc",
+    feature = "blp",
+    feature = "m2",
+    feature = "wmo",
+    feature = "adt",
+    feature = "wdt",
+    feature = "wdl"
+))]
 fn create_sample_wdt_tree() -> TreeNode {
     TreeNode::new("Azeroth.wdt".to_string(), NodeType::Root)
         .with_metadata("type", "Terrain map")

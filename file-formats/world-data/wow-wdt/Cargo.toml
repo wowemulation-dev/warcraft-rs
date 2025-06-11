@@ -13,7 +13,6 @@ categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 # Core dependencies
-byteorder = { workspace = true }
 thiserror = { workspace = true }
 bitflags = { workspace = true }
 

@@ -47,6 +47,7 @@ them.
 
 ### World Data
 
+- [ADT CLI Usage](guides/adt-cli-usage.md)
 - [WDT CLI Usage](guides/wdt-cli-usage.md)
 
 ### Graphics & Rendering

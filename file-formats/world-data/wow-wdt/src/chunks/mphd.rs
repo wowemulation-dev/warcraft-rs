@@ -2,7 +2,6 @@
 
 use crate::error::{Error, Result};
 use bitflags::bitflags;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
 bitflags! {
@@ -151,17 +150,23 @@ impl super::Chunk for MphdChunk {
             });
         }
 
-        let flags_raw = reader.read_u32::<LittleEndian>()?;
+        let mut buf = [0u8; 4];
+        reader.read_exact(&mut buf)?;
+        let flags_raw = u32::from_le_bytes(buf);
         let flags = MphdFlags::from_bits(flags_raw).ok_or_else(|| Error::InvalidChunkData {
             chunk: "MPHD".to_string(),
             message: format!("Invalid flags: 0x{:08X}", flags_raw),
         })?;
 
-        let something = reader.read_u32::<LittleEndian>()?;
+        let mut buf = [0u8; 4];
+        reader.read_exact(&mut buf)?;
+        let something = u32::from_le_bytes(buf);
 
         let mut unused = [0u32; 6];
         for item in &mut unused {
-            *item = reader.read_u32::<LittleEndian>()?;
+            let mut buf = [0u8; 4];
+            reader.read_exact(&mut buf)?;
+            *item = u32::from_le_bytes(buf);
         }
 
         let mut chunk = Self {
@@ -192,23 +197,23 @@ impl super::Chunk for MphdChunk {
     }
 
     fn write(&self, writer: &mut impl Write) -> Result<()> {
-        writer.write_u32::<LittleEndian>(self.flags.bits())?;
+        writer.write_all(&self.flags.bits().to_le_bytes())?;
 
         // Write fields based on whether we have FileDataIDs
         if self.has_maid() {
             // Write FileDataIDs
-            writer.write_u32::<LittleEndian>(self.lgt_file_data_id.unwrap_or(0))?;
-            writer.write_u32::<LittleEndian>(self.occ_file_data_id.unwrap_or(0))?;
-            writer.write_u32::<LittleEndian>(self.fogs_file_data_id.unwrap_or(0))?;
-            writer.write_u32::<LittleEndian>(self.mpv_file_data_id.unwrap_or(0))?;
-            writer.write_u32::<LittleEndian>(self.tex_file_data_id.unwrap_or(0))?;
-            writer.write_u32::<LittleEndian>(self.wdl_file_data_id.unwrap_or(0))?;
-            writer.write_u32::<LittleEndian>(self.pd4_file_data_id.unwrap_or(0))?;
+            writer.write_all(&self.lgt_file_data_id.unwrap_or(0).to_le_bytes())?;
+            writer.write_all(&self.occ_file_data_id.unwrap_or(0).to_le_bytes())?;
+            writer.write_all(&self.fogs_file_data_id.unwrap_or(0).to_le_bytes())?;
+            writer.write_all(&self.mpv_file_data_id.unwrap_or(0).to_le_bytes())?;
+            writer.write_all(&self.tex_file_data_id.unwrap_or(0).to_le_bytes())?;
+            writer.write_all(&self.wdl_file_data_id.unwrap_or(0).to_le_bytes())?;
+            writer.write_all(&self.pd4_file_data_id.unwrap_or(0).to_le_bytes())?;
         } else {
             // Write legacy format
-            writer.write_u32::<LittleEndian>(self.something)?;
+            writer.write_all(&self.something.to_le_bytes())?;
             for &val in &self.unused {
-                writer.write_u32::<LittleEndian>(val)?;
+                writer.write_all(&val.to_le_bytes())?;
             }
         }
 

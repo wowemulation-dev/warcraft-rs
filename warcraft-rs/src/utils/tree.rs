@@ -19,13 +19,16 @@ pub struct TreeNode {
 pub enum NodeType {
     Root,
     Header,
+    #[allow(dead_code)]
     Chunk,
     Table,
     File,
     Directory,
     #[allow(dead_code)] // Reserved for future use
     Reference,
+    #[allow(dead_code)]
     Property,
+    #[allow(dead_code)]
     Data,
 }
 

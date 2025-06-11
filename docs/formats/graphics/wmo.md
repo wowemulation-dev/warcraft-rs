@@ -1275,7 +1275,7 @@ fn ray_triangle_intersect(
 ```rust
 use std::io::{self, Read, Seek, SeekFrom};
 use std::collections::HashMap;
-use byteorder::{LittleEndian, ReadBytesExt};
+use std::io::Read;
 
 pub struct WMORoot {
     pub version: u32,
