@@ -2,32 +2,31 @@
 
 ## Overview
 
-MPQ (Mo'PaQ) archives are Blizzard's proprietary archive format used extensively
-in World of Warcraft to store game assets. This guide covers how to work with
-MPQ archives using `warcraft-rs`, including reading, extracting, and managing
-files within these archives.
+MPQ (Mo'PaQ) archives are Blizzard's archive format used
+in World of Warcraft to store game assets. This guide covers working with
+MPQ archives using `warcraft-rs`.
 
 **Key Features:**
 
-- ✅ **100% StormLib Compatibility** - Full cross-implementation support
-- ✅ **Full Blizzard Archive Support** - Handles all official WoW archives (1.12.1 - 5.4.8)
-- ✅ **Bidirectional Compatibility** - Archives created by either implementation can be read by both
-- ✅ **Automatic Path Conversion** - Forward slashes automatically converted to backslashes
+- ✅ **StormLib Compatibility** - Cross-implementation support
+- ✅ **Blizzard Archive Support** - Handles official WoW archives (1.12.1 - 5.4.8)
+- ✅ **Bidirectional Compatibility** - Archives work with both implementations
+- ✅ **Path Conversion** - Forward slashes converted to backslashes
 
 ## Prerequisites
 
-Before working with MPQ archives, ensure you have:
+Prerequisites:
 
-- Basic understanding of Rust programming
+- Rust programming knowledge
 - `warcraft-rs` installed with the `mpq` feature enabled
 - Access to World of Warcraft MPQ files (from game installation)
-- Understanding of file I/O operations in Rust
+- File I/O knowledge in Rust
 
 ## Understanding MPQ Archives
 
-### What are MPQ Archives?
+### MPQ Archives
 
-MPQ archives are compressed file containers that can store:
+MPQ archives are file containers that store:
 
 - Game textures (BLP files)
 - Models (M2, WMO files)
@@ -40,11 +39,11 @@ MPQ archives are compressed file containers that can store:
 
 - **Compression**: Multiple compression algorithms (PKWARE, zlib, bzip2)
 - **Encryption**: Optional file encryption
-- **Listfiles**: Internal file listings (though not always present)
-- **Patches**: Support for incremental updates
+- **Listfiles**: Internal file listings (not always present)
+- **Patches**: Incremental updates
 - **Multi-locale**: Language-specific file variations
 
-## Step-by-Step Instructions
+## Instructions
 
 ### 1. Opening an MPQ Archive
 
@@ -90,7 +89,7 @@ fn list_archive_contents(archive: &mut Archive) -> Result<(), Box<dyn std::error
         }
         Err(_) => {
             println!("No listfile found in archive");
-            // You'll need to know exact filenames to extract without a listfile
+            // Need exact filenames without a listfile
         }
     }
 
@@ -156,8 +155,8 @@ fn extract_all_files(archive: &mut Archive, output_dir: &str) -> Result<(), Box<
 
 ### 4. Working with Multiple Archives using PatchChain
 
-The `PatchChain` struct provides automatic priority-based file resolution across
-multiple MPQ archives, mimicking how World of Warcraft handles patches.
+The `PatchChain` struct provides priority-based file resolution across
+multiple MPQ archives.
 
 ```rust
 use wow_mpq::{PatchChain, Archive};
@@ -174,21 +173,21 @@ fn work_with_patch_chain() -> Result<(), Box<dyn std::error::Error>> {
     chain.add_archive(PathBuf::from("Data/patch-2.MPQ"), 300)?;    // Patch 2
     chain.add_archive(PathBuf::from("Data/patch-3.MPQ"), 400)?;    // Patch 3 (highest priority)
 
-    // Extract a file - automatically uses the highest priority version
+    // Extract a file - uses the highest priority version
     let filename = "Interface/Icons/INV_Misc_QuestionMark.blp";
     let data = chain.read_file(filename)?;
     println!("Extracted {} ({} bytes)", filename, data.len());
 
-    // Find which archive contains a specific file
+    // Find which archive contains a file
     if let Some(archive_path) = chain.find_file_archive(filename) {
         println!("File found in: {}", archive_path.display());
     }
 
-    // List all unique files across all archives
+    // List unique files across archives
     let all_files = chain.list()?;
     println!("Total unique files: {}", all_files.len());
 
-    // Get information about all archives in the chain
+    // Get information about archives
     let chain_info = chain.get_chain_info();
     for info in &chain_info {
         println!("{} (priority {}): {} files",
@@ -240,7 +239,7 @@ fn work_with_multiple_archives_manual() -> Result<(), Box<dyn std::error::Error>
 use wow_mpq::{ArchiveBuilder, FormatVersion, ListfileOption};
 
 fn create_simple_archive() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a basic archive
+    // Create archive
     ArchiveBuilder::new()
         .add_file("readme.txt", "README.txt")
         .add_file_data(b"Hello World".to_vec(), "hello.txt")
@@ -285,8 +284,8 @@ fn create_advanced_archive() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 6. Rebuilding and Comparing Archives
 
-The `warcraft-rs` CLI provides powerful tools for rebuilding MPQ archives and
-comparing them for differences.
+The `warcraft-rs` CLI provides tools for rebuilding MPQ archives and
+comparing them.
 
 #### Rebuilding Archives
 
@@ -802,8 +801,8 @@ let archive = Archive::open("Data/patch.mpq")?;  // Works despite warning
 ### Understanding Patch Chains
 
 World of Warcraft uses a patch chain system where newer patches override files
-in older archives. The `PatchChain` struct automates this process, ensuring you
-always get the most recent version of a file.
+in older archives. The `PatchChain` struct automates this process, returning
+the highest priority version of a file.
 
 ### Critical Loading Order Rules
 

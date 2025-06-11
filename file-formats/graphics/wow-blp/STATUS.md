@@ -53,12 +53,12 @@ This document tracks the implementation status of BLP (Blizzard Picture) texture
 
 ### Testing Status
 
-| Test Category | Status | Coverage |
-|---------------|--------|----------|
-| Unit Tests | ❌ Not Started | 0% |
-| Integration Tests | ❌ Not Started | 0% |
-| Compression Tests | ❌ Not Started | 0% |
-| Round-trip Tests | ❌ Not Started | 0% |
+| Test Category | Status |
+|---------------|--------|
+| Unit Tests | ❌ Not Started |
+| Integration Tests | ❌ Not Started |
+| Compression Tests | ❌ Not Started |
+| Round-trip Tests | ❌ Not Started |
 
 ### Mipmap Support
 

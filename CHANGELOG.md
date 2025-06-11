@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-mpq**: Complete archive modification API with `MutableArchive` for adding, removing, and renaming files
 - **wow-mpq**: Automatic listfile and attributes updates during archive modifications
 - **wow-mpq**: Full StormLib bidirectional compatibility - archives created/modified by wow-mpq are readable by StormLib and vice versa
-- **wow-mpq**: Achieved 100% compatibility with all WoW versions (1.12.1 through 5.4.8)
-- **wow-mpq**: Full support for all official World of Warcraft MPQ archives (versions 1.12.1 - 5.4.8)
+- **wow-mpq**: Compatibility with WoW versions 1.12.1 through 5.4.8
+- **wow-mpq**: Support for official World of Warcraft MPQ archives (versions 1.12.1 - 5.4.8)
 - **wow-mpq**: Support for all MPQ format versions (V1, V2, V3 with HET/BET, V4 with advanced HET/BET)
 - **wow-mpq**: Portable WoW data discovery system using environment variables and common paths
 - **wow-mpq**: `test-utils` feature for examples requiring WoW game data
@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **warcraft-rs CLI**: Added path separator conversion in `mpq extract` subcommand for proper cross-platform file extraction
 - **wow-wdl**: Initial implementation of WDL (World Data Low-resolution) format support
 - **warcraft-rs CLI**: Added `wdl` subcommand with validate, convert, and info commands for WDL file manipulation
-- **wow-wdt**: Complete WDT (World Data Table) format support with 100% parsing success rate across all WoW versions
+- **wow-wdt**: WDT (World Data Table) format support with parsing for WoW versions
 - **warcraft-rs CLI**: Added `wdt` subcommand with info, validate, convert, and tiles commands for WDT file manipulation
 - **wow-adt**: Integrated comprehensive ADT (terrain) file support
 - **wow-adt**: Full parsing support for all ADT chunk types including terrain, textures, water, and object placement
@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **wow-mpq**: Attributes files now use StormLib-compatible 149-byte format instead of 24-byte format
-- **Documentation**: Comprehensively updated all documentation to reflect 100% StormLib compatibility
+- **Documentation**: Updated documentation to reflect StormLib compatibility
 - **Documentation**: Added notes about Blizzard archive compatibility and common warnings
 
 ### Removed

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `wow-adt` crate provides comprehensive parsing, validation, and manipulation support for World of Warcraft ADT (terrain) files across multiple game versions.
+The `wow-adt` crate provides parsing, validation, and manipulation for World of Warcraft ADT (terrain) files.
 
 ## Implementation Progress
 
@@ -10,12 +10,12 @@ The `wow-adt` crate provides comprehensive parsing, validation, and manipulation
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Basic ADT parsing | ✅ Complete | All chunk types supported |
-| Version detection | ✅ Complete | Auto-detects based on chunk presence |
-| Chunk validation | ✅ Complete | Multi-level validation support |
-| Write support | ✅ Complete | Full write capabilities |
-| Error handling | ✅ Complete | Comprehensive error types |
-| Tree visualization | ✅ Complete | Integrated with warcraft-rs CLI |
+| Basic ADT parsing | ✅ Implemented | All chunk types supported |
+| Version detection | ✅ Implemented | Detects based on chunk presence |
+| Chunk validation | ✅ Implemented | Multi-level validation support |
+| Write support | ✅ Implemented | Write capabilities |
+| Error handling | ✅ Implemented | Error types |
+| Tree visualization | ✅ Implemented | Integrated with warcraft-rs CLI |
 
 ### Chunk Support
 
@@ -54,7 +54,7 @@ The `wow-adt` crate provides comprehensive parsing, validation, and manipulation
 
 | Version | Parsing | Writing | Conversion | Notes |
 |---------|---------|---------|------------|-------|
-| Classic (1.x) | ✅ | ✅ | ✅ | Full support |
+| Classic (1.x) | ✅ | ✅ | ✅ | Supported |
 | TBC (2.x) | ✅ | ✅ | ✅ | MFBO chunk added |
 | WotLK (3.x) | ✅ | ✅ | ✅ | MH2O water system |
 | Cataclysm (4.x) | ✅ | ✅ | ✅ | MTFX, split files |
@@ -64,18 +64,18 @@ The `wow-adt` crate provides comprehensive parsing, validation, and manipulation
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Split file support | ✅ Complete | _tex0,_obj0, etc. |
-| Streaming API | ✅ Complete | Memory-efficient parsing |
-| Batch processing | ✅ Complete | With parallel feature |
-| Heightmap extraction | ✅ Complete | Multiple formats |
-| Texture extraction | ✅ Complete | Reference extraction |
-| Model extraction | ✅ Complete | Placement data |
-| Normal map generation | ✅ Complete | From heightmap data |
-| 3D export | 🚧 Partial | Basic mesh export |
+| Split file support | ✅ Implemented | _tex0,_obj0, etc. |
+| Streaming API | ✅ Implemented | Streaming parser |
+| Batch processing | ✅ Implemented | With parallel feature |
+| Heightmap extraction | ✅ Implemented | Multiple formats |
+| Texture extraction | ✅ Implemented | Texture references |
+| Model extraction | ✅ Implemented | Placement data |
+| Normal map generation | ✅ Implemented | From heightmap data |
+| 3D export | 🚧 Partial | Mesh export |
 
 ## CLI Integration
 
-The ADT functionality is fully integrated into the warcraft-rs CLI with the following commands:
+ADT commands in warcraft-rs CLI:
 
 - `adt info` - Display ADT file information
 - `adt validate` - Validate ADT files with configurable strictness
@@ -86,29 +86,29 @@ The ADT functionality is fully integrated into the warcraft-rs CLI with the foll
 
 ## Known Limitations
 
-1. **MH2O Write Support** - Basic implementation, complex water configurations may not be fully preserved
-2. **MoP+ Support** - Versions beyond Cataclysm have basic support but need more testing
-3. **Texture Blending** - Alpha map decompression for compressed formats not fully implemented
-4. **Terrain Holes** - Hole detection works but editing support is limited
+1. **MH2O Write Support** - Basic implementation, complex water configurations may not be preserved
+2. **MoP+ Support** - Versions beyond Cataclysm need testing
+3. **Texture Blending** - Alpha map decompression for compressed formats not implemented
+4. **Terrain Holes** - Hole detection works, editing support limited
 
 ## Performance
 
-- **Parse Time**: ~5-50ms per ADT file (depending on complexity)
-- **Memory Usage**: ~5-20MB per loaded ADT
-- **Batch Processing**: Can process 100+ files/second with parallel feature
+- **Parse Time**: Varies by file complexity
+- **Memory Usage**: Scales with ADT content
+- **Batch Processing**: Parallel processing available
 
 ## Testing
 
 - Unit tests for all chunk types
-- Integration tests with real WoW ADT files
+- Integration tests with WoW ADT files
 - Round-trip tests (read → write → read)
 - Cross-version conversion tests
-- Validation suite with multiple strictness levels
+- Validation suite with strictness levels
 
 ## Future Improvements
 
-1. Enhanced MoP+ version support
-2. Advanced water editing capabilities
+1. MoP+ version support
+2. Water editing
 3. Texture blending visualization
-4. Integration with heightmap editors
-5. Direct MPQ archive support for batch operations
+4. Heightmap editor integration
+5. MPQ archive support for batch operations

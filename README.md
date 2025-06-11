@@ -13,38 +13,38 @@ A collection of crates handling World of Warcraft file formats for WoW 1.12.1,
 
 </div>
 
-`warcraft-rs` is part of a fantastic Rust WoW community. Be sure to check out
-[awesome-wow-rust](https://github.com/arlyon/awesome-wow-rust) for more cool
-projects and a link to official WoW Rust Discord.
+`warcraft-rs` is part of the Rust WoW community. See
+[awesome-wow-rust](https://github.com/arlyon/awesome-wow-rust) for other
+projects and a link to the WoW Rust Discord.
 
 ## Features
 
 ### 📦 Format Support
 
 - **MPQ Archives** - Read, write, modify, rebuild and compare MPQ archive files (v1-v4)
-  - ✅ **Full StormLib Compatibility** - 100% bidirectional compatibility with reference implementation
-  - ✅ **100% WoW Version Support** - Tested with all versions from 1.12.1 through 5.4.8
+  - ✅ **StormLib Compatibility** - Bidirectional compatibility with reference implementation
+  - ✅ **WoW Version Support** - Tested with versions 1.12.1 through 5.4.8
   - ✏️ **Archive Modification** - Add, remove, and rename files with automatic listfile/attributes updates
-  - 🔄 **Archive Rebuilding** - Recreate archives 1:1 with format upgrades and optimization
+  - 🔄 **Archive Rebuilding** - Recreate archives with format upgrades and optimization
   - 🔍 **Archive Comparison** - Compare archives for differences in metadata, files, and content
-  - 🔐 **Digital Signatures** - Generate and verify archive signatures for integrity protection
-  - 🎮 **Official WoW Archive Support** - Handles all Blizzard-specific quirks and format variations
+  - 🔐 **Digital Signatures** - Generate and verify archive signatures
+  - 🎮 **Official WoW Archive Support** - Handles Blizzard-specific quirks and format variations
 - **DBC Database** - Parse client database files
 - **BLP Textures** - Handle texture files
 - **M2 Models** - Work with character and creature models
 - **WMO Objects** - Process world map objects (buildings, structures)
-  - ✅ **Full Format Support** - Parse and write root and group files
-  - ✅ **All WoW Versions** - Supports v17 (Classic) through v27 (The War Within)
+  - ✅ **Format Support** - Parse and write root and group files
+  - ✅ **WoW Versions** - Supports v17 (Classic) through v27 (The War Within)
   - 🔄 **Version Conversion** - Convert between expansions (Classic → Cataclysm, etc.)
   - 🏗️ **Builder API** - Create WMO files programmatically
-  - 🔍 **Comprehensive Validation** - Field-level and structural checks
+  - 🔍 **Validation** - Field-level and structural checks
 - **ADT Terrain** - Parse terrain and map data
 - **WDT Maps** - World map definitions and tile layouts
 - **WDL Maps** - Low-resolution terrain heightmaps
 
 ### 🛠️ Command-Line Tools
 
-Each format comes with its own CLI tool for common operations:
+CLI tools for each format:
 
 ```bash
 # MPQ archive manipulation
@@ -52,9 +52,9 @@ warcraft-rs mpq list archive.mpq
 warcraft-rs mpq extract archive.mpq --output ./extracted
 warcraft-rs mpq create new.mpq --add file1.txt --add file2.dat
 warcraft-rs mpq info archive.mpq
-warcraft-rs mpq tree archive.mpq  # NEW! Visualize archive structure
+warcraft-rs mpq tree archive.mpq  # Visualize archive structure
 
-# Archive rebuild and comparison (NEW!)
+# Archive rebuild and comparison
 warcraft-rs mpq rebuild original.mpq rebuilt.mpq --upgrade-to v4
 warcraft-rs mpq compare original.mpq rebuilt.mpq --content-check
 
@@ -62,26 +62,26 @@ warcraft-rs mpq compare original.mpq rebuilt.mpq --content-check
 warcraft-rs wdl validate terrain.wdl
 warcraft-rs wdl info terrain.wdl
 warcraft-rs wdl convert terrain.wdl terrain_new.wdl --to wotlk
-warcraft-rs wdl tree terrain.wdl  # NEW! Visualize WDL structure
+warcraft-rs wdl tree terrain.wdl  # Visualize WDL structure
 
 # WDT map operations
 warcraft-rs wdt info map.wdt
 warcraft-rs wdt validate map.wdt
 warcraft-rs wdt convert map.wdt map_new.wdt --to wotlk
 warcraft-rs wdt tiles map.wdt
-warcraft-rs wdt tree map.wdt  # NEW! Visualize WDT structure
+warcraft-rs wdt tree map.wdt  # Visualize WDT structure
 
 # ADT terrain operations
 warcraft-rs adt info terrain.adt
 warcraft-rs adt validate terrain.adt --level strict
 warcraft-rs adt convert classic.adt cata.adt --to cataclysm
-warcraft-rs adt tree terrain.adt  # NEW! Visualize ADT structure
+warcraft-rs adt tree terrain.adt  # Visualize ADT structure
 
 # WMO object operations
 warcraft-rs wmo info building.wmo
 warcraft-rs wmo validate building.wmo --warnings
 warcraft-rs wmo convert classic.wmo modern.wmo --to 21
-warcraft-rs wmo tree building.wmo  # NEW! Visualize WMO structure
+warcraft-rs wmo tree building.wmo  # Visualize WMO structure
 warcraft-rs wmo edit building.wmo --set-flag has-fog
 warcraft-rs wmo build new.wmo --from config.yaml
 
@@ -93,7 +93,7 @@ warcraft-rs m2 info model.m2
 
 ### 📚 Library Usage
 
-All formats can also be used as Rust libraries:
+Using formats as Rust libraries:
 
 ```rust
 use wow_mpq::{Archive, ArchiveBuilder, MutableArchive, AddFileOptions};
@@ -126,29 +126,33 @@ println!("ADT version: {:?}", adt.version);
 println!("Terrain chunks: {}", adt.mcnk_chunks().len());
 
 // Validate the ADT file
-adt.validate_with_report(ValidationLevel::Standard)?;
+let report = adt.validate_with_report(ValidationLevel::Standard)?;
+println!("Validation passed with {} warnings", report.warnings.len());
 ```
 
 ```rust
 // WMO object parsing and manipulation
-use wow_wmo::{WmoRoot, WmoGroup, WmoParser, WmoWriter, WmoVersion};
+use wow_wmo::{WmoParser, WmoWriter, WmoVersion, WmoConverter};
 use std::fs;
+use std::io::Cursor;
 
 // Parse WMO root file
 let data = fs::read("building.wmo")?;
-let wmo = WmoParser::parse_root(&data)?;
+let mut cursor = Cursor::new(&data);
+let parser = WmoParser::new();
+let wmo = parser.parse_root(&mut cursor)?;
 println!("WMO version: v{}", wmo.version.to_raw());
 println!("Groups: {}", wmo.groups.len());
 println!("Materials: {}", wmo.materials.len());
 
 // Convert to a different version
-let mut wmo = wmo;
-wmo.convert_to(WmoVersion::Cataclysm)?;
+let converter = WmoConverter::new();
+let converted_wmo = converter.convert(&wmo, WmoVersion::Cataclysm)?;
 
 // Save the converted file
 let writer = WmoWriter::new();
 let mut output = Vec::new();
-writer.write_root(&mut output, &wmo, WmoVersion::Cataclysm)?;
+writer.write_root(&mut output, &converted_wmo, WmoVersion::Cataclysm)?;
 fs::write("building_cata.wmo", output)?;
 ```
 
@@ -195,7 +199,7 @@ warcraft-rs mpq tree patch.mpq --depth 3  # Visualize archive structure
 # Extract files
 warcraft-rs mpq extract patch.mpq --output ./extracted --preserve-paths
 
-# Rebuild and modernize an archive
+# Rebuild an archive
 warcraft-rs mpq rebuild old.mpq modern.mpq --upgrade-to v4 --compression lzma
 
 # Verify the rebuild
@@ -210,25 +214,24 @@ warcraft-rs wmo tree building.wmo --show-refs # See WMO structure with reference
 
 ## Documentation
 
-Comprehensive documentation is available in the `docs/` directory:
+Documentation in the `docs/` directory:
 
 - [Getting Started](docs/getting-started/quick-start.md)
 - [Format Documentation](docs/formats/)
 - [API Reference](docs/api/)
 - [Examples and Guides](docs/guides/)
-  - **[📦 MPQ CLI Usage Guide](docs/guides/mpq-cli-usage.md)** - Complete CLI
-    reference with rebuild and compare examples
+  - **[📦 MPQ CLI Usage Guide](docs/guides/mpq-cli-usage.md)** - CLI
+    reference with examples
   - **[📦 MPQ Archives Guide](docs/guides/mpq-archives.md)** - Programming guide
     with rebuild and comparison APIs
   - **[🔍 StormLib vs wow-mpq](docs/guides/stormlib-differences.md)** - Technical
     comparison with the reference implementation
-  - **[🏰 WMO CLI Usage Guide](docs/guides/wmo-cli-usage.md)** - Complete guide
+  - **[🏰 WMO CLI Usage Guide](docs/guides/wmo-cli-usage.md)** - Guide
     for working with World Map Objects
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for
-details on:
+See the [Contributing Guide](CONTRIBUTING.md) for:
 
 - Setting up your development environment
 - Finding issues to work on
@@ -247,7 +250,7 @@ This project uses GitHub Actions for continuous integration:
 
 ### Contributors
 
-Special thanks to all our [contributors](CONTRIBUTORS.md)!
+Thanks to all [contributors](CONTRIBUTORS.md).
 
 ---
 

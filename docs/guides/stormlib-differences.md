@@ -6,9 +6,9 @@ helps users migrate from StormLib or implement missing features.
 
 ## Overview
 
-StormLib has evolved over 20+ years to handle various edge cases, game-specific
-quirks, and optimizations. Our wow-mpq implementation provides a clean, safe Rust
-alternative focusing on core MPQ functionality while achieving **100% compatibility**
+StormLib has evolved over 20+ years to handle edge cases, game-specific
+quirks, and optimizations. The wow-mpq implementation provides a Rust
+alternative focusing on core MPQ functionality with compatibility
 with StormLib.
 
 ### Key Achievements
@@ -65,7 +65,7 @@ struct MpqHeader {
 
 ### StormLib: Complex 9-Step Process
 
-1. **Parameter validation** with extensive checks
+1. **Parameter validation** with checks
 2. **File size validation** with platform-specific handling
 3. **Header search** with game type detection:
    - AVI file detection for Warcraft III cinematics
@@ -214,7 +214,7 @@ enum MapType {
 1. **Custom allocators**: Specialized allocation for large tables
 2. **Memory mapping**: `MmapStream` for large read-only archives
 3. **Sector caching**: LRU cache with configurable size
-4. **Thread safety**: parking_lot mutexes for better performance
+4. **Thread safety**: parking_lot mutexes
 5. **Bit packing**: Memory-efficient storage for table data
 
 ```rust
@@ -258,7 +258,7 @@ pub struct ThreadSafeMpqArchive {
 - **Atomic writes**: File writer with Drop trait finalization
 - **Free space management**: Finds optimal positions for new files
 - **Incremental updates**: Modifies archives without full rebuild
-- **Automatic compression**: Chooses best compression method
+- **Automatic compression**: Chooses compression method
 
 #### Metadata Support
 
@@ -373,10 +373,10 @@ let archive = match Archive::open("archive.mpq") {
 
 ### Use wow-mpq when
 
-- Want memory safety guarantees
+- Want memory safety
 - Prefer Rust ecosystem
 - Work with standard MPQ files
-- Value clean API design
+- Value API design
 - Need async support (future)
 
 ## Blizzard Archive Compatibility

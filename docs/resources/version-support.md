@@ -6,11 +6,11 @@ World of Warcraft client version compatibility and file format changes.
 
 | Expansion | Version | Patch | Build | Status |
 |-----------|---------|-------|-------|--------|
-| Classic (Vanilla) | 1.12.1 | 1.12.1.5875 | 5875 | ✅ Full Support |
-| The Burning Crusade | 2.4.3 | 2.4.3.8606 | 8606 | ✅ Full Support |
-| Wrath of the Lich King | 3.3.5 | 3.3.5a.12340 | 12340 | ✅ Full Support |
-| Cataclysm | 4.3.4 | 4.3.4.15595 | 15595 | ✅ Full Support |
-| Mists of Pandaria | 5.4.8 | 5.4.8.18414 | 18414 | ✅ Full Support |
+| Classic (Vanilla) | 1.12.1 | 1.12.1.5875 | 5875 | ✅ Supported |
+| The Burning Crusade | 2.4.3 | 2.4.3.8606 | 8606 | ✅ Supported |
+| Wrath of the Lich King | 3.3.5 | 3.3.5a.12340 | 12340 | ✅ Supported |
+| Cataclysm | 4.3.4 | 4.3.4.15595 | 15595 | ✅ Supported |
+| Mists of Pandaria | 5.4.8 | 5.4.8.18414 | 18414 | ✅ Supported |
 
 ## File Format Versions
 
@@ -18,12 +18,12 @@ World of Warcraft client version compatibility and file format changes.
 
 | Version | Client | Changes | wow-mpq Support |
 |---------|--------|---------|-----------------|
-| v1 | 1.x - 3.x | Original format, hash table, block table | ✅ Full |
-| v2 | 3.x+ | Extended attributes, larger files | ✅ Full |
-| v3 | 4.x+ | HET/BET tables, increased hash table size | ✅ Full |
-| v4 | 5.x+ | 64-bit file support, MD5 checksums | ✅ Full |
+| v1 | 1.x - 3.x | Original format, hash table, block table | ✅ Supported |
+| v2 | 3.x+ | Extended attributes, larger files | ✅ Supported |
+| v3 | 4.x+ | HET/BET tables, increased hash table size | ✅ Supported |
+| v4 | 5.x+ | 64-bit file support, MD5 checksums | ✅ Supported |
 
-**Note:** wow-mpq has 100% bidirectional compatibility with StormLib (the reference C++ implementation) and full support for all official Blizzard WoW archives.
+**Note:** wow-mpq has bidirectional compatibility with StormLib (the reference C++ implementation) and support for official Blizzard WoW archives.
 
 ### M2 Models
 

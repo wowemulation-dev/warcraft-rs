@@ -1,0 +1,21 @@
+---
+name: Cleanup caches for closed PRs
+
+on:
+  # Run twice every day to remove the cache so that the caches from the closed prs
+  # are removed.
+  schedule:
+    - cron: '0 17 * * *'
+    - cron: '30 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  clear-github-caches:
+    name: Clear all GitHub action caches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear all caches
+        run: gh cache delete --succeed-on-no-caches --all --repo wowemulation-dev/warcraft-rs
+        env:
+          # This token requires the "repo" scope.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
