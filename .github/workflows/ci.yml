@@ -4,8 +4,10 @@ name: CI
 on:
   push:
     branches: [main]
+
   pull_request:
     branches: [main]
+
   merge_group:
 
 env:
@@ -30,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: 1.86.0
           components: rustfmt, clippy
@@ -66,7 +68,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
       - uses: Swatinem/rust-cache@v2
@@ -103,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: 1.86.0
       - uses: Swatinem/rust-cache@v2
@@ -124,21 +126,23 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: llvm-tools-preview
+          components: llvm-tools
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: 'coverage'
           cache-on-failure: true
-      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
 
       - name: Collect coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v5
+        name: Upload to Codecov
         with:
           files: lcov.info
           fail_ci_if_error: false

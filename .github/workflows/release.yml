@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - 'v[0-9]+.*'
+
   workflow_dispatch:
     inputs:
       version:
@@ -14,12 +15,18 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: 0
-  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
   RUST_BACKTRACE: 1
+  RUSTFLAGS: -D warnings
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+  # Performance improvements
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  CARGO_PROFILE_DEV_DEBUG: 0
 
 permissions:
   contents: write
+  discussions: write
   packages: write
 
 jobs:
@@ -42,15 +49,14 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create Release
+      - uses: softprops/action-gh-release@v2
+        name: Create Release
         id: create_release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          release_name: Release v${{ steps.get_version.outputs.version }}
-          draft: true
+          tag: v${{ steps.get_version.outputs.version }}
+          title: Release v${{ steps.get_version.outputs.version }}
           prerelease: false
 
   # Build all binaries in parallel
@@ -103,7 +109,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
@@ -144,8 +150,8 @@ jobs:
             tar czf ../../../warcraft-rs-${{ matrix.target }}.tar.gz ${{ matrix.binary }}
           fi
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+      - uses: softprops/action-gh-release@v2
+        name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -162,7 +168,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
 
