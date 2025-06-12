@@ -7,11 +7,11 @@ Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft fi
 - ✅ **MPQ Archives** - Fully implemented with 100% StormLib compatibility
 - ✅ **WDL Format** - Low-resolution terrain heightmaps (basic implementation)
 - ✅ **WDT Format** - World table files (full implementation)
-- 🚧 **ADT Format** - Terrain data (planned)
-- 🚧 **BLP Format** - Textures (planned)
-- 🚧 **M2 Format** - Models (planned)
-- 🚧 **WMO Format** - World objects (planned)
-- 🚧 **DBC Format** - Databases (planned)
+- ✅ **ADT Format** - Terrain data (full implementation)
+- ✅ **BLP Format** - Textures (full implementation)
+- ✅ **WMO Format** - World objects (full implementation)
+- 🚧 **M2 Format** - Models (partial implementation)
+- 🚧 **DBC Format** - Databases (partial implementation)
 
 ## Core Concepts
 
@@ -138,24 +138,24 @@ for file in files {
 
 ## Loading Textures (BLP)
 
-*Note: BLP support is planned but not yet implemented in the current release.*
-
-### Basic Texture Loading (Coming Soon)
+### Basic Texture Loading
 
 ```rust
-// Future API preview
-use wow_blp::Blp;
+use wow_blp::{parser::load_blp, convert::blp_to_image};
 
 // Load BLP texture
-let blp = Blp::open("Textures/Minimap/MinimapMask.blp")?;
+let blp = load_blp("Textures/Minimap/MinimapMask.blp")?;
 
 println!("Texture info:");
-println!("  Size: {}x{}", blp.width(), blp.height());
-println!("  Format: {:?}", blp.format());
-println!("  Mipmap levels: {}", blp.mipmap_count());
+println!("  Size: {}x{}", blp.header.width, blp.header.height);
+println!("  Version: {:?}", blp.header.version);
+println!("  Has mipmaps: {}", blp.header.has_mipmaps());
 
-// Get RGBA data for use with graphics APIs
-let rgba_data = blp.to_rgba8(0)?; // mipmap level 0
+// Convert to standard image format
+let image = blp_to_image(&blp, 0)?; // mipmap level 0
+
+// Save as PNG
+image.save("minimap_mask.png")?;
 ```
 
 ## Working with World Data (WDL)
@@ -189,57 +189,25 @@ heightmap.save("azeroth_heightmap.png")?;
 
 ## Loading Models (M2)
 
-*Note: M2 support is planned but not yet implemented in the current release.*
+*Note: M2 support is partially implemented - basic parsing works but animation and rendering features are still in development.*
 
 ### Basic Model Loading
 
 ```rust
-use warcraft_rs::m2::{M2Model, M2Skin};
+use wow_m2::{reader::M2Reader, version::M2Version};
+use std::fs::File;
+use std::io::BufReader;
 
-// Load model and skin
-let model = M2Model::open("Creature/Murloc/Murloc.m2")?;
-let skin = M2Skin::open("Creature/Murloc/Murloc00.skin")?;
-
-// Apply skin to model
-model.set_skin(skin)?;
+// Load M2 model header
+let file = File::open("Creature/Murloc/Murloc.m2")?;
+let mut reader = M2Reader::new(BufReader::new(file), M2Version::WotLK);
+let header = reader.read_header()?;
 
 println!("Model info:");
-println!("  Name: {}", model.name());
-println!("  Vertices: {}", model.vertex_count());
-println!("  Animations: {}", model.animation_count());
-println!("  Bones: {}", model.bone_count());
+println!("  Name: {}", header.name);
+println!("  Version: {}", header.version);
 
-// Get model bounds
-let bounds = model.bounding_box();
-println!("  Bounds: {:?} to {:?}", bounds.min, bounds.max);
-```
-
-### Playing Animations
-
-```rust
-use warcraft_rs::m2::{AnimationId, AnimationState};
-
-// List available animations
-for (id, anim) in model.animations() {
-    println!("Animation {}: {} ({}ms)",
-        id, anim.name(), anim.duration_ms());
-}
-
-// Create animation state
-let mut anim_state = AnimationState::new();
-
-// Play stand animation
-anim_state.play(AnimationId::Stand, true)?; // true = loop
-
-// Update animation (call each frame)
-let delta_ms = 16; // 60 FPS
-anim_state.update(delta_ms);
-
-// Get bone transforms for current frame
-let bones = model.calculate_bones(&anim_state)?;
-
-// Apply to vertices for rendering
-let animated_vertices = model.apply_skinning(&bones)?;
+// Note: Full model loading with vertices, animations, etc. is not yet complete.
 ```
 
 ## Loading World Data
@@ -300,112 +268,94 @@ println!("World coords ({}, {}) is tile [{}, {}]", world_x, world_y, tile_x, til
 ### Working with Terrain (ADT)
 
 ```rust
-use warcraft_rs::adt::{Adt, ChunkPos};
+use wow_adt::{reader::AdtReader, version::WowVersion};
+use std::io::Cursor;
 
 // Load terrain tile
-let adt = Adt::open("World/Maps/Azeroth/Azeroth_32_48.adt")?;
+let data = std::fs::read("World/Maps/Azeroth/Azeroth_32_48.adt")?;
+let mut reader = AdtReader::new(Cursor::new(data), WowVersion::WotLK);
+let adt = reader.read()?;
 
-// Get height at world position
-let world_x = 100.0;
-let world_y = 200.0;
-let height = adt.get_height_at(world_x, world_y)?;
-
-println!("Terrain height at ({}, {}): {}", world_x, world_y, height);
-
-// Iterate chunks
-for chunk in adt.chunks() {
-    let pos = chunk.position();
-    println!("Chunk [{}, {}]", pos.x, pos.y);
-
-    // Get chunk data
-    let heights = chunk.height_map();
-    let normals = chunk.normal_map();
-    let textures = chunk.texture_layers();
-}
-
-// Find objects on terrain
-for doodad in adt.doodads() {
-    println!("M2 Model: {} at {:?}", doodad.model_path, doodad.position);
-}
-
-for wmo in adt.wmos() {
-    println!("WMO: {} at {:?}", wmo.model_path, wmo.position);
-}
-```
-
-### Loading Maps (WDT)
-
-```rust
-use warcraft_rs::wdt::Wdt;
-
-// Load world definition
-let wdt = Wdt::open("World/Maps/Azeroth/Azeroth.wdt")?;
-
-// Check which tiles exist
-for y in 0..64 {
-    for x in 0..64 {
-        if wdt.has_adt(x, y) {
-            println!("ADT exists at [{}, {}]", x, y);
+// Access chunk information
+for y in 0..16 {
+    for x in 0..16 {
+        let chunk_index = y * 16 + x;
+        if let Some(mcnk) = adt.get_chunk(chunk_index) {
+            println!("Chunk [{}, {}] - Area ID: {}", x, y, mcnk.area_id);
+            println!("  Height range: {:.2} to {:.2}",
+                mcnk.get_min_height(), mcnk.get_max_height());
+            println!("  Has water: {}", mcnk.has_water());
         }
     }
 }
 
-// Get map info
-if let Some(map_info) = wdt.map_info() {
-    println!("Map name: {}", map_info.name);
-    println!("Map ID: {}", map_info.id);
+// Find doodads (M2 models) on terrain
+if let Some(mddf) = &adt.mddf {
+    for doodad in &mddf.entries {
+        println!("M2 Model ID {} at position {:?}",
+            doodad.name_id, doodad.position);
+    }
 }
+
+// Find WMOs on terrain
+if let Some(modf) = &adt.modf {
+    for wmo in &modf.entries {
+        println!("WMO ID {} at position {:?}",
+            wmo.name_id, wmo.position);
+    }
+}
+```
+
+### Working with World Objects (WMO)
+
+```rust
+use wow_wmo::{reader::WmoReader, version::WmoVersion};
+use std::io::BufReader;
+use std::fs::File;
+
+// Load WMO root file
+let file = File::open("World/wmo/Dungeon/KL_Orgrimmar/Orgrimmar.wmo")?;
+let mut reader = WmoReader::new(BufReader::new(file), WmoVersion::WotLK);
+let wmo = reader.read_root()?;
+
+// Get WMO information
+println!("WMO: {}", wmo.mohd.name());
+println!("Groups: {}", wmo.mohd.group_count);
+println!("Materials: {}", wmo.momt.materials.len());
+println!("Doodad sets: {}", wmo.mods.sets.len());
+
+// Load WMO group
+let group_file = File::open("World/wmo/Dungeon/KL_Orgrimmar/Orgrimmar_000.wmo")?;
+let mut group_reader = WmoReader::new(BufReader::new(group_file), WmoVersion::WotLK);
+let group = group_reader.read_group()?;
+
+println!("Group vertices: {}", group.movt.vertices.len());
+println!("Group triangles: {}", group.movi.indices.len() / 3);
 ```
 
 ## Reading Databases (DBC)
 
+*Note: DBC support is partially implemented - basic reading works but typed access is still in development.*
+
 ### Basic DBC Reading
 
 ```rust
-use warcraft_rs::dbc::{Dbc, StringRef};
+use wow_dbc::{DbcReader, version::DbcVersion};
+use std::fs::File;
+use std::io::BufReader;
 
 // Open DBC file
-let item_dbc = Dbc::open("DBFilesClient/Item.dbc")?;
+let file = File::open("DBFilesClient/Item.dbc")?;
+let mut reader = DbcReader::new(BufReader::new(file), DbcVersion::Vanilla);
+let dbc = reader.read()?;
 
 println!("Item database:");
-println!("  Records: {}", item_dbc.record_count());
-println!("  Fields per record: {}", item_dbc.field_count());
+println!("  Records: {}", dbc.header.record_count);
+println!("  Fields per record: {}", dbc.header.field_count);
+println!("  Record size: {} bytes", dbc.header.record_size);
 
-// Read records generically
-for record in item_dbc.records() {
-    let id = record.get_u32(0)?; // First field is usually ID
-    let name = record.get_string(1)?; // String reference
-
-    println!("Item {}: {}", id, name);
-}
-```
-
-### Typed DBC Access
-
-```rust
-use warcraft_rs::dbc::{DbcTable, ItemRecord};
-
-// Load with schema
-let items = DbcTable::<ItemRecord>::open("DBFilesClient/Item.dbc")?;
-
-// Find specific item
-if let Some(thunderfury) = items.find_by_id(19019) {
-    println!("Thunderfury:");
-    println!("  Quality: {:?}", thunderfury.quality);
-    println!("  Item Level: {}", thunderfury.item_level);
-}
-
-// Query items
-let epic_swords = items
-    .iter()
-    .filter(|item| {
-        item.quality == ItemQuality::Epic &&
-        item.class == ItemClass::Weapon &&
-        item.subclass == WeaponSubclass::Sword
-    })
-    .collect::<Vec<_>>();
-
-println!("Found {} epic swords", epic_swords.len());
+// Note: Typed record access is not yet implemented.
+// Records must be parsed manually based on the DBC schema.
 ```
 
 ## Best Practices
@@ -415,21 +365,23 @@ println!("Found {} epic swords", epic_swords.len());
 ```rust
 // Use Arc for shared data
 use std::sync::Arc;
+use wow_blp::parser::load_blp;
 
-let model = Arc::new(M2Model::open("expensive_model.m2")?);
+let texture = Arc::new(load_blp("expensive_texture.blp")?);
 
 // Clone is cheap - just increments reference count
-let model_ref = Arc::clone(&model);
+let texture_ref = Arc::clone(&texture);
 
-// For large collections, use streaming
-use warcraft_rs::mpq::FileStream;
+// For MPQ archives, read files on demand
+use wow_mpq::Archive;
 
 let mut archive = Archive::open("huge.mpq")?;
-let mut stream = archive.open_file_stream("large_file.dat")?;
 
-let mut buffer = vec![0u8; 4096];
-while let Ok(bytes_read) = stream.read(&mut buffer) {
-    if bytes_read == 0 { break; }
+// Read file when needed
+let data = archive.read_file("large_file.dat")?;
+
+// Process in chunks if needed
+for chunk in data.chunks(4096) {
     // Process chunk...
 }
 ```
@@ -437,16 +389,16 @@ while let Ok(bytes_read) = stream.read(&mut buffer) {
 ### Error Recovery
 
 ```rust
-use warcraft_rs::{Error, m2::M2Model};
+use wow_blp::{parser::load_blp, error::Error};
+use wow_blp::types::image::BlpImage;
 
-fn load_model_with_fallback(path: &str, fallback: &str) -> Result<M2Model, Error> {
-    match M2Model::open(path) {
-        Ok(model) => Ok(model),
-        Err(Error::FileNotFound(_)) => {
-            eprintln!("Model {} not found, using fallback", path);
-            M2Model::open(fallback)
+fn load_texture_with_fallback(path: &str, fallback: &str) -> Result<BlpImage, Error> {
+    match load_blp(path) {
+        Ok(texture) => Ok(texture),
+        Err(_) => {
+            eprintln!("Texture {} not found, using fallback", path);
+            load_blp(fallback)
         }
-        Err(e) => Err(e),
     }
 }
 ```
@@ -466,10 +418,11 @@ for file in files_to_extract {
 
 // Use parallel processing for CPU-intensive tasks
 use rayon::prelude::*;
+use wow_blp::parser::load_blp;
 
 let textures: Vec<_> = texture_paths
     .par_iter()
-    .filter_map(|path| Blp::open(path).ok())
+    .filter_map(|path| load_blp(path).ok())
     .collect();
 ```
 

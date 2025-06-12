@@ -52,7 +52,8 @@ enum Compression {
 
 ```rust
 use wow_blp::{parser::load_blp, convert::blp_to_image, encode::save_blp};
-use wow_blp::convert::{image_to_blp, BlpTarget, Blp2Format, DxtAlgorithm, FilterType};
+use wow_blp::convert::{image_to_blp, BlpTarget, Blp2Format, DxtAlgorithm};
+use image::imageops::FilterType;
 
 // Load BLP texture
 let blp = load_blp("texture.blp")?;
@@ -71,9 +72,9 @@ let input = image::open("input.png")?;
 let new_blp = image_to_blp(
     input,
     true, // generate mipmaps
-    BlpTarget::Blp2(Blp2Format::Dxt5 { 
-        has_alpha: true, 
-        compress_algorithm: DxtAlgorithm::ClusterFit 
+    BlpTarget::Blp2(Blp2Format::Dxt5 {
+        has_alpha: true,
+        compress_algorithm: DxtAlgorithm::ClusterFit
     }),
     FilterType::Lanczos3
 )?;
@@ -90,19 +91,19 @@ Most common for modern textures:
 use wow_blp::convert::{Blp2Format, DxtAlgorithm};
 
 // DXT1: 4:1 compression, 1-bit alpha
-let dxt1 = Blp2Format::Dxt1 { 
+let dxt1 = Blp2Format::Dxt1 {
     has_alpha: false,
     compress_algorithm: DxtAlgorithm::RangeFit // Fast
 };
 
 // DXT3: 4:1 compression, 4-bit explicit alpha
-let dxt3 = Blp2Format::Dxt3 { 
+let dxt3 = Blp2Format::Dxt3 {
     has_alpha: true,
     compress_algorithm: DxtAlgorithm::ClusterFit // Quality
 };
 
 // DXT5: 4:1 compression, interpolated alpha
-let dxt5 = Blp2Format::Dxt5 { 
+let dxt5 = Blp2Format::Dxt5 {
     has_alpha: true,
     compress_algorithm: DxtAlgorithm::IterativeClusterFit // Best
 };
@@ -115,7 +116,7 @@ let dxt5 = Blp2Format::Dxt5 {
 ```rust
 use wow_blp::convert::{BlpOldFormat, AlphaBits};
 
-let palettized = BlpOldFormat::Raw1 { 
+let palettized = BlpOldFormat::Raw1 {
     alpha_bits: AlphaBits::Bit8  // 0, 1, 4, or 8 bits
 };
 ```
@@ -146,8 +147,8 @@ let blp0_target = BlpTarget::Blp0(BlpOldFormat::Jpeg { has_alpha: true });
 - JPEG and RAW1 compression
 
 ```rust
-let blp1_target = BlpTarget::Blp1(BlpOldFormat::Raw1 { 
-    alpha_bits: AlphaBits::Bit1 
+let blp1_target = BlpTarget::Blp1(BlpOldFormat::Raw1 {
+    alpha_bits: AlphaBits::Bit1
 });
 ```
 
@@ -158,7 +159,7 @@ let blp1_target = BlpTarget::Blp1(BlpOldFormat::Raw1 {
 - Most flexible format
 
 ```rust
-let blp2_target = BlpTarget::Blp2(Blp2Format::Dxt5 { 
+let blp2_target = BlpTarget::Blp2(Blp2Format::Dxt5 {
     has_alpha: true,
     compress_algorithm: DxtAlgorithm::ClusterFit
 });
@@ -197,20 +198,21 @@ AlphaBits::Bit8     // 8-bit (full alpha)
 ```rust
 use std::fs;
 use std::path::Path;
+use wow_blp::{parser::load_blp, convert::blp_to_image};
 
-fn convert_directory(input_dir: &str, output_dir: &str) -> Result<()> {
+fn convert_directory(input_dir: &str, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
     for entry in fs::read_dir(input_dir)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.extension() == Some("blp".as_ref()) {
             let blp = load_blp(&path)?;
             let image = blp_to_image(&blp, 0)?;
-            
+
             let output_path = Path::new(output_dir)
                 .join(path.file_stem().unwrap())
                 .with_extension("png");
-            
+
             image.save(output_path)?;
         }
     }
@@ -224,22 +226,24 @@ fn convert_directory(input_dir: &str, output_dir: &str) -> Result<()> {
 
 ```rust
 use wow_mpq::Archive;
+use wow_blp::{parser::parse_blp, convert::blp_to_image};
+use std::path::Path;
 
-fn extract_spell_icons() -> Result<()> {
+fn extract_spell_icons() -> Result<(), Box<dyn std::error::Error>> {
     let mut archive = Archive::open("Interface.mpq")?;
-    
+
     for file in archive.list_files() {
         if file.starts_with("Interface\\Icons\\") && file.ends_with(".blp") {
             let data = archive.read_file(&file)?;
-            let blp = wow_blp::parser::parse_blp(&data)?.1;
+            let blp = parse_blp(&data)?.1;
             let image = blp_to_image(&blp, 0)?;
-            
+
             let icon_name = Path::new(&file)
                 .file_stem()
                 .unwrap()
                 .to_str()
                 .unwrap();
-            
+
             image.save(format!("icons/{}.png", icon_name))?;
         }
     }
@@ -250,28 +254,31 @@ fn extract_spell_icons() -> Result<()> {
 ### Creating Game-Ready Textures
 
 ```rust
-fn create_game_texture(input: &str, output: &str) -> Result<()> {
+use wow_blp::{convert::{image_to_blp, BlpTarget, Blp2Format, DxtAlgorithm}, encode::save_blp};
+use image::imageops::FilterType;
+
+fn create_game_texture(input: &str, output: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut img = image::open(input)?;
-    
+
     // Ensure power-of-two dimensions
     let width = img.width().next_power_of_two();
     let height = img.height().next_power_of_two();
-    
+
     if width != img.width() || height != img.height() {
         img = img.resize_exact(width, height, FilterType::Lanczos3);
     }
-    
+
     // Convert to BLP with appropriate settings
     let blp = image_to_blp(
         img,
         true, // mipmaps for 3D use
-        BlpTarget::Blp2(Blp2Format::Dxt5 { 
+        BlpTarget::Blp2(Blp2Format::Dxt5 {
             has_alpha: true,
             compress_algorithm: DxtAlgorithm::ClusterFit
         }),
         FilterType::Lanczos3
     )?;
-    
+
     save_blp(&blp, output)?;
     Ok(())
 }

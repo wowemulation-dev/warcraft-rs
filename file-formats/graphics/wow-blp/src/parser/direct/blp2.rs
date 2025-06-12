@@ -1,13 +1,8 @@
 use super::super::error::Error;
-use super::super::types::Parser;
+use super::super::reader::{ByteReader, Cursor, read_u32_array};
+use super::super::types::ParseResult;
 use crate::types::*;
 use log::*;
-use nom::{
-    Err,
-    error::context,
-    multi::count,
-    number::complete::{le_u8, le_u32},
-};
 
 pub fn parse_raw3<'a>(
     blp_header: &BlpHeader,
@@ -15,9 +10,9 @@ pub fn parse_raw3<'a>(
     offsets: &[u32],
     sizes: &[u32],
     images: &mut Vec<Raw3Image>,
-    input: &'a [u8],
-) -> Parser<'a, ()> {
-    let mut read_image = |i: usize| {
+    _input: &'a [u8],
+) -> ParseResult<()> {
+    let mut read_image = |i: usize| -> ParseResult<()> {
         let offset = offsets[i];
         let size = sizes[i];
         if offset as usize >= original_input.len() {
@@ -27,7 +22,10 @@ pub fn parse_raw3<'a>(
                 offset,
                 original_input.len()
             );
-            return Err(Err::Failure(Error::<&[u8]>::OutOfBounds(0)));
+            return Err(Error::OutOfBounds {
+                offset: offset as usize,
+                size: 0,
+            });
         }
         if (offset + size) as usize > original_input.len() {
             error!(
@@ -36,7 +34,10 @@ pub fn parse_raw3<'a>(
                 offset + size,
                 original_input.len()
             );
-            return Err(Err::Failure(Error::OutOfBounds(0)));
+            return Err(Error::OutOfBounds {
+                offset: offset as usize,
+                size: size as usize,
+            });
         }
 
         trace!("Expecting size of image: {}", size);
@@ -48,7 +49,9 @@ pub fn parse_raw3<'a>(
             blp_header.mipmap_size(i),
             n * 4
         );
-        let (_, pixels) = count(le_u32, n as usize)(image_bytes)?;
+
+        let mut reader = Cursor::new(image_bytes);
+        let pixels = read_u32_array(&mut reader, n as usize)?;
 
         images.push(Raw3Image { pixels });
         Ok(())
@@ -70,7 +73,7 @@ pub fn parse_raw3<'a>(
             read_image(i)?;
         }
     }
-    Ok((input, ()))
+    Ok(())
 }
 
 pub fn parse_dxtn<'a>(
@@ -80,11 +83,11 @@ pub fn parse_dxtn<'a>(
     offsets: &[u32],
     sizes: &[u32],
     images: &mut Vec<DxtnImage>,
-    input: &'a [u8],
-) -> Parser<'a, ()> {
+    _input: &'a [u8],
+) -> ParseResult<()> {
     trace!("{:?}", blp_header);
 
-    let mut read_image = |i: usize| {
+    let mut read_image = |i: usize| -> ParseResult<()> {
         let offset = offsets[i];
         let size = sizes[i];
         if offset as usize >= original_input.len() {
@@ -94,7 +97,10 @@ pub fn parse_dxtn<'a>(
                 offset,
                 original_input.len()
             );
-            return Err(Err::Failure(Error::<&[u8]>::OutOfBounds(0)));
+            return Err(Error::OutOfBounds {
+                offset: offset as usize,
+                size: 0,
+            });
         }
         if (offset + size) as usize > original_input.len() {
             error!(
@@ -103,7 +109,10 @@ pub fn parse_dxtn<'a>(
                 offset + size,
                 original_input.len()
             );
-            return Err(Err::Failure(Error::OutOfBounds(0)));
+            return Err(Error::OutOfBounds {
+                offset: offset as usize,
+                size: size as usize,
+            });
         }
 
         let image_bytes = &original_input[offset as usize..(offset + size) as usize];
@@ -123,7 +132,11 @@ pub fn parse_dxtn<'a>(
             warn!("Reading {new_blocks_n} blocks");
             blocks_size = new_blocks_n * dxtn.block_size();
         }
-        let (_, content) = context("dxtn blocks", count(le_u8, blocks_size))(image_bytes)?;
+
+        let mut reader = Cursor::new(image_bytes);
+        let content = reader
+            .read_bytes(blocks_size)
+            .map_err(|e| e.with_context("dxtn blocks"))?;
         images.push(DxtnImage { content });
         Ok(())
     };
@@ -135,5 +148,5 @@ pub fn parse_dxtn<'a>(
             read_image(i)?;
         }
     }
-    Ok((input, ()))
+    Ok(())
 }

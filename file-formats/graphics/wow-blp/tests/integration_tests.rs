@@ -32,7 +32,7 @@ fn test_round_trip_blp1_raw1() {
     let loaded_blp = wow_blp::parser::parse_blp(&buffer).expect("Failed to parse BLP");
 
     // Convert back to image
-    let result_image = blp_to_image(&loaded_blp.1, 0).expect("Failed to convert BLP to image");
+    let result_image = blp_to_image(&loaded_blp, 0).expect("Failed to convert BLP to image");
 
     // Basic validation
     assert_eq!(result_image.width(), 64);

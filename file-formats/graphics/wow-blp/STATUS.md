@@ -71,13 +71,17 @@ This document tracks the implementation status of BLP (Blizzard Picture) texture
 - [x] API Documentation - Inline docs
 - [x] Usage Examples - In examples/ directory
 
+### Technical Details
+
+- **Parser**: Native Rust implementation for binary parsing (no external parser dependencies)
+- **Error Handling**: Comprehensive error types with context information
+- **Performance**: Zero-copy parsing where possible
+
 ### Dependencies
 
 - `image` - Image processing and conversion
 - `color_quant` - Palette generation for RAW1
 - `texpresso` - DXT compression/decompression
-- `nom` - Binary parsing
-- `spin` - Lock-free data structures
 
 ### Known Limitations
 

@@ -3,6 +3,8 @@ mod direct;
 pub mod error;
 mod header;
 mod jpeg;
+/// Native byte reading utilities
+mod reader;
 /// Type definitions used by the BLP parser
 pub mod types;
 
@@ -12,9 +14,8 @@ use direct::parse_direct_content;
 pub use error::{Error, LoadError};
 use header::parse_header;
 use jpeg::parse_jpeg_content;
-use nom::error::context;
 use std::path::{Path, PathBuf};
-use types::Parser;
+use types::ParseResult;
 
 /// Read BLP file from file system. If it BLP0 format, uses the mipmaps near the root file.
 pub fn load_blp<Q>(path: Q) -> Result<BlpImage, LoadError>
@@ -39,7 +40,7 @@ fn load_blp_ex<Q>(path: Option<Q>, input: &[u8]) -> Result<BlpImage, LoadError>
 where
     Q: AsRef<Path>,
 {
-    // We have to preload all mipmaps in memory as we are constrained with Nom 'a lifetime that
+    // We have to preload all mipmaps in memory as we are constrained with lifetime that
     // should be equal of lifetime of root input stream.
     let mut mipmaps = vec![];
     if let Some(path) = path.as_ref() {
@@ -56,17 +57,13 @@ where
         }
     }
 
-    let image = match parse_blp_with_externals(input, |i| preloaded_mipmaps(&mipmaps, i)) {
-        Ok((_, image)) => Ok(image),
-        Err(nom::Err::Incomplete(needed)) => Err(LoadError::Incomplete(needed)),
-        Err(nom::Err::Error(e)) => Err(LoadError::Parsing(format!("{}", e))),
-        Err(nom::Err::Failure(e)) => Err(LoadError::Parsing(format!("{}", e))),
-    }?;
+    let image = parse_blp_with_externals(input, |i| preloaded_mipmaps(&mipmaps, i))
+        .map_err(|e| LoadError::Parsing(format!("{}", e)))?;
     Ok(image)
 }
 
 /// Parse BLP file from slice and fail if we require parse external files (case BLP0)
-pub fn parse_blp(input: &[u8]) -> Parser<BlpImage> {
+pub fn parse_blp(input: &[u8]) -> ParseResult<BlpImage> {
     parse_blp_with_externals(input, no_mipmaps)
 }
 
@@ -92,19 +89,25 @@ pub fn preloaded_mipmaps(
 pub fn parse_blp_with_externals<'a, F>(
     root_input: &'a [u8],
     external_mipmaps: F,
-) -> Parser<'a, BlpImage>
+) -> ParseResult<BlpImage>
 where
     F: FnMut(usize) -> Result<Option<&'a [u8]>, Box<dyn std::error::Error>> + Clone,
 {
     // Parse header
-    let (input, header) = context("header", parse_header)(root_input)?;
+    let header = parse_header(root_input).map_err(|e| e.with_context("header"))?;
+
+    // Calculate where content starts (after header)
+    let header_size = BlpHeader::size(header.version);
+    if root_input.len() < header_size {
+        return Err(Error::UnexpectedEof);
+    }
+    let content_input = &root_input[header_size..];
 
     // Parse image content
-    let (input, content) = context("image content", |input| {
-        parse_content(&header, external_mipmaps.clone(), root_input, input)
-    })(input)?;
+    let content = parse_content(&header, external_mipmaps.clone(), root_input, content_input)
+        .map_err(|e| e.with_context("image content"))?;
 
-    Ok((input, BlpImage { header, content }))
+    Ok(BlpImage { header, content })
 }
 
 fn parse_content<'a, F>(
@@ -112,22 +115,22 @@ fn parse_content<'a, F>(
     external_mipmaps: F,
     original_input: &'a [u8],
     input: &'a [u8],
-) -> Parser<'a, BlpContent>
+) -> ParseResult<BlpContent>
 where
     F: FnMut(usize) -> Result<Option<&'a [u8]>, Box<dyn std::error::Error>> + Clone,
 {
     match blp_header.content {
         BlpContentTag::Jpeg => {
-            let (input, content) = context("jpeg content", |input| {
+            let content =
                 parse_jpeg_content(blp_header, external_mipmaps.clone(), original_input, input)
-            })(input)?;
-            Ok((input, BlpContent::Jpeg(content)))
+                    .map_err(|e| e.with_context("jpeg content"))?;
+            Ok(BlpContent::Jpeg(content))
         }
         BlpContentTag::Direct => {
-            let (input, content) = context("direct content", |input| {
+            let content =
                 parse_direct_content(blp_header, external_mipmaps.clone(), original_input, input)
-            })(input)?;
-            Ok((input, content))
+                    .map_err(|e| e.with_context("direct content"))?;
+            Ok(content)
         }
     }
 }

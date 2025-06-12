@@ -1,18 +1,18 @@
 use super::super::error::Error;
-use super::super::types::Parser;
+use super::super::reader::{ByteReader, Cursor};
+use super::super::types::ParseResult;
 use crate::types::*;
 use log::*;
-use nom::{Err, multi::count, number::complete::le_u8};
 
 pub fn parse_raw1<'a>(
     blp_header: &BlpHeader,
     original_input: &'a [u8],
-    offsets: &[u32],
-    sizes: &[u32],
+    offsets: &[u32; 16],
+    sizes: &[u32; 16],
     images: &mut Vec<Raw1Image>,
-    input: &'a [u8],
-) -> Parser<'a, ()> {
-    let mut read_image = |i: usize| {
+    _input: &'a [u8],
+) -> ParseResult<()> {
+    let mut read_image = |i: usize| -> ParseResult<()> {
         let offset = offsets[i];
         let size = sizes[i];
         if offset as usize >= original_input.len() {
@@ -22,7 +22,10 @@ pub fn parse_raw1<'a>(
                 offset,
                 original_input.len()
             );
-            return Err(Err::Failure(Error::<&[u8]>::OutOfBounds(0)));
+            return Err(Error::OutOfBounds {
+                offset: offset as usize,
+                size: 0,
+            });
         }
         if (offset + size) as usize > original_input.len() {
             error!(
@@ -31,14 +34,20 @@ pub fn parse_raw1<'a>(
                 offset + size,
                 original_input.len()
             );
-            return Err(Err::Failure(Error::OutOfBounds(0)));
+            return Err(Error::OutOfBounds {
+                offset: offset as usize,
+                size: size as usize,
+            });
         }
 
         let image_bytes = &original_input[offset as usize..(offset + size) as usize];
+        let mut reader = Cursor::new(image_bytes);
+
         let n = blp_header.mipmap_pixels(i);
-        let (input, indexed_rgb) = count(le_u8, n as usize)(image_bytes)?;
+        let indexed_rgb = reader.read_bytes(n as usize)?;
+
         let an = (n * blp_header.alpha_bits()).div_ceil(8);
-        let (_, indexed_alpha) = count(le_u8, an as usize)(input)?;
+        let indexed_alpha = reader.read_bytes(an as usize)?;
 
         images.push(Raw1Image {
             indexed_rgb,
@@ -47,12 +56,17 @@ pub fn parse_raw1<'a>(
         Ok(())
     };
 
-    trace!("Mipmaps count: {}", blp_header.mipmaps_count());
     read_image(0)?;
     if blp_header.has_mipmaps() {
-        for i in 1..(blp_header.mipmaps_count() + 1).min(16) {
+        for (i, &size) in sizes.iter().enumerate().skip(1) {
+            if size == 0 {
+                break;
+            }
+            if i > blp_header.mipmaps_count() {
+                break;
+            }
             read_image(i)?;
         }
     }
-    Ok((input, ()))
+    Ok(())
 }

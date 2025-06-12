@@ -1,0 +1,38 @@
+[package]
+name = "storm"
+version.workspace = true
+authors.workspace = true
+edition = "2021"
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "StormLib-compatible C API for the World of Warcraft MPQ archive library"
+readme = "README.md"
+
+[lib]
+# Output library will be named libstorm.{so,dylib,dll}
+name = "storm"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+wow-mpq = { path = "../../file-formats/archives/wow-mpq", version = "0.1.0" }
+libc = { workspace = true }
+log = { workspace = true }
+# For file verification
+md-5 = "0.10"
+crc32fast = "1.4"
+
+[build-dependencies]
+cbindgen = "0.29"
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+default = ["wow-mpq/default"]
+
+[package.metadata.capi]
+header_name = "StormLib.h"
+header_dir = "include"
+rustflags = "-C link-arg=-Wl,-soname,libstorm.so.1"

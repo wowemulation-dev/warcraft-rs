@@ -1,0 +1,18 @@
+language = "C"
+cpp_compat = true
+include_version = true
+
+[export]
+include = []
+exclude = []
+prefix = ""
+item_types = ["functions", "typedefs", "constants"]
+
+[export.rename]
+
+[parse]
+parse_deps = false
+include = []
+exclude = []
+clean = false
+extra_bindings = []

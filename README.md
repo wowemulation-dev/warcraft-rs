@@ -47,7 +47,7 @@ warcraft-rs mpq extract patch.mpq --output ./extracted
 
 # Get information about any file format
 warcraft-rs mpq info archive.mpq
-warcraft-rs blp info texture.blp  
+warcraft-rs blp info texture.blp
 warcraft-rs wdt info map.wdt
 
 # Convert between formats and versions
@@ -65,12 +65,13 @@ use wow_blp::parser::load_blp;
 let mut archive = Archive::open("patch.mpq")?;
 let file_data = archive.read_file("Interface/Icons/spell.blp")?;
 
-// Parse BLP textures  
+// Parse BLP textures
 let blp_image = load_blp("texture.blp")?;
-println!("Texture: {}x{}", blp_image.width, blp_image.height);
+println!("Texture: {}x{}", blp_image.header.width, blp_image.header.height);
 ```
 
 Add to your `Cargo.toml`:
+
 ```toml
 [dependencies]
 wow-mpq = "0.1"
