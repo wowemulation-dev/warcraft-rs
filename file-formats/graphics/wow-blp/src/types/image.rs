@@ -55,7 +55,7 @@ impl BlpImage {
     }
 
     /// If the image is DXT3 encoded, return the content
-    pub fn ontent_dxt3(&self) -> Option<&BlpDxtn> {
+    pub fn content_dxt3(&self) -> Option<&BlpDxtn> {
         self.content.dxt3()
     }
 
@@ -63,6 +63,186 @@ impl BlpImage {
     pub fn content_dxt5(&self) -> Option<&BlpDxtn> {
         self.content.dxt5()
     }
+
+    /// Get the compression type used for this BLP image
+    pub fn compression_type(&self) -> CompressionType {
+        match &self.content {
+            BlpContent::Jpeg(_) => CompressionType::Jpeg,
+            BlpContent::Raw1(_) => CompressionType::Raw1,
+            BlpContent::Raw3(_) => CompressionType::Raw3,
+            BlpContent::Dxt1(_) => CompressionType::Dxt1,
+            BlpContent::Dxt3(_) => CompressionType::Dxt3,
+            BlpContent::Dxt5(_) => CompressionType::Dxt5,
+        }
+    }
+
+    /// Get the alpha bit depth for this BLP image
+    pub fn alpha_bit_depth(&self) -> u8 {
+        self.header.alpha_bits() as u8
+    }
+
+    /// Find the best mipmap level for a target resolution.
+    /// Returns the mipmap level closest to the target size.
+    pub fn best_mipmap_for_size(&self, target_size: u32) -> usize {
+        let image_count = self.image_count();
+        if image_count == 0 {
+            return 0;
+        }
+
+        let mut best_level = 0;
+        let mut best_diff = u32::MAX;
+
+        for level in 0..image_count {
+            let (width, height) = self.header.mipmap_size(level);
+            let size = width.max(height);
+            let diff = if size >= target_size {
+                size - target_size
+            } else {
+                target_size - size
+            };
+
+            if diff < best_diff {
+                best_diff = diff;
+                best_level = level;
+            }
+        }
+
+        best_level
+    }
+
+    /// Get information about all mipmap levels
+    pub fn mipmap_info(&self) -> Vec<MipMapInfo> {
+        let mut info = Vec::new();
+
+        for level in 0..self.image_count() {
+            let (width, height) = self.header.mipmap_size(level);
+            let data_size = match &self.content {
+                BlpContent::Jpeg(jpeg) => jpeg.images.get(level).map(|img| img.len()).unwrap_or(0),
+                BlpContent::Raw1(raw) => raw
+                    .images
+                    .get(level)
+                    .map(|img| img.indexed_rgb.len() + img.indexed_alpha.len())
+                    .unwrap_or(0),
+                BlpContent::Raw3(raw) => raw
+                    .images
+                    .get(level)
+                    .map(|img| img.pixels.len() * 4)
+                    .unwrap_or(0),
+                BlpContent::Dxt1(dxt) => dxt
+                    .images
+                    .get(level)
+                    .map(|img| img.content.len())
+                    .unwrap_or(0),
+                BlpContent::Dxt3(dxt) => dxt
+                    .images
+                    .get(level)
+                    .map(|img| img.content.len())
+                    .unwrap_or(0),
+                BlpContent::Dxt5(dxt) => dxt
+                    .images
+                    .get(level)
+                    .map(|img| img.content.len())
+                    .unwrap_or(0),
+            };
+
+            info.push(MipMapInfo {
+                level,
+                width,
+                height,
+                data_size,
+                pixel_count: width * height,
+            });
+        }
+
+        info
+    }
+
+    /// Get total file size estimation (excluding external mipmaps)
+    pub fn estimated_file_size(&self) -> usize {
+        let header_size = BlpHeader::size(self.header.version);
+        let content_size = match &self.content {
+            BlpContent::Jpeg(jpeg) => {
+                jpeg.header.len() + jpeg.images.iter().map(|img| img.len()).sum::<usize>()
+            }
+            BlpContent::Raw1(raw) => {
+                raw.cmap.len() * 4 + // palette size
+                raw.images.iter().map(|img| {
+                    img.indexed_rgb.len() + img.indexed_alpha.len()
+                }).sum::<usize>()
+            }
+            BlpContent::Raw3(raw) => raw
+                .images
+                .iter()
+                .map(|img| img.pixels.len() * 4)
+                .sum::<usize>(),
+            BlpContent::Dxt1(dxt) => dxt
+                .images
+                .iter()
+                .map(|img| img.content.len())
+                .sum::<usize>(),
+            BlpContent::Dxt3(dxt) => dxt
+                .images
+                .iter()
+                .map(|img| img.content.len())
+                .sum::<usize>(),
+            BlpContent::Dxt5(dxt) => dxt
+                .images
+                .iter()
+                .map(|img| img.content.len())
+                .sum::<usize>(),
+        };
+
+        header_size + content_size
+    }
+
+    /// Get compression efficiency (uncompressed size vs compressed size)
+    pub fn compression_ratio(&self) -> f32 {
+        let uncompressed_size = self
+            .mipmap_info()
+            .iter()
+            .map(|info| info.width * info.height * 4) // RGBA
+            .sum::<u32>() as f32;
+
+        let compressed_size = self.estimated_file_size() as f32;
+
+        if compressed_size > 0.0 {
+            uncompressed_size / compressed_size
+        } else {
+            1.0
+        }
+    }
+}
+
+/// Information about a single mipmap level
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MipMapInfo {
+    /// Mipmap level (0 = original)
+    pub level: usize,
+    /// Width in pixels
+    pub width: u32,
+    /// Height in pixels
+    pub height: u32,
+    /// Size of compressed data in bytes
+    pub data_size: usize,
+    /// Total pixel count
+    pub pixel_count: u32,
+}
+
+/// Compression type enumeration for easy inspection
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CompressionType {
+    /// JPEG compressed image data
+    Jpeg,
+    /// Palettized 256-color format with alpha
+    Raw1,
+    /// Uncompressed RGBA format  
+    Raw3,
+    /// DXT1 compression (no alpha or 1-bit alpha)
+    Dxt1,
+    /// DXT3 compression (explicit alpha)
+    Dxt3,
+    /// DXT5 compression (interpolated alpha)
+    Dxt5,
 }
 
 /// Collects all possible content types with actual data

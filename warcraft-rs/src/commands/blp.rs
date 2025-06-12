@@ -27,6 +27,22 @@ pub enum BlpCommands {
         /// Show raw header data
         #[arg(long)]
         raw: bool,
+
+        /// Show compression statistics and ratios
+        #[arg(long)]
+        compression: bool,
+
+        /// Show file size breakdown
+        #[arg(long)]
+        size: bool,
+
+        /// Find best mipmap level for target size
+        #[arg(long)]
+        best_mipmap_for: Option<u32>,
+
+        /// Show all information (equivalent to --mipmaps --compression --size)
+        #[arg(long)]
+        all: bool,
     },
 
     /// Validate BLP file integrity
@@ -443,9 +459,22 @@ fn convert_blp(args: ConvertArgs) -> Result<()> {
     Ok(())
 }
 
-fn show_blp_info(file: PathBuf, show_mipmaps: bool, show_raw: bool) -> Result<()> {
+fn show_blp_info(
+    file: PathBuf,
+    show_mipmaps: bool,
+    show_raw: bool,
+    show_compression: bool,
+    show_size: bool,
+    best_mipmap_for: Option<u32>,
+    show_all: bool,
+) -> Result<()> {
     let blp =
         load_blp(&file).with_context(|| format!("Failed to load BLP file: {}", file.display()))?;
+
+    // Apply --all flag
+    let show_mipmaps = show_mipmaps || show_all;
+    let show_compression = show_compression || show_all;
+    let show_size = show_size || show_all;
 
     println!("BLP File Information: {}", file.display());
     println!("=====================================");
@@ -454,68 +483,87 @@ fn show_blp_info(file: PathBuf, show_mipmaps: bool, show_raw: bool) -> Result<()
     println!("Version: {:?}", blp.header.version);
     println!("Dimensions: {}x{}", blp.header.width, blp.header.height);
     println!("Content Type: {:?}", blp.header.content);
+    println!("Compression: {:?}", blp.compression_type());
+    println!("Alpha Bits: {}", blp.alpha_bit_depth());
     println!("Has Mipmaps: {}", blp.header.has_mipmaps());
     println!("Image Count: {}", blp.image_count());
 
     // Content-specific info
     match &blp.content {
         BlpContent::Jpeg(jpeg) => {
-            println!("Format: JPEG");
             println!("JPEG Header Size: {} bytes", jpeg.header.len());
-            println!("Images: {} mipmap levels", jpeg.images.len());
         }
         BlpContent::Raw1(raw) => {
-            println!("Format: RAW1 (Paletted)");
             println!("Palette Colors: {}", raw.cmap.len());
-            println!("Images: {} mipmap levels", raw.images.len());
         }
-        BlpContent::Raw3(raw) => {
-            println!("Format: RAW3 (Uncompressed BGRA)");
-            println!("Images: {} mipmap levels", raw.images.len());
+        BlpContent::Raw3(_) => {
+            println!("Format Details: Uncompressed BGRA");
         }
-        BlpContent::Dxt1(dxt) => {
-            println!("Format: DXT1");
-            println!("Images: {} mipmap levels", dxt.images.len());
+        BlpContent::Dxt1(_) => {
+            println!("Format Details: S3TC BC1 (4 bpp)");
         }
-        BlpContent::Dxt3(dxt) => {
-            println!("Format: DXT3");
-            println!("Images: {} mipmap levels", dxt.images.len());
+        BlpContent::Dxt3(_) => {
+            println!("Format Details: S3TC BC2 (8 bpp, explicit alpha)");
         }
-        BlpContent::Dxt5(dxt) => {
-            println!("Format: DXT5");
-            println!("Images: {} mipmap levels", dxt.images.len());
+        BlpContent::Dxt5(_) => {
+            println!("Format Details: S3TC BC3 (8 bpp, interpolated alpha)");
         }
     }
 
-    // Mipmap info
+    // Compression statistics
+    if show_compression {
+        println!("\nCompression Statistics:");
+        println!("----------------------");
+        let compression_ratio = blp.compression_ratio();
+        println!("Compression Ratio: {:.2}:1", compression_ratio);
+        println!(
+            "Compression Efficiency: {:.1}%",
+            (1.0 - 1.0 / compression_ratio) * 100.0
+        );
+    }
+
+    // File size breakdown
+    if show_size {
+        println!("\nFile Size Information:");
+        println!("---------------------");
+        let estimated_size = blp.estimated_file_size();
+        println!(
+            "Estimated File Size: {} bytes ({:.2} KB)",
+            estimated_size,
+            estimated_size as f32 / 1024.0
+        );
+
+        let mipmap_info = blp.mipmap_info();
+        let total_uncompressed = mipmap_info
+            .iter()
+            .map(|info| info.width * info.height * 4)
+            .sum::<u32>();
+        println!(
+            "Uncompressed Size: {} bytes ({:.2} KB)",
+            total_uncompressed,
+            total_uncompressed as f32 / 1024.0
+        );
+    }
+
+    // Best mipmap for target size
+    if let Some(target_size) = best_mipmap_for {
+        println!("\nBest Mipmap for {}x{} target:", target_size, target_size);
+        println!("-------------------------------");
+        let best_level = blp.best_mipmap_for_size(target_size);
+        let (width, height) = blp.header.mipmap_size(best_level);
+        println!("Best Level: {} ({}x{})", best_level, width, height);
+    }
+
+    // Mipmap info (using new convenience method)
     if show_mipmaps {
         println!("\nMipmap Information:");
         println!("-------------------");
-        for i in 0..blp.image_count() {
-            let (width, height) = blp.header.mipmap_size(i);
-            let size = match &blp.content {
-                BlpContent::Jpeg(jpeg) => jpeg.images.get(i).map(|img| img.len()).unwrap_or(0),
-                BlpContent::Raw1(raw) => raw
-                    .images
-                    .get(i)
-                    .map(|img| img.indexed_rgb.len() + img.indexed_alpha.len())
-                    .unwrap_or(0),
-                BlpContent::Raw3(raw) => raw
-                    .images
-                    .get(i)
-                    .map(|img| img.pixels.len() * 4)
-                    .unwrap_or(0),
-                BlpContent::Dxt1(dxt) => {
-                    dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0)
-                }
-                BlpContent::Dxt3(dxt) => {
-                    dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0)
-                }
-                BlpContent::Dxt5(dxt) => {
-                    dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0)
-                }
-            };
-            println!("  Level {}: {}x{} ({} bytes)", i, width, height, size);
+        let mipmap_info = blp.mipmap_info();
+        for info in &mipmap_info {
+            println!(
+                "  Level {}: {}x{} ({} bytes, {} pixels)",
+                info.level, info.width, info.height, info.data_size, info.pixel_count
+            );
         }
     }
 
@@ -665,7 +713,15 @@ pub fn execute(command: BlpCommands) -> Result<()> {
             mipmap_filter,
             dxt_compression,
         }),
-        BlpCommands::Info { file, mipmaps, raw } => show_blp_info(file, mipmaps, raw),
+        BlpCommands::Info {
+            file,
+            mipmaps,
+            raw,
+            compression,
+            size,
+            best_mipmap_for,
+            all,
+        } => show_blp_info(file, mipmaps, raw, compression, size, best_mipmap_for, all),
         BlpCommands::Validate { file, strict } => validate_blp(file, strict),
     }
 }
