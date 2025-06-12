@@ -104,7 +104,7 @@ pub fn export_to_json<W: io::Write>(record_set: &RecordSet, writer: W) -> Result
     }
 
     serde_json::to_writer_pretty(writer, &serializable_records)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
+        .map_err(|e| io::Error::other(e.to_string()))
 }
 
 /// Export a record set to CSV

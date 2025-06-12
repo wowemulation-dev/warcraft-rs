@@ -666,9 +666,9 @@ fn execute_batch(
                                     File::create(&output_path)
                                         .and_then(|f| {
                                             let mut writer = BufWriter::new(f);
-                                            converted.write(&mut writer).map_err(|e| {
-                                                std::io::Error::new(std::io::ErrorKind::Other, e)
-                                            })
+                                            converted
+                                                .write(&mut writer)
+                                                .map_err(|e| std::io::Error::other(e))
                                         })
                                         .map_err(|e| anyhow::anyhow!("{}", e))
                                 }

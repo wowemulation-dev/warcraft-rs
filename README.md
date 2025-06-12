@@ -31,6 +31,11 @@ projects and a link to the WoW Rust Discord.
   - 🎮 **Official WoW Archive Support** - Handles Blizzard-specific quirks and format variations
 - **DBC Database** - Parse client database files
 - **BLP Textures** - Handle texture files
+  - ✅ **Version Support** - BLP0 (Warcraft III Beta), BLP1 (Warcraft III), BLP2 (WoW)
+  - ✅ **Compression Formats** - JPEG, RAW1 (palettized), RAW3 (uncompressed), DXT1/3/5
+  - 🔄 **Conversion** - Convert between BLP and standard image formats (PNG, JPEG, etc.)
+  - 🎨 **Alpha Support** - Handle alpha channels with 0, 1, 4, or 8-bit precision
+  - 📦 **Mipmap Support** - Internal and external mipmap handling
 - **M2 Models** - Work with character and creature models
 - **WMO Objects** - Process world map objects (buildings, structures)
   - ✅ **Format Support** - Parse and write root and group files
@@ -85,9 +90,14 @@ warcraft-rs wmo tree building.wmo  # Visualize WMO structure
 warcraft-rs wmo edit building.wmo --set-flag has-fog
 warcraft-rs wmo build new.wmo --from config.yaml
 
+# BLP texture operations
+warcraft-rs blp info texture.blp --mipmaps
+warcraft-rs blp validate texture.blp --strict
+warcraft-rs blp convert texture.blp texture.png
+warcraft-rs blp convert image.png texture.blp --blp-version blp2 --blp-format dxt5 --alpha-bits 8
+
 # Other tools (when implemented)
 warcraft-rs dbc list items.dbc
-warcraft-rs blp convert texture.blp --format png
 warcraft-rs m2 info model.m2
 ```
 
@@ -128,6 +138,34 @@ println!("Terrain chunks: {}", adt.mcnk_chunks().len());
 // Validate the ADT file
 let report = adt.validate_with_report(ValidationLevel::Standard)?;
 println!("Validation passed with {} warnings", report.warnings.len());
+```
+
+```rust
+// BLP texture handling
+use wow_blp::{
+    parser::load_blp, 
+    convert::{blp_to_image, image_to_blp, BlpTarget, Blp2Format, DxtAlgorithm, AlphaBits},
+    encode::save_blp
+};
+use image::imageops::FilterType;
+
+// Load and convert BLP to standard image
+let blp_file = load_blp("texture.blp")?;
+let image = blp_to_image(&blp_file, 0)?; // mipmap level 0
+image.save("texture.png")?;
+
+// Convert standard image to BLP with DXT5 compression
+let input_image = image::open("input.png")?;
+let blp = image_to_blp(
+    input_image,
+    true, // generate mipmaps
+    BlpTarget::Blp2(Blp2Format::Dxt5 { 
+        has_alpha: true, 
+        compress_algorithm: DxtAlgorithm::ClusterFit 
+    }),
+    FilterType::Lanczos3
+)?;
+save_blp(&blp, "output.blp")?;
 ```
 
 ```rust

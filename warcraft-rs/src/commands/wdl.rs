@@ -14,6 +14,12 @@ use crate::utils::{NodeType, TreeNode, TreeOptions, detect_ref_type, render_tree
 
 #[derive(Subcommand)]
 pub enum WdlCommands {
+    /// Display information about a WDL file
+    Info {
+        /// Path to the WDL file
+        file: PathBuf,
+    },
+
     /// Validate a WDL file
     Validate {
         /// Path to the WDL file
@@ -39,12 +45,6 @@ pub enum WdlCommands {
         /// Target version (e.g., "WotLK", "TBC", "MoP", "Legion")
         #[arg(short, long, value_name = "VERSION")]
         to: String,
-    },
-
-    /// Display information about a WDL file
-    Info {
-        /// Path to the WDL file
-        file: PathBuf,
     },
 
     /// Show tree structure of a WDL file

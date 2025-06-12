@@ -12,15 +12,32 @@ cargo run --example <example_name> [arguments]
 
 ## Available Examples
 
-*Note: This crate is still in development. Examples will be added as features are implemented.*
+### wmo_app.rs - WMO Manipulation Application
+
+A comprehensive WMO (World Map Object) manipulation tool that demonstrates:
+
+- Parsing WMO root files and group files
+- Editing WMO properties and data
+- Visualizing WMO structure and contents
+- Converting between different WMO versions
+- Validating WMO file integrity
+
+```bash
+cargo run --example wmo_app -- <command> [arguments]
+```
+
+Available commands:
+- `parse <file.wmo>` - Parse and display WMO information
+- `edit <file.wmo>` - Interactive WMO editing
+- `visualize <file.wmo>` - Generate WMO visualization
+- `convert <input.wmo> <output.wmo> <version>` - Convert between versions
+- `validate <file.wmo>` - Check WMO integrity
 
 ### Planned Examples
 
-- **`parse_wmo.rs`** - Parse and display WMO file information
 - **`extract_groups.rs`** - Extract WMO group files
 - **`list_textures.rs`** - List all textures used by a WMO
-- **`validate_wmo.rs`** - Validate WMO file structure
-- **`convert_version.rs`** - Convert WMO between game versions
+- **`export_obj.rs`** - Export WMO geometry to OBJ format
 
 ## WMO File Structure
 
@@ -30,22 +47,20 @@ WMO files represent large static geometry in World of Warcraft:
 - Split into root file (.wmo) and group files (_000.wmo,_001.wmo, etc.)
 - Contains materials, textures, and lighting information
 
-## Example Usage (Coming Soon)
+## Example Usage
 
-```rust
-use wow_wmo::WmoRoot;
+```bash
+# Parse a WMO file and display information
+cargo run --example wmo_app -- parse path/to/building.wmo
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load a WMO root file
-    let wmo = WmoRoot::load("path/to/building.wmo")?;
+# Validate WMO structure
+cargo run --example wmo_app -- validate path/to/building.wmo
 
-    // Display basic information
-    println!("WMO: {}", wmo.name);
-    println!("Groups: {}", wmo.group_count);
-    println!("Materials: {}", wmo.materials.len());
+# Convert WMO to different version
+cargo run --example wmo_app -- convert old.wmo new.wmo wotlk
 
-    Ok(())
-}
+# Visualize WMO structure
+cargo run --example wmo_app -- visualize path/to/building.wmo
 ```
 
 ## Test Data

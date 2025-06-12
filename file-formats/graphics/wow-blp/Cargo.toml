@@ -15,8 +15,28 @@ categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 thiserror = { workspace = true }
+log = { workspace = true }
+bytes = { workspace = true }
+binrw = { workspace = true }
+
+# Image processing
+image = "0.25"
+color_quant = "1.1"
+
+# Compression
+texpresso = { version = "2.0", features = ["rayon"] }
+
+# Parsing
+nom = "7.1"
+
+# Concurrency
+spin = "0.9"
 
 [dev-dependencies]
+env_logger = { workspace = true }
+tempfile = { workspace = true }
+test-log = "0.2"
+pretty_assertions = { workspace = true }
 
 [features]
 default = []

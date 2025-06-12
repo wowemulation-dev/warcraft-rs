@@ -2,71 +2,28 @@
 
 use anyhow::{Context, Result};
 use clap::{Subcommand, ValueEnum};
-use std::path::PathBuf;
+use image::{ImageFormat, ImageReader, imageops::FilterType};
+use std::path::{Path, PathBuf};
 use wow_blp::{
-    convert::{blp_to_image, image_to_blp, AlphaBits, BlpOldFormat, BlpTarget, Blp2Format, DxtAlgorithm},
+    convert::{
+        AlphaBits, Blp2Format, BlpOldFormat, BlpTarget, DxtAlgorithm, blp_to_image, image_to_blp,
+    },
     encode::save_blp,
     parser::load_blp,
     types::BlpContent,
 };
-use image::{imageops::FilterType, ImageReader, ImageFormat};
 
 #[derive(Subcommand)]
 pub enum BlpCommands {
-    /// Convert BLP files to/from other image formats
-    Convert {
-        /// Input file path (BLP or other image format)
-        input: PathBuf,
-        
-        /// Output file path
-        output: PathBuf,
-        
-        /// Input format (auto-detected from extension if not specified)
-        #[arg(short = 'i', long)]
-        input_format: Option<InputFormat>,
-        
-        /// Output format (auto-detected from extension if not specified)
-        #[arg(short = 'o', long)]
-        output_format: Option<OutputFormat>,
-        
-        /// BLP version to use when encoding to BLP
-        #[arg(long, default_value = "blp1")]
-        blp_version: BlpVersionCli,
-        
-        /// BLP encoding format to use
-        #[arg(long, default_value = "jpeg")]
-        blp_format: BlpFormat,
-        
-        /// Alpha bits (0, 1, 4, or 8)
-        #[arg(long, default_value = "8")]
-        alpha_bits: u8,
-        
-        /// Mipmap level to extract when converting from BLP
-        #[arg(long, default_value = "0")]
-        mipmap_level: usize,
-        
-        /// Skip mipmap generation when encoding to BLP
-        #[arg(long)]
-        no_mipmaps: bool,
-        
-        /// Mipmap filtering algorithm
-        #[arg(long, default_value = "lanczos3")]
-        mipmap_filter: MipmapFilter,
-        
-        /// DXT compression quality
-        #[arg(long, default_value = "medium")]
-        dxt_compression: DxtCompression,
-    },
-
     /// Display information about a BLP file
     Info {
         /// Path to the BLP file
         file: PathBuf,
-        
+
         /// Show detailed mipmap information
         #[arg(long)]
         mipmaps: bool,
-        
+
         /// Show raw header data
         #[arg(long)]
         raw: bool,
@@ -76,10 +33,55 @@ pub enum BlpCommands {
     Validate {
         /// Path to the BLP file
         file: PathBuf,
-        
+
         /// Strict validation mode
         #[arg(long)]
         strict: bool,
+    },
+
+    /// Convert BLP files to/from other image formats
+    Convert {
+        /// Input file path (BLP or other image format)
+        input: PathBuf,
+
+        /// Output file path
+        output: PathBuf,
+
+        /// Input format (auto-detected from extension if not specified)
+        #[arg(short = 'i', long)]
+        input_format: Option<InputFormat>,
+
+        /// Output format (auto-detected from extension if not specified)
+        #[arg(short = 'o', long)]
+        output_format: Option<OutputFormat>,
+
+        /// BLP version to use when encoding to BLP
+        #[arg(long, default_value = "blp1")]
+        blp_version: BlpVersionCli,
+
+        /// BLP encoding format to use
+        #[arg(long, default_value = "jpeg")]
+        blp_format: BlpFormat,
+
+        /// Alpha bits (0, 1, 4, or 8)
+        #[arg(long, default_value = "8")]
+        alpha_bits: u8,
+
+        /// Mipmap level to extract when converting from BLP
+        #[arg(long, default_value = "0")]
+        mipmap_level: usize,
+
+        /// Skip mipmap generation when encoding to BLP
+        #[arg(long)]
+        no_mipmaps: bool,
+
+        /// Mipmap filtering algorithm
+        #[arg(long, default_value = "lanczos3")]
+        mipmap_filter: MipmapFilter,
+
+        /// DXT compression quality
+        #[arg(long, default_value = "medium")]
+        dxt_compression: DxtCompression,
     },
 }
 
@@ -212,7 +214,7 @@ impl TryFrom<OutputFormat> for ImageFormat {
     }
 }
 
-fn guess_input_format(path: &PathBuf) -> Option<InputFormat> {
+fn guess_input_format(path: &Path) -> Option<InputFormat> {
     let ext = path.extension()?.to_str()?.to_lowercase();
     match ext.as_str() {
         "blp" => Some(InputFormat::Blp),
@@ -232,7 +234,7 @@ fn guess_input_format(path: &PathBuf) -> Option<InputFormat> {
     }
 }
 
-fn guess_output_format(path: &PathBuf) -> Option<OutputFormat> {
+fn guess_output_format(path: &Path) -> Option<OutputFormat> {
     let ext = path.extension()?.to_str()?.to_lowercase();
     match ext.as_str() {
         "blp" => Some(OutputFormat::Blp),
@@ -250,7 +252,12 @@ fn guess_output_format(path: &PathBuf) -> Option<OutputFormat> {
     }
 }
 
-fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dxt_algo: DxtCompression) -> Result<BlpTarget> {
+fn make_blp_target(
+    version: BlpVersionCli,
+    format: BlpFormat,
+    alpha_bits: u8,
+    dxt_algo: DxtCompression,
+) -> Result<BlpTarget> {
     use wow_blp::types::BlpVersion;
     let version: BlpVersion = version.into();
     match version {
@@ -269,7 +276,10 @@ fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dx
                 let has_alpha = match alpha_bits {
                     0 => false,
                     8 => true,
-                    _ => anyhow::bail!("Invalid alpha bits {} for BLP0 JPEG format (only 0 or 8 supported)", alpha_bits),
+                    _ => anyhow::bail!(
+                        "Invalid alpha bits {} for BLP0 JPEG format (only 0 or 8 supported)",
+                        alpha_bits
+                    ),
                 };
                 Ok(BlpTarget::Blp0(BlpOldFormat::Jpeg { has_alpha }))
             }
@@ -290,7 +300,10 @@ fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dx
                 let has_alpha = match alpha_bits {
                     0 => false,
                     8 => true,
-                    _ => anyhow::bail!("Invalid alpha bits {} for BLP1 JPEG format (only 0 or 8 supported)", alpha_bits),
+                    _ => anyhow::bail!(
+                        "Invalid alpha bits {} for BLP1 JPEG format (only 0 or 8 supported)",
+                        alpha_bits
+                    ),
                 };
                 Ok(BlpTarget::Blp1(BlpOldFormat::Jpeg { has_alpha }))
             }
@@ -312,7 +325,10 @@ fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dx
                 let has_alpha = match alpha_bits {
                     0 => false,
                     8 => true,
-                    _ => anyhow::bail!("Invalid alpha bits {} for BLP2 JPEG format (only 0 or 8 supported)", alpha_bits),
+                    _ => anyhow::bail!(
+                        "Invalid alpha bits {} for BLP2 JPEG format (only 0 or 8 supported)",
+                        alpha_bits
+                    ),
                 };
                 Ok(BlpTarget::Blp2(Blp2Format::Jpeg { has_alpha }))
             }
@@ -320,7 +336,10 @@ fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dx
                 let has_alpha = match alpha_bits {
                     0 => false,
                     1 => true,
-                    _ => anyhow::bail!("Invalid alpha bits {} for BLP2 DXT1 format (only 0 or 1 supported)", alpha_bits),
+                    _ => anyhow::bail!(
+                        "Invalid alpha bits {} for BLP2 DXT1 format (only 0 or 1 supported)",
+                        alpha_bits
+                    ),
                 };
                 Ok(BlpTarget::Blp2(Blp2Format::Dxt1 {
                     has_alpha,
@@ -331,7 +350,10 @@ fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dx
                 let has_alpha = match alpha_bits {
                     0 => false,
                     8 => true,
-                    _ => anyhow::bail!("Invalid alpha bits {} for BLP2 DXT3 format (only 0 or 8 supported)", alpha_bits),
+                    _ => anyhow::bail!(
+                        "Invalid alpha bits {} for BLP2 DXT3 format (only 0 or 8 supported)",
+                        alpha_bits
+                    ),
                 };
                 Ok(BlpTarget::Blp2(Blp2Format::Dxt3 {
                     has_alpha,
@@ -342,7 +364,10 @@ fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dx
                 let has_alpha = match alpha_bits {
                     0 => false,
                     8 => true,
-                    _ => anyhow::bail!("Invalid alpha bits {} for BLP2 DXT5 format (only 0 or 8 supported)", alpha_bits),
+                    _ => anyhow::bail!(
+                        "Invalid alpha bits {} for BLP2 DXT5 format (only 0 or 8 supported)",
+                        alpha_bits
+                    ),
                 };
                 Ok(BlpTarget::Blp2(Blp2Format::Dxt5 {
                     has_alpha,
@@ -355,22 +380,24 @@ fn make_blp_target(version: BlpVersionCli, format: BlpFormat, alpha_bits: u8, dx
 
 fn convert_blp(args: ConvertArgs) -> Result<()> {
     // Determine input format
-    let input_format = args.input_format
+    let input_format = args
+        .input_format
         .or_else(|| guess_input_format(&args.input))
         .context("Failed to determine input format. Please specify with --input-format")?;
-    
+
     // Determine output format
-    let output_format = args.output_format
+    let output_format = args
+        .output_format
         .or_else(|| guess_output_format(&args.output))
         .context("Failed to determine output format. Please specify with --output-format")?;
-    
+
     log::info!("Converting from {:?} to {:?}", input_format, output_format);
-    
+
     // Load input image
     let input_image = if input_format == InputFormat::Blp {
         let blp_image = load_blp(&args.input)
             .with_context(|| format!("Failed to load BLP file: {}", args.input.display()))?;
-        
+
         blp_to_image(&blp_image, args.mipmap_level)
             .with_context(|| format!("Failed to convert BLP mipmap level {}", args.mipmap_level))?
     } else {
@@ -379,11 +406,16 @@ fn convert_blp(args: ConvertArgs) -> Result<()> {
             .decode()
             .with_context(|| format!("Failed to decode image: {}", args.input.display()))?
     };
-    
+
     // Save output
     match output_format {
         OutputFormat::Blp => {
-            let target = make_blp_target(args.blp_version, args.blp_format, args.alpha_bits, args.dxt_compression)?;
+            let target = make_blp_target(
+                args.blp_version,
+                args.blp_format,
+                args.alpha_bits,
+                args.dxt_compression,
+            )?;
             let blp = image_to_blp(
                 input_image,
                 !args.no_mipmaps,
@@ -391,7 +423,7 @@ fn convert_blp(args: ConvertArgs) -> Result<()> {
                 args.mipmap_filter.into(),
             )
             .context("Failed to convert image to BLP")?;
-            
+
             save_blp(&blp, &args.output)
                 .with_context(|| format!("Failed to save BLP file: {}", args.output.display()))?;
         }
@@ -402,25 +434,29 @@ fn convert_blp(args: ConvertArgs) -> Result<()> {
                 .with_context(|| format!("Failed to save image: {}", args.output.display()))?;
         }
     }
-    
-    println!("✓ Converted {} to {}", args.input.display(), args.output.display());
+
+    println!(
+        "✓ Converted {} to {}",
+        args.input.display(),
+        args.output.display()
+    );
     Ok(())
 }
 
 fn show_blp_info(file: PathBuf, show_mipmaps: bool, show_raw: bool) -> Result<()> {
-    let blp = load_blp(&file)
-        .with_context(|| format!("Failed to load BLP file: {}", file.display()))?;
-    
+    let blp =
+        load_blp(&file).with_context(|| format!("Failed to load BLP file: {}", file.display()))?;
+
     println!("BLP File Information: {}", file.display());
     println!("=====================================");
-    
+
     // Basic info
     println!("Version: {:?}", blp.header.version);
     println!("Dimensions: {}x{}", blp.header.width, blp.header.height);
     println!("Content Type: {:?}", blp.header.content);
     println!("Has Mipmaps: {}", blp.header.has_mipmaps());
     println!("Image Count: {}", blp.image_count());
-    
+
     // Content-specific info
     match &blp.content {
         BlpContent::Jpeg(jpeg) => {
@@ -450,7 +486,7 @@ fn show_blp_info(file: PathBuf, show_mipmaps: bool, show_raw: bool) -> Result<()
             println!("Images: {} mipmap levels", dxt.images.len());
         }
     }
-    
+
     // Mipmap info
     if show_mipmaps {
         println!("\nMipmap Information:");
@@ -459,16 +495,30 @@ fn show_blp_info(file: PathBuf, show_mipmaps: bool, show_raw: bool) -> Result<()
             let (width, height) = blp.header.mipmap_size(i);
             let size = match &blp.content {
                 BlpContent::Jpeg(jpeg) => jpeg.images.get(i).map(|img| img.len()).unwrap_or(0),
-                BlpContent::Raw1(raw) => raw.images.get(i).map(|img| img.indexed_rgb.len() + img.indexed_alpha.len()).unwrap_or(0),
-                BlpContent::Raw3(raw) => raw.images.get(i).map(|img| img.pixels.len() * 4).unwrap_or(0),
-                BlpContent::Dxt1(dxt) => dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0),
-                BlpContent::Dxt3(dxt) => dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0),
-                BlpContent::Dxt5(dxt) => dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0),
+                BlpContent::Raw1(raw) => raw
+                    .images
+                    .get(i)
+                    .map(|img| img.indexed_rgb.len() + img.indexed_alpha.len())
+                    .unwrap_or(0),
+                BlpContent::Raw3(raw) => raw
+                    .images
+                    .get(i)
+                    .map(|img| img.pixels.len() * 4)
+                    .unwrap_or(0),
+                BlpContent::Dxt1(dxt) => {
+                    dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0)
+                }
+                BlpContent::Dxt3(dxt) => {
+                    dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0)
+                }
+                BlpContent::Dxt5(dxt) => {
+                    dxt.images.get(i).map(|img| img.content.len()).unwrap_or(0)
+                }
             };
             println!("  Level {}: {}x{} ({} bytes)", i, width, height, size);
         }
     }
-    
+
     // Raw header data
     if show_raw {
         println!("\nRaw Header Data:");
@@ -480,13 +530,13 @@ fn show_blp_info(file: PathBuf, show_mipmaps: bool, show_raw: bool) -> Result<()
         println!("  Height: {}", blp.header.height);
         println!("  Mipmap Locator: {:?}", blp.header.mipmap_locator);
     }
-    
+
     Ok(())
 }
 
 fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
     println!("Validating BLP file: {}", file.display());
-    
+
     // Try to load the file
     let blp = match load_blp(&file) {
         Ok(blp) => blp,
@@ -495,18 +545,18 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
             return Err(e.into());
         }
     };
-    
+
     let mut errors: Vec<String> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
-    
+
     // Check version
     log::debug!("BLP version: {:?}", blp.header.version);
-    
+
     // Check dimensions
     if blp.header.width == 0 || blp.header.height == 0 {
         errors.push("Invalid dimensions (0 width or height)".to_string());
     }
-    
+
     if !blp.header.width.is_power_of_two() || !blp.header.height.is_power_of_two() {
         if strict {
             errors.push("Dimensions are not powers of 2".to_string());
@@ -514,18 +564,20 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
             warnings.push("Dimensions are not powers of 2 (non-standard but may work)".to_string());
         }
     }
-    
+
     // Check mipmap consistency
     if blp.header.has_mipmaps() {
         let expected_levels = (blp.header.width.max(blp.header.height) as f32).log2() as usize + 1;
         let actual_levels = blp.image_count();
-        
+
         if actual_levels < expected_levels {
-            warnings.push(format!("Incomplete mipmap chain: expected {} levels, got {}", 
-                expected_levels, actual_levels));
+            warnings.push(format!(
+                "Incomplete mipmap chain: expected {} levels, got {}",
+                expected_levels, actual_levels
+            ));
         }
     }
-    
+
     // Format-specific validation
     match &blp.content {
         BlpContent::Jpeg(jpeg) => {
@@ -542,7 +594,7 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
         }
         _ => {}
     }
-    
+
     // Print results
     if errors.is_empty() && warnings.is_empty() {
         println!("✓ BLP file is valid");
@@ -554,14 +606,14 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
                 println!("  ✗ {}", error);
             }
         }
-        
+
         if !warnings.is_empty() {
             println!("\nWarnings:");
             for warning in &warnings {
                 println!("  ⚠ {}", warning);
             }
         }
-        
+
         if errors.is_empty() {
             println!("\n✓ BLP file is valid with warnings");
             Ok(())
@@ -600,26 +652,20 @@ pub fn execute(command: BlpCommands) -> Result<()> {
             no_mipmaps,
             mipmap_filter,
             dxt_compression,
-        } => {
-            convert_blp(ConvertArgs {
-                input,
-                output,
-                input_format,
-                output_format,
-                blp_version,
-                blp_format,
-                alpha_bits,
-                mipmap_level,
-                no_mipmaps,
-                mipmap_filter,
-                dxt_compression,
-            })
-        }
-        BlpCommands::Info { file, mipmaps, raw } => {
-            show_blp_info(file, mipmaps, raw)
-        }
-        BlpCommands::Validate { file, strict } => {
-            validate_blp(file, strict)
-        }
+        } => convert_blp(ConvertArgs {
+            input,
+            output,
+            input_format,
+            output_format,
+            blp_version,
+            blp_format,
+            alpha_bits,
+            mipmap_level,
+            no_mipmaps,
+            mipmap_filter,
+            dxt_compression,
+        }),
+        BlpCommands::Info { file, mipmaps, raw } => show_blp_info(file, mipmaps, raw),
+        BlpCommands::Validate { file, strict } => validate_blp(file, strict),
     }
 }

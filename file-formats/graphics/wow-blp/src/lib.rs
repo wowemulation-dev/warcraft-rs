@@ -1,136 +1,68 @@
 //! Parser for World of Warcraft BLP (texture) files.
 //!
 //! This crate provides support for reading and writing BLP texture files used in
-//! World of Warcraft. BLP is Blizzard's proprietary texture format that supports
-//! various compression methods including JPEG compression and palettized images.
+//! World of Warcraft and Warcraft III. BLP is Blizzard's proprietary texture format
+//! that supports various compression methods including JPEG compression, palettized
+//! images, and DXT compression.
 //!
-//! # Status
+//! # Supported Versions
 //!
-//! 🚧 **Under Construction** - This crate is not yet fully implemented.
+//! - **BLP0** - Used in Warcraft III ROC Beta builds
+//! - **BLP1** - Common in Warcraft III TFT (versions 1.12.1+)
+//! - **BLP2** - Used in World of Warcraft (versions 1.12.1 through 5.4.8)
+//!
+//! # Supported Encodings
+//!
+//! - **RAW1** - Palettized images with 256 colors
+//! - **RAW3** - Uncompressed RGBA bitmaps
+//! - **JPEG** - JPEG compressed images
+//! - **DXTn** - S3TC compression algorithms (BLP2 only)
 //!
 //! # Examples
 //!
-//! ```no_run
-//! use wow_blp::BlpTexture;
+//! ## Loading a BLP file
 //!
-//! // This is a placeholder example for future implementation
-//! let texture = BlpTexture::placeholder();
-//! println!("Texture format: {:?}", texture.format());
+//! ```no_run
+//! use wow_blp::{parser::load_blp, convert::blp_to_image};
+//!
+//! let blp_file = load_blp("texture.blp").expect("Failed to load BLP");
+//! let mipmap_level = 0;
+//! let image = blp_to_image(&blp_file, mipmap_level).expect("Failed to convert");
+//! ```
+//!
+//! ## Saving an image as BLP
+//!
+//! ```no_run
+//! use image::DynamicImage;
+//! use wow_blp::{
+//!     convert::{image_to_blp, BlpTarget, BlpOldFormat, AlphaBits, FilterType},
+//!     encode::save_blp,
+//! };
+//!
+//! # let image = DynamicImage::new_rgba8(256, 256);
+//! let make_mipmaps = true;
+//! let target = BlpTarget::Blp1(BlpOldFormat::Raw1 {
+//!     alpha_bits: AlphaBits::Bit1,
+//! });
+//! let blp = image_to_blp(image, make_mipmaps, target, FilterType::Nearest)
+//!     .expect("Failed to convert");
+//! save_blp(&blp, "output.blp").expect("Failed to save");
 //! ```
 
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-use std::fmt;
+/// Conversion utilities to/from DynamicImage
+pub mod convert;
+/// Encoding BLP format into stream of bytes
+pub mod encode;
+/// Decoding BLP format from raw bytes
+pub mod parser;
+/// Utilities for mipmaps filename generation
+pub mod path;
+/// Defines structure of parsed BLP file
+pub mod types;
 
-/// Compression format used in BLP files
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BlpCompression {
-    /// JPEG compressed texture (BLP0)
-    Jpeg,
-    /// Palettized texture with optional alpha (BLP1)
-    Palettized,
-    /// DirectX compressed texture (BLP2)
-    DirectX,
-    /// Uncompressed BGRA texture
-    Uncompressed,
-}
-
-/// A BLP texture file
-#[derive(Debug)]
-pub struct BlpTexture {
-    /// Compression format
-    compression: BlpCompression,
-    /// Width in pixels
-    width: u32,
-    /// Height in pixels
-    height: u32,
-}
-
-impl BlpTexture {
-    /// Create a placeholder texture for demonstration
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use wow_blp::BlpTexture;
-    ///
-    /// let texture = BlpTexture::placeholder();
-    /// assert_eq!(texture.width(), 256);
-    /// assert_eq!(texture.height(), 256);
-    /// ```
-    pub fn placeholder() -> Self {
-        Self {
-            compression: BlpCompression::Jpeg,
-            width: 256,
-            height: 256,
-        }
-    }
-
-    /// Get the compression format
-    pub fn format(&self) -> BlpCompression {
-        self.compression
-    }
-
-    /// Get the texture width
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    /// Get the texture height
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-}
-
-impl fmt::Display for BlpTexture {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "BLP Texture ({}x{}, {:?})",
-            self.width, self.height, self.compression
-        )
-    }
-}
-
-/// Error type for BLP operations
-#[derive(Debug, thiserror::Error)]
-pub enum BlpError {
-    /// Invalid BLP file format
-    #[error("Invalid BLP format: {0}")]
-    InvalidFormat(String),
-
-    /// Unsupported compression type
-    #[error("Unsupported compression: {0}")]
-    UnsupportedCompression(String),
-
-    /// I/O error
-    #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
-}
-
-/// Result type for BLP operations
-pub type Result<T> = std::result::Result<T, BlpError>;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_placeholder() {
-        let texture = BlpTexture::placeholder();
-        assert_eq!(texture.width(), 256);
-        assert_eq!(texture.height(), 256);
-        assert_eq!(texture.format(), BlpCompression::Jpeg);
-    }
-
-    #[test]
-    fn test_display() {
-        let texture = BlpTexture::placeholder();
-        let display = format!("{}", texture);
-        assert!(display.contains("256x256"));
-        assert!(display.contains("Jpeg"));
-    }
-}
+pub use types::*;

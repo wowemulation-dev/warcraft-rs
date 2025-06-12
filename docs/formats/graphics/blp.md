@@ -1,15 +1,14 @@
 # BLP Format 🎨
 
-BLP (Blizzard Picture) is Blizzard's proprietary texture format used for all
-textures in World of Warcraft.
+BLP (Blizzard Picture) is Blizzard's proprietary texture format used for all textures in Warcraft III and World of Warcraft.
 
 ## Overview
 
 - **Extension**: `.blp`
 - **Purpose**: Compressed texture storage
-- **Versions**: BLP1 (legacy), BLP2 (current)
-- **Compression**: JPEG, DXT1, DXT3, DXT5, uncompressed
-- **Features**: Mipmaps, alpha channels, palettized textures
+- **Versions**: BLP0 (Warcraft III Beta), BLP1 (Warcraft III), BLP2 (World of Warcraft)
+- **Compression**: JPEG, RAW1 (palettized), RAW3 (uncompressed), DXT1/3/5
+- **Features**: Mipmaps, alpha channels, multiple compression options
 
 ## Structure
 
@@ -17,181 +16,230 @@ textures in World of Warcraft.
 
 ```rust
 struct BlpHeader {
-    magic: [u8; 4],          // "BLP2"
-    version: u32,            // Always 1 for BLP2
-    compression: u8,         // 0=JPEG, 1=Palette, 2=DXT, 3=Uncompressed
-    alpha_depth: u8,         // 0, 1, 4, or 8
-    alpha_compression: u8,   // 0=DXT1, 1=DXT3, 7=DXT5
-    mipmap_level: u8,        // 0 = no mipmap, 1 = has mipmaps
+    magic: [u8; 4],          // "BLP0", "BLP1", or "BLP2"
+    version: BlpVersion,     // Format version
+    content: BlpContentTag,  // JPEG or Direct
+    flags: BlpFlags,         // Version-specific flags
     width: u32,              // Texture width
     height: u32,             // Texture height
-    mipmap_offsets: [u32; 16], // File offsets to mipmap levels
-    mipmap_sizes: [u32; 16],   // Sizes of mipmap levels
+    mipmap_locator: MipmapLocator, // Internal or external mipmaps
 }
 
-enum Compression {
-    Jpeg = 0,
-    Palettized = 1,
-    Dxt = 2,
-    Uncompressed = 3,
+enum BlpVersion {
+    Blp0, // Warcraft III Beta
+    Blp1, // Warcraft III
+    Blp2, // World of Warcraft
+}
+
+enum BlpContentTag {
+    Jpeg,   // JPEG compressed
+    Direct, // Direct pixel data (RAW1/3, DXT)
 }
 ```
 
-### Palette (BLP1)
+### Compression Types
 
 ```rust
-struct BlpPalette {
-    colors: [Rgba; 256],  // 256 RGBA colors
+enum Compression {
+    Jpeg, // JPEG with BGRA color space
+    Raw1, // 256-color palettized
+    Raw3, // Uncompressed BGRA
+    Dxtc, // DXT1/3/5 compression
 }
 ```
 
 ## Usage Example
 
 ```rust
-use warcraft_rs::blp::{Blp, ImageFormat};
+use wow_blp::{parser::load_blp, convert::blp_to_image, encode::save_blp};
+use wow_blp::convert::{image_to_blp, BlpTarget, Blp2Format, DxtAlgorithm, FilterType};
 
 // Load BLP texture
-let blp = Blp::open("Textures/Models/Armor/Armor.blp")?;
+let blp = load_blp("texture.blp")?;
 
 // Get texture information
-println!("Size: {}x{}", blp.width(), blp.height());
-println!("Compression: {:?}", blp.compression());
-println!("Mipmap levels: {}", blp.mipmap_count());
+println!("Size: {}x{}", blp.header.width, blp.header.height);
+println!("Version: {:?}", blp.header.version);
+println!("Has mipmaps: {}", blp.header.has_mipmaps());
 
 // Convert to standard format
-let image = blp.to_rgba8()?;
-image.save("armor_texture.png")?;
-
-// Access specific mipmap level
-let mipmap_2 = blp.get_mipmap(2)?;
-println!("Mipmap 2 size: {}x{}", mipmap_2.width, mipmap_2.height);
+let image = blp_to_image(&blp, 0)?; // mipmap level 0
+image.save("texture.png")?;
 
 // Create BLP from image
-let new_blp = Blp::from_image(&image, Compression::Dxt5)?;
-new_blp.save("new_texture.blp")?;
+let input = image::open("input.png")?;
+let new_blp = image_to_blp(
+    input,
+    true, // generate mipmaps
+    BlpTarget::Blp2(Blp2Format::Dxt5 { 
+        has_alpha: true, 
+        compress_algorithm: DxtAlgorithm::ClusterFit 
+    }),
+    FilterType::Lanczos3
+)?;
+save_blp(&new_blp, "output.blp")?;
 ```
 
 ## Compression Types
 
-### DXT Compression
+### DXT Compression (BLP2)
 
 Most common for modern textures:
 
 ```rust
-use warcraft_rs::blp::DxtFormat;
+use wow_blp::convert::{Blp2Format, DxtAlgorithm};
 
-match blp.dxt_format() {
-    Some(DxtFormat::Dxt1) => {
-        // 4:1 compression, 1-bit alpha
-        println!("DXT1: Good for opaque textures");
-    }
-    Some(DxtFormat::Dxt3) => {
-        // 4:1 compression, 4-bit explicit alpha
-        println!("DXT3: Good for sharp alpha transitions");
-    }
-    Some(DxtFormat::Dxt5) => {
-        // 4:1 compression, interpolated alpha
-        println!("DXT5: Good for smooth alpha gradients");
-    }
-    None => println!("Not DXT compressed"),
-}
+// DXT1: 4:1 compression, 1-bit alpha
+let dxt1 = Blp2Format::Dxt1 { 
+    has_alpha: false,
+    compress_algorithm: DxtAlgorithm::RangeFit // Fast
+};
+
+// DXT3: 4:1 compression, 4-bit explicit alpha
+let dxt3 = Blp2Format::Dxt3 { 
+    has_alpha: true,
+    compress_algorithm: DxtAlgorithm::ClusterFit // Quality
+};
+
+// DXT5: 4:1 compression, interpolated alpha
+let dxt5 = Blp2Format::Dxt5 { 
+    has_alpha: true,
+    compress_algorithm: DxtAlgorithm::IterativeClusterFit // Best
+};
 ```
 
-### Palettized (BLP1)
+### Palettized (RAW1)
 
-Legacy format with 256-color palette:
+256-color palette format:
 
 ```rust
-if let Some(palette) = blp.get_palette() {
-    // Convert palettized to RGBA
-    let rgba_data = blp.depalettize()?;
-}
+use wow_blp::convert::{BlpOldFormat, AlphaBits};
+
+let palettized = BlpOldFormat::Raw1 { 
+    alpha_bits: AlphaBits::Bit8  // 0, 1, 4, or 8 bits
+};
+```
+
+### Uncompressed (RAW3)
+
+Full BGRA format (BLP2 only):
+
+```rust
+let uncompressed = Blp2Format::Raw3;
+```
+
+## Version-Specific Features
+
+### BLP0 (Warcraft III Beta)
+
+- External mipmaps in .b00-.b15 files
+- Limited to JPEG and RAW1 compression
+
+```rust
+// BLP0 saves mipmaps as separate files
+let blp0_target = BlpTarget::Blp0(BlpOldFormat::Jpeg { has_alpha: true });
+```
+
+### BLP1 (Warcraft III)
+
+- Internal mipmaps
+- JPEG and RAW1 compression
+
+```rust
+let blp1_target = BlpTarget::Blp1(BlpOldFormat::Raw1 { 
+    alpha_bits: AlphaBits::Bit1 
+});
+```
+
+### BLP2 (World of Warcraft)
+
+- All compression types supported
+- Internal mipmaps
+- Most flexible format
+
+```rust
+let blp2_target = BlpTarget::Blp2(Blp2Format::Dxt5 { 
+    has_alpha: true,
+    compress_algorithm: DxtAlgorithm::ClusterFit
+});
 ```
 
 ## Advanced Features
 
-### Mipmap Generation
+### Mipmap Handling
 
 ```rust
-use warcraft_rs::blp::MipmapGenerator;
+// Access specific mipmap level
+let mipmap_2 = blp_to_image(&blp, 2)?;
 
-let generator = MipmapGenerator::new()
-    .filter(FilterType::Lanczos3)
-    .max_level(10);
+// Get mipmap count
+let count = blp.header.mipmaps_count();
 
-let blp_with_mipmaps = generator.generate(&original_blp)?;
+// External mipmap paths (BLP0)
+use wow_blp::path::make_mipmap_path;
+let mip_path = make_mipmap_path("texture.blp", 3)?; // texture.b03
 ```
 
-### Alpha Channel Manipulation
+### Alpha Channel Support
 
 ```rust
-// Extract alpha channel
-let alpha_mask = blp.extract_alpha_channel()?;
+use wow_blp::convert::AlphaBits;
 
-// Replace alpha channel
-let new_blp = blp.with_alpha_channel(&new_alpha)?;
-
-// Check if texture has transparency
-if blp.has_alpha() {
-    println!("Texture uses transparency");
-}
+// Different alpha bit depths
+AlphaBits::NoAlpha  // No alpha channel
+AlphaBits::Bit1     // 1-bit (on/off)
+AlphaBits::Bit4     // 4-bit (16 levels)
+AlphaBits::Bit8     // 8-bit (full alpha)
 ```
 
 ### Batch Processing
 
 ```rust
-use warcraft_rs::blp::BatchProcessor;
+use std::fs;
+use std::path::Path;
 
-let processor = BatchProcessor::new()
-    .output_format(ImageFormat::Png)
-    .resize(512, 512)
-    .compression(Compression::Dxt5);
-
-// Convert all BLPs in directory
-processor.process_directory("Textures/", "Output/")?;
+fn convert_directory(input_dir: &str, output_dir: &str) -> Result<()> {
+    for entry in fs::read_dir(input_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.extension() == Some("blp".as_ref()) {
+            let blp = load_blp(&path)?;
+            let image = blp_to_image(&blp, 0)?;
+            
+            let output_path = Path::new(output_dir)
+                .join(path.file_stem().unwrap())
+                .with_extension("png");
+            
+            image.save(output_path)?;
+        }
+    }
+    Ok(())
+}
 ```
 
 ## Common Patterns
 
-### Texture Atlas Creation
+### Icon Extraction from MPQ
 
 ```rust
-use warcraft_rs::blp::AtlasBuilder;
+use wow_mpq::Archive;
 
-let mut atlas = AtlasBuilder::new(2048, 2048);
-
-// Add textures to atlas
-let uv1 = atlas.add_texture("icon1.blp")?;
-let uv2 = atlas.add_texture("icon2.blp")?;
-
-// Build final atlas
-let atlas_blp = atlas.build(Compression::Dxt5)?;
-atlas_blp.save("texture_atlas.blp")?;
-
-// Save UV mappings
-atlas.save_mappings("atlas_uvs.json")?;
-```
-
-### Icon Extraction
-
-```rust
 fn extract_spell_icons() -> Result<()> {
-    let mpq = Archive::open("Interface.mpq")?;
-
-    for entry in mpq.list_files() {
-        if entry.name.starts_with("Interface\\Icons\\")
-            && entry.name.ends_with(".blp") {
-
-            let blp_data = mpq.read_file(&entry.name)?;
-            let blp = Blp::from_bytes(&blp_data)?;
-
-            let icon_name = Path::new(&entry.name)
+    let mut archive = Archive::open("Interface.mpq")?;
+    
+    for file in archive.list_files() {
+        if file.starts_with("Interface\\Icons\\") && file.ends_with(".blp") {
+            let data = archive.read_file(&file)?;
+            let blp = wow_blp::parser::parse_blp(&data)?.1;
+            let image = blp_to_image(&blp, 0)?;
+            
+            let icon_name = Path::new(&file)
                 .file_stem()
                 .unwrap()
                 .to_str()
                 .unwrap();
-
-            let image = blp.to_rgba8()?;
+            
             image.save(format!("icons/{}.png", icon_name))?;
         }
     }
@@ -199,37 +247,68 @@ fn extract_spell_icons() -> Result<()> {
 }
 ```
 
+### Creating Game-Ready Textures
+
+```rust
+fn create_game_texture(input: &str, output: &str) -> Result<()> {
+    let mut img = image::open(input)?;
+    
+    // Ensure power-of-two dimensions
+    let width = img.width().next_power_of_two();
+    let height = img.height().next_power_of_two();
+    
+    if width != img.width() || height != img.height() {
+        img = img.resize_exact(width, height, FilterType::Lanczos3);
+    }
+    
+    // Convert to BLP with appropriate settings
+    let blp = image_to_blp(
+        img,
+        true, // mipmaps for 3D use
+        BlpTarget::Blp2(Blp2Format::Dxt5 { 
+            has_alpha: true,
+            compress_algorithm: DxtAlgorithm::ClusterFit
+        }),
+        FilterType::Lanczos3
+    )?;
+    
+    save_blp(&blp, output)?;
+    Ok(())
+}
+```
+
 ## Performance Tips
 
-- DXT textures can be uploaded directly to GPU
-- Keep original BLP for best quality
-- Use appropriate compression for content type
-- Generate mipmaps for 3D textures
+- DXT textures can be uploaded directly to GPU without decompression
+- RAW1 (palettized) provides excellent compression for textures with limited colors
+- Use DXT1 for opaque textures to save memory
+- Use DXT5 for textures with smooth alpha gradients
+- Generate mipmaps for 3D textures to improve rendering performance
 
 ## Common Issues
 
 ### Power of Two Requirement
 
-- Texture dimensions must be powers of 2
+- Texture dimensions should be powers of 2 for optimal GPU performance
 - Common sizes: 256x256, 512x512, 1024x1024
-- Non-power-of-2 textures need padding
+- Maximum size: 65535x65535 (BLP format limit)
 
-### Alpha Blending
+### Color Space
 
-- DXT1 only supports 1-bit alpha
-- Use DXT3/DXT5 for smooth transparency
-- Check `alpha_depth` field for precision
+- BLP uses BGRA color order, not RGBA
+- JPEG compression in BLP uses BGRA, not standard YCbCr
 
-### Color Banding
+### Compression Artifacts
 
-- JPEG compression can cause artifacts
-- DXT compression can cause block artifacts
-- Use uncompressed for high quality needs
+- JPEG can cause color bleeding
+- DXT can cause block artifacts on gradients
+- Use RAW3 (uncompressed) for highest quality
 
 ## References
 
 - [BLP Format (wowdev.wiki)](https://wowdev.wiki/BLP)
-- [DXT Compression Guide](https://docs.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression)
+- [DXT Compression](https://docs.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression)
+- Original image-blp crate documentation
 
 ## See Also
 

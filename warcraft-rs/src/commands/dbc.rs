@@ -16,6 +16,16 @@ pub enum DbcCommands {
         file: PathBuf,
     },
 
+    /// Validate a DBC file against a schema
+    Validate {
+        /// Path to the DBC file
+        file: PathBuf,
+
+        /// Path to the schema YAML file
+        #[arg(short, long)]
+        schema: PathBuf,
+    },
+
     /// List records in a DBC file
     List {
         /// Path to the DBC file
@@ -72,16 +82,6 @@ pub enum DbcCommands {
         /// Create sorted key map for binary search
         #[arg(long)]
         sorted_keys: bool,
-    },
-
-    /// Validate a DBC file against a schema
-    Validate {
-        /// Path to the DBC file
-        file: PathBuf,
-
-        /// Path to the schema YAML file
-        #[arg(short, long)]
-        schema: PathBuf,
     },
 
     /// Discover the schema of a DBC file through analysis

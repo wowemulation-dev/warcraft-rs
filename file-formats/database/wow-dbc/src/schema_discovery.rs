@@ -320,7 +320,7 @@ impl<'a> SchemaDiscoverer<'a> {
         }
 
         // Check if all values are non-zero
-        if values.iter().any(|&value| value == 0) {
+        if values.contains(&0) {
             return false;
         }
 

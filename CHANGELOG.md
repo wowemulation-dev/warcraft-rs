@@ -55,6 +55,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-wmo**: Fixed light type parsing to handle unknown types gracefully
 - **wow-wmo**: Fixed doodad structure size to always use 40 bytes for proper round-trip conversion
 - **warcraft-rs CLI**: Added complete WMO command suite: `info`, `validate`, `convert`, `tree`, `edit`, and `build`
+- **wow-blp**: Full BLP texture format support migrated from image-blp crate
+- **wow-blp**: Support for all BLP versions (BLP0, BLP1, BLP2) from Warcraft III Beta through WoW 5.4.8
+- **wow-blp**: All compression formats: JPEG, RAW1 (palettized), RAW3 (uncompressed), DXT1/3/5
+- **wow-blp**: Complete mipmap support for both internal and external mipmaps
+- **wow-blp**: Bidirectional conversion between BLP and standard image formats
+- **wow-blp**: Alpha channel support with 0, 1, 4, and 8-bit depths
+- **wow-blp**: Examples for loading and saving BLP files
+- **warcraft-rs CLI**: Added complete BLP command suite: `convert`, `info`, and `validate`
+- **warcraft-rs CLI**: BLP convert supports all encoding options with mipmap generation and DXT compression quality control
 
 ### Fixed
 

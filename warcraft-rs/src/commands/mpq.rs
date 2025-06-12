@@ -36,6 +36,30 @@ impl From<VersionArg> for FormatVersion {
 
 #[derive(Subcommand)]
 pub enum MpqCommands {
+    /// Show information about an MPQ archive
+    Info {
+        /// Path to the MPQ archive
+        archive: String,
+
+        /// Show hash table details
+        #[arg(long)]
+        show_hash_table: bool,
+
+        /// Show block table details
+        #[arg(long)]
+        show_block_table: bool,
+    },
+
+    /// Validate integrity of an MPQ archive
+    Validate {
+        /// Path to the MPQ archive
+        archive: String,
+
+        /// Check CRC/MD5 checksums if available
+        #[arg(long)]
+        check_checksums: bool,
+    },
+
     /// List files in an MPQ archive
     List {
         /// Path to the MPQ archive
@@ -87,30 +111,6 @@ pub enum MpqCommands {
         /// Create or update (listfile)
         #[arg(long)]
         with_listfile: bool,
-    },
-
-    /// Show information about an MPQ archive
-    Info {
-        /// Path to the MPQ archive
-        archive: String,
-
-        /// Show hash table details
-        #[arg(long)]
-        show_hash_table: bool,
-
-        /// Show block table details
-        #[arg(long)]
-        show_block_table: bool,
-    },
-
-    /// Validate integrity of an MPQ archive
-    Validate {
-        /// Path to the MPQ archive
-        archive: String,
-
-        /// Check CRC/MD5 checksums if available
-        #[arg(long)]
-        check_checksums: bool,
     },
 
     /// Rebuild an MPQ archive 1:1

@@ -46,6 +46,9 @@ console = "0.15"
 chrono = "0.4"
 glob = "0.3"
 
+# Image processing (for BLP)
+image = { version = "0.25", optional = true }
+
 # Optional parallel processing
 rayon = { version = "1.10", optional = true }
 
@@ -55,7 +58,7 @@ serde_json = { workspace = true, optional = true }
 serde_yaml_ng = { version = "0.10", optional = true }
 
 [features]
-default = ["mpq", "adt", "wdt", "wdl", "m2", "wmo"]
+default = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl"]
 full = [
   "mpq",
   "dbc",
@@ -72,7 +75,7 @@ full = [
 ]
 mpq = []
 dbc = ["dep:wow-dbc"]
-blp = ["dep:wow-blp"]
+blp = ["dep:wow-blp", "dep:image"]
 m2 = ["dep:wow-m2"]
 wmo = ["dep:wow-wmo"]
 adt = ["dep:wow-adt"]

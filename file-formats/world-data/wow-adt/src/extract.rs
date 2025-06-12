@@ -303,10 +303,10 @@ fn extract_png_heightmap<P: AsRef<Path>>(
 
     // Save the image
     img.save(output_path).map_err(|e| {
-        crate::error::AdtError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to save PNG image: {}", e),
-        ))
+        crate::error::AdtError::Io(std::io::Error::other(format!(
+            "Failed to save PNG image: {}",
+            e
+        )))
     })?;
 
     Ok(())
@@ -370,10 +370,10 @@ fn extract_tiff_heightmap<P: AsRef<Path>>(
 
     // Save the image
     img.save(output_path).map_err(|e| {
-        crate::error::AdtError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to save TIFF image: {}", e),
-        ))
+        crate::error::AdtError::Io(std::io::Error::other(format!(
+            "Failed to save TIFF image: {}",
+            e
+        )))
     })?;
 
     Ok(())

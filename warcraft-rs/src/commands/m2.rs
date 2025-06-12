@@ -20,6 +20,16 @@ pub enum M2Commands {
         detailed: bool,
     },
 
+    /// Validate an M2 model file
+    Validate {
+        /// Path to the M2 file
+        file: PathBuf,
+
+        /// Show all warnings (not just errors)
+        #[arg(short, long)]
+        warnings: bool,
+    },
+
     /// Convert an M2 model to a different version
     Convert {
         /// Input M2 file
@@ -31,16 +41,6 @@ pub enum M2Commands {
         /// Target version (e.g., "3.3.5a", "WotLK", "MoP")
         #[arg(short, long)]
         version: String,
-    },
-
-    /// Validate an M2 model file
-    Validate {
-        /// Path to the M2 file
-        file: PathBuf,
-
-        /// Show all warnings (not just errors)
-        #[arg(short, long)]
-        warnings: bool,
     },
 
     /// Display M2 file structure as a tree

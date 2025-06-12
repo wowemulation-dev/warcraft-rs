@@ -10,8 +10,8 @@ All examples can be run using `cargo run --example <name>`:
 # Run the comprehensive example
 cargo run --example comprehensive
 
-# Run the lazy loading example
-cargo run --example lazy_loading
+# Run the simple comprehensive example
+cargo run --example comprehensive_simple
 
 # Run the schema discovery example
 cargo run --example schema_discovery
@@ -32,9 +32,9 @@ Demonstrates all major features of the DBC parser including:
 - Export to various formats
 - Performance comparisons
 
-### lazy_loading
+### comprehensive_simple
 
-Shows how to use the lazy loading API for memory-efficient parsing of large DBC files.
+A simplified version of the comprehensive example that demonstrates core DBC parsing functionality without all the advanced features.
 
 ### schema_discovery
 
