@@ -1404,6 +1404,10 @@ impl Archive {
                                         compressed_size: file_info.compressed_size,
                                         flags: file_info.flags,
                                         hashes: None,
+                                        table_indices: Some((
+                                            file_info.hash_index,
+                                            Some(file_info.block_index),
+                                        )),
                                     });
                                 } else {
                                     // File is in listfile but not found in archive
@@ -1454,6 +1458,7 @@ impl Archive {
                                 compressed_size: bet_info.compressed_size,
                                 flags: bet_info.flags,
                                 hashes: None,
+                                table_indices: Some((i as usize, None)), // file_index for HET/BET tables
                             });
                         }
                     }
@@ -1489,6 +1494,7 @@ impl Archive {
                             compressed_size: block_entry.compressed_size as u64,
                             flags: block_entry.flags,
                             hashes: None,
+                            table_indices: Some((i, Some(hash_entry.block_index as usize))), // hash_index, block_index
                         });
                     }
                 }
@@ -1519,6 +1525,7 @@ impl Archive {
                                 compressed_size: bet_info.compressed_size,
                                 flags: bet_info.flags,
                                 hashes: None,
+                                table_indices: Some((i as usize, None)), // file_index for HET/BET tables
                             });
                         }
                     }
@@ -1563,6 +1570,7 @@ impl Archive {
                             compressed_size: block_entry.compressed_size as u64,
                             flags: block_entry.flags,
                             hashes: None,
+                            table_indices: Some((0, Some(block_index))), // Use 0 for hash_index since we don't track it here
                         });
                     }
                 }
@@ -1608,6 +1616,7 @@ impl Archive {
                                 compressed_size: bet_info.compressed_size,
                                 flags: bet_info.flags,
                                 hashes: None, // HET/BET doesn't expose name hashes directly
+                                table_indices: Some((i as usize, None)), // file_index for HET/BET tables
                             });
                         }
                     }
@@ -1650,6 +1659,7 @@ impl Archive {
                             compressed_size: block_entry.compressed_size as u64,
                             flags: block_entry.flags,
                             hashes: Some((hash_entry.name_1, hash_entry.name_2)),
+                            table_indices: Some((0, Some(block_index))), // Use 0 for hash_index since we don't track it here
                         });
                     }
                 }
@@ -1816,6 +1826,157 @@ impl Archive {
                 if file_info.is_encrypted() && data.len() > actual_file_size as usize {
                     data.truncate(actual_file_size as usize);
                 }
+                Ok(data)
+            }
+        } else {
+            // Multi-sector compressed file
+            self.read_sectored_file(&file_info, key)
+        }
+    }
+
+    /// Read a file by table indices (for files with generic names)
+    pub fn read_file_by_indices(
+        &mut self,
+        hash_index: usize,
+        block_index: Option<usize>,
+    ) -> Result<Vec<u8>> {
+        let file_info = if let Some(block_idx) = block_index {
+            // Classic hash/block table access
+            let hash_table = self
+                .hash_table
+                .as_ref()
+                .ok_or_else(|| Error::invalid_format("Hash table not loaded"))?;
+            let block_table = self
+                .block_table
+                .as_ref()
+                .ok_or_else(|| Error::invalid_format("Block table not loaded"))?;
+
+            let hash_entry = hash_table
+                .entries()
+                .get(hash_index)
+                .ok_or_else(|| Error::hash_table("Invalid hash index"))?;
+            let block_entry = block_table
+                .get(block_idx)
+                .ok_or_else(|| Error::block_table("Invalid block index"))?;
+
+            // Calculate full file position for v2+ archives
+            let file_pos = if let Some(hi_block) = &self.hi_block_table {
+                let high_bits = hi_block.get_file_pos_high(block_idx);
+                (high_bits << 32) | (block_entry.file_pos as u64)
+            } else {
+                block_entry.file_pos as u64
+            };
+
+            FileInfo {
+                filename: format!("file_{:08}.dat", hash_index),
+                hash_index,
+                block_index: block_idx,
+                file_pos: self.archive_offset + file_pos,
+                compressed_size: block_entry.compressed_size as u64,
+                file_size: block_entry.file_size as u64,
+                flags: block_entry.flags,
+                locale: hash_entry.locale,
+            }
+        } else {
+            // HET/BET table access (file_index is in hash_index parameter)
+            let bet = self
+                .bet_table
+                .as_ref()
+                .ok_or_else(|| Error::invalid_format("BET table not loaded"))?;
+
+            let bet_info = bet
+                .get_file_info(hash_index as u32)
+                .ok_or_else(|| Error::invalid_format("Invalid file index"))?;
+
+            // For HET/BET files, the file position is calculated differently
+            let file_pos = self.archive_offset + bet_info.file_pos;
+
+            FileInfo {
+                filename: format!("file_{:08}.dat", hash_index),
+                hash_index: 0,  // Not meaningful for HET/BET
+                block_index: 0, // Not meaningful for HET/BET
+                file_pos,
+                compressed_size: bet_info.compressed_size,
+                file_size: bet_info.file_size,
+                flags: bet_info.flags,
+                locale: 0, // Not applicable for HET/BET
+            }
+        };
+
+        // Now use the existing file reading logic
+        // For encrypted files, we need a key. Since we don't have the real filename,
+        // we'll use a default key based on the table index
+        let key = if file_info.is_encrypted() {
+            // Use a generic key calculation for anonymous files
+            hash_string(&file_info.filename, hash_type::FILE_KEY)
+        } else {
+            0
+        };
+
+        // Continue with normal file reading logic based on whether it's sectored
+        let (file_size_for_key, actual_file_size) =
+            if self.het_table.is_some() && self.bet_table.is_some() {
+                // Using HET/BET tables - FileInfo already has all the data
+                (file_info.file_size as u32, file_info.file_size)
+            } else {
+                // Using classic tables - need block entry for accurate sizes
+                let block_table = self
+                    .block_table
+                    .as_ref()
+                    .ok_or_else(|| Error::invalid_format("Block table not loaded"))?;
+                let block_entry = block_table
+                    .get(file_info.block_index)
+                    .ok_or_else(|| Error::block_table("Invalid block index"))?;
+                (block_entry.file_size, block_entry.file_size as u64)
+            };
+
+        // Adjust key for file size if needed
+        let key = if file_info.is_encrypted() && file_info.has_fix_key() {
+            key.wrapping_add(file_size_for_key)
+        } else {
+            key
+        };
+
+        // Read the file data
+        self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
+
+        if file_info.is_single_unit() || !file_info.is_compressed() {
+            // Single unit or uncompressed file - read directly
+            let mut data = vec![0u8; file_info.compressed_size as usize];
+            self.reader.read_exact(&mut data)?;
+
+            // Decrypt if needed
+            if file_info.is_encrypted() {
+                log::debug!(
+                    "Decrypting file data: key=0x{:08X}, size={}",
+                    key,
+                    data.len()
+                );
+                decrypt_file_data(&mut data, key);
+            }
+
+            // Handle compression for single unit files
+            if file_info.is_compressed() {
+                if data.is_empty() {
+                    return Err(Error::compression("File data is empty"));
+                }
+
+                let compression_type = data[0];
+                let compressed_data = &data[1..];
+
+                log::debug!(
+                    "Decompressing single unit file: method=0x{:02X}, input_size={}, target_size={}",
+                    compression_type,
+                    compressed_data.len(),
+                    actual_file_size
+                );
+
+                compression::decompress(
+                    compressed_data,
+                    compression_type,
+                    actual_file_size as usize,
+                )
+            } else {
                 Ok(data)
             }
         } else {
@@ -2486,6 +2647,9 @@ pub struct FileEntry {
     pub flags: u32,
     /// Hash values (name_1, name_2) - only populated when requested
     pub hashes: Option<(u32, u32)>,
+    /// Table indices for direct file access (when name is generic)
+    /// Contains (hash_index, block_index) for classic tables or (file_index, None) for HET/BET
+    pub table_indices: Option<(usize, Option<usize>)>,
 }
 
 impl FileEntry {

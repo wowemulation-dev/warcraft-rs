@@ -362,18 +362,36 @@ fn extract_files(
     let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
     spinner.finish_and_clear();
 
-    let files_to_extract: Vec<String> = if files.is_empty() {
-        archive.list()?.into_iter().map(|e| e.name).collect()
+    let (files_to_extract, file_entries) = if files.is_empty() {
+        let entries = archive.list()?;
+        let filenames = entries.iter().map(|e| e.name.clone()).collect();
+        (filenames, Some(entries))
     } else {
-        files
+        (files, None)
     };
 
     let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
 
-    for file in &files_to_extract {
+    for (i, file) in files_to_extract.iter().enumerate() {
         pb.set_message(format!("Extracting: {}", file));
 
-        match archive.read_file(file) {
+        let data_result = if let Some(ref entries) = file_entries {
+            // Use table indices for direct access when available
+            if let Some(entry) = entries.get(i) {
+                if let Some((hash_index, block_index)) = entry.table_indices {
+                    archive.read_file_by_indices(hash_index, block_index)
+                } else {
+                    archive.read_file(file)
+                }
+            } else {
+                archive.read_file(file)
+            }
+        } else {
+            // Fall back to filename-based access
+            archive.read_file(file)
+        };
+
+        match data_result {
             Ok(data) => {
                 let output_path = if preserve_paths {
                     // Convert MPQ path separators to system path separators

@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **warcraft-rs CLI**: Added complete BLP command suite: `convert`, `info`, and `validate`
 - **warcraft-rs CLI**: BLP convert supports all encoding options with mipmap generation and DXT compression quality control
 - **wow-blp**: Replaced nom parser with native Rust implementation for binary parsing
+- wow-mpq: allow to extract files by generic index names when no listfile exists
 
 ### Fixed
 
