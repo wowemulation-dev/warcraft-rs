@@ -1,6 +1,7 @@
 # warcraft-rs
 
-A comprehensive Rust library and CLI toolset for parsing, manipulating, and creating World of Warcraft file formats.
+A comprehensive Rust library and CLI toolset for parsing, manipulating, and
+creating World of Warcraft file formats.
 
 <div align="center">
 
@@ -8,6 +9,8 @@ A comprehensive Rust library and CLI toolset for parsing, manipulating, and crea
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
 [![codecov](https://img.shields.io/codecov/c/github/wowemulation-dev/warcraft-rs?logo=codecov&style=flat-square&token=BAQ8SOKEST&color=C43AC3)](https://codecov.io/gh/wowemulation-dev/warcraft-rs)
+[![Crates.io Version](https://img.shields.io/crates/v/warcraft-rs)](https://crates.io/crates/warcraft-rs)
+[![docs.rs](https://img.shields.io/docsrs/warcraft-rs)](https://docs.rs/warcraft-rs)
 [![Awesome WoW Rust](https://awesome.re/badge.svg)](https://github.com/arlyon/awesome-wow-rust)
 
 </div>
@@ -74,22 +77,30 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.1"
-wow-blp = "0.1"
-wow-adt = "0.1"
+wow-mpq = "0.1.0"
+wow-blp = "0.1.0"
+wow-adt = "0.1.0"
 # ... other formats as needed
 ```
 
 ## Installation
 
+### Install from crates.io
+
 ```bash
-# Install CLI tools
+# Install the CLI tool
+cargo install warcraft-rs
+
+# Install specific crates as dependencies
+cargo add wow-mpq wow-blp wow-adt
+```
+
+### Build from source
+
+```bash
 git clone https://github.com/wowemulation-dev/warcraft-rs
 cd warcraft-rs
 cargo install --path .
-
-# Or build from source
-cargo build --release
 ```
 
 ## Documentation
@@ -104,6 +115,21 @@ cargo build --release
 See the [Contributing Guide](CONTRIBUTING.md) for development setup and guidelines.
 
 Thanks to all [contributors](CONTRIBUTORS.md).
+
+## License
+
+This project is dual-licensed under either:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+
+You may choose to use either license at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall
+be dual licensed as above, without any additional terms or conditions.
 
 ---
 

@@ -15,7 +15,6 @@
 //! - Multiple compression algorithms (zlib, bzip2, LZMA, etc.)
 //! - Digital signature support (verification and generation)
 //! - Strong security with signature verification
-//! - Memory-mapped I/O support for performance
 //! - Comprehensive error handling
 //!
 //! ## Examples

@@ -1,0 +1,238 @@
+---
+name: Release CLI
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: true
+        type: string
+      dry-run:
+        description: 'Dry run (no actual release)'
+        required: false
+        type: boolean
+        default: false
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
+        type: string
+      dry-run:
+        description: 'Dry run (no actual release)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: -D warnings
+  CARGO_INCREMENTAL: 0
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  generate-keypair:
+    name: Generate Signing Keypair
+    runs-on: ubuntu-latest
+    outputs:
+      public-key: ${{ steps.generate.outputs.public-key }}
+    steps:
+      - name: Install minisign for binary signing
+        run: cargo install minisign
+
+      - name: Generate ephemeral keypair
+        id: generate
+        run: |
+          # Generate keypair
+          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -G -p minisign.pub -s minisign.key -W
+
+          # Output public key
+          echo "public-key<<EOF" >> $GITHUB_OUTPUT
+          cat minisign.pub >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        name: Upload keypair artifact
+        with:
+          name: minisign-keypair
+          path: |
+            minisign.pub
+            minisign.key
+          retention-days: 1
+
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    needs: [generate-keypair]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            use_cross: true
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            use_cross: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            use_cross: true
+          - target: armv7-unknown-linux-musleabihf
+            os: ubuntu-latest
+            use_cross: true
+
+          # Windows
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            use_cross: false
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            use_cross: false
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            use_cross: true
+
+          # macOS
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            use_cross: false
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            use_cross: false
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain for ${{ matrix.target }}
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Cache build dependencies for CLI release
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: 'release-cli-${{ matrix.target }}'
+
+      - name: Install cross-compilation toolchain
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - uses: actions/download-artifact@v4
+        name: Download signing keypair
+        with:
+          name: minisign-keypair
+
+      - name: Install minisign for signing binaries
+        run: cargo install minisign
+
+      - name: Build release binary for ${{ matrix.target }}
+        run: |
+          if [[ "${{ matrix.use_cross }}" == "true" ]]; then
+            cross build --release --target ${{ matrix.target }} --bin warcraft-rs
+          else
+            cargo build --release --target ${{ matrix.target }} --bin warcraft-rs
+          fi
+        shell: bash
+
+      - name: Package and cryptographically sign binary
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+
+          # Determine binary name
+          BINARY="warcraft-rs"
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            BINARY="warcraft-rs.exe"
+          fi
+
+          # Create archive
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            7z a ../../../warcraft-rs-${{ matrix.target }}.zip "$BINARY"
+            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.zip"
+          else
+            tar czf ../../../warcraft-rs-${{ matrix.target }}.tar.gz "$BINARY"
+            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.tar.gz"
+          fi
+
+          cd ../../../
+
+          # Sign archive
+          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -S -s minisign.key -m warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
+
+      - uses: actions/upload-artifact@v4
+        name: Upload artifacts
+        with:
+          name: binary-${{ matrix.target }}
+          path: |
+            warcraft-rs-${{ matrix.target }}.*
+            minisign.pub
+
+  create-release:
+    name: Create Release
+    needs: [build-binaries]
+    if: ${{ !inputs.dry-run }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir release
+          cp artifacts/binary-*/warcraft-rs-* release/
+          cp artifacts/binary-*/minisign.pub release/
+          ls -la release/
+
+      - uses: softprops/action-gh-release@v2
+        name: Create GitHub Release
+        with:
+          tag_name: v${{ inputs.version }}
+          name: warcraft-rs v${{ inputs.version }}
+          draft: false
+          prerelease: false
+          files: release/*
+
+      - uses: geekyeggo/delete-artifact@v5
+        name: Cleanup signing key
+        with:
+          name: minisign-keypair
+
+  publish-crate:
+    name: Publish to crates.io
+    needs: [create-release]
+    if: ${{ !inputs.dry-run }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable toolchain for publishing
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Publish warcraft-rs CLI
+        run: |
+          cargo publish -p warcraft-rs --no-verify
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}

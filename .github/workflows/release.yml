@@ -37,9 +37,10 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Get version
+      - name: Extract release version from tag or input
         id: get_version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -48,6 +49,21 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/v}
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install minisign for binary signing
+        run: |
+          cargo install minisign
+
+      - name: Generate ephemeral signing keypair for this release
+        run: |
+          # Generate ephemeral keypair for this release
+          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -G -p minisign.pub -s minisign.key -W
+
+      - uses: actions/upload-artifact@v4
+        name: Upload public key
+        with:
+          name: minisign-public-key
+          path: minisign.pub
 
       - uses: softprops/action-gh-release@v2
         name: Create Release
@@ -58,6 +74,7 @@ jobs:
           tag: v${{ steps.get_version.outputs.version }}
           title: Release v${{ steps.get_version.outputs.version }}
           prerelease: false
+          files: minisign.pub
 
   # Build all binaries in parallel
   build-binaries:
@@ -84,9 +101,21 @@ jobs:
             os: ubuntu-latest
             binary: warcraft-rs
             use_cross: true
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            binary: warcraft-rs
+            use_cross: true
+          - target: armv7-unknown-linux-musleabihf
+            os: ubuntu-latest
+            binary: warcraft-rs
+            use_cross: true
 
           # Windows
           - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            binary: warcraft-rs.exe
+            use_cross: false
+          - target: aarch64-pc-windows-msvc
             os: windows-latest
             binary: warcraft-rs.exe
             use_cross: false
@@ -116,8 +145,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'release-${{ matrix.target }}'
+          shared-key: "release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}"
           cache-on-failure: true
+          cache-all-crates: true
 
       # Install cross for Linux builds
       - name: Install cross
@@ -140,25 +170,55 @@ jobs:
           fi
         shell: bash
 
-      - name: Package binary
+      - name: Download signing key for binary verification
+        uses: actions/download-artifact@v4
+        with:
+          name: minisign-public-key
+          path: .
+
+      - name: Install minisign for binary signing
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            # Install minisign on Windows via cargo
+            cargo install minisign
+          else
+            cargo install minisign
+          fi
+
+      - name: Package and cryptographically sign binary archive
         shell: bash
         run: |
           cd target/${{ matrix.target }}/release
+
+          # Create archive
           if [[ "${{ matrix.os }}" == "windows-latest" ]] || [[ "${{ matrix.target }}" == *"windows"* ]]; then
             7z a ../../../warcraft-rs-${{ matrix.target }}.zip ${{ matrix.binary }}
+            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.zip"
           else
             tar czf ../../../warcraft-rs-${{ matrix.target }}.tar.gz ${{ matrix.binary }}
+            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.tar.gz"
           fi
 
+          cd ../../../
+
+          # Generate signing key from secret
+          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -G -p temp.pub -s minisign.key -W -f
+
+          # Sign the archive
+          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -S -s minisign.key -m warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }} -x warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip.minisig' || 'tar.gz.minisig' }}
+
+          # Clean up key
+          rm minisign.key temp.pub
+
       - uses: softprops/action-gh-release@v2
-        name: Upload Release Asset
+        name: Upload Release Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
-          asset_name: warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
-          asset_content_type: ${{ contains(matrix.target, 'windows') && 'application/zip' || 'application/gzip' }}
+          files: |
+            warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
+            warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip.minisig' || 'tar.gz.minisig' }}
 
   # Publish crates to crates.io after binaries are built
   publish-crates:
@@ -167,15 +227,20 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@v1
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable toolchain for publishing
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache dependencies for publishing
+        uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'publish'
+          shared-key: "publish-${{ hashFiles('**/Cargo.lock') }}"
           cache-on-failure: true
+          cache-all-crates: true
 
       # Publish crates in dependency order
       # File format crates first (no interdependencies)

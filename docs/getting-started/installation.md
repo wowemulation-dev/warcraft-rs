@@ -28,18 +28,32 @@ This guide will walk you through installing `warcraft-rs` and its dependencies.
 
 ## Installation Methods
 
-### From crates.io (When Published)
+### From crates.io
 
-*Note: The crates are not yet published to crates.io. Use the "From Source" method below.*
+#### Install the CLI Tool
 
-Once published, you'll be able to add individual crates:
+```bash
+cargo install warcraft-rs
+```
+
+#### Add Individual Crates
 
 ```toml
 [dependencies]
-wow-mpq = "0.1.0"    # MPQ archive support (currently implemented)
-wow-wdl = "0.1.0"    # WDL support (currently implemented)
-wow-wdt = "0.1.0"    # WDT support (currently implemented)
-# Other crates will be available as they're implemented
+wow-mpq = "0.1.0"    # MPQ archive support
+wow-blp = "0.1.0"    # BLP texture support
+wow-adt = "0.1.0"    # ADT terrain support
+wow-wdl = "0.1.0"    # WDL low-resolution terrain support
+wow-wdt = "0.1.0"    # WDT map definition support
+wow-wmo = "0.1.0"    # WMO world map object support
+wow-m2 = "0.1.0"     # M2 model support
+wow-dbc = "0.1.0"    # DBC database support
+```
+
+Or use cargo add:
+
+```bash
+cargo add wow-mpq wow-blp wow-adt
 ```
 
 ### From Source
@@ -105,11 +119,11 @@ Available features:
 - `mpq` - MPQ archive support (enabled by default)
 - `wdl` - WDL low-resolution terrain support
 - `wdt` - WDT map definition support
-- `dbc` - DBC database support (planned)
-- `blp` - BLP texture support (planned)
-- `m2` - M2 model support (planned)
-- `wmo` - WMO object support (planned)
-- `adt` - ADT terrain support (planned)
+- `dbc` - DBC database support
+- `blp` - BLP texture support
+- `m2` - M2 model support
+- `wmo` - WMO object support
+- `adt` - ADT terrain support
 - `full` - All available features
 
 ## Platform-Specific Notes
@@ -155,9 +169,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = { path = "../warcraft-rs/file-formats/archives/wow-mpq" }
-# Or use git dependency until published:
-# wow-mpq = { git = "https://github.com/wowemulation-dev/warcraft-rs" }
+wow-mpq = "0.1.0"
 ```
 
 Create `src/main.rs`:

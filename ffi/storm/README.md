@@ -1,10 +1,14 @@
 # storm
 
+StormLib-compatible C API for the World of Warcraft MPQ archive library.
+
+<div align="center">
+
 [![Crates.io](https://img.shields.io/crates/v/storm.svg)](https://crates.io/crates/storm)
 [![Documentation](https://docs.rs/storm/badge.svg)](https://docs.rs/storm)
 [![License](https://img.shields.io/crates/l/storm.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
 
-StormLib-compatible C API for the World of Warcraft MPQ archive library.
+</div>
 
 ## Status
 

@@ -1,10 +1,14 @@
 # wow-dbc
 
-[![Crates.io](https://img.shields.io/crates/v/wow-dbc.svg)](https://crates.io/crates/wow-dbc)
-[![Documentation](https://docs.rs/wow-dbc/badge.svg)](https://docs.rs/wow-dbc)
+Parser for World of Warcraft DBC (client database) files.
+
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-dbc)](https://crates.io/crates/wow-dbc)
+[![docs.rs](https://img.shields.io/docsrs/wow-dbc)](https://docs.rs/wow-dbc)
 [![License](https://img.shields.io/crates/l/wow-dbc.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
 
-Parser for World of Warcraft DBC (client database) files.
+</div>
 
 ## Features
 
@@ -16,6 +20,21 @@ Parser for World of Warcraft DBC (client database) files.
 - 📝 DBD (Database Definition) file support for WoWDBDefs compatibility
 - 🚀 Lazy loading support for large files
 - 🛠️ Export to common formats (CSV, JSON, YAML)
+
+## Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+wow-dbc = "0.1.0"
+```
+
+Or use cargo add:
+
+```bash
+cargo add wow-dbc
+```
 
 ## Usage
 

@@ -1,11 +1,15 @@
 # wow-mpq
 
-[![Crates.io](https://img.shields.io/crates/v/wow-mpq.svg)](https://crates.io/crates/wow-mpq)
-[![Documentation](https://docs.rs/wow-mpq/badge.svg)](https://docs.rs/wow-mpq)
-[![License](https://img.shields.io/crates/l/wow-mpq.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
-
 A high-performance, safe Rust implementation of the MPQ (Mo'PaQ) archive format
 used by World of Warcraft and other Blizzard Entertainment games.
+
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-mpq)](https://crates.io/crates/wow-mpq)
+[![docs.rs](https://img.shields.io/docsrs/wow-mpq)](https://docs.rs/wow-mpq)
+[![License](https://img.shields.io/crates/l/wow-mpq.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
+
+</div>
 
 ## Status
 
@@ -30,6 +34,21 @@ comprehensive support for all format versions and features.
 - 📊 **Advanced Tables** - HET/BET tables for v3+ archives with optimal compression
 - 🤝 **StormLib Compatibility** - 100% bidirectional compatibility with the reference implementation
 - 🚀 **High Performance** - Efficient I/O, zero-copy where possible, comprehensive benchmarks
+
+## Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+wow-mpq = "0.1.0"
+```
+
+Or use cargo add:
+
+```bash
+cargo add wow-mpq
+```
 
 ## Quick Start
 

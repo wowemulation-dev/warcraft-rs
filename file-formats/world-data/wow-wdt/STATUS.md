@@ -33,7 +33,8 @@ This document tracks the implementation status of WDT (World Data Table) file fo
 | TBC (2.4.x) | No changes | ✅ Complete | Same as Classic |
 | WotLK (3.3.x) | No changes | ✅ Complete | Same as Classic |
 | Cataclysm (4.3.x) | Added MAID | ✅ Complete | Area ID table |
-| MoP+ (5.x+) | No changes | ✅ Complete | Same as Cataclysm |
+| MoP (5.x) | No changes | ✅ Complete | Same as Cataclysm |
+| BfA+ (8.x+) | FileDataID | ✅ Complete | MAID chunk support |
 
 ### Features Implemented
 

@@ -1,10 +1,14 @@
 # wow-wmo
 
-[![Crates.io](https://img.shields.io/crates/v/wow-wmo.svg)](https://crates.io/crates/wow-wmo)
-[![Documentation](https://docs.rs/wow-wmo/badge.svg)](https://docs.rs/wow-wmo)
+A comprehensive Rust library for parsing, editing, validating, and converting World of Warcraft WMO (World Model Object) files.
+
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-wmo)](https://crates.io/crates/wow-wmo)
+[![docs.rs](https://img.shields.io/docsrs/wow-wmo)](https://docs.rs/wow-wmo)
 [![License](https://img.shields.io/crates/l/wow-wmo.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
 
-A comprehensive Rust library for parsing, editing, validating, and converting World of Warcraft WMO (World Model Object) files.
+</div>
 
 ## Status
 
@@ -36,11 +40,17 @@ WMO files represent buildings, dungeons, and other large structures in World of 
 
 ## Installation
 
-Add this to your `Cargo.toml`:
+Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-wmo = "0.1"
+wow-wmo = "0.1.0"
+```
+
+Or use cargo add:
+
+```bash
+cargo add wow-wmo
 ```
 
 ## Usage

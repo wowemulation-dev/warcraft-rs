@@ -1,9 +1,14 @@
 # wow-wdt
 
-[![Crates.io](https://img.shields.io/crates/v/wow-wdt.svg)](https://crates.io/crates/wow-wdt)
-[![Documentation](https://docs.rs/wow-wdt/badge.svg)](https://docs.rs/wow-wdt)
-
 A library for parsing, validating, and converting World of Warcraft WDT (World Data Table) files.
+
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-wdt)](https://crates.io/crates/wow-wdt)
+[![docs.rs](https://img.shields.io/docsrs/wow-wdt)](https://docs.rs/wow-wdt)
+[![License](https://img.shields.io/crates/l/wow-mpq.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
+
+</div>
 
 ## Status
 
@@ -32,11 +37,17 @@ A library for parsing, validating, and converting World of Warcraft WDT (World D
 
 ## 🚀 Quick Start
 
-Add this to your `Cargo.toml`:
+Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-wdt = "0.1"
+wow-wdt = "0.1.0"
+```
+
+Or use cargo add:
+
+```bash
+cargo add wow-wdt
 ```
 
 ### Basic Usage

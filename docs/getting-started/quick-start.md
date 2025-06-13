@@ -25,6 +25,12 @@ wow-blp = "0.1.0"    # For BLP textures
 Or install the CLI tool:
 
 ```bash
+# From crates.io
+cargo install warcraft-rs
+
+# From source
+git clone https://github.com/wowemulation-dev/warcraft-rs
+cd warcraft-rs
 cargo install --path warcraft-rs
 ```
 

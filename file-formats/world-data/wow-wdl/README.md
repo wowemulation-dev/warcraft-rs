@@ -1,11 +1,15 @@
 # wow-wdl
 
-[![Crates.io](https://img.shields.io/crates/v/wow-wdl.svg)](https://crates.io/crates/wow-wdl)
-[![Documentation](https://docs.rs/wow-wdl/badge.svg)](https://docs.rs/wow-wdl)
-[![License](https://img.shields.io/crates/l/wow-wdl.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
-
 Parser for World of Warcraft WDL (World Detail Level) files - low-resolution terrain
 data for continents.
+
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-wdl)](https://crates.io/crates/wow-wdl)
+[![docs.rs](https://img.shields.io/docsrs/wow-wdl)](https://docs.rs/wow-wdl)
+[![License](https://img.shields.io/crates/l/wow-wdl.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
+
+</div>
 
 ## Status
 
@@ -36,6 +40,21 @@ These files enable:
 - ✅ World object placement data
 - ✅ Version conversion between formats
 - ✅ Validation and error handling
+
+## Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+wow-wdl = "0.1.0"
+```
+
+Or use cargo add:
+
+```bash
+cargo add wow-wdl
+```
 
 ## Quick Start
 

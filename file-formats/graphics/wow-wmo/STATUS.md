@@ -64,7 +64,7 @@ The `wow-wmo` crate provides WMO (World Map Object) support:
 |---------|--------|-------|
 | **Version Conversion** | ✅ Implemented | Convert between any versions |
 | **Validation System** | ✅ Implemented | Multi-level validation |
-| **Builder API** | ✅ Implemented | Programmatic WMO creation |
+| **Builder API** | ❌ Not Implemented | Programmatic WMO creation |
 | **Editor Support** | ⚠️ Partial | Editing capabilities |
 | **Visualizer** | ⚠️ Basic | Debug visualization only |
 | **Export to OBJ** | ✅ Implemented | Wavefront OBJ format |
@@ -159,7 +159,7 @@ WMO commands in warcraft-rs CLI:
 
 1. Version 27 Support for The War Within (11.x.x)
 2. OBJ/MTL export with materials
-3. Builder API for WMO creation
+3. Builder API removed - not implemented
 4. Multi-level validation
 5. CLI tree visualization
 

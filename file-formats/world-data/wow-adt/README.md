@@ -1,10 +1,14 @@
 # wow-adt
 
-[![Crates.io](https://img.shields.io/crates/v/wow-adt.svg)](https://crates.io/crates/wow-adt)
-[![Documentation](https://docs.rs/wow-adt/badge.svg)](https://docs.rs/wow-adt)
+Parser for World of Warcraft ADT (terrain) files.
+
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-adt)](https://crates.io/crates/wow-adt)
+[![docs.rs](https://img.shields.io/docsrs/wow-adt)](https://docs.rs/wow-adt)
 [![License](https://img.shields.io/crates/l/wow-adt.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
 
-Parser for World of Warcraft ADT (terrain) files.
+</div>
 
 ## Status
 
@@ -37,14 +41,22 @@ file.
 - ✅ Cataclysm (4.3.4)
 - ⚠️  Mists of Pandaria (5.4.8) - Basic support, may need updates
 
-## Usage
+## Installation
 
-Add this to your `Cargo.toml`:
+Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-adt = "0.1"
+wow-adt = "0.1.0"
 ```
+
+Or use cargo add:
+
+```bash
+cargo add wow-adt
+```
+
+## Usage
 
 ### Basic Parsing
 

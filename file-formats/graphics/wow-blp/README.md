@@ -1,10 +1,14 @@
 # wow-blp
 
-[![Crates.io](https://img.shields.io/crates/v/wow-blp.svg)](https://crates.io/crates/wow-blp)
-[![Documentation](https://docs.rs/wow-blp/badge.svg)](https://docs.rs/wow-blp)
+Parser and encoder for Blizzard BLP texture files used in Warcraft III and World of Warcraft.
+
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-blp)](https://crates.io/crates/wow-blp)
+[![docs.rs](https://img.shields.io/docsrs/wow-blp)](https://docs.rs/wow-blp)
 [![License](https://img.shields.io/crates/l/wow-blp.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
 
-Parser and encoder for Blizzard BLP texture files used in Warcraft III and World of Warcraft.
+</div>
 
 ## Status
 
@@ -33,14 +37,22 @@ Parser and encoder for Blizzard BLP texture files used in Warcraft III and World
   - [x] Cataclysm (4.3.4)
   - [x] Mists of Pandaria (5.4.8)
 
-## Usage
+## Installation
 
 Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-blp = "0.1"
+wow-blp = "0.1.0"
 ```
+
+Or use cargo add:
+
+```bash
+cargo add wow-blp
+```
+
+## Usage
 
 ### Loading BLP Files
 
@@ -95,12 +107,12 @@ use wow_blp::convert::{BlpTarget, BlpOldFormat, Blp2Format, AlphaBits, DxtAlgori
 let blp0 = BlpTarget::Blp0(BlpOldFormat::Jpeg { has_alpha: true });
 
 // BLP1 (Warcraft III) - Palettized
-let blp1 = BlpTarget::Blp1(BlpOldFormat::Raw1 { 
-    alpha_bits: AlphaBits::Bit8 
+let blp1 = BlpTarget::Blp1(BlpOldFormat::Raw1 {
+    alpha_bits: AlphaBits::Bit8
 });
 
 // BLP2 (World of Warcraft) - DXT compression
-let blp2_dxt = BlpTarget::Blp2(Blp2Format::Dxt5 { 
+let blp2_dxt = BlpTarget::Blp2(Blp2Format::Dxt5 {
     has_alpha: true,
     compress_algorithm: DxtAlgorithm::ClusterFit
 });

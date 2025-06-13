@@ -17,17 +17,24 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-      - id: set-matrix
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate build matrix for all supported platforms
+        id: set-matrix
         run: |
           matrix=$(cat <<EOF
           {
             "include": [
               {"target": "aarch64-apple-darwin", "os": "macos-latest", "cross": false},
+              {"target": "x86_64-apple-darwin", "os": "macos-latest", "cross": false},
               {"target": "aarch64-unknown-linux-gnu", "os": "ubuntu-latest", "cross": true},
               {"target": "aarch64-unknown-linux-musl", "os": "ubuntu-latest", "cross": true},
+              {"target": "armv7-unknown-linux-gnueabihf", "os": "ubuntu-latest", "cross": true},
+              {"target": "armv7-unknown-linux-musleabihf", "os": "ubuntu-latest", "cross": true},
               {"target": "x86_64-pc-windows-gnu", "os": "ubuntu-latest", "cross": true},
               {"target": "x86_64-pc-windows-msvc", "os": "windows-latest", "cross": false},
+              {"target": "aarch64-pc-windows-msvc", "os": "windows-latest", "cross": false},
               {"target": "x86_64-unknown-linux-gnu", "os": "ubuntu-latest", "cross": false},
               {"target": "x86_64-unknown-linux-musl", "os": "ubuntu-latest", "cross": true}
             ]
@@ -44,37 +51,43 @@ jobs:
       matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@v1
+      - name: Install Rust toolchain for ${{ matrix.target }}
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache cross-compilation dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'cross-${{ matrix.target }}'
+          shared-key: 'cross-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}'
+          cache-on-failure: true
+          cache-all-crates: true
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       # Use cross for Linux cross-compilation
-      - name: Install cross
+      - name: Install cross for cross-compilation
         if: matrix.cross && matrix.os == 'ubuntu-latest'
         run: |
           cargo install cross --git https://github.com/cross-rs/cross
 
       # Build with cross
-      - name: Build with cross
+      - name: Build with cross for ${{ matrix.target }}
         if: matrix.cross
         run: |
           cross build --target ${{ matrix.target }} --release --bin warcraft-rs
 
       # Build natively
-      - name: Build natively
+      - name: Build natively for ${{ matrix.target }}
         if: '!matrix.cross'
         run: |
           cargo build --target ${{ matrix.target }} --release --bin warcraft-rs
 
       # Test build artifacts exist
-      - name: Verify build artifacts
+      - name: Verify build artifacts exist
         shell: bash
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
@@ -84,8 +97,8 @@ jobs:
           fi
 
       # Upload artifacts
-      - uses: actions/upload-artifact@v4
-        name: Upload artifacts
+      - name: Upload cross-compilation artifacts for ${{ matrix.target }}
+        uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.target }}
           path: |

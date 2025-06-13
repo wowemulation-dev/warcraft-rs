@@ -2,6 +2,14 @@
 
 A Rust library for parsing, validating, and converting World of Warcraft M2 model files.
 
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/wow-m2)](https://crates.io/crates/wow-m2)
+[![docs.rs](https://img.shields.io/docsrs/wow-m2)](https://docs.rs/wow-m2)
+[![License](https://img.shields.io/crates/l/wow-mpq.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
+
+</div>
+
 ## Overview
 
 `wow-m2` provides comprehensive support for M2 model files across all World of Warcraft expansions from Classic (1.12.1) through The War Within (11.x). The library handles:
@@ -20,14 +28,22 @@ A Rust library for parsing, validating, and converting World of Warcraft M2 mode
 - ✅ Zero-copy parsing where possible for performance
 - ✅ Optional serde support for serialization
 
-## Usage
+## Installation
 
-Add this to your `Cargo.toml`:
+Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-m2 = "0.1"
+wow-m2 = "0.1.0"
 ```
+
+Or use cargo add:
+
+```bash
+cargo add wow-m2
+```
+
+## Usage
 
 ### Basic Example
 

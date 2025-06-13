@@ -104,7 +104,7 @@ This document tracks the implementation status of the StormLib-compatible C API.
 
 | Test Category | Status |
 |---------------|--------|
-| Unit Tests | ❌ Not Implemented |
+| Unit Tests | ⚠️ Minimal |
 | Integration Tests | ❌ Not Implemented |
 | C Example Programs | ✅ Implemented |
 | StormLib Compatibility | ⚠️ Partial |

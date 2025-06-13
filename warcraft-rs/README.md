@@ -2,7 +2,24 @@
 
 Unified command-line tool for working with World of Warcraft file formats.
 
+<div align="center">
+
+[![Crates.io Version](https://img.shields.io/crates/v/warcraft-rs)](https://crates.io/crates/warcraft-rs)
+[![docs.rs](https://img.shields.io/docsrs/warcraft-rs)](https://docs.rs/warcraft-rs)
+
+</div>
+
 ## Installation
+
+### From crates.io
+
+```bash
+# Install with all features
+cargo install warcraft-rs --features full
+
+# Or install with specific features only
+cargo install warcraft-rs --features "mpq dbc"
+```
 
 ### From Source
 
@@ -20,7 +37,7 @@ cargo build --release --features "mpq dbc"
 # The binary will be at target/release/warcraft-rs
 ```
 
-### Using Cargo
+### Using Cargo Install (Local)
 
 ```bash
 # Install with all formats
@@ -100,7 +117,8 @@ warcraft-rs completions powershell > _warcraft-rs.ps1
 
 ## Features
 
-The CLI can be built with different feature flags to include only the formats you need:
+The CLI can be built with different feature flags to include only the formats you
+need:
 
 - `default` - Includes MPQ support only
 - `full` - Includes all format support
@@ -153,4 +171,5 @@ warcraft-rs m2 info character.m2
 
 ## Development
 
-See the main [warcraft-rs](https://github.com/wowemulation-dev/warcraft-rs) repository for development information.
+See the main [warcraft-rs](https://github.com/wowemulation-dev/warcraft-rs) repository
+for development information.

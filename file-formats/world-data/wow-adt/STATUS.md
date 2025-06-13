@@ -71,7 +71,7 @@ The `wow-adt` crate provides parsing, validation, and manipulation for World of 
 | Texture extraction | ✅ Implemented | Texture references |
 | Model extraction | ✅ Implemented | Placement data |
 | Normal map generation | ✅ Implemented | From heightmap data |
-| 3D export | 🚧 Partial | Mesh export |
+| 3D export | 🚧 Partial | OBJ export works, PLY/STL not implemented |
 
 ## CLI Integration
 

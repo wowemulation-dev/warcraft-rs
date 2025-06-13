@@ -1,0 +1,104 @@
+---
+name: Install Script Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'install.sh'
+      - '.github/workflows/install-script.yml'
+
+  pull_request:
+    branches: [main]
+    paths:
+      - 'install.sh'
+      - '.github/workflows/install-script.yml'
+
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck on install script
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: '.'
+          format: gcc
+          severity: warning
+
+  test-install:
+    name: Test Install (${{ matrix.os }})
+    needs: [shellcheck]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            shell: bash
+          - os: macos-latest
+            shell: bash
+          - os: windows-latest
+            shell: bash
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test install script functionality (simulated)
+        shell: ${{ matrix.shell }}
+        run: |
+          # Make script executable
+          chmod +x install.sh
+
+          # Test help
+          ./install.sh --help
+
+          # Test platform detection function
+          bash -c 'source ./install.sh && detect_platform'
+
+      - name: Test script syntax against released version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: ${{ matrix.shell }}
+        run: |
+          # This will only work after we have at least one release
+          # For now, just test the script syntax
+          bash -n install.sh
+
+  test-install-containers:
+    name: Test Install in Container (${{ matrix.distro }})
+    needs: [shellcheck]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: alpine:latest
+            prepare: apk add --no-cache bash curl
+          - distro: fedora:latest
+            prepare: dnf install -y bash curl
+          - distro: debian:bookworm
+            prepare: apt-get update && apt-get install -y bash curl
+          - distro: archlinux:latest
+            prepare: pacman -Syu --noconfirm bash curl
+    container:
+      image: ${{ matrix.distro }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies for ${{ matrix.distro }}
+        run: ${{ matrix.prepare }}
+
+      - name: Test install script in container environment
+        run: |
+          chmod +x install.sh
+          bash -n install.sh
+          ./install.sh --help
+
+          # Test platform detection
+          bash -c 'source ./install.sh && detect_platform'
