@@ -63,7 +63,7 @@ jobs:
       - name: Cache cross-compilation dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'cross-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}'
+          shared-key: "cross-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}"
           cache-on-failure: true
           cache-all-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}

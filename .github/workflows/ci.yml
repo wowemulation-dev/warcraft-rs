@@ -43,7 +43,7 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'quick-checks-${{ hashFiles('**/Cargo.lock') }}'
+          shared-key: "quick-checks-${{ hashFiles('**/Cargo.lock') }}"
           cache-on-failure: true
           cache-all-crates: true
 
@@ -84,7 +84,7 @@ jobs:
       - name: Cache Rust dependencies for ${{ matrix.os }}
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'tests-${{ matrix.os }}-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}'
+          shared-key: "tests-${{ matrix.os }}-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}"
           cache-on-failure: true
           cache-all-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -127,7 +127,7 @@ jobs:
       - name: Cache documentation dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'docs-${{ hashFiles('**/Cargo.lock') }}'
+          shared-key: "docs-${{ hashFiles('**/Cargo.lock') }}"
           cache-on-failure: true
           cache-all-crates: true
       - name: Build documentation
@@ -194,7 +194,7 @@ jobs:
       - name: Cache coverage dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: 'coverage-${{ hashFiles('**/Cargo.lock') }}'
+          shared-key: "coverage-${{ hashFiles('**/Cargo.lock') }}"
           cache-on-failure: true
           cache-all-crates: true
 
