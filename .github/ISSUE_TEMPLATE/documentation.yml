@@ -1,0 +1,186 @@
+name: 📚 Documentation Issue
+description: Report missing, incorrect, or unclear documentation
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! 
+        Clear and accurate documentation is essential for a good developer experience.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following
+      options:
+        - label: I have searched existing issues to ensure this isn't a duplicate
+          required: true
+        - label: I have checked the latest documentation on the main branch
+          required: true
+
+  - type: dropdown
+    id: documentation-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation issue is this?
+      options:
+        - Missing documentation
+        - Incorrect/outdated information
+        - Unclear explanation
+        - Broken links
+        - Formatting issues
+        - Code examples not working
+        - API documentation gaps
+        - Tutorial improvements
+        - Installation guide issues
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: Describe the documentation problem
+      placeholder: |
+        What's wrong with the current documentation?
+        What information is missing or unclear?
+    validations:
+      required: true
+
+  - type: input
+    id: documentation-location
+    attributes:
+      label: Documentation Location
+      description: Where is the problematic documentation located?
+      placeholder: |
+        e.g., docs/guides/mpq-archives.md, README.md, API docs for Archive::open, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content
+      description: Quote the current documentation content (if applicable)
+      render: markdown
+      placeholder: |
+        ```markdown
+        Current documentation that needs improvement...
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: |
+        - What information should be added?
+        - How should existing content be clarified?
+        - What examples would be helpful?
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-scenario
+    attributes:
+      label: User Scenario
+      description: When would someone need this documentation?
+      placeholder: |
+        Describe the user journey or use case...
+        - What is the user trying to accomplish?
+        - What level of experience do they have?
+        - What context are they coming from?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: affected-sections
+    attributes:
+      label: Affected Documentation Sections
+      description: Which documentation sections are affected? (Check all that apply)
+      options:
+        - label: README.md
+        - label: Getting Started guides
+        - label: Installation instructions
+        - label: CLI usage guides
+        - label: API documentation (rustdoc)
+        - label: Format-specific guides (MPQ, DBC, etc.)
+        - label: Architecture documentation
+        - label: Contributing guidelines
+        - label: Code examples
+        - label: Tutorial content
+        - label: Troubleshooting guides
+        - label: Performance guides
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Who is the primary audience for this documentation?
+      options:
+        - Beginners/new users
+        - Intermediate developers
+        - Advanced users
+        - Contributors/maintainers
+        - Library users (API consumers)
+        - CLI users
+        - All audiences
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples-needed
+    attributes:
+      label: Examples Needed
+      description: What examples would make this clearer?
+      placeholder: |
+        - Code examples
+        - Command-line examples
+        - Screenshots
+        - Diagrams
+        - Step-by-step tutorials
+    validations:
+      required: false
+
+  - type: textarea
+    id: related-content
+    attributes:
+      label: Related Content
+      description: Links to related documentation or resources
+      placeholder: |
+        - Similar documentation that works well
+        - External resources that could be referenced
+        - Related issues or discussions
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution-willingness
+    attributes:
+      label: Contribution
+      description: Are you willing to help improve this documentation?
+      options:
+        - label: I can write the improved documentation
+        - label: I can provide examples or code snippets
+        - label: I can review proposed changes
+        - label: I can test documentation changes
+        - label: I'm looking for someone else to fix this
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information that would help improve the documentation
+      placeholder: |
+        - Common misconceptions users have
+        - Frequently asked questions
+        - Error messages users encounter
+        - Related tools or workflows
+    validations:
+      required: false
