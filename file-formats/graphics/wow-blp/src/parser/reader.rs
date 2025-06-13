@@ -36,7 +36,7 @@ impl<'a> Cursor<'a> {
     }
 }
 
-impl<'a> ByteReader for Cursor<'a> {
+impl ByteReader for Cursor<'_> {
     fn read_u8(&mut self) -> ParseResult<u8> {
         if self.position >= self.data.len() {
             return Err(Error::UnexpectedEof);
