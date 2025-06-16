@@ -1,6 +1,6 @@
 //! # Comprehensive Example
 //!
-//! This example demonstrates all features of the wow-dbc parser library, including:
+//! This example demonstrates all features of the wow-cdbc parser library, including:
 //! - Core parsing functionality
 //! - Schema loading from YAML files
 //! - Memory-mapped file access
@@ -21,19 +21,19 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::time::Instant;
-use wow_dbc::{DbcParser, FieldType, LazyDbcParser, Schema, SchemaField};
+use wow_cdbc::{DbcParser, FieldType, LazyDbcParser, Schema, SchemaField};
 
 #[cfg(feature = "serde")]
-use wow_dbc::export_to_json;
+use wow_cdbc::export_to_json;
 
 #[cfg(feature = "mmap")]
-use wow_dbc::MmapDbcFile;
+use wow_cdbc::MmapDbcFile;
 
 #[cfg(feature = "yaml")]
-use wow_dbc::SchemaDefinition;
+use wow_cdbc::SchemaDefinition;
 
 #[cfg(feature = "csv_export")]
-use wow_dbc::export_to_csv;
+use wow_cdbc::export_to_csv;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== WoW DBC Parser Comprehensive Example ===");
@@ -194,7 +194,7 @@ fn parse_with_yaml_schema() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show a sample spell
     if let Some(record) = record_set.get_record(0) {
-        if let Some(wow_dbc::Value::UInt32(id)) = record.get_value_by_name("ID") {
+        if let Some(wow_cdbc::Value::UInt32(id)) = record.get_value_by_name("ID") {
             println!("   First spell ID: {}", id);
         }
     }
@@ -282,7 +282,7 @@ fn parse_with_parallel_processing() -> Result<(), Box<dyn std::error::Error>> {
     let header = parser.header();
     let string_block = std::sync::Arc::new(parser.parse_records()?.string_block().clone());
 
-    let records = wow_dbc::parse_records_parallel(&file, header, parser.schema(), string_block)?;
+    let records = wow_cdbc::parse_records_parallel(&file, header, parser.schema(), string_block)?;
     let parallel_time = start.elapsed();
 
     println!("   Sequential parsing: {:?}", sequential_time);
@@ -408,23 +408,23 @@ fn schema_discovery_example() -> Result<(), Box<dyn std::error::Error>> {
     let record_set = parser.parse_records()?;
 
     // Skip the header in the data slice
-    let data_start = wow_dbc::DbcHeader::SIZE;
+    let data_start = wow_cdbc::DbcHeader::SIZE;
     let data_end =
         data_start + (parser.header().record_count * parser.header().record_size) as usize;
     let record_data = &file[data_start..data_end];
 
     // Discover schema
     let discoverer =
-        wow_dbc::SchemaDiscoverer::new(parser.header(), record_data, record_set.string_block());
+        wow_cdbc::SchemaDiscoverer::new(parser.header(), record_data, record_set.string_block());
 
     let discovered_schema = discoverer.discover()?;
     println!("   Discovered {} fields:", discovered_schema.fields.len());
 
     for (idx, field) in discovered_schema.fields.iter().enumerate().take(5) {
         let confidence_str = match field.confidence {
-            wow_dbc::Confidence::High => "high",
-            wow_dbc::Confidence::Medium => "medium",
-            wow_dbc::Confidence::Low => "low",
+            wow_cdbc::Confidence::High => "high",
+            wow_cdbc::Confidence::Medium => "medium",
+            wow_cdbc::Confidence::Low => "low",
         };
         println!(
             "   - Field {}: {:?} (confidence: {})",

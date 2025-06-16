@@ -108,7 +108,7 @@ jobs:
           cargo test -p wow-adt --all-features
           cargo test -p wow-wdl --all-features
           cargo test -p wow-wdt --all-features
-          cargo test -p wow-dbc --all-features
+          cargo test -p wow-cdbc --all-features
           cargo test -p warcraft-rs --all-features
 
   # Documentation build - runs in parallel

@@ -1,7 +1,7 @@
 //! Integration tests for the DBC parser.
 
 use std::io::Cursor;
-use wow_dbc::{DbcHeader, DbcParser, FieldType, Schema, SchemaField, StringRef, Value};
+use wow_cdbc::{DbcHeader, DbcParser, FieldType, Schema, SchemaField, StringRef, Value};
 
 #[test]
 fn test_header_parsing() {

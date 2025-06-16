@@ -1,6 +1,6 @@
-# wow-dbc Examples
+# wow-cdbc Examples
 
-This directory contains examples demonstrating various features of the wow-dbc crate.
+This directory contains examples demonstrating various features of the wow-cdbc crate.
 
 ## Running Examples
 

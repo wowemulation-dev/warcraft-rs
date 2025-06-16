@@ -49,8 +49,8 @@ name = "wow-mpq"
 changelog_path = "file-formats/archives/wow-mpq/CHANGELOG.md"
 
 [[package]]
-name = "wow-dbc"
-changelog_path = "file-formats/database/wow-dbc/CHANGELOG.md"
+name = "wow-cdbc"
+changelog_path = "file-formats/database/wow-cdbc/CHANGELOG.md"
 
 [[package]]
 name = "wow-blp"

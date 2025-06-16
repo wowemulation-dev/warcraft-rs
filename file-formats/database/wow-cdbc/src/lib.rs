@@ -1,4 +1,4 @@
-//! # wow_dbc
+//! # wow_cdbc
 //!
 //! A library for parsing World of Warcraft DBC (Database Client) files.
 //!
@@ -15,7 +15,7 @@
 //! ```no_run
 //! use std::fs::File;
 //! use std::io::BufReader;
-//! use wow_dbc::{DbcParser, FieldType, Schema, SchemaField, Value};
+//! use wow_cdbc::{DbcParser, FieldType, Schema, SchemaField, Value};
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Open a DBC file

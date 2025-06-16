@@ -6,7 +6,12 @@ use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use wow_dbc::{DbcParser, SchemaDefinition, SchemaDiscoverer, export_to_csv, export_to_json};
+use wow_cdbc::{
+    DbcParser, RecordSet, SchemaDefinition, SchemaDiscoverer, Value, export_to_csv, export_to_json,
+};
+
+#[cfg(feature = "yaml")]
+use wow_cdbc::FieldType;
 
 #[derive(Subcommand)]
 pub enum DbcCommands {
@@ -217,10 +222,10 @@ fn info_command(file: &Path) -> Result<()> {
         println!("=========================================");
         for (i, value) in record.values().iter().enumerate() {
             match value {
-                wow_dbc::Value::UInt32(v) => println!("  Field {:2}: {:10} (UInt32)", i, v),
-                wow_dbc::Value::Int32(v) => println!("  Field {:2}: {:10} (Int32)", i, v),
-                wow_dbc::Value::Float32(v) => println!("  Field {:2}: {:10.4} (Float32)", i, v),
-                wow_dbc::Value::StringRef(v) => match record_set.get_string(*v) {
+                Value::UInt32(v) => println!("  Field {:2}: {:10} (UInt32)", i, v),
+                Value::Int32(v) => println!("  Field {:2}: {:10} (Int32)", i, v),
+                Value::Float32(v) => println!("  Field {:2}: {:10.4} (Float32)", i, v),
+                Value::StringRef(v) => match record_set.get_string(*v) {
                     Ok(s) => println!("  Field {:2}: \"{}\" (String)", i, s),
                     Err(_) => println!(
                         "  Field {:2}: <Invalid string ref: {}> (String)",
@@ -228,12 +233,12 @@ fn info_command(file: &Path) -> Result<()> {
                         v.offset()
                     ),
                 },
-                wow_dbc::Value::Bool(v) => println!("  Field {:2}: {:10} (Bool)", i, v),
-                wow_dbc::Value::UInt8(v) => println!("  Field {:2}: {:10} (UInt8)", i, v),
-                wow_dbc::Value::Int8(v) => println!("  Field {:2}: {:10} (Int8)", i, v),
-                wow_dbc::Value::UInt16(v) => println!("  Field {:2}: {:10} (UInt16)", i, v),
-                wow_dbc::Value::Int16(v) => println!("  Field {:2}: {:10} (Int16)", i, v),
-                wow_dbc::Value::Array(vals) => {
+                Value::Bool(v) => println!("  Field {:2}: {:10} (Bool)", i, v),
+                Value::UInt8(v) => println!("  Field {:2}: {:10} (UInt8)", i, v),
+                Value::Int8(v) => println!("  Field {:2}: {:10} (Int8)", i, v),
+                Value::UInt16(v) => println!("  Field {:2}: {:10} (UInt16)", i, v),
+                Value::Int16(v) => println!("  Field {:2}: {:10} (Int16)", i, v),
+                Value::Array(vals) => {
                     println!("  Field {:2}: Array[{}]", i, vals.len());
                     for (j, val) in vals.iter().enumerate().take(3) {
                         println!("            [{}]: {:?}", j, val);
@@ -503,7 +508,7 @@ fn validate_command(file: &Path, schema_path: &Path) -> Result<()> {
                     for i in 0..record_set.len() {
                         if let Some(record) = record_set.get_record(i) {
                             for value in record.values() {
-                                if let wow_dbc::Value::StringRef(str_ref) = value {
+                                if let Value::StringRef(str_ref) = value {
                                     if record_set.get_string(*str_ref).is_err() {
                                         invalid_strings += 1;
                                     }
@@ -537,30 +542,30 @@ fn validate_command(file: &Path, schema_path: &Path) -> Result<()> {
 }
 
 /// Helper function to print a value
-fn print_value(value: &wow_dbc::Value, record_set: &wow_dbc::RecordSet) -> Result<()> {
+fn print_value(value: &Value, record_set: &RecordSet) -> Result<()> {
     match value {
-        wow_dbc::Value::UInt32(v) => println!("{}", v),
-        wow_dbc::Value::Int32(v) => println!("{}", v),
-        wow_dbc::Value::Float32(v) => println!("{:.4}", v),
-        wow_dbc::Value::StringRef(v) => match record_set.get_string(*v) {
+        Value::UInt32(v) => println!("{}", v),
+        Value::Int32(v) => println!("{}", v),
+        Value::Float32(v) => println!("{:.4}", v),
+        Value::StringRef(v) => match record_set.get_string(*v) {
             Ok(s) => println!("\"{}\"", s),
             Err(_) => println!("<Invalid string ref: {}>", v.offset()),
         },
-        wow_dbc::Value::Bool(v) => println!("{}", v),
-        wow_dbc::Value::UInt8(v) => println!("{}", v),
-        wow_dbc::Value::Int8(v) => println!("{}", v),
-        wow_dbc::Value::UInt16(v) => println!("{}", v),
-        wow_dbc::Value::Int16(v) => println!("{}", v),
-        wow_dbc::Value::Array(vals) => {
+        Value::Bool(v) => println!("{}", v),
+        Value::UInt8(v) => println!("{}", v),
+        Value::Int8(v) => println!("{}", v),
+        Value::UInt16(v) => println!("{}", v),
+        Value::Int16(v) => println!("{}", v),
+        Value::Array(vals) => {
             print!("[");
             for (i, val) in vals.iter().enumerate() {
                 if i > 0 {
                     print!(", ");
                 }
                 match val {
-                    wow_dbc::Value::UInt32(v) => print!("{}", v),
-                    wow_dbc::Value::Int32(v) => print!("{}", v),
-                    wow_dbc::Value::Float32(v) => print!("{:.4}", v),
+                    Value::UInt32(v) => print!("{}", v),
+                    Value::Int32(v) => print!("{}", v),
+                    Value::Float32(v) => print!("{:.4}", v),
                     _ => print!("{:?}", val),
                 }
             }
@@ -721,15 +726,15 @@ fn discover_command(
             let mut fields = Vec::new();
             for field in schema.fields.iter() {
                 let type_name = match field.field_type {
-                    wow_dbc::FieldType::Int32 => "Int32",
-                    wow_dbc::FieldType::UInt32 => "UInt32",
-                    wow_dbc::FieldType::Float32 => "Float32",
-                    wow_dbc::FieldType::String => "String",
-                    wow_dbc::FieldType::Bool => "Bool",
-                    wow_dbc::FieldType::UInt8 => "UInt8",
-                    wow_dbc::FieldType::Int8 => "Int8",
-                    wow_dbc::FieldType::UInt16 => "UInt16",
-                    wow_dbc::FieldType::Int16 => "Int16",
+                    FieldType::Int32 => "Int32",
+                    FieldType::UInt32 => "UInt32",
+                    FieldType::Float32 => "Float32",
+                    FieldType::String => "String",
+                    FieldType::Bool => "Bool",
+                    FieldType::UInt8 => "UInt8",
+                    FieldType::Int8 => "Int8",
+                    FieldType::UInt16 => "UInt16",
+                    FieldType::Int16 => "Int16",
                 };
 
                 fields.push(YamlSchemaField {

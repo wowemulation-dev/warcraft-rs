@@ -114,7 +114,7 @@ Here are specific areas where contributions would be especially valuable:
 
 #### 📊 Database Format
 
-1. **DBC Client Database (wow-dbc)**
+1. **cDBC Client Database (wow-cdbc)**
    - Generic DBC parser framework
    - Schema definition system
    - Common DBC file implementations:

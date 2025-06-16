@@ -1,7 +1,7 @@
 //! DBD (Database Definition) file parser and converter
 //!
 //! This module provides functionality for parsing WoW DBD definition files
-//! and converting them to YAML schemas compatible with the wow-dbc parser.
+//! and converting them to YAML schemas compatible with the wow-cdbc parser.
 
 use std::collections::HashMap;
 use std::fs;

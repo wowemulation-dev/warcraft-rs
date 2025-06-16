@@ -1,6 +1,6 @@
 //! # Comprehensive Simple Example
 //!
-//! This example demonstrates the core features of the wow-dbc parser library:
+//! This example demonstrates the core features of the wow-cdbc parser library:
 //! - Parsing DBC files with schemas defined in code
 //! - Using lazy loading for efficient memory usage with large files
 //! - Basic DBC file operations
@@ -14,7 +14,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::time::Instant;
-use wow_dbc::{DbcParser, FieldType, LazyDbcParser, Schema, SchemaField, Value};
+use wow_cdbc::{DbcParser, FieldType, LazyDbcParser, Schema, SchemaField, Value};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== WoW DBC Parser - Core Features Demo ===");

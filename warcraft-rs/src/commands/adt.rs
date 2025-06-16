@@ -551,28 +551,145 @@ fn execute_tree(
         root = root.add_child(terrain_node);
     }
 
-    // Texture chunk (we can't access details without public fields)
-    let tex_node = TreeNode::new("MTEX".to_string(), NodeType::Directory)
-        .with_metadata("type", "Texture references");
-    root = root.add_child(tex_node);
+    // Texture chunk with actual texture filenames
+    if let Some(ref mtex) = adt.mtex {
+        let mut tex_node = TreeNode::new(
+            format!("MTEX ({})", mtex.filenames.len()),
+            NodeType::Directory,
+        );
 
-    // Model chunks
-    let model_node = TreeNode::new("MMDX/MMID".to_string(), NodeType::Directory)
-        .with_metadata("type", "M2 model references");
-    root = root.add_child(model_node);
+        if !no_metadata {
+            tex_node = tex_node.with_metadata("type", "Texture references");
+        }
 
-    let wmo_node = TreeNode::new("MWMO/MWID".to_string(), NodeType::Directory)
-        .with_metadata("type", "WMO object references");
-    root = root.add_child(wmo_node);
+        // Add texture filenames
+        for (i, filename) in mtex
+            .filenames
+            .iter()
+            .enumerate()
+            .take(if compact { 3 } else { 10 })
+        {
+            let mut file_node = TreeNode::new(filename.clone(), NodeType::File);
+            if !no_metadata {
+                file_node = file_node.with_metadata("index", &i.to_string());
+            }
+            tex_node = tex_node.add_child(file_node);
+        }
+
+        if mtex.filenames.len() > 10 && !compact {
+            tex_node = tex_node.add_child(TreeNode::new(
+                format!("... and {} more textures", mtex.filenames.len() - 10),
+                NodeType::Data,
+            ));
+        }
+
+        root = root.add_child(tex_node);
+    }
+
+    // Model chunks with actual model filenames
+    if let Some(ref mmdx) = adt.mmdx {
+        let mut model_node = TreeNode::new(
+            format!("MMDX ({}) / MMID", mmdx.filenames.len()),
+            NodeType::Directory,
+        );
+
+        if !no_metadata {
+            model_node = model_node.with_metadata("type", "M2 model references");
+        }
+
+        // Add model filenames
+        for (i, filename) in mmdx
+            .filenames
+            .iter()
+            .enumerate()
+            .take(if compact { 3 } else { 10 })
+        {
+            let mut file_node = TreeNode::new(filename.clone(), NodeType::File);
+            if !no_metadata {
+                file_node = file_node.with_metadata("index", &i.to_string());
+            }
+            if show_refs {
+                file_node = file_node
+                    .with_external_ref(filename, crate::utils::tree::detect_ref_type(filename));
+            }
+            model_node = model_node.add_child(file_node);
+        }
+
+        if mmdx.filenames.len() > 10 && !compact {
+            model_node = model_node.add_child(TreeNode::new(
+                format!("... and {} more models", mmdx.filenames.len() - 10),
+                NodeType::Data,
+            ));
+        }
+
+        root = root.add_child(model_node);
+    }
+
+    // WMO chunks with actual WMO filenames
+    if let Some(ref mwmo) = adt.mwmo {
+        let mut wmo_node = TreeNode::new(
+            format!("MWMO ({}) / MWID", mwmo.filenames.len()),
+            NodeType::Directory,
+        );
+
+        if !no_metadata {
+            wmo_node = wmo_node.with_metadata("type", "WMO object references");
+        }
+
+        // Add WMO filenames
+        for (i, filename) in mwmo
+            .filenames
+            .iter()
+            .enumerate()
+            .take(if compact { 3 } else { 10 })
+        {
+            let mut file_node = TreeNode::new(filename.clone(), NodeType::File);
+            if !no_metadata {
+                file_node = file_node.with_metadata("index", &i.to_string());
+            }
+            if show_refs {
+                file_node = file_node
+                    .with_external_ref(filename, crate::utils::tree::detect_ref_type(filename));
+            }
+            wmo_node = wmo_node.add_child(file_node);
+        }
+
+        if mwmo.filenames.len() > 10 && !compact {
+            wmo_node = wmo_node.add_child(TreeNode::new(
+                format!("... and {} more WMOs", mwmo.filenames.len() - 10),
+                NodeType::Data,
+            ));
+        }
+
+        root = root.add_child(wmo_node);
+    }
 
     // Placement chunks
-    let mddf_node = TreeNode::new("MDDF".to_string(), NodeType::Directory)
-        .with_metadata("type", "Doodad placements");
-    root = root.add_child(mddf_node);
+    if let Some(ref mddf) = adt.mddf {
+        let mut mddf_node = TreeNode::new(
+            format!("MDDF ({} doodads)", mddf.doodads.len()),
+            NodeType::Directory,
+        );
 
-    let modf_node = TreeNode::new("MODF".to_string(), NodeType::Directory)
-        .with_metadata("type", "WMO placements");
-    root = root.add_child(modf_node);
+        if !no_metadata {
+            mddf_node = mddf_node.with_metadata("type", "Doodad placements");
+        }
+
+        root = root.add_child(mddf_node);
+    }
+
+    if let Some(ref modf) = adt.modf {
+        let mut modf_node = TreeNode::new(
+            format!("MODF ({} WMOs)", modf.models.len()),
+            NodeType::Directory,
+        );
+
+        if !no_metadata {
+            modf_node = modf_node.with_metadata("type", "WMO placements");
+        }
+
+        root = root.add_child(modf_node);
+    }
 
     // Water
     if let Some(mh2o) = adt.mh2o() {

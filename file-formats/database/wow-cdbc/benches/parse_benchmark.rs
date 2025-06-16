@@ -1,7 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use std::io::Cursor;
-use wow_dbc::{DbcParser, FieldType, Schema, SchemaField};
+use wow_cdbc::{DbcParser, FieldType, Schema, SchemaField};
 
 fn create_test_dbc() -> Vec<u8> {
     let mut data = Vec::new();

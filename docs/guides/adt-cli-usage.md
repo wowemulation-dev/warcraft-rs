@@ -104,13 +104,16 @@ warcraft-rs adt tree terrain.adt --no-color
 
 Tree view shows:
 
-- 🏔️ Root ADT file
+- 🏔️ Root ADT file with version info
 - 📋 Header chunks (MHDR, MCIN)
-- 🌍 Terrain chunks (MCNK)
-- 🎨 Texture references (MTEX)
-- 🌲 Model data (MMDX/MMID, MDDF)
-- 🏛️ WMO data (MWMO/MWID, MODF)
-- 💧 Water chunks (MH2O)
+- 🌍 Terrain chunks (MCNK) with coordinates and properties
+- 🎨 Texture references (MTEX) - **lists actual texture filenames**
+- 🌲 Model data (MMDX/MMID) - **shows M2 model filenames with indices**
+- 🏛️ WMO data (MWMO/MWID) - **displays WMO filenames**
+- 📍 Placements (MDDF/MODF) - shows count of placed objects
+- 💧 Water chunks (MH2O) with water chunk count
+
+The enhanced tree view now displays the actual content of texture, model, and WMO chunks, showing filenames and counts rather than just chunk presence.
 
 ### Extract Command (Optional Feature)
 

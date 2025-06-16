@@ -18,7 +18,7 @@ file-formats/
 │   ├── wow-m2     # M2 (Model) files
 │   └── wow-wmo    # WMO (World Map Object) files
 └── database/      # Game data storage
-    └── wow-dbc    # DBC (Database Client) files
+    └── wow-cdbc   # cDBC (Database Client) files
 ```
 
 ## 🎯 Format Categories
@@ -42,7 +42,7 @@ file-formats/
 
 ### Database
 
-- **DBC** - Client-side database files containing game data
+- **cDBC** - Client-side database files containing game data
 
 ## 🔧 Usage
 
@@ -51,7 +51,7 @@ Each crate can be used independently:
 ```toml
 [dependencies]
 wow-mpq = { path = "file-formats/archives/wow-mpq" }
-wow-dbc = { path = "file-formats/database/wow-dbc" }
+wow-cdbc = { path = "file-formats/database/wow-cdbc" }
 wow-blp = { path = "file-formats/graphics/wow-blp" }
 ```
 

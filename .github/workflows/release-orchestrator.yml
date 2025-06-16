@@ -18,7 +18,7 @@ on:
         type: choice
         options:
           - wow-mpq
-          - wow-dbc
+          - wow-cdbc
           - wow-blp
           - wow-m2
           - wow-wmo

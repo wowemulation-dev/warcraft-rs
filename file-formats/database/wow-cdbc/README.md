@@ -1,12 +1,12 @@
-# wow-dbc
+# wow-cdbc
 
 Parser for World of Warcraft DBC (client database) files.
 
 <div align="center">
 
-[![Crates.io Version](https://img.shields.io/crates/v/wow-dbc)](https://crates.io/crates/wow-dbc)
-[![docs.rs](https://img.shields.io/docsrs/wow-dbc)](https://docs.rs/wow-dbc)
-[![License](https://img.shields.io/crates/l/wow-dbc.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
+[![Crates.io Version](https://img.shields.io/crates/v/wow-cdbc)](https://crates.io/crates/wow-cdbc)
+[![docs.rs](https://img.shields.io/docsrs/wow-cdbc)](https://docs.rs/wow-cdbc)
+[![License](https://img.shields.io/crates/l/wow-cdbc.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
 
 </div>
 
@@ -27,19 +27,19 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-dbc = "0.1.0"
+wow-cdbc = "0.1.0"
 ```
 
 Or use cargo add:
 
 ```bash
-cargo add wow-dbc
+cargo add wow-cdbc
 ```
 
 ## Usage
 
 ```rust
-use wow_dbc::{DbcParser, Schema, SchemaField, FieldType};
+use wow_cdbc::{DbcParser, Schema, SchemaField, FieldType};
 
 // Define a schema for the Map.dbc file
 let mut schema = Schema::new("Map");
@@ -84,7 +84,7 @@ if let Some(record) = records.get_record_by_key(0) {  // Eastern Kingdoms
 This crate supports [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) Database Definition files for automatic schema generation. DBD files provide community-maintained schema definitions for various WoW versions.
 
 ```rust
-use wow_dbc::dbd::parse_dbd_file;
+use wow_cdbc::dbd::parse_dbd_file;
 
 // Parse a DBD file
 let dbd = parse_dbd_file("definitions/Map.dbd")?;

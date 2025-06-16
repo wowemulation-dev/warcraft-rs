@@ -1,24 +1,58 @@
 # BLP Format 🎨
 
-BLP (Blizzard Picture) is Blizzard's proprietary texture format used for all textures in Warcraft III and World of Warcraft.
+BLP (Blizzard Picture) is Blizzard's proprietary texture format used for all textures in Warcraft III and World of Warcraft. The format uses non-standard JPEG compression with BGRA color components (instead of Y′CbCr) and various direct pixel storage methods.
 
 ## Overview
 
 - **Extension**: `.blp`
-- **Purpose**: Compressed texture storage
+- **Purpose**: Compressed texture storage optimized for game engines
 - **Versions**: BLP0 (Warcraft III Beta), BLP1 (Warcraft III), BLP2 (World of Warcraft)
-- **Compression**: JPEG, RAW1 (palettized), RAW3 (uncompressed), DXT1/3/5
-- **Features**: Mipmaps, alpha channels, multiple compression options
+- **Compression**: JPEG (non-standard BGRA), RAW1 (palettized), RAW3 (uncompressed BGRA), DXT1/3/5 (S3TC)
+- **Features**: Up to 16 mipmaps, alpha channels with variable bit depth, GPU-friendly formats
+- **Endianness**: Little-endian for all multi-byte values
 
-## Structure
+## File Structure
 
-### BLP Header
+### Header Layout
+
+The header structure varies by version:
+
+**BLP0/BLP1 Header (148 bytes)**:
+```
+Offset  Size  Description
+0x00    4     Magic: "BLP0" or "BLP1"
+0x04    4     Content type (0=JPEG, 1=Direct)
+0x08    4     Alpha bits (0, 1, 4, or 8)
+0x0C    4     Width
+0x10    4     Height  
+0x14    4     Extra field (4 for RAW1, 5 for JPEG)
+0x18    4     Has mipmaps (0 or 1)
+0x1C    -     No mipmap tables for BLP0 (external mipmaps)
+0x1C    128   Mipmap tables for BLP1 (16 offsets + 16 sizes)
+```
+
+**BLP2 Header (156 bytes)**:
+```
+Offset  Size  Description
+0x00    4     Magic: "BLP2"
+0x04    4     Content type (0=JPEG, 1=Direct)
+0x08    1     Compression (0=JPEG, 1=RAW1, 2=DXTC, 3=RAW3)
+0x09    1     Alpha bits (0, 1, 4, or 8)
+0x0A    1     Alpha type (0, 1, 7, or 8)
+0x0B    1     Has mipmaps (0 or 1)
+0x0C    4     Width (max 65535)
+0x10    4     Height (max 65535)
+0x14    64    Mipmap offsets (16 x u32)
+0x54    64    Mipmap sizes (16 x u32)
+```
+
+### Data Layout
 
 ```rust
 struct BlpHeader {
     magic: [u8; 4],          // "BLP0", "BLP1", or "BLP2"
     version: BlpVersion,     // Format version
-    content: BlpContentTag,  // JPEG or Direct
+    content: BlpContentTag,  // JPEG (0) or Direct (1)
     flags: BlpFlags,         // Version-specific flags
     width: u32,              // Texture width
     height: u32,             // Texture height
@@ -27,25 +61,85 @@ struct BlpHeader {
 
 enum BlpVersion {
     Blp0, // Warcraft III Beta
-    Blp1, // Warcraft III
+    Blp1, // Warcraft III  
     Blp2, // World of Warcraft
 }
 
 enum BlpContentTag {
-    Jpeg,   // JPEG compressed
-    Direct, // Direct pixel data (RAW1/3, DXT)
+    Jpeg = 0,   // JPEG compressed (non-standard BGRA)
+    Direct = 1, // Direct pixel data (RAW1/3, DXT)
+}
+
+// Version-specific flags
+enum BlpFlags {
+    // BLP0/BLP1
+    Old {
+        alpha_bits: u32,    // 0, 1, 4, or 8
+        extra: u32,         // 4 for RAW1, 5 for JPEG
+        has_mipmaps: u32,   // 0 or 1
+    },
+    // BLP2
+    Blp2 {
+        compression: Compression, // See Compression enum
+        alpha_bits: u8,          // 0, 1, 4, or 8
+        alpha_type: u8,          // Usually 0, affects blending
+        has_mipmaps: u8,         // 0 or 1
+    }
 }
 ```
 
-### Compression Types
+### Compression Types (BLP2 only)
 
 ```rust
 enum Compression {
-    Jpeg, // JPEG with BGRA color space
-    Raw1, // 256-color palettized
-    Raw3, // Uncompressed BGRA
-    Dxtc, // DXT1/3/5 compression
+    Jpeg = 0, // JPEG (rarely/never used in BLP2 files)
+    Raw1 = 1, // 256-color palettized
+    Dxtc = 2, // DXT1/3/5 compression (S3TC)
+    Raw3 = 3, // Uncompressed BGRA
 }
+```
+
+### Additional Data Sections
+
+**For JPEG content**:
+- 4 bytes: JPEG header size (actual size - 2 due to a bug)
+- Variable: JPEG header data
+- Image data: JPEG compressed mipmaps
+
+**For RAW1 (palettized)**:
+- 1024 bytes: Color palette (256 x BGRA, 4 bytes per color)
+- Image data: 
+  - 8-bit palette indices (1 byte per pixel)
+  - Alpha data (format depends on alpha_bits):
+    - 0 bits: No alpha data
+    - 1 bit: Packed 8 pixels per byte
+    - 4 bits: Packed 2 pixels per byte
+    - 8 bits: 1 byte per pixel
+
+**For DXT**:
+- 1024 bytes: Unused color map (zeroed)
+- Image data: DXT compressed blocks
+
+**For RAW3**:
+- Image data: Raw BGRA pixels (4 bytes per pixel)
+
+### Complete File Layout Example (BLP2 DXT5)
+
+```
+Offset  Size    Description
+0x00    4       Magic "BLP2"
+0x04    4       Content type (1 for Direct)
+0x08    1       Compression (2 for DXTC)  
+0x09    1       Alpha bits (8 for DXT5)
+0x0A    1       Alpha type (0)
+0x0B    1       Has mipmaps (1)
+0x0C    4       Width (e.g., 512)
+0x10    4       Height (e.g., 512)
+0x14    64      Mipmap offsets [16 x u32]
+0x54    64      Mipmap sizes [16 x u32]
+0x94    1024    Unused color map (all zeros for DXT)
+0x494   varies  Mipmap 0: DXT5 compressed data
+...     ...     Additional mipmaps
 ```
 
 ## Usage Example
@@ -135,6 +229,8 @@ let uncompressed = Blp2Format::Raw3;
 
 - External mipmaps in .b00-.b15 files
 - Limited to JPEG and RAW1 compression
+- Header size: 28 bytes (no mipmap tables)
+- Mipmap files use format: `basename.b##` where ## is 00-15
 
 ```rust
 // BLP0 saves mipmaps as separate files
@@ -143,8 +239,10 @@ let blp0_target = BlpTarget::Blp0(BlpOldFormat::Jpeg { has_alpha: true });
 
 ### BLP1 (Warcraft III)
 
-- Internal mipmaps
+- Internal mipmaps with offset/size tables
 - JPEG and RAW1 compression
+- Header size: 156 bytes (includes mipmap tables)
+- Maximum 16 mipmap levels
 
 ```rust
 let blp1_target = BlpTarget::Blp1(BlpOldFormat::Raw1 {
@@ -154,9 +252,11 @@ let blp1_target = BlpTarget::Blp1(BlpOldFormat::Raw1 {
 
 ### BLP2 (World of Warcraft)
 
-- All compression types supported
-- Internal mipmaps
-- Most flexible format
+- All compression types supported (though JPEG is rarely used)
+- Internal mipmaps with offset/size tables
+- Header size: 156 bytes
+- Additional alpha_type field for advanced blending
+- DXT compression uses texpresso library
 
 ```rust
 let blp2_target = BlpTarget::Blp2(Blp2Format::Dxt5 {
@@ -173,10 +273,13 @@ let blp2_target = BlpTarget::Blp2(Blp2Format::Dxt5 {
 // Access specific mipmap level
 let mipmap_2 = blp_to_image(&blp, 2)?;
 
-// Get mipmap count
+// Get mipmap count (calculated as max(log2(width), log2(height)))
 let count = blp.header.mipmaps_count();
 
-// External mipmap paths (BLP0)
+// Mipmap dimensions (each level halves size, minimum 1x1)
+let (width, height) = blp.header.mipmap_size(level);
+
+// External mipmap paths (BLP0 only)
 use wow_blp::path::make_mipmap_path;
 let mip_path = make_mipmap_path("texture.blp", 3)?; // texture.b03
 ```
@@ -187,11 +290,22 @@ let mip_path = make_mipmap_path("texture.blp", 3)?; // texture.b03
 use wow_blp::convert::AlphaBits;
 
 // Different alpha bit depths
-AlphaBits::NoAlpha  // No alpha channel
-AlphaBits::Bit1     // 1-bit (on/off)
-AlphaBits::Bit4     // 4-bit (16 levels)
-AlphaBits::Bit8     // 8-bit (full alpha)
+AlphaBits::NoAlpha  // No alpha channel (0 bits)
+AlphaBits::Bit1     // 1-bit (on/off transparency)
+AlphaBits::Bit4     // 4-bit (16 transparency levels)
+AlphaBits::Bit8     // 8-bit (256 transparency levels)
 ```
+
+#### Alpha Storage by Format
+- **JPEG**: Alpha stored as separate grayscale image after RGB data
+- **RAW1**: Alpha bits packed after palette indices
+  - 1-bit: 8 pixels per byte
+  - 4-bit: 2 pixels per byte  
+  - 8-bit: 1 pixel per byte
+- **DXT1**: 1-bit alpha encoded in color endpoints
+- **DXT3**: 4-bit alpha stored explicitly before color data
+- **DXT5**: Alpha endpoints + 3-bit interpolation indices
+- **RAW3**: Alpha interleaved as BGRA pixels
 
 ### Batch Processing
 
@@ -294,22 +408,54 @@ fn create_game_texture(input: &str, output: &str) -> Result<(), Box<dyn std::err
 
 ## Common Issues
 
-### Power of Two Requirement
+### Technical Limitations
 
+#### Dimension Requirements
 - Texture dimensions should be powers of 2 for optimal GPU performance
 - Common sizes: 256x256, 512x512, 1024x1024
-- Maximum size: 65535x65535 (BLP format limit)
+- Maximum size: 65535x65535 (defined as BLP_MAX_WIDTH/HEIGHT constants)
+- Mipmap count: max(log2(width), log2(height))
 
-### Color Space
+#### Format-Specific Details
+- JPEG header has a 2-byte discrepancy (stored length = actual length - 2)
+- DXT formats include a 1024-byte color map that's always zeroed
+- RAW1 alpha data is stored separately after the indexed color data
+- Alpha type field in BLP2 affects blending (usually 0 for standard alpha)
 
-- BLP uses BGRA color order, not RGBA
-- JPEG compression in BLP uses BGRA, not standard YCbCr
+### Color Space and Encoding
 
-### Compression Artifacts
+- All formats use BGRA color order (Blue, Green, Red, Alpha)
+- JPEG uses non-standard JFIF compression:
+  - Compresses raw BGRA values directly
+  - Does NOT use standard Y′CbCr color space conversion
+  - This is why BLP JPEG files are incompatible with standard JPEG readers
+- DXT compression is applied to BGRA data
+- RAW formats store pixels in BGRA order
 
-- JPEG can cause color bleeding
-- DXT can cause block artifacts on gradients
-- Use RAW3 (uncompressed) for highest quality
+### Compression Characteristics
+
+#### JPEG (BLP0/BLP1, rarely BLP2)
+- Non-standard BGRA compression
+- Can cause color bleeding at block boundaries
+- Alpha stored as separate channel
+
+#### RAW1 (Palettized)
+- Limited to 256 colors
+- Excellent for textures with limited color palettes
+- Alpha precision depends on bit depth (0/1/4/8 bits)
+
+#### DXT (BLP2)
+- 4:1 compression ratio (DXT1) or 6:1 (DXT3/5)
+- 4x4 pixel block artifacts on gradients
+- DXT1: 1-bit alpha or opaque
+- DXT3: 4-bit explicit alpha per pixel
+- DXT5: Interpolated alpha (best for smooth gradients)
+- Hardware accelerated on GPUs
+
+#### RAW3 (BLP2)
+- Uncompressed BGRA
+- Highest quality, largest file size
+- No compression artifacts
 
 ## References
 

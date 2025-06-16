@@ -2615,7 +2615,7 @@ dependencies = [
  "thiserror 2.0.12",
  "wow-adt",
  "wow-blp",
- "wow-dbc",
+ "wow-cdbc",
  "wow-m2",
  "wow-mpq",
  "wow-wdl",
@@ -2934,7 +2934,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wow-dbc"
+name = "wow-cdbc"
 version = "0.1.0"
 dependencies = [
  "binrw",

@@ -65,7 +65,7 @@ impl MaidSection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MaidChunk {
     /// FileDataIDs for each section
-    /// Each section contains 64x64 entries stored in [Y][X] order
+    /// Each section contains 64x64 entries stored in \[Y\]\[X\] order
     sections: Vec<Vec<Vec<u32>>>,
 }
 

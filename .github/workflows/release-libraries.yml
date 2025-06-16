@@ -26,7 +26,7 @@ on:
         type: choice
         options:
           - wow-mpq
-          - wow-dbc
+          - wow-cdbc
           - wow-blp
           - wow-m2
           - wow-wmo
@@ -65,7 +65,7 @@ jobs:
         id: determine
         run: |
           if [[ "${{ inputs.package }}" == "all" ]]; then
-            PACKAGES='["wow-mpq", "wow-dbc", "wow-blp", "wow-m2", "wow-wmo", "wow-adt", "wow-wdl", "wow-wdt"]'
+            PACKAGES='["wow-mpq", "wow-cdbc", "wow-blp", "wow-m2", "wow-wmo", "wow-adt", "wow-wdl", "wow-wdt"]'
           else
             PACKAGES='["${{ inputs.package }}"]'
           fi

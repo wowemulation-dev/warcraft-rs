@@ -5,13 +5,13 @@ Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft fi
 **Current Support Status:**
 
 - ✅ **MPQ Archives** - Fully implemented with 100% StormLib compatibility
-- ✅ **WDL Format** - Low-resolution terrain heightmaps (basic implementation)
-- ✅ **WDT Format** - World table files (full implementation)
-- ✅ **ADT Format** - Terrain data (full implementation)
+- ✅ **DBC Format** - Client databases (full implementation with JSON/CSV export)
 - ✅ **BLP Format** - Textures (full implementation)
+- ✅ **M2 Format** - Models (full implementation)
 - ✅ **WMO Format** - World objects (full implementation)
-- 🚧 **M2 Format** - Models (partial implementation)
-- 🚧 **DBC Format** - Databases (partial implementation)
+- ✅ **ADT Format** - Terrain data (full implementation)
+- ✅ **WDT Format** - World table files (full implementation)
+- ✅ **WDL Format** - Low-resolution terrain heightmaps (full implementation)
 
 ## Core Concepts
 
@@ -20,7 +20,11 @@ Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft fi
 Most warcraft-rs types follow a consistent API:
 
 ```rust
-use warcraft_rs::{Format, Error};
+// Each format has its own crate
+use wow_mpq::Archive;
+use wow_blp::parser::load_blp;
+use wow_adt::reader::AdtReader;
+// etc.
 
 // Standard loading pattern
 let file = Format::open("path/to/file.ext")?;
@@ -41,20 +45,15 @@ let file = Format::open_with_options("file.ext", FormatOptions {
 warcraft-rs uses a unified error type:
 
 ```rust
-use warcraft_rs::Error;
+// Each crate has its own error type
+use wow_mpq::error::Error as MpqError;
+use wow_blp::parser::error::Error as BlpError;
 
-fn load_model(path: &str) -> Result<Model, Error> {
-    match Model::open(path) {
-        Ok(model) => Ok(model),
-        Err(Error::FileNotFound(path)) => {
-            eprintln!("File not found: {}", path);
-            Err(Error::FileNotFound(path))
-        }
-        Err(Error::InvalidFormat(msg)) => {
-            eprintln!("Invalid format: {}", msg);
-            Err(Error::InvalidFormat(msg))
-        }
-        Err(e) => Err(e),
+fn handle_mpq_error(e: MpqError) {
+    match e {
+        MpqError::FileNotFound(name) => eprintln!("File not found: {}", name),
+        MpqError::InvalidArchive => eprintln!("Invalid MPQ archive"),
+        _ => eprintln!("MPQ error: {}", e),
     }
 }
 ```
@@ -189,25 +188,26 @@ heightmap.save("azeroth_heightmap.png")?;
 
 ## Loading Models (M2)
 
-*Note: M2 support is partially implemented - basic parsing works but animation and rendering features are still in development.*
 
 ### Basic Model Loading
 
 ```rust
-use wow_m2::{reader::M2Reader, version::M2Version};
-use std::fs::File;
-use std::io::BufReader;
+use wow_m2::{Model, version::M2Version};
 
-// Load M2 model header
-let file = File::open("Creature/Murloc/Murloc.m2")?;
-let mut reader = M2Reader::new(BufReader::new(file), M2Version::WotLK);
-let header = reader.read_header()?;
+// Load M2 model
+let model = Model::from_file("Creature/Murloc/Murloc.m2")?;
 
 println!("Model info:");
-println!("  Name: {}", header.name);
-println!("  Version: {}", header.version);
+println!("  Name: {}", model.header.name());
+println!("  Version: {:?}", model.header.version());
+println!("  Sequences: {}", model.sequences.len());
+println!("  Bones: {}", model.bones.len());
+println!("  Textures: {}", model.textures.len());
 
-// Note: Full model loading with vertices, animations, etc. is not yet complete.
+// Load associated skin file
+let skin = model.load_skin("Creature/Murloc/Murloc00.skin", 0)?;
+println!("Skin vertices: {}", skin.vertices.len());
+println!("Skin triangles: {}", skin.triangles.len() / 3);
 ```
 
 ## Loading World Data
@@ -335,27 +335,31 @@ println!("Group triangles: {}", group.movi.indices.len() / 3);
 
 ## Reading Databases (DBC)
 
-*Note: DBC support is partially implemented - basic reading works but typed access is still in development.*
 
 ### Basic DBC Reading
 
 ```rust
-use wow_dbc::{DbcReader, version::DbcVersion};
-use std::fs::File;
-use std::io::BufReader;
+use wow_cdbc::parser::DbcParser;
+use wow_cdbc::schema::Schema;
 
-// Open DBC file
-let file = File::open("DBFilesClient/Item.dbc")?;
-let mut reader = DbcReader::new(BufReader::new(file), DbcVersion::Vanilla);
-let dbc = reader.read()?;
+// Parse DBC with schema
+let schema = Schema::from_yaml_file("schemas/Item.yaml")?;
+let mut parser = DbcParser::with_schema(schema);
+let dbc = parser.parse_file("DBFilesClient/Item.dbc")?;
 
 println!("Item database:");
-println!("  Records: {}", dbc.header.record_count);
-println!("  Fields per record: {}", dbc.header.field_count);
-println!("  Record size: {} bytes", dbc.header.record_size);
+println!("  Records: {}", dbc.record_count());
+println!("  Fields per record: {}", dbc.field_count());
 
-// Note: Typed record access is not yet implemented.
-// Records must be parsed manually based on the DBC schema.
+// Export to JSON
+let json = dbc.to_json()?;
+std::fs::write("items.json", json)?;
+
+// The CLI provides extensive functionality:
+// - Schema discovery and validation
+// - Export to JSON/CSV formats
+// - Performance analysis
+// Use `warcraft-rs dbc --help` for CLI commands.
 ```
 
 ## Best Practices

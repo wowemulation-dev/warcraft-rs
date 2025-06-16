@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
-use wow_dbc::{DbcParser, FieldType, Schema, SchemaField, StringRef};
+use wow_cdbc::{DbcParser, FieldType, Schema, SchemaField, StringRef};
 
 fn create_large_test_dbc(record_count: u32) -> Vec<u8> {
     let mut data = Vec::new();
@@ -67,7 +67,7 @@ fn benchmark_parsing(c: &mut Criterion) {
                     let header = parser.header();
                     let string_block = parser.parse_records().unwrap().string_block().clone();
 
-                    black_box(wow_dbc::parse_records_parallel(
+                    black_box(wow_cdbc::parse_records_parallel(
                         data,
                         header,
                         None,

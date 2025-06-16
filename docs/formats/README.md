@@ -93,6 +93,6 @@ warcraft-mpq extract archive.mpq output/
 # Convert BLP to PNG
 warcraft-blp convert texture.blp texture.png
 
-# Dump DBC as CSV
-warcraft-dbc dump ItemCache.wdb items.csv
+# Export DBC as CSV
+warcraft-rs dbc export Spell.dbc --format csv
 ```

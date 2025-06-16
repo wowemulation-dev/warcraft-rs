@@ -212,7 +212,7 @@ Core dependencies:
 Format-specific crates:
 
 - `wow-mpq` - MPQ archives
-- `wow-dbc` - DBC databases
+- `wow-cdbc` - cDBC databases
 - `wow-blp` - BLP textures
 - `wow-m2` - M2 models
 - `wow-wmo` - WMO objects

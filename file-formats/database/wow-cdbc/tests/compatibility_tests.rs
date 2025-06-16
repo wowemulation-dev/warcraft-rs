@@ -1,7 +1,7 @@
 //! Compatibility tests to verify our DBC implementation matches WowDev standards
 
 use std::io::Cursor;
-use wow_dbc::{
+use wow_cdbc::{
     DbcHeader, DbcParser, DbcVersion, FieldType, Schema, SchemaDiscoverer, SchemaField, StringRef,
     Value, Wdb2Header,
 };

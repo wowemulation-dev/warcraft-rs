@@ -1,6 +1,6 @@
 use clap::Parser;
 use std::path::PathBuf;
-use wow_dbc::DbcParser;
+use wow_cdbc::DbcParser;
 
 #[derive(Parser)]
 #[command(name = "dbc_schema_discovery")]

@@ -14,7 +14,7 @@ members = [
   "file-formats/graphics/wow-wmo",
 
   # Database
-  "file-formats/database/wow-dbc",
+  "file-formats/database/wow-cdbc",
 
   # FFI
   "ffi/storm",

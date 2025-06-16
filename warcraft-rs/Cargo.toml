@@ -18,7 +18,7 @@ clap_complete = "4.5"
 
 # File format crates
 wow-mpq = { path = "../file-formats/archives/wow-mpq" }
-wow-dbc = { path = "../file-formats/database/wow-dbc", optional = true, features = [
+wow-cdbc = { path = "../file-formats/database/wow-cdbc", optional = true, features = [
   "cli",
   "mmap",
   "yaml",
@@ -74,7 +74,7 @@ full = [
   "yaml",
 ]
 mpq = []
-dbc = ["dep:wow-dbc"]
+dbc = ["dep:wow-cdbc"]
 blp = ["dep:wow-blp", "dep:image"]
 m2 = ["dep:wow-m2"]
 wmo = ["dep:wow-wmo"]

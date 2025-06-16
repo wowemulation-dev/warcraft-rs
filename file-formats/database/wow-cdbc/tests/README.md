@@ -1,6 +1,6 @@
-# wow-dbc Tests
+# wow-cdbc Tests
 
-This directory contains the test suite for the wow-dbc crate.
+This directory contains the test suite for the wow-cdbc crate.
 
 ## Test Structure
 
@@ -11,16 +11,16 @@ This directory contains the test suite for the wow-dbc crate.
 
 ```bash
 # Run all tests
-cargo test -p wow-dbc
+cargo test -p wow-cdbc
 
 # Run with output for debugging
-cargo test -p wow-dbc -- --nocapture
+cargo test -p wow-cdbc -- --nocapture
 
 # Run a specific test
-cargo test -p wow-dbc test_header_parsing
+cargo test -p wow-cdbc test_header_parsing
 
 # Run tests with all features enabled
-cargo test -p wow-dbc --all-features
+cargo test -p wow-cdbc --all-features
 ```
 
 ## Test Data
@@ -61,5 +61,5 @@ Some tests are marked as `#[ignore]` because they require:
 Run ignored tests with:
 
 ```bash
-cargo test -p wow-dbc -- --ignored
+cargo test -p wow-cdbc -- --ignored
 ```

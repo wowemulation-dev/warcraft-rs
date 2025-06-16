@@ -14,7 +14,7 @@
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use wow_dbc::{Confidence, DbcParser, SchemaDiscoverer};
+use wow_cdbc::{Confidence, DbcParser, SchemaDiscoverer};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use a test DBC file from the test data

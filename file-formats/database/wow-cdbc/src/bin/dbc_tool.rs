@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
-use wow_dbc::{DbcParser, FieldType, Schema, SchemaField, export_to_csv, export_to_json};
+use wow_cdbc::{DbcParser, FieldType, Schema, SchemaField, export_to_csv, export_to_json};
 
 #[derive(Parser)]
 #[command(name = "dbc_tool")]

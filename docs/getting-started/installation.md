@@ -47,7 +47,7 @@ wow-wdl = "0.1.0"    # WDL low-resolution terrain support
 wow-wdt = "0.1.0"    # WDT map definition support
 wow-wmo = "0.1.0"    # WMO world map object support
 wow-m2 = "0.1.0"     # M2 model support
-wow-dbc = "0.1.0"    # DBC database support
+wow-cdbc = "0.1.0"   # DBC database support
 ```
 
 Or use cargo add:
@@ -103,28 +103,32 @@ cargo test
 The `warcraft-rs` CLI supports feature flags to include only the formats you need:
 
 ```bash
-# Default build (MPQ only)
+# Default build (all formats included)
 cargo build --release
 
-# Build with all implemented features
+# Build with all features including extras
 cargo build --release --features full
 
-# Build with specific features
-cargo build --release --features "mpq wdl wdt"
+# Build with specific features only
+cargo build --release --no-default-features --features "mpq wdl wdt"
 cargo run --features wdt -- wdt info map.wdt
 ```
 
 Available features:
 
-- `mpq` - MPQ archive support (enabled by default)
-- `wdl` - WDL low-resolution terrain support
-- `wdt` - WDT map definition support
-- `dbc` - DBC database support
-- `blp` - BLP texture support
-- `m2` - M2 model support
-- `wmo` - WMO object support
-- `adt` - ADT terrain support
-- `full` - All available features
+- `mpq` - MPQ archive support (always available)
+- `dbc` - DBC database support (enabled by default)
+- `blp` - BLP texture support (enabled by default)
+- `m2` - M2 model support (enabled by default)
+- `wmo` - WMO object support (enabled by default)
+- `adt` - ADT terrain support (enabled by default)
+- `wdt` - WDT map definition support (enabled by default)
+- `wdl` - WDL low-resolution terrain support (enabled by default)
+- `serde` - JSON/YAML serialization support
+- `extract` - ADT data extraction features
+- `parallel` - Parallel processing support
+- `yaml` - YAML support for DBC schemas
+- `full` - All features including extras
 
 ## Platform-Specific Notes
 

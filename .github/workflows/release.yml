@@ -250,8 +250,8 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         continue-on-error: true
 
-      - name: Publish wow-dbc
-        run: cargo publish -p wow-dbc --no-verify
+      - name: Publish wow-cdbc
+        run: cargo publish -p wow-cdbc --no-verify
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         continue-on-error: true

@@ -17,7 +17,7 @@ Add the specific crates you need to your `Cargo.toml`:
 wow-mpq = "0.1.0"    # For MPQ archive support
 wow-wdt = "0.1.0"    # For WDT world table files
 wow-wdl = "0.1.0"    # For WDL low-resolution heightmaps
-wow-dbc = "0.1.0"    # For DBC database files
+wow-cdbc = "0.1.0"   # For DBC database files
 wow-blp = "0.1.0"    # For BLP textures
 # Add other crates as needed
 ```

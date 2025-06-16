@@ -3,7 +3,7 @@
 use clap::Subcommand;
 use std::fs;
 use std::path::{Path, PathBuf};
-use wow_dbc::dbd::{convert_to_yaml_schemas, parse_dbd_file};
+use wow_cdbc::dbd::{convert_to_yaml_schemas, parse_dbd_file};
 
 #[derive(Debug, Subcommand)]
 pub enum DbdCommand {

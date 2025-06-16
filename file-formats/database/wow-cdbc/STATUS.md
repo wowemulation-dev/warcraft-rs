@@ -1,4 +1,4 @@
-# wow-dbc Implementation Status
+# wow-cdbc Implementation Status
 
 This document tracks the implementation status of DBC (DataBase Client) file format support.
 

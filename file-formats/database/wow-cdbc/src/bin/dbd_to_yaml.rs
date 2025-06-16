@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Converting DBD file: {}", cli.input.display());
 
     // Parse DBD using the provided function
-    let dbd_definition = wow_dbc::dbd::parse_dbd_file(&cli.input)?;
+    let dbd_definition = wow_cdbc::dbd::parse_dbd_file(&cli.input)?;
 
     println!("Columns: {}", dbd_definition.columns.len());
     println!("Builds: {}", dbd_definition.builds.len());
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(ref comment) = column.comment {
             field.insert(
                 serde_yaml_ng::Value::String("comment".to_string()),
-                serde_yaml_ng::Value::String(comment.clone()),
+                serde_yaml_ng::Value::String(comment.to_string()),
             );
         }
 
