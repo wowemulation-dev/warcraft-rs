@@ -1,8 +1,53 @@
-// lib.rs - Main module for the ADT parser
-//
-// Based on information from:
-// - https://wowdev.wiki/ADT
-// - https://github.com/WowDevTools/libwarcraft
+//! Parser for World of Warcraft ADT (terrain) files
+//!
+//! This crate provides functionality to parse, validate, convert, and manipulate
+//! ADT (A Dungeon Terrain) files from World of Warcraft. ADT files contain
+//! terrain data including heightmaps, textures, water, and object placement
+//! information for the game's world maps.
+//!
+//! ## Supported Versions
+//!
+//! - Vanilla (1.x)
+//! - The Burning Crusade (2.x)
+//! - Wrath of the Lich King (3.x)
+//! - Cataclysm (4.x)
+//! - Mists of Pandaria (5.x)
+//!
+//! ## Features
+//!
+//! - Parse ADT files from all supported WoW versions
+//! - Convert between different ADT versions
+//! - Validate ADT file structure and data
+//! - Stream large ADT files chunk by chunk
+//! - Export terrain data to 3D model formats
+//! - Extract heightmaps, normal maps, and texture data
+//! - Merge and split ADT files
+//! - Parallel processing support (with `parallel` feature)
+//!
+//! ## Example
+//!
+//! ```no_run
+//! use wow_adt::{Adt, AdtVersion};
+//! use std::fs::File;
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Parse an ADT file
+//! let adt = Adt::from_path("Azeroth_32_48.adt")?;
+//!
+//! // Check version
+//! println!("ADT version: {}", adt.version());
+//!
+//! // Access terrain chunks
+//! println!("Number of chunks: {}", adt.mcnk_chunks().len());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## References
+//!
+//! Based on information from:
+//! - <https://wowdev.wiki/ADT>
+//! - <https://github.com/WowDevTools/libwarcraft>
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};

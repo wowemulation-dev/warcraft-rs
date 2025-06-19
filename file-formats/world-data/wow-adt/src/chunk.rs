@@ -1389,3 +1389,97 @@ impl MtfxChunk {
         Ok(Self { effects })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_chunk_header_parsing() {
+        // Create test data with magic "REVM" (MVER reversed) and size 4
+        let data = vec![0x52, 0x45, 0x56, 0x4D, 0x04, 0x00, 0x00, 0x00];
+        let mut cursor = Cursor::new(data);
+
+        let header = ChunkHeader::read(&mut cursor).unwrap();
+        assert_eq!(header.magic, [b'M', b'V', b'E', b'R']);
+        assert_eq!(header.size, 4);
+        assert_eq!(header.magic_as_string(), "MVER");
+    }
+
+    #[test]
+    fn test_chunk_header_expect_magic() {
+        let header = ChunkHeader {
+            magic: [b'M', b'V', b'E', b'R'],
+            size: 4,
+        };
+
+        // Should succeed with correct magic
+        assert!(header.expect_magic(b"MVER").is_ok());
+
+        // Should fail with incorrect magic
+        assert!(header.expect_magic(b"MHDR").is_err());
+    }
+
+    #[test]
+    fn test_mver_chunk_parsing() {
+        // Create test data: magic "REVM" (reversed), size 4, version 18
+        let data = vec![
+            0x52, 0x45, 0x56, 0x4D, // REVM (MVER reversed)
+            0x04, 0x00, 0x00, 0x00, // size = 4
+            0x12, 0x00, 0x00, 0x00, // version = 18
+        ];
+        let mut cursor = Cursor::new(data);
+
+        let mver = MverChunk::read(&mut cursor).unwrap();
+        assert_eq!(mver.version, 18);
+    }
+
+    #[test]
+    fn test_empty_adt_creation() {
+        // Test that we can create basic chunk structures
+        let header = ChunkHeader {
+            magic: [b'M', b'V', b'E', b'R'],
+            size: 4,
+        };
+        assert_eq!(header.magic_as_string(), "MVER");
+        assert_eq!(header.size, 4);
+    }
+
+    #[test]
+    fn test_version_to_string() {
+        assert_eq!(AdtVersion::Vanilla.to_string(), "Vanilla (1.x)");
+        assert_eq!(AdtVersion::TBC.to_string(), "The Burning Crusade (2.x)");
+        assert_eq!(
+            AdtVersion::WotLK.to_string(),
+            "Wrath of the Lich King (3.x)"
+        );
+        assert_eq!(AdtVersion::Cataclysm.to_string(), "Cataclysm (4.x)");
+        assert_eq!(AdtVersion::MoP.to_string(), "Mists of Pandaria (5.x)");
+    }
+
+    #[test]
+    fn test_version_detection() {
+        // Test version detection using static logic
+        let version_vanilla = AdtVersion::detect_from_chunks(false, false, false, false);
+        assert_eq!(version_vanilla, AdtVersion::Vanilla);
+
+        let version_tbc = AdtVersion::detect_from_chunks(true, false, false, false);
+        assert_eq!(version_tbc, AdtVersion::TBC);
+
+        let version_wotlk = AdtVersion::detect_from_chunks(false, true, false, false);
+        assert_eq!(version_wotlk, AdtVersion::WotLK);
+
+        let version_cata = AdtVersion::detect_from_chunks(false, false, true, false);
+        assert_eq!(version_cata, AdtVersion::Cataclysm);
+    }
+
+    #[test]
+    fn test_version_comparison() {
+        assert!(AdtVersion::Vanilla < AdtVersion::TBC);
+        assert!(AdtVersion::TBC < AdtVersion::WotLK);
+        assert!(AdtVersion::WotLK < AdtVersion::Cataclysm);
+        assert!(AdtVersion::Cataclysm < AdtVersion::MoP);
+        assert!(AdtVersion::MoP <= AdtVersion::MoP);
+    }
+}

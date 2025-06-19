@@ -30,6 +30,11 @@ env_logger = { workspace = true }
 tempfile = { workspace = true }
 test-log = "0.2"
 pretty_assertions = { workspace = true }
+criterion = { workspace = true }
 
 [features]
 default = []
+
+[[bench]]
+name = "parser_benchmark"
+harness = false

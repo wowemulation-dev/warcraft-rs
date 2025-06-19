@@ -31,3 +31,7 @@ extract = ["dep:image"]
 parallel = ["dep:rayon"]
 mmap = ["dep:memmap2"]
 image = ["dep:image"]
+
+[[bench]]
+name = "parser_benchmark"
+harness = false

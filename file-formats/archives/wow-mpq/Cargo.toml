@@ -30,7 +30,7 @@ num-traits = "0.2"
 
 # Compression algorithms
 flate2 = "1.1"
-bzip2 = "0.5"
+bzip2 = "0.6"
 lzma-rs = "0.3"
 pklib = "0.1"
 

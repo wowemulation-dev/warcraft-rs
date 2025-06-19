@@ -26,6 +26,7 @@ serde_json = { workspace = true, optional = true }
 [dev-dependencies]
 tempfile = { workspace = true }
 pretty_assertions = "1.4"
+criterion = { workspace = true }
 
 [features]
 default = []
@@ -34,3 +35,7 @@ serde = ["dep:serde", "dep:serde_json"]
 [lib]
 name = "wow_wdt"
 path = "src/lib.rs"
+
+[[bench]]
+name = "parser_benchmark"
+harness = false

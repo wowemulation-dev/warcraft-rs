@@ -96,3 +96,128 @@ impl std::fmt::Display for AdtVersion {
         write!(f, "{}", s)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mver_parsing() {
+        // Valid version (18)
+        assert!(matches!(AdtVersion::from_mver(18), Ok(AdtVersion::Vanilla)));
+
+        // Invalid version
+        assert!(AdtVersion::from_mver(19).is_err());
+        assert!(AdtVersion::from_mver(0).is_err());
+        assert!(AdtVersion::from_mver(99).is_err());
+    }
+
+    #[test]
+    fn test_mver_value() {
+        // All versions should return 18
+        assert_eq!(AdtVersion::Vanilla.to_mver_value(), 18);
+        assert_eq!(AdtVersion::TBC.to_mver_value(), 18);
+        assert_eq!(AdtVersion::WotLK.to_mver_value(), 18);
+        assert_eq!(AdtVersion::Cataclysm.to_mver_value(), 18);
+        assert_eq!(AdtVersion::MoP.to_mver_value(), 18);
+        assert_eq!(AdtVersion::Legion.to_mver_value(), 18);
+    }
+
+    #[test]
+    fn test_version_detection() {
+        // Vanilla - no special chunks
+        assert_eq!(
+            AdtVersion::detect_from_chunks(false, false, false, false),
+            AdtVersion::Vanilla
+        );
+
+        // TBC - has MFBO
+        assert_eq!(
+            AdtVersion::detect_from_chunks(true, false, false, false),
+            AdtVersion::TBC
+        );
+
+        // WotLK - has MH2O
+        assert_eq!(
+            AdtVersion::detect_from_chunks(false, true, false, false),
+            AdtVersion::WotLK
+        );
+
+        // WotLK - has MCCV
+        assert_eq!(
+            AdtVersion::detect_from_chunks(false, false, false, true),
+            AdtVersion::WotLK
+        );
+
+        // Cataclysm - has MTFX
+        assert_eq!(
+            AdtVersion::detect_from_chunks(false, false, true, false),
+            AdtVersion::Cataclysm
+        );
+
+        // Cataclysm - has all chunks
+        assert_eq!(
+            AdtVersion::detect_from_chunks(true, true, true, true),
+            AdtVersion::Cataclysm
+        );
+    }
+
+    #[test]
+    fn test_version_comparison() {
+        assert!(AdtVersion::Vanilla < AdtVersion::TBC);
+        assert!(AdtVersion::TBC < AdtVersion::WotLK);
+        assert!(AdtVersion::WotLK < AdtVersion::Cataclysm);
+        assert!(AdtVersion::Cataclysm < AdtVersion::MoP);
+        assert!(AdtVersion::MoP < AdtVersion::WoD);
+        assert!(AdtVersion::WoD < AdtVersion::Legion);
+        assert!(AdtVersion::Legion < AdtVersion::BfA);
+        assert!(AdtVersion::BfA < AdtVersion::Shadowlands);
+        assert!(AdtVersion::Shadowlands < AdtVersion::Dragonflight);
+
+        // Test equality
+        assert_eq!(AdtVersion::Vanilla, AdtVersion::Vanilla);
+        assert_eq!(AdtVersion::Legion, AdtVersion::Legion);
+    }
+
+    #[test]
+    fn test_version_to_string() {
+        assert_eq!(AdtVersion::Vanilla.to_string(), "Vanilla (1.x)");
+        assert_eq!(AdtVersion::TBC.to_string(), "The Burning Crusade (2.x)");
+        assert_eq!(
+            AdtVersion::WotLK.to_string(),
+            "Wrath of the Lich King (3.x)"
+        );
+        assert_eq!(AdtVersion::Cataclysm.to_string(), "Cataclysm (4.x)");
+        assert_eq!(AdtVersion::MoP.to_string(), "Mists of Pandaria (5.x)");
+        assert_eq!(AdtVersion::WoD.to_string(), "Warlords of Draenor (6.x)");
+        assert_eq!(AdtVersion::Legion.to_string(), "Legion (7.x)");
+        assert_eq!(AdtVersion::BfA.to_string(), "Battle for Azeroth (8.x)");
+        assert_eq!(AdtVersion::Shadowlands.to_string(), "Shadowlands (9.x)");
+        assert_eq!(AdtVersion::Dragonflight.to_string(), "Dragonflight (10.x)");
+    }
+
+    #[test]
+    fn test_version_ordering() {
+        let versions = vec![
+            AdtVersion::Dragonflight,
+            AdtVersion::Vanilla,
+            AdtVersion::Legion,
+            AdtVersion::TBC,
+            AdtVersion::Cataclysm,
+        ];
+
+        let mut sorted = versions.clone();
+        sorted.sort();
+
+        assert_eq!(
+            sorted,
+            vec![
+                AdtVersion::Vanilla,
+                AdtVersion::TBC,
+                AdtVersion::Cataclysm,
+                AdtVersion::Legion,
+                AdtVersion::Dragonflight,
+            ]
+        );
+    }
+}
