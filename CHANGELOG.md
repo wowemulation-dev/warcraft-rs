@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Project-wide**: Comprehensive reorganization of tests and examples for better maintainability
+- **wow-mpq**: Consolidated examples from 50+ to 15 focused demonstrations
+- **wow-mpq**: Enhanced `create_archive.rs` example with comprehensive functionality (basic creation, compression, encryption, attributes, version comparison)
+- **wow-mpq**: Merged 7 patch chain examples into single comprehensive `wow_patch_chains.rs` 
+- **wow-mpq**: Moved test-like examples (e.g., `test_*_files_comprehensive.rs`) to proper test directories
+- **All crates**: Standardized test organization following wow-mpq structure:
+  - `component/` - Unit tests for individual components
+  - `integration/` - Integration tests for complete workflows
+  - `scenarios/` - Real-world usage scenarios
+  - `compliance/` - Compatibility and compliance tests
+- **All crates**: Updated test README files to reflect new organization
+- **Examples**: Improved documentation with clear categories (Beginners, Modding, Advanced)
+
+### Removed
+
+- **wow-mpq**: Removed redundant examples: `patch_chain_demo.rs`, `wotlk_patch_chain_demo.rs`, `tbc_patch_chain_demo.rs`, `cata_patch_chain_demo.rs`, `mop_patch_chain_demo.rs`, `patch_chain_dbc_demo.rs`
+- **wow-mpq**: Removed specialized examples: `create_archive_with_attributes.rs`, `create_comparison_archives.rs`, `create_encrypted_archive.rs`, `create_compressed_tables.rs`
+- **wow-mpq**: Removed development-focused examples: `analyze_blizzard_attributes.rs`, `analyze_v4_header.rs`, `generate_test_data.rs`, `comprehensive_archive_verification.rs`, etc.
+
 ## [0.1.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.1.0) - 2025-06-13
 
 ### Added

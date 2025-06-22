@@ -1,7 +1,16 @@
-//! Example of creating MPQ archives
+//! Comprehensive examples of creating MPQ archives
+//!
+//! This example demonstrates:
+//! - Basic archive creation
+//! - Files from disk
+//! - Custom compression and encryption
+//! - Attributes file generation
+//! - Different MPQ versions
 
 use std::fs;
-use wow_mpq::{Archive, ArchiveBuilder, FormatVersion, ListfileOption, compression::flags};
+use wow_mpq::{
+    Archive, ArchiveBuilder, AttributesOption, FormatVersion, ListfileOption, compression::flags,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Simple archive creation
@@ -86,9 +95,93 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Example 5: Archive with attributes file
+    println!("\nCreating archive with attributes file...");
+
+    ArchiveBuilder::new()
+        .version(FormatVersion::V2)
+        .listfile_option(ListfileOption::Generate)
+        .attributes_option(AttributesOption::GenerateFull) // CRC32 + MD5 + timestamp
+        .default_compression(flags::ZLIB)
+        .add_file_data(b"Test data with attributes".to_vec(), "test.txt")
+        .add_file_data(b"Binary data".to_vec(), "data/binary.dat")
+        .build("with_attributes.mpq")?;
+
+    println!("Created with_attributes.mpq");
+
+    // Example 6: Different versions comparison
+    println!("\nCreating archives in different MPQ versions...");
+
+    let test_data = vec![
+        (
+            "version_test.txt",
+            b"Same content in all versions".as_slice(),
+        ),
+        ("data/test.bin", &[0x01, 0x02, 0x03, 0x04]),
+    ];
+
+    for (version, name) in [
+        (FormatVersion::V1, "v1_archive.mpq"),
+        (FormatVersion::V2, "v2_archive.mpq"),
+        (FormatVersion::V3, "v3_archive.mpq"),
+        (FormatVersion::V4, "v4_archive.mpq"),
+    ] {
+        let mut builder = ArchiveBuilder::new()
+            .version(version)
+            .listfile_option(ListfileOption::Generate);
+
+        for (filename, content) in &test_data {
+            builder = builder.add_file_data(content.to_vec(), filename);
+        }
+
+        builder.build(name)?;
+        println!("  Created {} (version {:?})", name, version);
+    }
+
+    // Verification of all created archives
+    let all_archives = [
+        "simple.mpq",
+        "from_files.mpq",
+        "custom.mpq",
+        "with_attributes.mpq",
+        "v1_archive.mpq",
+        "v2_archive.mpq",
+        "v3_archive.mpq",
+        "v4_archive.mpq",
+    ];
+
+    println!("\nFinal verification of all archives:");
+    for archive_name in &all_archives {
+        match Archive::open(archive_name) {
+            Ok(mut archive) => match archive.get_info() {
+                Ok(info) => {
+                    println!(
+                        "  {} - Format: {:?}, Files: {}, Size: {} KB",
+                        archive_name,
+                        info.format_version,
+                        info.file_count,
+                        info.file_size / 1024
+                    );
+                }
+                Err(_) => {
+                    println!("  {} - Could not get archive info", archive_name);
+                }
+            },
+            Err(e) => {
+                println!("  {} - Error: {}", archive_name, e);
+            }
+        }
+    }
+
     // Cleanup
     fs::remove_dir_all("test_files").ok();
     fs::remove_file("custom_list.txt").ok();
+
+    println!(
+        "\nExample complete! Created {} archives demonstrating different features.",
+        all_archives.len()
+    );
+    println!("Archives can be cleaned up manually if desired.");
 
     Ok(())
 }

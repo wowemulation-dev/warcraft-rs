@@ -85,56 +85,48 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
-name = "patch_chain_demo"
-required-features = ["test-utils"]
+name = "analyze_attributes"
 
 [[example]]
-name = "wow_patch_chains"
+name = "bulk_modify"
 
 [[example]]
-name = "patch_chain_dbc_demo"
+name = "compare_archives"
+
+[[example]]
+name = "create_archive"
+
+[[example]]
+name = "create_test_mpq"
+
+[[example]]
+name = "cross_compatibility_test"
+
+[[example]]
+name = "full_stormlib_compat_test"
+
+[[example]]
+name = "hash_algorithms_demo"
+
+[[example]]
+name = "list_archive_contents"
+
+[[example]]
+name = "modify_archive"
 
 [[example]]
 name = "patch_analysis"
 
 [[example]]
-name = "tbc_patch_chain_demo"
-
-[[example]]
-name = "tbc_patch_analysis"
-
-[[example]]
-name = "wotlk_patch_chain_demo"
-
-[[example]]
-name = "cata_patch_chain_demo"
-
-[[example]]
-name = "mop_patch_chain_demo"
-
-[[example]]
 name = "signature_demo"
 
 [[example]]
-name = "comprehensive_archive_verification"
-required-features = ["test-utils"]
+name = "simple_list"
 
 [[example]]
 name = "verify_wow_files"
 required-features = ["test-utils"]
 
 [[example]]
-name = "test_cataclysm_files_comprehensive"
-required-features = ["test-utils"]
-
-[[example]]
-name = "test_tbc_files_comprehensive"
-required-features = ["test-utils"]
-
-[[example]]
-name = "test_wotlk_files_comprehensive"
-required-features = ["test-utils"]
-
-[[example]]
-name = "test_mop_files_comprehensive"
+name = "wow_patch_chains"
 required-features = ["test-utils"]

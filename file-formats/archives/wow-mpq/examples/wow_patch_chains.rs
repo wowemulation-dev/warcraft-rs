@@ -1,7 +1,16 @@
 //! Demonstrates the correct MPQ archive loading order for different WoW versions
 //! Based on the official client loading order used by TrinityCore
+//!
+//! This example consolidates all patch chain functionality and demonstrates:
+//! - Correct loading priorities for each WoW version
+//! - File resolution through patch chains
+//! - Version-specific archive structures
+//!
+//! Usage:
+//!     cargo run --example wow_patch_chains
 
 use std::path::Path;
+use wow_mpq::test_utils::{WowVersion, find_wow_data, print_setup_instructions};
 use wow_mpq::{PatchChain, Result};
 
 /// Priority constants that match WoW's internal loading order
@@ -495,50 +504,84 @@ fn main() -> Result<()> {
     println!("based on TrinityCore's implementation and official client behavior.");
     println!();
 
-    // You can change these paths to match your WoW installations
     let locale = "enUS"; // Change to your locale: enUS, deDE, frFR, etc.
 
-    // Example for each version (uncomment the one you want to test)
+    // Try to find and demonstrate each WoW version
+    let versions = [
+        (
+            WowVersion::Vanilla,
+            "1.12.1",
+            "/home/danielsreichenbach/Downloads/wow/1.12.1/Data",
+        ),
+        (
+            WowVersion::Tbc,
+            "2.4.3",
+            "/home/danielsreichenbach/Downloads/wow/2.4.3/Data",
+        ),
+        (
+            WowVersion::Wotlk,
+            "3.3.5a",
+            "/home/danielsreichenbach/Downloads/wow/3.3.5a/Data",
+        ),
+        (
+            WowVersion::Cata,
+            "4.3.4",
+            "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data",
+        ),
+        (
+            WowVersion::Mop,
+            "5.4.8",
+            "/home/danielsreichenbach/Downloads/wow/5.4.8/5.4.8/Data",
+        ),
+    ];
 
-    // WoW 1.12.1
-    if let Ok(mut chain) = setup_vanilla_1_12_1(
-        Path::new("/home/danielsreichenbach/Downloads/wow/1.12.1/Data"),
-        locale,
-    ) {
-        demonstrate_patch_chain(&mut chain)?;
+    let mut found_any = false;
+
+    for (version, version_str, hardcoded_path) in &versions {
+        // Try to find data using test utils first, then fallback to hardcoded path
+        let data_path = find_wow_data(*version).or_else(|| {
+            let path = Path::new(hardcoded_path);
+            if path.exists() {
+                Some(path.to_path_buf())
+            } else {
+                None
+            }
+        });
+
+        if let Some(path) = data_path {
+            found_any = true;
+            println!("\n{}", "=".repeat(60));
+            println!("WoW {} Demo", version_str);
+            println!("{}", "=".repeat(60));
+            println!("Data path: {}", path.display());
+            println!();
+
+            let result = match version {
+                WowVersion::Vanilla => setup_vanilla_1_12_1(&path, locale),
+                WowVersion::Tbc => setup_tbc_2_4_3(&path, locale),
+                WowVersion::Wotlk => setup_wotlk_3_3_5a(&path, locale),
+                WowVersion::Cata => setup_cata_4_3_4(&path, locale),
+                WowVersion::Mop => setup_mop_5_4_8(&path, locale),
+            };
+
+            match result {
+                Ok(mut chain) => {
+                    demonstrate_patch_chain(&mut chain)?;
+                }
+                Err(e) => {
+                    println!("Error setting up patch chain: {}", e);
+                }
+            }
+        }
     }
 
-    // WoW 2.4.3
-    // if let Ok(mut chain) = setup_tbc_2_4_3(
-    //     Path::new("/home/danielsreichenbach/Downloads/wow/2.4.3/Data"),
-    //     locale
-    // ) {
-    //     demonstrate_patch_chain(&mut chain)?;
-    // }
-
-    // WoW 3.3.5a
-    // if let Ok(mut chain) = setup_wotlk_3_3_5a(
-    //     Path::new("/home/danielsreichenbach/Downloads/wow/3.3.5a/Data"),
-    //     locale
-    // ) {
-    //     demonstrate_patch_chain(&mut chain)?;
-    // }
-
-    // WoW 4.3.4
-    // if let Ok(mut chain) = setup_cata_4_3_4(
-    //     Path::new("/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data"),
-    //     locale
-    // ) {
-    //     demonstrate_patch_chain(&mut chain)?;
-    // }
-
-    // WoW 5.4.8
-    // if let Ok(mut chain) = setup_mop_5_4_8(
-    //     Path::new("/home/danielsreichenbach/Downloads/wow/5.4.8/5.4.8/Data"),
-    //     locale
-    // ) {
-    //     demonstrate_patch_chain(&mut chain)?;
-    // }
+    if !found_any {
+        println!("No WoW data found!");
+        println!();
+        print_setup_instructions();
+        println!();
+        println!("Note: You can also set hardcoded paths in this example file.");
+    }
 
     Ok(())
 }

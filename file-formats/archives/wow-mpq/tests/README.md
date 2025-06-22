@@ -39,9 +39,18 @@ Compatibility and compliance tests:
 
 Real-world usage scenarios:
 
-- **real_world/** - Tests with actual game data patterns
+- **real_world/** - Tests with actual game data patterns (includes comprehensive WoW version tests moved from examples)
 - **round_trip/** - Read/write/read verification
 - **stress/** - Edge cases and stress testing
+
+**Recent additions** (moved from examples):
+- `all_wow_versions_comprehensive.rs` - Cross-version testing
+- `cataclysm_files_comprehensive.rs` - Cataclysm-specific tests
+- `mop_files_comprehensive.rs` - Mists of Pandaria tests  
+- `tbc_files_comprehensive.rs` - Burning Crusade tests
+- `wotlk_files_comprehensive.rs` - Wrath of the Lich King tests
+- `archive_structure_analysis.rs` - Deep archive analysis
+- `specific_files.rs` - Individual file testing
 
 ## Running Tests
 

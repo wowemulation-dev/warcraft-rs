@@ -4,12 +4,22 @@ This directory contains tests for the wow-blp crate.
 
 ## Test Structure
 
-### Integration Tests
+Following the standardized test organization:
 
-- `integration_tests.rs` - High-level tests for BLP functionality
+### `/component`
+Unit tests for individual components (when added)
+
+### `/integration`
+- `format_tests.rs` - High-level tests for BLP functionality
   - Round-trip conversion tests
   - Format compatibility tests
   - Error handling tests
+
+### `/scenarios`
+Real-world usage scenarios (when added)
+
+### `/compliance`
+Compatibility and compliance tests (when added)
 
 ## Running Tests
 
