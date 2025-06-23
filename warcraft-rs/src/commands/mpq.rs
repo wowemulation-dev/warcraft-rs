@@ -5,7 +5,7 @@ use clap::{Subcommand, ValueEnum};
 use std::fs;
 use std::path::Path;
 use wow_mpq::{
-    Archive, ArchiveBuilder, FormatVersion, RebuildOptions,
+    Archive, ArchiveBuilder, FormatVersion, PatchChain, RebuildOptions,
     compare_archives as mpq_compare_archives, path::mpq_path_to_system, rebuild_archive,
 };
 
@@ -89,6 +89,10 @@ pub enum MpqCommands {
         /// Preserve directory structure
         #[arg(short, long)]
         preserve_paths: bool,
+
+        /// Patch archives to apply (in order of priority)
+        #[arg(long = "patch", action = clap::ArgAction::Append)]
+        patches: Vec<String>,
     },
 
     /// Create a new MPQ archive
@@ -226,7 +230,8 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             output,
             files,
             preserve_paths,
-        } => extract_files(&archive, &output, files, preserve_paths),
+            patches,
+        } => extract_files(&archive, &output, files, preserve_paths, patches),
         MpqCommands::Create {
             archive,
             add,
@@ -357,68 +362,152 @@ fn extract_files(
     output_dir: &str,
     files: Vec<String>,
     preserve_paths: bool,
+    patches: Vec<String>,
 ) -> Result<()> {
-    let spinner = create_spinner("Opening archive...");
-    let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
-    spinner.finish_and_clear();
+    if patches.is_empty() {
+        // Use original single-archive logic if no patches
+        let spinner = create_spinner("Opening archive...");
+        let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
+        spinner.finish_and_clear();
 
-    let (files_to_extract, file_entries) = if files.is_empty() {
-        let entries = archive.list()?;
-        let filenames = entries.iter().map(|e| e.name.clone()).collect();
-        (filenames, Some(entries))
-    } else {
-        (files, None)
-    };
+        let (files_to_extract, file_entries) = if files.is_empty() {
+            let entries = archive.list()?;
+            let filenames = entries.iter().map(|e| e.name.clone()).collect();
+            (filenames, Some(entries))
+        } else {
+            (files, None)
+        };
 
-    let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
+        let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
 
-    for (i, file) in files_to_extract.iter().enumerate() {
-        pb.set_message(format!("Extracting: {}", file));
+        for (i, file) in files_to_extract.iter().enumerate() {
+            pb.set_message(format!("Extracting: {}", file));
 
-        let data_result = if let Some(ref entries) = file_entries {
-            // Use table indices for direct access when available
-            if let Some(entry) = entries.get(i) {
-                if let Some((hash_index, block_index)) = entry.table_indices {
-                    archive.read_file_by_indices(hash_index, block_index)
+            let data_result = if let Some(ref entries) = file_entries {
+                // Use table indices for direct access when available
+                if let Some(entry) = entries.get(i) {
+                    if let Some((hash_index, block_index)) = entry.table_indices {
+                        archive.read_file_by_indices(hash_index, block_index)
+                    } else {
+                        archive.read_file(file)
+                    }
                 } else {
                     archive.read_file(file)
                 }
             } else {
+                // Fall back to filename-based access
                 archive.read_file(file)
-            }
-        } else {
-            // Fall back to filename-based access
-            archive.read_file(file)
-        };
+            };
 
-        match data_result {
-            Ok(data) => {
-                let output_path = if preserve_paths {
-                    // Convert MPQ path separators to system path separators
-                    let system_path = mpq_path_to_system(file);
-                    Path::new(output_dir).join(system_path)
-                } else {
-                    // Convert MPQ path to system path, then extract just the filename
-                    let system_path = mpq_path_to_system(file);
-                    let filename = Path::new(&system_path).file_name().unwrap_or_default();
-                    Path::new(output_dir).join(filename)
-                };
+            match data_result {
+                Ok(data) => {
+                    let output_path = if preserve_paths {
+                        // Convert MPQ path separators to system path separators
+                        let system_path = mpq_path_to_system(file);
+                        Path::new(output_dir).join(system_path)
+                    } else {
+                        // Convert MPQ path to system path, then extract just the filename
+                        let system_path = mpq_path_to_system(file);
+                        let filename = Path::new(&system_path).file_name().unwrap_or_default();
+                        Path::new(output_dir).join(filename)
+                    };
 
-                if let Some(parent) = output_path.parent() {
-                    fs::create_dir_all(parent)?;
+                    if let Some(parent) = output_path.parent() {
+                        fs::create_dir_all(parent)?;
+                    }
+
+                    fs::write(&output_path, data)?;
                 }
+                Err(e) => {
+                    log::warn!("Failed to extract {}: {}", file, e);
+                }
+            }
 
-                fs::write(&output_path, data)?;
-            }
-            Err(e) => {
-                log::warn!("Failed to extract {}: {}", file, e);
-            }
+            pb.inc(1);
         }
 
-        pb.inc(1);
+        pb.finish_with_message("Extraction complete");
+    } else {
+        // Use patch chain logic
+        let spinner = create_spinner("Building patch chain...");
+        let mut chain = PatchChain::new();
+
+        // Add base archive with priority 0
+        chain
+            .add_archive(archive_path, 0)
+            .context("Failed to add base archive to patch chain")?;
+
+        // Add patch archives with increasing priority
+        for (index, patch_path) in patches.iter().enumerate() {
+            let priority = (index + 1) * 100;
+            chain
+                .add_archive(patch_path, priority as i32)
+                .with_context(|| format!("Failed to add patch archive: {}", patch_path))?;
+        }
+
+        spinner.finish_and_clear();
+
+        println!("Patch chain built with {} archives", chain.archive_count());
+
+        let files_to_extract = if files.is_empty() {
+            // Get all files from the chain
+            let entries = chain.list()?;
+            entries.into_iter().map(|e| e.name).collect()
+        } else {
+            files
+        };
+
+        let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
+
+        for file in files_to_extract.iter() {
+            pb.set_message(format!("Extracting: {}", file));
+
+            match chain.read_file(file) {
+                Ok(data) => {
+                    let output_path = if preserve_paths {
+                        // Convert MPQ path separators to system path separators
+                        let system_path = mpq_path_to_system(file);
+                        Path::new(output_dir).join(system_path)
+                    } else {
+                        // Convert MPQ path to system path, then extract just the filename
+                        let system_path = mpq_path_to_system(file);
+                        let filename = Path::new(&system_path).file_name().unwrap_or_default();
+                        Path::new(output_dir).join(filename)
+                    };
+
+                    if let Some(parent) = output_path.parent() {
+                        fs::create_dir_all(parent)?;
+                    }
+
+                    fs::write(&output_path, data)?;
+
+                    // Show which archive the file came from
+                    if let Some(source) = chain.find_file_archive(file) {
+                        log::debug!("Extracted {} from {}", file, source.display());
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to extract {}: {}", file, e);
+                }
+            }
+
+            pb.inc(1);
+        }
+
+        pb.finish_with_message("Extraction complete");
+
+        // Show patch chain info
+        println!("\nPatch chain info:");
+        for info in chain.get_chain_info() {
+            println!(
+                "  {} (priority {}, {} files)",
+                info.path.display(),
+                info.priority,
+                info.file_count
+            );
+        }
     }
 
-    pb.finish_with_message("Extraction complete");
     Ok(())
 }
 

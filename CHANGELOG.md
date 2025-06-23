@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **warcraft-rs CLI**: Added `--patch` parameter to `mpq extract` command for patch chain support
+- **warcraft-rs CLI**: Multiple patch archives can be specified with repeated `--patch` flags
+- **warcraft-rs CLI**: Patch archives are applied in order with increasing priority (100, 200, 300, etc.)
+- **warcraft-rs CLI**: Shows patch chain info after extraction including which archive each file came from
+
 ### Changed
 
 - **Project-wide**: Comprehensive reorganization of tests and examples for better maintainability
@@ -21,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `compliance/` - Compatibility and compliance tests
 - **All crates**: Updated test README files to reflect new organization
 - **Examples**: Improved documentation with clear categories (Beginners, Modding, Advanced)
+- **deny.toml**: Added MPL-2.0 and bzip2-1.0.6 to allowed licenses for cbindgen and libbz2-rs-sys dependencies
+- **deny.toml**: Added exceptions for RUSTSEC-2023-0071 (rsa timing attack - local use only) and windows-link yanked version
 
 ### Removed
 
