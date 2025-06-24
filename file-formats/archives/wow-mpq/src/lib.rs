@@ -90,6 +90,8 @@ pub mod tables;
 #[cfg(any(test, feature = "test-utils", doc))]
 pub mod test_utils;
 
+pub mod debug;
+
 // Re-export commonly used types
 pub use archive::{
     Archive, ArchiveInfo, FileEntry, FileInfo, Md5Status, OpenOptions, SignatureStatus, TableInfo,

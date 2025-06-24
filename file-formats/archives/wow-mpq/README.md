@@ -157,6 +157,56 @@ let signature = generate_weak_signature(
 )?;
 ```
 
+### Debug Utilities
+
+The crate includes comprehensive debug utilities for analyzing MPQ archives (requires `debug-utils` feature):
+
+```rust
+use wow_mpq::{Archive, debug};
+
+// Enable the feature in Cargo.toml:
+// wow-mpq = { version = "0.1.0", features = ["debug-utils"] }
+
+let mut archive = Archive::open("example.mpq")?;
+
+// Dump archive structure and metadata
+debug::dump_archive_structure(&mut archive)?;
+
+// Analyze compression methods used
+debug::analyze_compression_methods(&mut archive)?;
+
+// Dump table contents (hash table, block table)
+debug::dump_hash_table(&archive)?;
+debug::dump_block_table(&archive)?;
+
+// Trace file extraction with detailed debugging
+let config = debug::ExtractionTraceConfig {
+    show_raw_data: true,
+    show_decryption: true,
+    show_decompression: true,
+    max_raw_bytes: 256,
+};
+debug::trace_file_extraction(&mut archive, "example.txt", &config)?;
+
+// Create hex dumps of binary data
+let data = archive.read_file("binary.dat")?;
+let hex_config = debug::HexDumpConfig::default();
+println!("{}", debug::hex_dump(&data, &hex_config));
+```
+
+Run the debug example to analyze any MPQ archive:
+
+```bash
+# Basic analysis
+cargo run --example debug_archive --features debug-utils -- archive.mpq
+
+# Trace specific file extraction
+cargo run --example debug_archive --features debug-utils -- archive.mpq "(listfile)"
+
+# Show detailed table dumps
+SHOW_TABLES=1 cargo run --example debug_archive --features debug-utils -- archive.mpq
+```
+
 ## Performance
 
 The crate includes comprehensive benchmarks showing excellent performance:
@@ -175,6 +225,7 @@ The crate includes numerous examples demonstrating real-world usage:
 - `wotlk_patch_chain_demo` - Complete WotLK patch handling
 - `patch_analysis` - Analyze patch archive contents
 - `signature_demo` - Digital signature generation and verification
+- `debug_archive` - Debug utilities for analyzing MPQ internals
 - And many more...
 
 Run examples with:

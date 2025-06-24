@@ -358,8 +358,24 @@ impl MclqSubchunk {
         let y_vertices = context.reader.read_u32_le()?;
         let base_height = context.reader.read_f32_le()?;
 
-        // Calculate number of vertices
-        let vertex_count = (x_vertices * y_vertices) as usize;
+        // Calculate number of vertices with overflow check
+        let vertex_count = (x_vertices as usize)
+            .checked_mul(y_vertices as usize)
+            .ok_or_else(|| {
+                AdtError::ParseError(format!(
+                    "Vertex count overflow: {} * {}",
+                    x_vertices, y_vertices
+                ))
+            })?;
+
+        // Sanity check - liquid layers shouldn't have more than 9x9 vertices typically
+        if vertex_count > 10000 {
+            return Err(AdtError::ParseError(format!(
+                "Unreasonable vertex count for liquid layer: {} ({}x{})",
+                vertex_count, x_vertices, y_vertices
+            )));
+        }
+
         let mut vertices = Vec::with_capacity(vertex_count);
 
         for _ in 0..vertex_count {

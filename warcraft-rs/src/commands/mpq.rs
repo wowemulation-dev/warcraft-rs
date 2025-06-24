@@ -6,7 +6,13 @@ use std::fs;
 use std::path::Path;
 use wow_mpq::{
     Archive, ArchiveBuilder, FormatVersion, PatchChain, RebuildOptions,
-    compare_archives as mpq_compare_archives, path::mpq_path_to_system, rebuild_archive,
+    compare_archives as mpq_compare_archives,
+    debug::{
+        HexDumpConfig, dump_block_entry, dump_hash_entry, format_bet_table, format_block_table,
+        format_hash_table, format_het_table, hex_dump,
+    },
+    path::mpq_path_to_system,
+    rebuild_archive,
 };
 
 use crate::utils::{
@@ -216,6 +222,44 @@ pub enum MpqCommands {
         #[arg(short, long)]
         filter: Option<String>,
     },
+
+    /// Debug MPQ archive internals
+    Debug {
+        /// Path to the MPQ archive
+        archive: String,
+
+        /// Show hash table entries
+        #[arg(long)]
+        hash_table: bool,
+
+        /// Show block table entries
+        #[arg(long)]
+        block_table: bool,
+
+        /// Show HET table (if present)
+        #[arg(long)]
+        het_table: bool,
+
+        /// Show BET table (if present)
+        #[arg(long)]
+        bet_table: bool,
+
+        /// Show specific entry by index
+        #[arg(long)]
+        entry: Option<usize>,
+
+        /// Find and show entries for a specific file
+        #[arg(long)]
+        find: Option<String>,
+
+        /// Show raw hex dump of table data
+        #[arg(long)]
+        raw: bool,
+
+        /// Show all tables
+        #[arg(long)]
+        all: bool,
+    },
 }
 
 pub fn execute(command: MpqCommands) -> Result<()> {
@@ -305,6 +349,26 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             compact,
             filter,
         ),
+        MpqCommands::Debug {
+            archive,
+            hash_table,
+            block_table,
+            het_table,
+            bet_table,
+            entry,
+            find,
+            raw,
+            all,
+        } => debug_archive(DebugParams {
+            archive_path: &archive,
+            show_hash_table: hash_table || all,
+            show_block_table: block_table || all,
+            show_het_table: het_table || all,
+            show_bet_table: bet_table || all,
+            entry_index: entry,
+            find_file: find,
+            raw_dump: raw,
+        }),
     }
 }
 
@@ -566,7 +630,7 @@ fn create_archive(
     Ok(())
 }
 
-fn show_info(path: &str, show_hash_table: bool, show_block_table: bool) -> Result<()> {
+fn show_info(path: &str, include_hash_table: bool, include_block_table: bool) -> Result<()> {
     let spinner = create_spinner("Opening archive...");
     let mut archive = Archive::open(path).context("Failed to open archive")?;
     spinner.finish_and_clear();
@@ -580,18 +644,14 @@ fn show_info(path: &str, show_hash_table: bool, show_block_table: bool) -> Resul
     println!("Archive size: {}", format_bytes(info.file_size));
     println!("Number of files: {}", info.file_count);
 
-    if show_hash_table {
-        println!("\nHash Table:");
-        println!("-----------");
-        // Implementation would go here
-        println!("(Hash table details not yet implemented)");
+    if include_hash_table {
+        println!();
+        show_hash_table(&mut archive, false)?;
     }
 
-    if show_block_table {
-        println!("\nBlock Table:");
-        println!("------------");
-        // Implementation would go here
-        println!("(Block table details not yet implemented)");
+    if include_block_table {
+        println!();
+        show_block_table(&mut archive, false)?;
     }
 
     Ok(())
@@ -746,6 +806,18 @@ struct CompareParams<'a> {
     ignore_order: bool,
     output_format: &'a str,
     filter: Option<String>,
+}
+
+/// Parameters for MPQ archive debug operation
+struct DebugParams<'a> {
+    archive_path: &'a str,
+    show_hash_table: bool,
+    show_block_table: bool,
+    show_het_table: bool,
+    show_bet_table: bool,
+    entry_index: Option<usize>,
+    find_file: Option<String>,
+    raw_dump: bool,
 }
 
 fn compare_archives(params: CompareParams<'_>) -> Result<()> {
@@ -1313,4 +1385,232 @@ fn create_file_node(
     }
 
     Ok(node)
+}
+
+fn debug_archive(params: DebugParams<'_>) -> Result<()> {
+    let spinner = create_spinner("Opening archive...");
+    let mut archive = Archive::open(params.archive_path).context("Failed to open archive")?;
+    spinner.finish_and_clear();
+
+    println!("🔍 MPQ Debug Information");
+    println!("========================");
+    println!("Archive: {}", params.archive_path);
+
+    let info = archive.get_info()?;
+    println!("Format: {:?}", info.format_version);
+    println!("Files: {}/{}", info.file_count, info.max_file_count);
+    println!();
+
+    // Handle finding a specific file first
+    if let Some(filename) = &params.find_file {
+        return find_file_entries(&mut archive, filename, params.raw_dump);
+    }
+
+    // Handle specific entry index
+    if let Some(index) = params.entry_index {
+        return show_entry_at_index(&mut archive, index, params.raw_dump);
+    }
+
+    // Show requested tables
+    if params.show_hash_table {
+        show_hash_table(&mut archive, params.raw_dump)?;
+    }
+
+    if params.show_block_table {
+        show_block_table(&mut archive, params.raw_dump)?;
+    }
+
+    if params.show_het_table {
+        show_het_table(&mut archive, params.raw_dump)?;
+    }
+
+    if params.show_bet_table {
+        show_bet_table(&mut archive, params.raw_dump)?;
+    }
+
+    Ok(())
+}
+
+fn show_hash_table(archive: &mut Archive, raw_dump: bool) -> Result<()> {
+    println!("🔑 Hash Table");
+    println!("-------------");
+
+    if let Some(hash_table) = archive.hash_table() {
+        if raw_dump {
+            // Show raw hex dump of the hash table
+            let entries = hash_table.entries();
+            let data_size = std::mem::size_of_val(entries);
+            println!("Raw data ({} bytes):", data_size);
+
+            // Convert entries to bytes for hex dump
+            let bytes =
+                unsafe { std::slice::from_raw_parts(entries.as_ptr() as *const u8, data_size) };
+
+            let config = HexDumpConfig {
+                bytes_per_line: 16,
+                show_ascii: false,
+                show_offset: true,
+                max_bytes: 512,
+            };
+            println!("{}", hex_dump(bytes, &config));
+        } else {
+            // Use the formatted table display
+            println!("{}", format_hash_table(hash_table.entries()));
+        }
+    } else {
+        println!("No hash table found (archive may use HET/BET tables)");
+    }
+    println!();
+
+    Ok(())
+}
+
+fn show_block_table(archive: &mut Archive, raw_dump: bool) -> Result<()> {
+    println!("📦 Block Table");
+    println!("--------------");
+
+    if let Some(block_table) = archive.block_table() {
+        if raw_dump {
+            // Show raw hex dump of the block table
+            let entries = block_table.entries();
+            let data_size = std::mem::size_of_val(entries);
+            println!("Raw data ({} bytes):", data_size);
+
+            // Convert entries to bytes for hex dump
+            let bytes =
+                unsafe { std::slice::from_raw_parts(entries.as_ptr() as *const u8, data_size) };
+
+            let config = HexDumpConfig {
+                bytes_per_line: 16,
+                show_ascii: false,
+                show_offset: true,
+                max_bytes: 512,
+            };
+            println!("{}", hex_dump(bytes, &config));
+        } else {
+            // Use the formatted table display
+            println!("{}", format_block_table(block_table.entries()));
+        }
+    } else {
+        println!("No block table found (archive may use HET/BET tables)");
+    }
+    println!();
+
+    Ok(())
+}
+
+fn show_het_table(archive: &mut Archive, raw_dump: bool) -> Result<()> {
+    println!("🔍 HET Table (Extended Hash Table)");
+    println!("----------------------------------");
+
+    if let Some(het_table) = archive.het_table() {
+        if raw_dump {
+            println!("Raw HET data not yet implemented");
+        } else {
+            // Use the formatted display
+            println!("{}", format_het_table(het_table));
+        }
+    } else {
+        println!("No HET table found");
+    }
+    println!();
+
+    Ok(())
+}
+
+fn show_bet_table(archive: &mut Archive, raw_dump: bool) -> Result<()> {
+    println!("📋 BET Table (Extended Block Table)");
+    println!("-----------------------------------");
+
+    if let Some(bet_table) = archive.bet_table() {
+        if raw_dump {
+            println!("Raw BET data not yet implemented");
+        } else {
+            // Use the formatted display
+            println!("{}", format_bet_table(bet_table));
+        }
+    } else {
+        println!("No BET table found");
+    }
+    println!();
+
+    Ok(())
+}
+
+fn find_file_entries(archive: &mut Archive, filename: &str, _raw_dump: bool) -> Result<()> {
+    println!("🔎 Finding entries for: {}", filename);
+    println!("========================");
+
+    // Try to find the file using the archive's find_file method
+    match archive.find_file(filename)? {
+        Some(file_info) => {
+            println!("✓ File found!");
+            println!("  Hash table index: {}", file_info.hash_index);
+            println!("  Block table index: {}", file_info.block_index);
+            println!("  File position: 0x{:08X}", file_info.file_pos);
+            println!("  File size: {}", format_bytes(file_info.file_size));
+            println!(
+                "  Compressed size: {}",
+                format_bytes(file_info.compressed_size)
+            );
+            println!("  Flags: 0x{:08X}", file_info.flags);
+            println!("  Locale: 0x{:04X}", file_info.locale);
+            println!();
+
+            // Show hash entry
+            if let Some(hash_table) = archive.hash_table() {
+                if let Some(hash_entry) = hash_table.entries().get(file_info.hash_index) {
+                    println!("Hash Entry:");
+                    println!("{}", dump_hash_entry(hash_entry, file_info.hash_index));
+                }
+            }
+
+            // Show block entry
+            if let Some(block_table) = archive.block_table() {
+                if let Some(block_entry) = block_table.entries().get(file_info.block_index) {
+                    println!("\nBlock Entry:");
+                    println!("{}", dump_block_entry(block_entry, file_info.block_index));
+                }
+            }
+        }
+        None => {
+            println!("✗ File not found in archive");
+        }
+    }
+
+    Ok(())
+}
+
+fn show_entry_at_index(archive: &mut Archive, index: usize, _raw_dump: bool) -> Result<()> {
+    println!("📍 Entry at index: {}", index);
+    println!("===================");
+
+    let mut found = false;
+
+    // Check hash table
+    if let Some(hash_table) = archive.hash_table() {
+        if let Some(hash_entry) = hash_table.entries().get(index) {
+            println!("Hash Entry:");
+            println!("{}", dump_hash_entry(hash_entry, index));
+            found = true;
+        }
+    }
+
+    // Check block table
+    if let Some(block_table) = archive.block_table() {
+        if let Some(block_entry) = block_table.entries().get(index) {
+            if found {
+                println!();
+            }
+            println!("Block Entry:");
+            println!("{}", dump_block_entry(block_entry, index));
+            found = true;
+        }
+    }
+
+    if !found {
+        println!("No entry found at index {}", index);
+    }
+
+    Ok(())
 }

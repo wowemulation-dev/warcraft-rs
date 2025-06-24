@@ -103,6 +103,9 @@ name = "create_test_mpq"
 name = "cross_compatibility_test"
 
 [[example]]
+name = "debug_archive"
+
+[[example]]
 name = "full_stormlib_compat_test"
 
 [[example]]

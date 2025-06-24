@@ -3,6 +3,8 @@
 use crate::{Error, Result};
 use std::io::{Read, Seek, SeekFrom};
 
+use crate::debug::{format_size, hex_string};
+
 /// Helper trait for reading little-endian integers
 trait ReadLittleEndian: Read {
     fn read_u16_le(&mut self) -> Result<u16> {
@@ -355,5 +357,140 @@ pub fn find_header<R: Read + Seek>(
 
         // Move to next potential header position
         offset += HEADER_ALIGNMENT;
+    }
+}
+
+impl MpqHeader {
+    /// Debug dump the MPQ header
+    pub fn debug_dump(&self) -> String {
+        let mut output = String::new();
+        output.push_str("MPQ Header Debug Dump\n");
+        output.push_str("====================\n");
+        output.push_str(&format!("Header Size: {}\n", self.header_size));
+        output.push_str(&format!(
+            "Archive Size (v1): {}\n",
+            format_size(self.archive_size as u64)
+        ));
+        output.push_str(&format!(
+            "Format Version: {:?} (v{})\n",
+            self.format_version,
+            self.format_version as u16 + 1
+        ));
+        output.push_str(&format!(
+            "Block Size: {} (sector size: {})\n",
+            self.block_size,
+            format_size((512 << self.block_size) as u64)
+        ));
+        output.push_str(&format!(
+            "Hash Table: offset=0x{:08X}, size={} entries\n",
+            self.hash_table_pos, self.hash_table_size
+        ));
+        output.push_str(&format!(
+            "Block Table: offset=0x{:08X}, size={} entries\n",
+            self.block_table_pos, self.block_table_size
+        ));
+
+        if let Some(hi_pos) = self.hi_block_table_pos {
+            output.push_str("\nVersion 2+ fields:\n");
+            output.push_str(&format!("  Hi-Block Table: offset=0x{:016X}\n", hi_pos));
+            output.push_str(&format!(
+                "  Hash Table High: 0x{:04X}\n",
+                self.hash_table_pos_hi.unwrap_or(0)
+            ));
+            output.push_str(&format!(
+                "  Block Table High: 0x{:04X}\n",
+                self.block_table_pos_hi.unwrap_or(0)
+            ));
+        }
+
+        if let Some(size64) = self.archive_size_64 {
+            output.push_str("\nVersion 3+ fields:\n");
+            output.push_str(&format!(
+                "  Archive Size (64-bit): {}\n",
+                format_size(size64)
+            ));
+            output.push_str(&format!(
+                "  BET Table: offset=0x{:016X}\n",
+                self.bet_table_pos.unwrap_or(0)
+            ));
+            output.push_str(&format!(
+                "  HET Table: offset=0x{:016X}\n",
+                self.het_table_pos.unwrap_or(0)
+            ));
+        }
+
+        if let Some(ref v4) = self.v4_data {
+            output.push_str("\nVersion 4 fields:\n");
+            output.push_str(&format!(
+                "  Hash Table Size: {}\n",
+                format_size(v4.hash_table_size_64)
+            ));
+            output.push_str(&format!(
+                "  Block Table Size: {}\n",
+                format_size(v4.block_table_size_64)
+            ));
+            output.push_str(&format!(
+                "  Hi-Block Table Size: {}\n",
+                format_size(v4.hi_block_table_size_64)
+            ));
+            output.push_str(&format!(
+                "  HET Table Size: {}\n",
+                format_size(v4.het_table_size_64)
+            ));
+            output.push_str(&format!(
+                "  BET Table Size: {}\n",
+                format_size(v4.bet_table_size_64)
+            ));
+            output.push_str(&format!(
+                "  Raw Chunk Size: {}\n",
+                format_size(v4.raw_chunk_size as u64)
+            ));
+            output.push_str("  MD5 Hashes:\n");
+            output.push_str(&format!(
+                "    Block Table: {}\n",
+                hex_string(&v4.md5_block_table, 16)
+            ));
+            output.push_str(&format!(
+                "    Hash Table: {}\n",
+                hex_string(&v4.md5_hash_table, 16)
+            ));
+            output.push_str(&format!(
+                "    Hi-Block Table: {}\n",
+                hex_string(&v4.md5_hi_block_table, 16)
+            ));
+            output.push_str(&format!(
+                "    BET Table: {}\n",
+                hex_string(&v4.md5_bet_table, 16)
+            ));
+            output.push_str(&format!(
+                "    HET Table: {}\n",
+                hex_string(&v4.md5_het_table, 16)
+            ));
+            output.push_str(&format!(
+                "    MPQ Header: {}\n",
+                hex_string(&v4.md5_mpq_header, 16)
+            ));
+        }
+
+        output
+    }
+}
+
+impl UserDataHeader {
+    /// Debug dump the user data header
+    pub fn debug_dump(&self) -> String {
+        let mut output = String::new();
+        output.push_str("MPQ User Data Header\n");
+        output.push_str("===================\n");
+        output.push_str(&format!(
+            "User Data Size: {}\n",
+            format_size(self.user_data_size as u64)
+        ));
+        output.push_str(&format!("Header Offset: 0x{:08X}\n", self.header_offset));
+        output.push_str(&format!(
+            "User Data Header Size: {}\n",
+            self.user_data_header_size
+        ));
+        output
     }
 }
