@@ -27,9 +27,9 @@ publish = true
 allow_dirty = false
 
 # PR settings
-pr_name = "chore: release v{{ version }}"
+pr_name = "chore: release"
 pr_body = """
-## Release v{{ version }}
+## Release
 
 {% for release in releases %}
 ### {{ release.package_name }} v{{ release.version }}
