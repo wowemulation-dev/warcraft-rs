@@ -50,33 +50,40 @@ ADT (Area Data Table) files contain terrain data for World of Warcraft:
 ## Example Usage
 
 ```rust
-use wow_adt::{Adt, AdtType};
+use wow_adt::Adt;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load terrain ADT
-    let adt = Adt::load("path/to/world/maps/azeroth/azeroth_32_48.adt")?;
+    // Parse terrain ADT
+    let adt = Adt::from_path("path/to/world/maps/azeroth/azeroth_32_48.adt")?;
 
     // Display basic information
-    println!("ADT Version: {:?}", adt.version);
-    println!("Chunks: {}", adt.chunks.len());
+    println!("ADT Version: {:?}", adt.version());
+    println!("Terrain chunks: {}", adt.mcnk_chunks().len());
 
     // Access terrain data
-    for (idx, chunk) in adt.chunks.iter().enumerate() {
-        println!("Chunk {}: {} vertices", idx, chunk.vertices.len());
+    for (idx, chunk) in adt.mcnk_chunks().iter().enumerate() {
+        println!("Chunk {}: {} heights", idx, chunk.height_map.len());
+    }
+
+    // Check for water data (WotLK+)
+    if let Some(water) = adt.mh2o() {
+        println!("Contains water data with {} chunks", water.chunks.len());
     }
 
     Ok(())
 }
 ```
 
-## Working with Different ADT Types
+## Working with Different ADT Files
 
 ```rust
-// Load object placement ADT
-let obj_adt = Adt::load_typed("map_32_48_obj0.adt", AdtType::Objects)?;
+// Parse object placement ADT (Cataclysm+ split format)
+let obj_adt = Adt::from_path("map_32_48_obj0.adt")?;
+println!("Doodads: {}", obj_adt.mddf.as_ref().map_or(0, |d| d.doodads.len()));
 
-// Load texture information ADT
-let tex_adt = Adt::load_typed("map_32_48_tex0.adt", AdtType::Textures)?;
+// Parse texture information ADT (Cataclysm+ split format)  
+let tex_adt = Adt::from_path("map_32_48_tex0.adt")?;
+println!("Textures: {}", tex_adt.mtex.as_ref().map_or(0, |t| t.filenames.len()));
 ```
 
 ## Coordinate System
