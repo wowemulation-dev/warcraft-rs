@@ -165,12 +165,14 @@ jobs:
 
       - name: Install Rust via rustup
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Build and test warcraft-rs CLI
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
+          which cargo || echo "cargo not found in PATH"
+          cargo --version || echo "cargo --version failed"
           cargo build --release --bin warcraft-rs
           cargo test --release --bin warcraft-rs
           # Test the binary runs
