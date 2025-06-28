@@ -128,7 +128,7 @@ install_warcraft_rs() {
     # Create temporary directory
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+    trap 'rm -rf $temp_dir' EXIT
 
     # Download archive and signature
     local archive_url="${BASE_URL}/download/v${version}/${BINARY_NAME}-${platform}.${ext}"
