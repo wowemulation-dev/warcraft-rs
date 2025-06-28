@@ -1026,9 +1026,7 @@ pub fn format_bet_table(bet: &crate::tables::BetTable) -> String {
     ));
 
     output.push_str("\nHash Information:\n");
-    output.push_str(&format!(
-        "  Total Hash Size: {total_bet_hash_size} bytes\n"
-    ));
+    output.push_str(&format!("  Total Hash Size: {total_bet_hash_size} bytes\n"));
     output.push_str(&format!(
         "  BET Hash Size Extra: {bet_hash_size_extra} bits\n"
     ));

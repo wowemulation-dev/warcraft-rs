@@ -531,9 +531,7 @@ fn generate_yaml_schema(
     let mut yaml = String::new();
 
     // Header
-    yaml.push_str(&format!(
-        "# {base_name} schema for WoW {version_suffix}\n"
-    ));
+    yaml.push_str(&format!("# {base_name} schema for WoW {version_suffix}\n"));
     yaml.push_str(&format!("# Generated from {base_name}.dbd\n"));
     yaml.push_str(&format!("# Build range: {}\n\n", build.versions.join(", ")));
 

@@ -549,9 +549,7 @@ fn verify_mpq_strong_signature_padding(decrypted: &[u8], expected_hash: &[u8]) -
     // Check padding bytes (235 bytes of 0xBB)
     for (i, &byte) in decrypted.iter().enumerate().take(236).skip(1) {
         if byte != 0xBB {
-            log::debug!(
-                "Invalid padding byte at position {i}: expected 0xBB, got 0x{byte:02X}"
-            );
+            log::debug!("Invalid padding byte at position {i}: expected 0xBB, got 0x{byte:02X}");
             return Ok(false);
         }
     }

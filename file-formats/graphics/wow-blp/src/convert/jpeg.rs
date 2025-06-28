@@ -23,9 +23,7 @@ pub fn image_to_jpeg(
     mipmap_filter: FilterType,
 ) -> Result<BlpJpeg, Error> {
     if alpha_bits != 0 && alpha_bits != 8 {
-        warn!(
-            "Invalid alpha bits value for JPEG encoding {alpha_bits}, defaulting to 0"
-        );
+        warn!("Invalid alpha bits value for JPEG encoding {alpha_bits}, defaulting to 0");
         alpha_bits = 0;
     }
     let mut rgba = image.to_rgba8();

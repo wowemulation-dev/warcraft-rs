@@ -1981,9 +1981,7 @@ impl Archive {
         let sector_size = self.header.sector_size();
         let sector_count = (file_info.file_size as usize).div_ceil(sector_size);
 
-        log::debug!(
-            "Reading sectored file: {sector_count} sectors of {sector_size} bytes each"
-        );
+        log::debug!("Reading sectored file: {sector_count} sectors of {sector_size} bytes each");
 
         // Read sector offset table
         self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
@@ -2142,9 +2140,7 @@ impl Archive {
                         }
                     }
                 } else {
-                    log::warn!(
-                        "Empty compressed sector data for sector {i}. Using zeros."
-                    );
+                    log::warn!("Empty compressed sector data for sector {i}. Using zeros.");
                     vec![0u8; expected_size]
                 }
             } else {
@@ -2271,9 +2267,7 @@ impl Archive {
             self.header.get_hash_table_pos() - het_pos
         };
 
-        log::debug!(
-            "HET table position: 0x{het_pos:X}, calculated size: {actual_size} bytes"
-        );
+        log::debug!("HET table position: 0x{het_pos:X}, calculated size: {actual_size} bytes");
 
         Ok(actual_size)
     }
@@ -2286,9 +2280,7 @@ impl Archive {
         // Calculate the actual size based on what comes after BET table (usually hash table)
         let actual_size = self.header.get_hash_table_pos() - bet_pos;
 
-        log::debug!(
-            "BET table position: 0x{bet_pos:X}, calculated size: {actual_size} bytes"
-        );
+        log::debug!("BET table position: 0x{bet_pos:X}, calculated size: {actual_size} bytes");
 
         Ok(actual_size)
     }
@@ -2619,9 +2611,7 @@ impl FileInfo {
             0x40 => Some(flags::ADPCM_MONO),   // ADPCM_MONO
             0x80 => Some(flags::ADPCM_STEREO), // ADPCM_STEREO
             _ => {
-                log::warn!(
-                    "Unknown compression method in flags: 0x{compression_mask:02X}"
-                );
+                log::warn!("Unknown compression method in flags: 0x{compression_mask:02X}");
                 None
             }
         }

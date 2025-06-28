@@ -428,9 +428,7 @@ impl Adt {
                 match context.reader.seek(SeekFrom::Start(*chunk_pos)) {
                     Ok(_) => {}
                     Err(e) => {
-                        eprintln!(
-                            "Error seeking to direct MCNK chunk at offset {chunk_pos}: {e}"
-                        );
+                        eprintln!("Error seeking to direct MCNK chunk at offset {chunk_pos}: {e}");
                         continue;
                     }
                 }

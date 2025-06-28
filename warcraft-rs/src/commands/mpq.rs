@@ -528,9 +528,7 @@ fn extract_files(
         }
 
         let msg = if error_count > 0 {
-            format!(
-                "Extraction complete: {success_count} succeeded, {error_count} failed"
-            )
+            format!("Extraction complete: {success_count} succeeded, {error_count} failed")
         } else {
             format!("Extraction complete: {success_count} files")
         };
@@ -1421,10 +1419,8 @@ fn create_file_node(
             "wdt" => {
                 // WDT files reference ADT files
                 let base_name = file_name.trim_end_matches(".wdt");
-                node = node.with_external_ref(
-                    &format!("{base_name}/*.adt"),
-                    detect_ref_type("file.adt"),
-                );
+                node = node
+                    .with_external_ref(&format!("{base_name}/*.adt"), detect_ref_type("file.adt"));
             }
             "adt" => {
                 // ADT files might reference textures and models
@@ -1434,10 +1430,8 @@ fn create_file_node(
             "m2" => {
                 // M2 files reference textures and animations
                 let base_name = file_name.trim_end_matches(".m2");
-                node = node.with_external_ref(
-                    &format!("{base_name}.skin"),
-                    detect_ref_type("file.skin"),
-                );
+                node = node
+                    .with_external_ref(&format!("{base_name}.skin"), detect_ref_type("file.skin"));
                 node = node.with_external_ref("*.blp", detect_ref_type("file.blp"));
             }
             "dbc" => {

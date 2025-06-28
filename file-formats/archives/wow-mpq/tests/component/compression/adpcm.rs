@@ -428,10 +428,7 @@ fn test_adpcm_stereo_bzip2_multi_compression() {
         let left_diff = (original_samples[i * 2] - decoded_samples[i * 2]).abs();
         let right_diff = (original_samples[i * 2 + 1] - decoded_samples[i * 2 + 1]).abs();
 
-        assert!(
-            left_diff < 2000,
-            "Left channel sample {i} error too large"
-        );
+        assert!(left_diff < 2000, "Left channel sample {i} error too large");
         assert!(
             right_diff < 2000,
             "Right channel sample {i} error too large"

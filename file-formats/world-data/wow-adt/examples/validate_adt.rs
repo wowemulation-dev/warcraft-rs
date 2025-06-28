@@ -191,9 +191,7 @@ fn provide_validation_insights(adt: &Adt, level: ValidationLevel) {
     if active_chunks == 0 {
         println!("  • No terrain chunks found (this might be a split-format file)");
     } else if active_chunks < 256 {
-        println!(
-            "  • Partial terrain coverage: {active_chunks}/256 chunks active"
-        );
+        println!("  • Partial terrain coverage: {active_chunks}/256 chunks active");
     } else {
         println!("  • Full terrain coverage: all 256 chunks present");
     }
@@ -222,9 +220,7 @@ fn provide_validation_insights(adt: &Adt, level: ValidationLevel) {
             .filter(|chunk| !chunk.instances.is_empty())
             .count();
         if water_chunks > 0 {
-            println!(
-                "  • Water features: {water_chunks} chunks contain water data"
-            );
+            println!("  • Water features: {water_chunks} chunks contain water data");
         }
     }
 

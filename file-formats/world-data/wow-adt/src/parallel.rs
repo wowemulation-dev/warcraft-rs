@@ -42,9 +42,7 @@ where
             .num_threads(options.max_threads)
             .build_global()
             .map_err(|e| {
-                crate::error::AdtError::ParseError(format!(
-                    "Failed to configure thread pool: {e}"
-                ))
+                crate::error::AdtError::ParseError(format!("Failed to configure thread pool: {e}"))
             })?;
     }
 

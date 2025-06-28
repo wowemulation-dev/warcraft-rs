@@ -41,9 +41,7 @@ fn main() {
         println!("\nJenkins hashlittle2 (HET tables):");
         for hash_bits in &[8u32, 48, 64] {
             let (file_hash, name_hash1) = het_hash(filename, *hash_bits);
-            println!(
-                "  {hash_bits}-bit hash:  0x{file_hash:016X}, NameHash1: 0x{name_hash1:02X}"
-            );
+            println!("  {hash_bits}-bit hash:  0x{file_hash:016X}, NameHash1: 0x{name_hash1:02X}");
         }
 
         println!();
@@ -94,8 +92,6 @@ fn main() {
         println!("{filename}:");
         println!("  MPQ TABLE_OFFSET: 0x{hash_offset:08X}");
         println!("  MPQ FILE_KEY:     0x{file_key:08X}");
-        println!(
-            "  HET 48-bit:       0x{het_hash_48:016X} (NameHash1: 0x{name_hash:02X})"
-        );
+        println!("  HET 48-bit:       0x{het_hash_48:016X} (NameHash1: 0x{name_hash:02X})");
     }
 }

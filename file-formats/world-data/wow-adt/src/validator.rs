@@ -189,9 +189,7 @@ fn xref_validation(adt: &Adt, report: &mut ValidationReport) -> Result<()> {
                 // in the MMDX chunk, but we don't have the raw data here
 
                 if !found {
-                    report.add_info(format!(
-                        "MMID entry {i} references offset {offset} in MMDX"
-                    ));
+                    report.add_info(format!("MMID entry {i} references offset {offset} in MMDX"));
                 }
             }
         }
@@ -206,9 +204,7 @@ fn xref_validation(adt: &Adt, report: &mut ValidationReport) -> Result<()> {
                 // Similar to MMID, we would need the raw data to properly validate
 
                 if !found {
-                    report.add_info(format!(
-                        "MWID entry {i} references offset {offset} in MWMO"
-                    ));
+                    report.add_info(format!("MWID entry {i} references offset {offset} in MWMO"));
                 }
             }
         }

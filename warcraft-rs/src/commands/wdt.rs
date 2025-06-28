@@ -631,11 +631,9 @@ fn execute_tree(
 
         for (i, section_name) in sections.iter().enumerate() {
             if i < maid.section_count() {
-                let section_node = TreeNode::new(
-                    format!("Section {i}: {section_name}"),
-                    NodeType::Property,
-                )
-                .with_metadata("entries", "4096");
+                let section_node =
+                    TreeNode::new(format!("Section {i}: {section_name}"), NodeType::Property)
+                        .with_metadata("entries", "4096");
                 maid_node = maid_node.add_child(section_node);
             }
         }

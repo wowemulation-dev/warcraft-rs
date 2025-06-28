@@ -40,9 +40,7 @@ mod tests {
         // Simulate a hash table of size 1024
         let table_size = 1024u32;
         let initial_index = table_offset & (table_size - 1);
-        println!(
-            "Initial index for table size {table_size}: {initial_index}"
-        );
+        println!("Initial index for table size {table_size}: {initial_index}");
 
         // Create a dummy hash entry
         let entry = HashEntry {
@@ -120,9 +118,7 @@ mod tests {
 
         println!("Low 32 bits: 0x{block_pos_low:08X}");
         println!("High 16 bits: 0x{hi_block_value:04X}");
-        println!(
-            "Full 64-bit position: 0x{full_pos:016X} ({full_pos} bytes)"
-        );
+        println!("Full 64-bit position: 0x{full_pos:016X} ({full_pos} bytes)");
 
         // This should be 6GB (0x180000000)
         assert_eq!(full_pos, 0x180000000);

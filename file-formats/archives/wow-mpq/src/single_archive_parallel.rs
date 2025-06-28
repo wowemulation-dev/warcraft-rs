@@ -229,9 +229,9 @@ pub fn extract_with_config<P: AsRef<Path>>(
             .num_threads(threads)
             .build()
             .map_err(|e| {
-                Error::Io(std::io::Error::other(
-                    format!("Failed to create thread pool: {e}"),
-                ))
+                Error::Io(std::io::Error::other(format!(
+                    "Failed to create thread pool: {e}"
+                )))
             })?
     } else {
         rayon::ThreadPoolBuilder::new().build().unwrap()
@@ -276,8 +276,7 @@ mod tests {
 
         // Add multiple files for parallel testing
         for i in 0..20 {
-            let content =
-                format!("File {i} content with some data to make it larger").repeat(100);
+            let content = format!("File {i} content with some data to make it larger").repeat(100);
             builder = builder.add_file_data(content.into_bytes(), &format!("file_{i:02}.txt"));
         }
 

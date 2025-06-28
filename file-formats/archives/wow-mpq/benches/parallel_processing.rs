@@ -24,10 +24,9 @@ fn create_test_archives(
 
         // Add files to each archive
         for j in 0..files_per_archive {
-            let content = format!(
-                "Archive {i} File {j} Content with some padding to make it larger"
-            )
-            .repeat(100); // Make files reasonably sized
+            let content =
+                format!("Archive {i} File {j} Content with some padding to make it larger")
+                    .repeat(100); // Make files reasonably sized
             builder = builder.add_file_data(content.into_bytes(), &format!("file_{j:03}.txt"));
         }
 

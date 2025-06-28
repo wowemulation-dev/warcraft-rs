@@ -177,8 +177,7 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
     println!();
 
     // Load the ADT file
-    let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
+    let adt = Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     // Basic information
     println!("File: {file}");
@@ -305,8 +304,7 @@ fn execute_validate(file: &str, level: &str, warnings: bool) -> Result<()> {
     println!();
 
     // Load and validate
-    let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
+    let adt = Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     let report = adt.validate_with_report_and_context(validation_level, file)?;
 
@@ -368,8 +366,8 @@ fn execute_convert(input: &str, output: &str, to_version: &str) -> Result<()> {
     use std::fs::File;
     use std::io::BufWriter;
 
-    let file = File::create(output)
-        .with_context(|| format!("Failed to create output file: {output}"))?;
+    let file =
+        File::create(output).with_context(|| format!("Failed to create output file: {output}"))?;
     let mut writer = BufWriter::new(file);
 
     converted
@@ -398,8 +396,7 @@ fn execute_extract(
     println!();
 
     // Load the ADT
-    let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
+    let adt = Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     // Determine output directory
     let output_path = if let Some(dir) = output_dir {
@@ -487,8 +484,7 @@ fn execute_tree(
     use crate::utils::tree::{NodeType, TreeNode, TreeOptions, render_tree};
 
     // Load the ADT
-    let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
+    let adt = Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     // Build tree structure
     let mut root = TreeNode::new(

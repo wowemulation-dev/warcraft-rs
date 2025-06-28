@@ -499,8 +499,7 @@ fn execute_tree(
                 // Show WMO filenames if not compact
                 if !compact {
                     for (i, filename) in wdl.wmo_filenames.iter().enumerate().take(5) {
-                        let wmo_node =
-                            TreeNode::new(format!("[{i}] {filename}"), NodeType::File);
+                        let wmo_node = TreeNode::new(format!("[{i}] {filename}"), NodeType::File);
                         chunk_node = chunk_node.add_child(wmo_node);
                     }
 

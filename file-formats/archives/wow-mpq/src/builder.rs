@@ -1204,9 +1204,7 @@ impl ArchiveBuilder {
 
             // Compress if needed
             let compressed_data = if *compression != 0 && !file_data.is_empty() {
-                log::debug!(
-                    "Compressing {archive_name} with method 0x{compression:02X}"
-                );
+                log::debug!("Compressing {archive_name} with method 0x{compression:02X}");
                 let compressed = compress(file_data, *compression)?;
 
                 // The compress function now handles the compression byte prefix
@@ -1252,9 +1250,7 @@ impl ArchiveBuilder {
                 // MPQ uses ADLER32 for sector checksums
                 let crc = adler::adler32_slice(file_data);
                 writer.write_u32_le(crc)?;
-                log::debug!(
-                    "Generated CRC for single unit file {archive_name}: 0x{crc:08X}"
-                );
+                log::debug!("Generated CRC for single unit file {archive_name}: 0x{crc:08X}");
             }
 
             // Return compressed size (NOT including CRC)
@@ -1891,9 +1887,7 @@ impl ArchiveBuilder {
         result.extend_from_slice(&het_hash_table);
         result.extend_from_slice(&file_indices);
 
-        log::debug!(
-            "HET table created with {file_count} files (including attributes)"
-        );
+        log::debug!("HET table created with {file_count} files (including attributes)");
 
         Ok((result, final_header))
     }

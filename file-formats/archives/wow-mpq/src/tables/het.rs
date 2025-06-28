@@ -92,9 +92,7 @@ impl HetTable {
 
         // The data after the extended header may be encrypted
         if key != 0 && data.len() > 12 {
-            log::debug!(
-                "Decrypting HET data after extended header with key 0x{key:08X}"
-            );
+            log::debug!("Decrypting HET data after extended header with key 0x{key:08X}");
             let data_portion = &mut data[12..];
             decrypt_table_data(data_portion, key);
         }

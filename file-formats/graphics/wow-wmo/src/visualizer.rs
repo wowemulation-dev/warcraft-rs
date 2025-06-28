@@ -327,9 +327,7 @@ impl WmoVisualizer {
                                 "f {idx1}/{tex1}/{norm1} {idx2}/{tex2}/{norm2} {idx3}/{tex3}/{norm3}\n"
                             ));
                         } else if !group.tex_coords.is_empty() {
-                            obj.push_str(&format!(
-                                "f {idx1}/{tex1} {idx2}/{tex2} {idx3}/{tex3}\n"
-                            ));
+                            obj.push_str(&format!("f {idx1}/{tex1} {idx2}/{tex2} {idx3}/{tex3}\n"));
                         } else if !group.normals.is_empty() {
                             obj.push_str(&format!(
                                 "f {idx1}//{norm1} {idx2}//{norm2} {idx3}//{norm3}\n"

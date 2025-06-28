@@ -13,9 +13,7 @@ pub fn parse_header(input: &[u8]) -> ParseResult<BlpHeader> {
         .read_u32_le()
         .map_err(|e| e.with_context("content_field field"))?;
     let content = content_field.try_into().unwrap_or_else(|_| {
-        warn!(
-            "Unexpected value for content {content_field}, defaulting to jpeg"
-        );
+        warn!("Unexpected value for content {content_field}, defaulting to jpeg");
         BlpContentTag::Jpeg
     });
 
@@ -24,9 +22,7 @@ pub fn parse_header(input: &[u8]) -> ParseResult<BlpHeader> {
             .read_u8()
             .map_err(|e| e.with_context("compression field"))?;
         let compression: Compression = compression_field.try_into().map_err(|_| {
-            error!(
-                "Unexpected value for compression {content_field}, defaulting to jpeg"
-            );
+            error!("Unexpected value for compression {content_field}, defaulting to jpeg");
             Error::Blp2UnknownCompression(compression_field)
         })?;
         let alpha_bits = reader

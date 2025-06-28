@@ -52,9 +52,7 @@ fn decompress_multiple(data: &[u8], flags: u8, expected_size: usize) -> Result<V
         return Err(Error::compression("Empty compressed data"));
     }
 
-    log::debug!(
-        "Decompressing multiple compression with flags 0x{flags:02X}"
-    );
+    log::debug!("Decompressing multiple compression with flags 0x{flags:02X}");
 
     // Check which compression methods are present
     let has_huffman = (flags & flags::HUFFMAN) != 0;

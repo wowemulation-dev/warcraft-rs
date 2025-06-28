@@ -633,10 +633,7 @@ impl std::fmt::Display for ValidationWarning {
                 field,
                 explanation,
             } => {
-                write!(
-                    f,
-                    "Flag inconsistency with {flag}: {field} ({explanation})"
-                )
+                write!(f, "Flag inconsistency with {flag}: {field} ({explanation})")
             }
             Self::UnusualValue {
                 field,
@@ -659,10 +656,7 @@ impl std::fmt::Display for ValidationWarning {
                 value,
                 bounds,
             } => {
-                write!(
-                    f,
-                    "{field} is out of bounds: {value} not within {bounds}"
-                )
+                write!(f, "{field} is out of bounds: {value} not within {bounds}")
             }
         }
     }

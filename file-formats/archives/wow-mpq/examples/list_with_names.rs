@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Archive: {}", archive_path);
 
     let mut archive = Archive::open(archive_path)?;
-    
+
     // First try to list files using the listfile (gets proper names)
     match archive.list() {
         Ok(files) => {
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             println!("Failed to read listfile: {}", e);
             println!("Falling back to anonymous enumeration...");
-            
+
             // Fall back to list_all() which gives generic names
             let files = archive.list_all()?;
             println!("\nAll files (anonymous) - {} entries:", files.len());

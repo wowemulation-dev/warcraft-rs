@@ -180,11 +180,7 @@ fn test_parallel_processing_with_errors() {
 
     // Create some valid archives
     for i in 0..3 {
-        archives.push(create_test_archive(
-            &temp_dir,
-            &format!("valid_{i}.mpq"),
-            5,
-        ));
+        archives.push(create_test_archive(&temp_dir, &format!("valid_{i}.mpq"), 5));
     }
 
     // Add a non-existent archive path

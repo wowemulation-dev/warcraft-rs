@@ -458,9 +458,7 @@ impl WmoApp {
         output_dir: &str,
         format: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!(
-            "Exporting WMO: {wmo_path} to {format} format in {output_dir}"
-        );
+        println!("Exporting WMO: {wmo_path} to {format} format in {output_dir}");
 
         // Ensure output directory exists
         fs::create_dir_all(output_dir)?;
@@ -684,9 +682,7 @@ impl WmoApp {
                     let y = operations[i + 3].parse::<f32>()?;
                     let z = operations[i + 4].parse::<f32>()?;
 
-                    println!(
-                        "Adding vertex to group {group_idx}: ({x}, {y}, {z})"
-                    );
+                    println!("Adding vertex to group {group_idx}: ({x}, {y}, {z})");
 
                     // Try to load group file if not already loaded
                     if !editor.is_group_loaded(group_idx) {

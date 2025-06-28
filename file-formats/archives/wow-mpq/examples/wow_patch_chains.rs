@@ -161,10 +161,7 @@ pub fn setup_tbc_2_4_3(data_path: &Path, locale: &str) -> Result<PatchChain> {
     // Locale patches
     let locale_patches = [
         (format!("patch-{locale}.MPQ"), priorities::PATCH_LOCALE_1),
-        (
-            format!("patch-{locale}-2.MPQ"),
-            priorities::PATCH_LOCALE_2,
-        ),
+        (format!("patch-{locale}-2.MPQ"), priorities::PATCH_LOCALE_2),
     ];
 
     for (patch, priority) in &locale_patches {
@@ -183,9 +180,7 @@ pub fn setup_tbc_2_4_3(data_path: &Path, locale: &str) -> Result<PatchChain> {
 pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> {
     let mut chain = PatchChain::new();
 
-    println!(
-        "Setting up WoW 3.3.5a patch chain for locale: {locale}..."
-    );
+    println!("Setting up WoW 3.3.5a patch chain for locale: {locale}...");
     println!("Using TrinityCore's definitive loading order");
 
     // Step 1-4: Base and expansion archives
@@ -253,14 +248,8 @@ pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> 
     let locale_path = data_path.join(locale);
     let locale_patches = [
         (format!("patch-{locale}.MPQ"), priorities::PATCH_LOCALE_1),
-        (
-            format!("patch-{locale}-2.MPQ"),
-            priorities::PATCH_LOCALE_2,
-        ),
-        (
-            format!("patch-{locale}-3.MPQ"),
-            priorities::PATCH_LOCALE_3,
-        ),
+        (format!("patch-{locale}-2.MPQ"), priorities::PATCH_LOCALE_2),
+        (format!("patch-{locale}-3.MPQ"), priorities::PATCH_LOCALE_3),
     ];
 
     for (patch, priority) in &locale_patches {

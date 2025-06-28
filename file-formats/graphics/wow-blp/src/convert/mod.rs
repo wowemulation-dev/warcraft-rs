@@ -215,10 +215,7 @@ impl fmt::Display for Blp2Format {
                 if *has_alpha {
                     write!(f, "DXT1 image with alpha and compression {compress_str}")
                 } else {
-                    write!(
-                        f,
-                        "DXT1 image without alpha and compression {compress_str}"
-                    )
+                    write!(f, "DXT1 image without alpha and compression {compress_str}")
                 }
             }
             Blp2Format::Dxt3 {
@@ -233,10 +230,7 @@ impl fmt::Display for Blp2Format {
                 if *has_alpha {
                     write!(f, "DXT3 image with alpha and compression {compress_str}")
                 } else {
-                    write!(
-                        f,
-                        "DXT3 image without alpha and compression {compress_str}"
-                    )
+                    write!(f, "DXT3 image without alpha and compression {compress_str}")
                 }
             }
             Blp2Format::Dxt5 {
@@ -251,10 +245,7 @@ impl fmt::Display for Blp2Format {
                 if *has_alpha {
                     write!(f, "DXT5 image with alpha and compression {compress_str}")
                 } else {
-                    write!(
-                        f,
-                        "DXT5 image without alpha and compression {compress_str}"
-                    )
+                    write!(f, "DXT5 image without alpha and compression {compress_str}")
                 }
             }
         }

@@ -76,9 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         1 => println!("This skin contains medium detail (LOD 1) submeshes"),
         2 => println!("This skin contains low detail (LOD 2) submeshes"),
         3 => println!("This skin contains very low detail (LOD 3) submeshes"),
-        _ => println!(
-            "This skin contains ultra-low detail (LOD {max_lod_level}) submeshes"
-        ),
+        _ => println!("This skin contains ultra-low detail (LOD {max_lod_level}) submeshes"),
     }
 
     // Check for potential issues
