@@ -170,7 +170,7 @@ jobs:
 
       - name: Build and test warcraft-rs CLI
         run: |
-          source $HOME/.cargo/env
+          . $HOME/.cargo/env
           cargo build --release --bin warcraft-rs
           cargo test --release --bin warcraft-rs
           # Test the binary runs
