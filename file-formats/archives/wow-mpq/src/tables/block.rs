@@ -70,6 +70,11 @@ impl BlockEntry {
         (self.flags & Self::FLAG_FIX_KEY) != 0
     }
 
+    /// Check if the file is a patch file
+    pub fn is_patch_file(&self) -> bool {
+        (self.flags & Self::FLAG_PATCH_FILE) != 0
+    }
+
     /// Read a block entry from raw bytes
     pub fn from_bytes(data: &[u8]) -> Result<Self> {
         if data.len() < 16 {

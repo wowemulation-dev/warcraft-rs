@@ -352,20 +352,18 @@ impl Archive {
                         // Try to read the table size from the HET header
                         match self.read_het_table_size(het_pos) {
                             Ok(size) => {
-                                log::debug!("Determined HET table size: 0x{:X}", size);
+                                log::debug!("Determined HET table size: 0x{size:X}");
                                 het_size = size;
                             }
                             Err(e) => {
-                                log::warn!("Failed to determine HET table size: {}", e);
+                                log::warn!("Failed to determine HET table size: {e}");
                             }
                         }
                     }
 
                     if het_size > 0 {
                         log::debug!(
-                            "Loading HET table from offset 0x{:X}, size 0x{:X}",
-                            het_pos,
-                            het_size
+                            "Loading HET table from offset 0x{het_pos:X}, size 0x{het_size:X}"
                         );
 
                         // HET table key is based on table name
@@ -379,11 +377,11 @@ impl Archive {
                         ) {
                             Ok(het) => {
                                 let file_count = het.header.max_file_count;
-                                log::info!("Loaded HET table with {} max files", file_count);
+                                log::info!("Loaded HET table with {file_count} max files");
                                 self.het_table = Some(het);
                             }
                             Err(e) => {
-                                log::warn!("Failed to load HET table: {}", e);
+                                log::warn!("Failed to load HET table: {e}");
                             }
                         }
                     }
@@ -408,20 +406,18 @@ impl Archive {
                         // Try to read the table size from the BET header
                         match self.read_bet_table_size(bet_pos) {
                             Ok(size) => {
-                                log::debug!("Determined BET table size: 0x{:X}", size);
+                                log::debug!("Determined BET table size: 0x{size:X}");
                                 bet_size = size;
                             }
                             Err(e) => {
-                                log::warn!("Failed to determine BET table size: {}", e);
+                                log::warn!("Failed to determine BET table size: {e}");
                             }
                         }
                     }
 
                     if bet_size > 0 {
                         log::debug!(
-                            "Loading BET table from offset 0x{:X}, size 0x{:X}",
-                            bet_pos,
-                            bet_size
+                            "Loading BET table from offset 0x{bet_pos:X}, size 0x{bet_size:X}"
                         );
 
                         // First, check if the BET offset actually points to a HET table
@@ -454,11 +450,11 @@ impl Archive {
                             ) {
                                 Ok(bet) => {
                                     let file_count = bet.header.file_count;
-                                    log::info!("Loaded BET table with {} files", file_count);
+                                    log::info!("Loaded BET table with {file_count} files");
                                     self.bet_table = Some(bet);
                                 }
                                 Err(e) => {
-                                    log::warn!("Failed to load BET table: {}", e);
+                                    log::warn!("Failed to load BET table: {e}");
                                 }
                             }
                         }
@@ -496,10 +492,7 @@ impl Archive {
                     let compressed_size = v4_data.hash_table_size_64;
 
                     log::debug!(
-                        "Loading hash table from 0x{:X}, compressed size: {} bytes, uncompressed size: {} bytes",
-                        hash_table_offset,
-                        compressed_size,
-                        uncompressed_size
+                        "Loading hash table from 0x{hash_table_offset:X}, compressed size: {compressed_size} bytes, uncompressed size: {uncompressed_size} bytes"
                     );
 
                     // Check if it would extend beyond file
@@ -523,12 +516,12 @@ impl Archive {
                                         self.hash_table = Some(hash_table);
                                     }
                                     Err(e) => {
-                                        log::warn!("Failed to parse hash table: {}", e);
+                                        log::warn!("Failed to parse hash table: {e}");
                                     }
                                 }
                             }
                             Err(e) => {
-                                log::warn!("Failed to decompress hash table: {}", e);
+                                log::warn!("Failed to decompress hash table: {e}");
                             }
                         }
                     }
@@ -558,9 +551,7 @@ impl Archive {
                 if available_space < uncompressed_size {
                     // Table appears to be compressed
                     log::debug!(
-                        "V3 hash table appears compressed: available space {} < expected size {}",
-                        available_space,
-                        uncompressed_size
+                        "V3 hash table appears compressed: available space {available_space} < expected size {uncompressed_size}"
                     );
 
                     // Try to read as compressed
@@ -575,12 +566,12 @@ impl Archive {
                                     self.hash_table = Some(hash_table);
                                 }
                                 Err(e) => {
-                                    log::warn!("Failed to parse hash table: {}", e);
+                                    log::warn!("Failed to parse hash table: {e}");
                                 }
                             }
                         }
                         Err(e) => {
-                            log::warn!("Failed to decompress hash table: {}", e);
+                            log::warn!("Failed to decompress hash table: {e}");
                             // Try to read as truncated uncompressed table
                             // Calculate how many entries we can fit in available space
                             let entries_that_fit = available_space / 16; // 16 bytes per entry
@@ -605,7 +596,7 @@ impl Archive {
                                         log::info!("Successfully loaded truncated hash table");
                                     }
                                     Err(e2) => {
-                                        log::warn!("Failed to read truncated hash table: {}", e2);
+                                        log::warn!("Failed to read truncated hash table: {e2}");
                                     }
                                 }
                             }
@@ -622,7 +613,7 @@ impl Archive {
                             self.hash_table = Some(hash_table);
                         }
                         Err(e) => {
-                            log::warn!("Failed to read hash table: {}", e);
+                            log::warn!("Failed to read hash table: {e}");
                         }
                     }
                 }
@@ -647,10 +638,7 @@ impl Archive {
                     let compressed_size = v4_data.block_table_size_64;
 
                     log::debug!(
-                        "Loading block table from 0x{:X}, compressed size: {} bytes, uncompressed size: {} bytes",
-                        block_table_offset,
-                        compressed_size,
-                        uncompressed_size
+                        "Loading block table from 0x{block_table_offset:X}, compressed size: {compressed_size} bytes, uncompressed size: {uncompressed_size} bytes"
                     );
 
                     // Check if it would extend beyond file
@@ -674,12 +662,12 @@ impl Archive {
                                         self.block_table = Some(block_table);
                                     }
                                     Err(e) => {
-                                        log::warn!("Failed to parse block table: {}", e);
+                                        log::warn!("Failed to parse block table: {e}");
                                     }
                                 }
                             }
                             Err(e) => {
-                                log::warn!("Failed to decompress block table: {}", e);
+                                log::warn!("Failed to decompress block table: {e}");
                             }
                         }
                     }
@@ -713,9 +701,7 @@ impl Archive {
                 if available_space < uncompressed_size {
                     // Table appears to be compressed
                     log::debug!(
-                        "V3 block table appears compressed: available space {} < expected size {}",
-                        available_space,
-                        uncompressed_size
+                        "V3 block table appears compressed: available space {available_space} < expected size {uncompressed_size}"
                     );
 
                     // Try to read as compressed
@@ -731,12 +717,12 @@ impl Archive {
                                     self.block_table = Some(block_table);
                                 }
                                 Err(e) => {
-                                    log::warn!("Failed to parse block table: {}", e);
+                                    log::warn!("Failed to parse block table: {e}");
                                 }
                             }
                         }
                         Err(e) => {
-                            log::warn!("Failed to decompress block table: {}", e);
+                            log::warn!("Failed to decompress block table: {e}");
                             // Try to read as truncated uncompressed table
                             // Calculate how many entries we can fit in available space
                             let entries_that_fit = available_space / 16; // 16 bytes per entry
@@ -756,7 +742,7 @@ impl Archive {
                                         log::info!("Successfully loaded truncated block table");
                                     }
                                     Err(e2) => {
-                                        log::warn!("Failed to read truncated block table: {}", e2);
+                                        log::warn!("Failed to read truncated block table: {e2}");
                                     }
                                 }
                             }
@@ -773,7 +759,7 @@ impl Archive {
                             self.block_table = Some(block_table);
                         }
                         Err(e) => {
-                            log::warn!("Failed to read block table: {}", e);
+                            log::warn!("Failed to read block table: {e}");
                         }
                     }
                 }
@@ -789,9 +775,7 @@ impl Archive {
                 let file_size = self.reader.get_ref().metadata()?.len();
                 if hi_block_end > file_size {
                     log::warn!(
-                        "Hi-block table extends beyond file (ends at 0x{:X}, file size 0x{:X}). Skipping.",
-                        hi_block_end,
-                        file_size
+                        "Hi-block table extends beyond file (ends at 0x{hi_block_end:X}, file size 0x{file_size:X}). Skipping."
                     );
                 } else {
                     self.hi_block_table = Some(HiBlockTable::read(
@@ -807,7 +791,7 @@ impl Archive {
         match self.load_attributes() {
             Ok(()) => {}
             Err(e) => {
-                log::warn!("Failed to load attributes: {:?}", e);
+                log::warn!("Failed to load attributes: {e:?}");
                 // Continue without attributes
             }
         }
@@ -950,7 +934,7 @@ impl Archive {
                     actual_md5 == v4_data.md5_mpq_header
                 }
                 Err(e) => {
-                    log::warn!("Failed to read header for MD5 validation: {}", e);
+                    log::warn!("Failed to read header for MD5 validation: {e}");
                     false
                 }
             }
@@ -1022,7 +1006,7 @@ impl Archive {
             match self.verify_signature() {
                 Ok(status) => status,
                 Err(e) => {
-                    log::warn!("Failed to verify signature: {}", e);
+                    log::warn!("Failed to verify signature: {e}");
                     SignatureStatus::WeakInvalid
                 }
             }
@@ -1241,9 +1225,7 @@ impl Archive {
                             self.verify_collision_candidates(filename, &collision_candidates)
                         {
                             log::debug!(
-                                "Collision resolved: '{}' -> verified file_index={}",
-                                filename,
-                                verified_index
+                                "Collision resolved: '{filename}' -> verified file_index={verified_index}"
                             );
                             if let Some(bet_info) = bet.get_file_info(verified_index) {
                                 return Ok(Some(FileInfo {
@@ -1259,8 +1241,7 @@ impl Archive {
                             }
                         } else {
                             log::warn!(
-                                "Failed to verify collision candidates for '{}', falling back to classic lookup",
-                                filename
+                                "Failed to verify collision candidates for '{filename}', falling back to classic lookup"
                             );
                         }
                     } else {
@@ -1307,31 +1288,23 @@ impl Archive {
                 let block_index = hash_entry.block_index;
 
                 log::debug!(
-                    "Traditional hash lookup for '{}': hash_index={}, block_index={}",
-                    filename,
-                    hash_index,
-                    block_index
+                    "Traditional hash lookup for '{filename}': hash_index={hash_index}, block_index={block_index}"
                 );
 
                 // Check if this block_index matches any of our HET candidates
                 if candidates.contains(&block_index) {
                     log::debug!(
-                        "Collision verification success: '{}' confirmed as file_index={}",
-                        filename,
-                        block_index
+                        "Collision verification success: '{filename}' confirmed as file_index={block_index}"
                     );
                     return Some(block_index);
                 } else {
                     log::warn!(
-                        "Collision verification mismatch: traditional lookup returned block_index={}, but candidates are {:?}",
-                        block_index,
-                        candidates
+                        "Collision verification mismatch: traditional lookup returned block_index={block_index}, but candidates are {candidates:?}"
                     );
                 }
             } else {
                 log::debug!(
-                    "Traditional hash lookup failed for '{}', cannot verify collision candidates",
-                    filename
+                    "Traditional hash lookup failed for '{filename}', cannot verify collision candidates"
                 );
             }
         } else {
@@ -1412,8 +1385,7 @@ impl Archive {
                                 } else {
                                     // File is in listfile but not found in archive
                                     log::warn!(
-                                        "File '{}' listed in (listfile) but not found in archive",
-                                        filename
+                                        "File '{filename}' listed in (listfile) but not found in archive"
                                     );
                                 }
                             }
@@ -1422,16 +1394,14 @@ impl Archive {
                         }
                         Err(e) => {
                             log::warn!(
-                                "Failed to parse (listfile): {}. Falling back to anonymous enumeration.",
-                                e
+                                "Failed to parse (listfile): {e}. Falling back to anonymous enumeration."
                             );
                         }
                     }
                 }
                 Err(e) => {
                     log::warn!(
-                        "Failed to read (listfile): {}. Falling back to anonymous enumeration.",
-                        e
+                        "Failed to read (listfile): {e}. Falling back to anonymous enumeration."
                     );
                 }
             }
@@ -1453,7 +1423,7 @@ impl Archive {
                         // Only include files that actually exist
                         if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
                             entries.push(FileEntry {
-                                name: format!("file_{:08}.dat", i), // Unknown name with file index
+                                name: format!("file_{i:08}.dat"), // Unknown name with file index
                                 size: bet_info.file_size,
                                 compressed_size: bet_info.compressed_size,
                                 flags: bet_info.flags,
@@ -1489,7 +1459,7 @@ impl Archive {
                 if let Some(block_entry) = block_table.get(hash_entry.block_index as usize) {
                     if block_entry.exists() {
                         entries.push(FileEntry {
-                            name: format!("file_{:08}.dat", i), // Unknown name with hash index
+                            name: format!("file_{i:08}.dat"), // Unknown name with hash index
                             size: block_entry.file_size as u64,
                             compressed_size: block_entry.compressed_size as u64,
                             flags: block_entry.flags,
@@ -1520,7 +1490,7 @@ impl Archive {
                         // Only include files that actually exist
                         if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
                             entries.push(FileEntry {
-                                name: format!("file_{:08}.dat", i), // Unknown name with file index
+                                name: format!("file_{i:08}.dat"), // Unknown name with file index
                                 size: bet_info.file_size,
                                 compressed_size: bet_info.compressed_size,
                                 flags: bet_info.flags,
@@ -1565,7 +1535,7 @@ impl Archive {
                 if let Some(block_entry) = block_table.get(block_index) {
                     if block_entry.exists() {
                         entries.push(FileEntry {
-                            name: format!("file_{:08}.dat", block_index),
+                            name: format!("file_{block_index:08}.dat"),
                             size: block_entry.file_size as u64,
                             compressed_size: block_entry.compressed_size as u64,
                             flags: block_entry.flags,
@@ -1611,7 +1581,7 @@ impl Archive {
                     if let Some(bet_info) = bet.get_file_info(i) {
                         if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
                             entries.push(FileEntry {
-                                name: format!("file_{:08}.dat", i),
+                                name: format!("file_{i:08}.dat"),
                                 size: bet_info.file_size,
                                 compressed_size: bet_info.compressed_size,
                                 flags: bet_info.flags,
@@ -1654,7 +1624,7 @@ impl Archive {
                 if let Some(block_entry) = block_table.get(block_index) {
                     if block_entry.exists() {
                         entries.push(FileEntry {
-                            name: format!("file_{:08}.dat", block_index),
+                            name: format!("file_{block_index:08}.dat"),
                             size: block_entry.file_size as u64,
                             compressed_size: block_entry.compressed_size as u64,
                             flags: block_entry.flags,
@@ -1677,6 +1647,16 @@ impl Archive {
         let file_info = self
             .find_file(name)?
             .ok_or_else(|| Error::FileNotFound(name.to_string()))?;
+
+        // Check if this is a patch file - patch files cannot be read directly
+        if file_info.is_patch_file() {
+            return Err(Error::OperationNotSupported {
+                version: self.header.format_version as u16,
+                operation: format!(
+                    "Reading patch file '{name}' directly. Patch files contain binary patches that must be applied to base files."
+                ),
+            });
+        }
 
         // For v3+ archives with HET/BET tables, we already have all the info we need in FileInfo
         // For classic archives, we need to get additional info from the block table
@@ -1765,7 +1745,7 @@ impl Archive {
                     });
                 }
 
-                log::debug!("Single unit file CRC validated: 0x{:08X}", actual_crc);
+                log::debug!("Single unit file CRC validated: 0x{actual_crc:08X}");
             }
 
             // Decompress if needed
@@ -1868,7 +1848,7 @@ impl Archive {
             };
 
             FileInfo {
-                filename: format!("file_{:08}.dat", hash_index),
+                filename: format!("file_{hash_index:08}.dat"),
                 hash_index,
                 block_index: block_idx,
                 file_pos: self.archive_offset + file_pos,
@@ -1892,7 +1872,7 @@ impl Archive {
             let file_pos = self.archive_offset + bet_info.file_pos;
 
             FileInfo {
-                filename: format!("file_{:08}.dat", hash_index),
+                filename: format!("file_{hash_index:08}.dat"),
                 hash_index: 0,  // Not meaningful for HET/BET
                 block_index: 0, // Not meaningful for HET/BET
                 file_pos,
@@ -1902,6 +1882,17 @@ impl Archive {
                 locale: 0, // Not applicable for HET/BET
             }
         };
+
+        // Check if this is a patch file - patch files cannot be read directly
+        if file_info.is_patch_file() {
+            return Err(Error::OperationNotSupported {
+                version: self.header.format_version as u16,
+                operation: format!(
+                    "Reading patch file '{}' directly. Patch files contain binary patches that must be applied to base files.",
+                    file_info.filename
+                ),
+            });
+        }
 
         // Now use the existing file reading logic
         // For encrypted files, we need a key. Since we don't have the real filename,
@@ -1991,9 +1982,7 @@ impl Archive {
         let sector_count = (file_info.file_size as usize).div_ceil(sector_size);
 
         log::debug!(
-            "Reading sectored file: {} sectors of {} bytes each",
-            sector_count,
-            sector_size
+            "Reading sectored file: {sector_count} sectors of {sector_size} bytes each"
         );
 
         // Read sector offset table
@@ -2082,10 +2071,7 @@ impl Archive {
                 // This can happen with corrupted or malformed archives
                 // Try to recover by using the expected sector size
                 log::warn!(
-                    "Invalid sector offsets detected: start={}, end={} for sector {}. Attempting recovery.",
-                    sector_start,
-                    sector_end,
-                    i
+                    "Invalid sector offsets detected: start={sector_start}, end={sector_end} for sector {i}. Attempting recovery."
                 );
 
                 // Skip this sector and continue with zeros
@@ -2134,7 +2120,7 @@ impl Archive {
             if let Some(ref _crcs) = sector_crcs {
                 // Temporarily disabled CRC validation
                 // TODO: Fix CRC decryption key calculation for proper validation
-                log::trace!("Skipping CRC validation for sector {}", i);
+                log::trace!("Skipping CRC validation for sector {i}");
             }
 
             // Decompress sector
@@ -2150,15 +2136,14 @@ impl Archive {
                     {
                         Ok(decompressed) => decompressed,
                         Err(e) => {
-                            log::warn!("Failed to decompress sector {}: {}. Using zeros.", i, e);
+                            log::warn!("Failed to decompress sector {i}: {e}. Using zeros.");
                             // Return zeros for corrupted sector
                             vec![0u8; expected_size]
                         }
                     }
                 } else {
                     log::warn!(
-                        "Empty compressed sector data for sector {}. Using zeros.",
-                        i
+                        "Empty compressed sector data for sector {i}. Using zeros."
                     );
                     vec![0u8; expected_size]
                 }
@@ -2224,7 +2209,7 @@ impl Archive {
                                     data = decompressed;
                                 }
                                 Err(e) => {
-                                    log::warn!("Failed to decompress attributes file: {}", e);
+                                    log::warn!("Failed to decompress attributes file: {e}");
                                     // Continue with original data
                                 }
                             }
@@ -2236,7 +2221,7 @@ impl Archive {
                 let attributes = special_files::Attributes::parse(&data.into(), block_count)?;
                 self.attributes = Some(attributes);
 
-                log::info!("Loaded (attributes) file with {} entries", block_count);
+                log::info!("Loaded (attributes) file with {block_count} entries");
                 Ok(())
             }
             Err(Error::FileNotFound(_)) => {
@@ -2287,9 +2272,7 @@ impl Archive {
         };
 
         log::debug!(
-            "HET table position: 0x{:X}, calculated size: {} bytes",
-            het_pos,
-            actual_size
+            "HET table position: 0x{het_pos:X}, calculated size: {actual_size} bytes"
         );
 
         Ok(actual_size)
@@ -2304,9 +2287,7 @@ impl Archive {
         let actual_size = self.header.get_hash_table_pos() - bet_pos;
 
         log::debug!(
-            "BET table position: 0x{:X}, calculated size: {} bytes",
-            bet_pos,
-            actual_size
+            "BET table position: 0x{bet_pos:X}, calculated size: {actual_size} bytes"
         );
 
         Ok(actual_size)
@@ -2361,7 +2342,7 @@ impl Archive {
                     Ok(true) => Ok(SignatureStatus::WeakValid),
                     Ok(false) => Ok(SignatureStatus::WeakInvalid),
                     Err(e) => {
-                        log::warn!("Failed to verify weak signature: {}", e);
+                        log::warn!("Failed to verify weak signature: {e}");
                         Ok(SignatureStatus::WeakInvalid)
                     }
                 }
@@ -2400,9 +2381,7 @@ impl Archive {
         if (compressed_size as usize) < expected_uncompressed_size {
             // Table is compressed
             log::debug!(
-                "Table is compressed: compressed_size={}, uncompressed_size={}",
-                compressed_size,
-                expected_uncompressed_size
+                "Table is compressed: compressed_size={compressed_size}, uncompressed_size={expected_uncompressed_size}"
             );
 
             // First byte is the compression type
@@ -2413,7 +2392,7 @@ impl Archive {
             let compression_type = compressed_data[0];
             let compressed_content = &compressed_data[1..];
 
-            log::debug!("Decompressing table with method 0x{:02X}", compression_type);
+            log::debug!("Decompressing table with method 0x{compression_type:02X}");
 
             // Decompress the data
             compression::decompress(
@@ -2457,7 +2436,7 @@ impl Archive {
                 // Try to parse as strong signature
                 match parse_strong_signature(&signature_data) {
                     Ok(strong_sig) => {
-                        log::debug!("Found strong signature at offset 0x{:X}", signature_pos);
+                        log::debug!("Found strong signature at offset 0x{signature_pos:X}");
 
                         // Seek to beginning of archive for verification
                         self.reader.seek(SeekFrom::Start(self.archive_offset))?;
@@ -2477,7 +2456,7 @@ impl Archive {
                                 Ok(SignatureStatus::StrongInvalid)
                             }
                             Err(e) => {
-                                log::warn!("Failed to verify strong signature: {}", e);
+                                log::warn!("Failed to verify strong signature: {e}");
                                 Ok(SignatureStatus::StrongInvalid)
                             }
                         }
@@ -2490,7 +2469,7 @@ impl Archive {
                 }
             }
             Err(e) => {
-                log::debug!("Failed to read potential strong signature: {}", e);
+                log::debug!("Failed to read potential strong signature: {e}");
                 Ok(SignatureStatus::None)
             }
         }
@@ -2606,6 +2585,12 @@ impl FileInfo {
         (self.flags & BlockEntry::FLAG_SECTOR_CRC) != 0
     }
 
+    /// Check if the file is a patch file
+    pub fn is_patch_file(&self) -> bool {
+        use crate::tables::BlockEntry;
+        (self.flags & BlockEntry::FLAG_PATCH_FILE) != 0
+    }
+
     /// Extract compression method from block table flags
     /// Returns the compression method byte that should be used for decompression
     pub fn get_compression_method(&self) -> Option<u8> {
@@ -2635,8 +2620,7 @@ impl FileInfo {
             0x80 => Some(flags::ADPCM_STEREO), // ADPCM_STEREO
             _ => {
                 log::warn!(
-                    "Unknown compression method in flags: 0x{:02X}",
-                    compression_mask
+                    "Unknown compression method in flags: 0x{compression_mask:02X}"
                 );
                 None
             }
