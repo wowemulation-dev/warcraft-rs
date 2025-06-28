@@ -10,14 +10,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let archive_path = &args[1];
     println!("=== Simple Archive Listing ===");
-    println!("Archive: {}", archive_path);
+    println!("Archive: {archive_path}");
 
     let mut archive = Archive::open(archive_path)?;
-    let files = archive.list_all()?;
+    let files = archive.list()?;
 
     println!("Found {} files:", files.len());
-    for (i, file) in files.iter().enumerate() {
+    for (i, file) in files.iter().take(20).enumerate() {
         println!("  {}: {}", i + 1, file.name);
+    }
+    if files.len() > 20 {
+        println!("  ... and {} more files", files.len() - 20);
     }
 
     Ok(())
