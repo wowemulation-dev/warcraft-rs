@@ -48,6 +48,9 @@ pub fn extract_from_multiple_archives<P: AsRef<Path> + Sync>(
         .collect()
 }
 
+/// Type alias for the result of parallel archive extraction
+type ArchiveExtractionResult = Vec<(PathBuf, Vec<(String, Vec<u8>)>)>;
+
 /// Extract multiple files from multiple archives in parallel
 ///
 /// This function processes multiple archives and extracts multiple files from
@@ -76,7 +79,7 @@ pub fn extract_from_multiple_archives<P: AsRef<Path> + Sync>(
 pub fn extract_multiple_from_multiple_archives<P: AsRef<Path> + Sync>(
     archives: &[P],
     file_names: &[&str],
-) -> Result<Vec<(PathBuf, Vec<(String, Vec<u8>)>)>> {
+) -> Result<ArchiveExtractionResult> {
     use rayon::prelude::*;
 
     archives
@@ -192,18 +195,18 @@ mod tests {
         let mut paths = Vec::new();
 
         for i in 0..count {
-            let path = temp_dir.path().join(format!("test_{}.mpq", i));
+            let path = temp_dir.path().join(format!("test_{i}.mpq"));
             let mut builder = ArchiveBuilder::new();
 
             // Add some test files
             builder = builder
                 .add_file_data(
-                    format!("Content from archive {}", i).into_bytes(),
+                    format!("Content from archive {i}").into_bytes(),
                     "common.txt",
                 )
                 .add_file_data(
-                    format!("Unique to archive {}", i).into_bytes(),
-                    &format!("unique_{}.txt", i),
+                    format!("Unique to archive {i}").into_bytes(),
+                    &format!("unique_{i}.txt"),
                 );
 
             builder.build(&path)?;
@@ -223,7 +226,7 @@ mod tests {
         for (i, (path, data)) in results.iter().enumerate() {
             assert_eq!(path, &archives[i]);
             let content = String::from_utf8_lossy(data);
-            assert!(content.contains(&format!("Content from archive {}", i)));
+            assert!(content.contains(&format!("Content from archive {i}")));
         }
 
         Ok(())
@@ -238,7 +241,7 @@ mod tests {
         assert_eq!(results.len(), 3);
         for (i, (_path, matches)) in results.iter().enumerate() {
             assert_eq!(matches.len(), 1);
-            assert_eq!(matches[0], format!("unique_{}.txt", i));
+            assert_eq!(matches[0], format!("unique_{i}.txt"));
         }
 
         Ok(())
