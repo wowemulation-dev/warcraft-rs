@@ -270,6 +270,103 @@ impl PatchChain {
             .map(|e| e.priority)
     }
 
+    /// Load multiple archives in parallel and build a patch chain
+    ///
+    /// This method loads all archives concurrently using rayon, then builds
+    /// the patch chain with proper priority ordering. This is significantly
+    /// faster than loading archives sequentially.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use wow_mpq::PatchChain;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let archives = vec![
+    ///     ("Data/common.MPQ", 0),
+    ///     ("Data/patch.MPQ", 100),
+    ///     ("Data/patch-2.MPQ", 200),
+    ///     ("Data/patch-3.MPQ", 300),
+    /// ];
+    ///
+    /// let chain = PatchChain::from_archives_parallel(archives)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn from_archives_parallel<P: AsRef<Path> + Sync>(archives: Vec<(P, i32)>) -> Result<Self> {
+        use rayon::prelude::*;
+
+        // Load all archives in parallel
+        let loaded_archives: Result<Vec<_>> = archives
+            .par_iter()
+            .map(|(path, priority)| {
+                let path_ref = path.as_ref();
+                Archive::open(path_ref).map(|archive| ChainEntry {
+                    archive,
+                    priority: *priority,
+                    path: path_ref.to_path_buf(),
+                })
+            })
+            .collect();
+
+        let mut loaded_archives = loaded_archives?;
+
+        // Sort by priority (highest first)
+        loaded_archives.sort_by(|a, b| b.priority.cmp(&a.priority));
+
+        let mut chain = Self {
+            archives: loaded_archives,
+            file_map: HashMap::new(),
+        };
+
+        // Build the file map
+        chain.rebuild_file_map()?;
+
+        Ok(chain)
+    }
+
+    /// Add multiple archives to the chain in parallel
+    ///
+    /// This method loads multiple archives concurrently and adds them to the
+    /// existing chain with their specified priorities.
+    pub fn add_archives_parallel<P: AsRef<Path> + Sync>(
+        &mut self,
+        archives: Vec<(P, i32)>,
+    ) -> Result<()> {
+        use rayon::prelude::*;
+
+        // Load new archives in parallel
+        let new_archives: Result<Vec<_>> = archives
+            .par_iter()
+            .map(|(path, priority)| {
+                let path_ref = path.as_ref();
+                Archive::open(path_ref).map(|archive| ChainEntry {
+                    archive,
+                    priority: *priority,
+                    path: path_ref.to_path_buf(),
+                })
+            })
+            .collect();
+
+        let new_archives = new_archives?;
+
+        // Add each new archive at the correct position
+        for entry in new_archives {
+            let insert_pos = self
+                .archives
+                .iter()
+                .position(|e| e.priority < entry.priority)
+                .unwrap_or(self.archives.len());
+
+            self.archives.insert(insert_pos, entry);
+        }
+
+        // Rebuild file map
+        self.rebuild_file_map()?;
+
+        Ok(())
+    }
+
     /// Update the priority of an existing archive
     pub fn set_priority<P: AsRef<Path>>(&mut self, path: P, new_priority: i32) -> Result<()> {
         let path = path.as_ref();
@@ -466,5 +563,125 @@ mod integration_tests {
 
         // Now path2 should be first
         assert_eq!(chain.archives[0].priority, 150);
+    }
+
+    #[test]
+    fn test_parallel_patch_chain_loading() {
+        let temp = TempDir::new().unwrap();
+
+        // Create multiple test archives
+        let mut archive_paths = Vec::new();
+        for i in 0..5 {
+            let common_content = format!("Common content v{}", i);
+            let unique_name = format!("unique_{}.txt", i);
+            let unique_content = format!("Unique to archive {}", i);
+            let files: Vec<(&str, &[u8])> = vec![
+                ("common.txt", common_content.as_bytes()),
+                (&unique_name, unique_content.as_bytes()),
+            ];
+            let path = create_test_archive(temp.path(), &format!("archive_{}.mpq", i), &files);
+            archive_paths.push((path, i * 100)); // Increasing priorities
+        }
+
+        // Load sequentially and measure time
+        let start = std::time::Instant::now();
+        let mut chain_seq = PatchChain::new();
+        for (path, priority) in &archive_paths {
+            chain_seq.add_archive(path, *priority).unwrap();
+        }
+        let seq_duration = start.elapsed();
+
+        // Load in parallel
+        let start = std::time::Instant::now();
+        let mut chain_par = PatchChain::from_archives_parallel(archive_paths.clone()).unwrap();
+        let par_duration = start.elapsed();
+
+        // Verify both chains have the same content
+        assert_eq!(
+            chain_seq.list().unwrap().len(),
+            chain_par.list().unwrap().len()
+        );
+
+        // Verify priority ordering (highest priority archive should win)
+        let common_content = chain_par.read_file("common.txt").unwrap();
+        assert_eq!(common_content, b"Common content v4"); // Archive 4 has highest priority (400)
+
+        // Verify all unique files are accessible
+        for i in 0..5 {
+            let unique_file = format!("unique_{}.txt", i);
+            let content = chain_par.read_file(&unique_file).unwrap();
+            assert_eq!(content, format!("Unique to archive {}", i).as_bytes());
+        }
+
+        // Parallel should be faster (or at least not significantly slower)
+        println!("Sequential loading: {:?}", seq_duration);
+        println!("Parallel loading: {:?}", par_duration);
+    }
+
+    #[test]
+    fn test_add_archives_parallel() {
+        let temp = TempDir::new().unwrap();
+
+        // Create initial archive
+        let base_files: Vec<(&str, &[u8])> = vec![("base.txt", b"base content")];
+        let base_path = create_test_archive(temp.path(), "base.mpq", &base_files);
+
+        // Create chain with base archive
+        let mut chain = PatchChain::new();
+        chain.add_archive(&base_path, 0).unwrap();
+
+        // Create multiple patch archives
+        let mut patch_archives = Vec::new();
+        for i in 1..=3 {
+            let patch_name = format!("patch_{}.txt", i);
+            let patch_content = format!("Patch {} content", i);
+            let common_content = format!("Common from patch {}", i);
+            let files: Vec<(&str, &[u8])> = vec![
+                (&patch_name, patch_content.as_bytes()),
+                ("common.txt", common_content.as_bytes()),
+            ];
+            let path = create_test_archive(temp.path(), &format!("patch_{}.mpq", i), &files);
+            patch_archives.push((path, i * 100));
+        }
+
+        // Add patches in parallel
+        chain.add_archives_parallel(patch_archives).unwrap();
+
+        // Verify all files are accessible
+        assert_eq!(chain.read_file("base.txt").unwrap(), b"base content");
+        assert_eq!(chain.read_file("patch_1.txt").unwrap(), b"Patch 1 content");
+        assert_eq!(chain.read_file("patch_2.txt").unwrap(), b"Patch 2 content");
+        assert_eq!(chain.read_file("patch_3.txt").unwrap(), b"Patch 3 content");
+
+        // Verify priority (patch 3 has highest priority)
+        assert_eq!(
+            chain.read_file("common.txt").unwrap(),
+            b"Common from patch 3"
+        );
+
+        // Verify chain info
+        let info = chain.get_chain_info();
+        assert_eq!(info.len(), 4); // base + 3 patches
+    }
+
+    #[test]
+    fn test_parallel_loading_with_invalid_archive() {
+        let temp = TempDir::new().unwrap();
+
+        // Create some valid archives
+        let mut archives = Vec::new();
+        for i in 0..2 {
+            let file_name = format!("file_{}.txt", i);
+            let files: Vec<(&str, &[u8])> = vec![(&file_name, b"content")];
+            let path = create_test_archive(temp.path(), &format!("valid_{}.mpq", i), &files);
+            archives.push((path, i * 100));
+        }
+
+        // Add a non-existent archive
+        archives.push((temp.path().join("nonexistent.mpq"), 200));
+
+        // Try to load in parallel - should fail
+        let result = PatchChain::from_archives_parallel(archives);
+        assert!(result.is_err());
     }
 }

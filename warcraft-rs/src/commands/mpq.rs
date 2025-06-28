@@ -13,6 +13,7 @@ use wow_mpq::{
     },
     path::mpq_path_to_system,
     rebuild_archive,
+    single_archive_parallel::{ParallelArchive, ParallelConfig},
 };
 
 use crate::utils::{
@@ -64,6 +65,10 @@ pub enum MpqCommands {
         /// Check CRC/MD5 checksums if available
         #[arg(long)]
         check_checksums: bool,
+
+        /// Number of threads for parallel validation (default: CPU cores)
+        #[arg(long)]
+        threads: Option<usize>,
     },
 
     /// List files in an MPQ archive
@@ -95,6 +100,14 @@ pub enum MpqCommands {
         /// Preserve directory structure
         #[arg(short, long)]
         preserve_paths: bool,
+
+        /// Number of threads for parallel extraction (default: CPU cores)
+        #[arg(long)]
+        threads: Option<usize>,
+
+        /// Continue extraction even if some files fail
+        #[arg(long)]
+        skip_errors: bool,
 
         /// Patch archives to apply (in order of priority)
         #[arg(long = "patch", action = clap::ArgAction::Append)]
@@ -274,8 +287,18 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             output,
             files,
             preserve_paths,
+            threads,
+            skip_errors,
             patches,
-        } => extract_files(&archive, &output, files, preserve_paths, patches),
+        } => extract_files(
+            &archive,
+            &output,
+            files,
+            preserve_paths,
+            threads,
+            skip_errors,
+            patches,
+        ),
         MpqCommands::Create {
             archive,
             add,
@@ -291,7 +314,8 @@ pub fn execute(command: MpqCommands) -> Result<()> {
         MpqCommands::Validate {
             archive,
             check_checksums,
-        } => validate_archive(&archive, check_checksums),
+            threads,
+        } => validate_archive(&archive, check_checksums, threads),
         MpqCommands::Rebuild {
             source,
             target,
@@ -426,52 +450,63 @@ fn extract_files(
     output_dir: &str,
     files: Vec<String>,
     preserve_paths: bool,
+    threads: Option<usize>,
+    skip_errors: bool,
     patches: Vec<String>,
 ) -> Result<()> {
     if patches.is_empty() {
-        // Use original single-archive logic if no patches
+        // Use parallel extraction by default
         let spinner = create_spinner("Opening archive...");
-        let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
+        let parallel_archive =
+            ParallelArchive::open(archive_path).context("Failed to open archive")?;
         spinner.finish_and_clear();
 
-        let (files_to_extract, file_entries) = if files.is_empty() {
-            let entries = archive.list()?;
-            let filenames = entries.iter().map(|e| e.name.clone()).collect();
-            (filenames, Some(entries))
+        let files_to_extract: Vec<String> = if files.is_empty() {
+            parallel_archive.list_files().iter().cloned().collect()
         } else {
-            (files, None)
+            files
         };
 
         let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
 
-        for (i, file) in files_to_extract.iter().enumerate() {
-            pb.set_message(format!("Extracting: {}", file));
+        // Configure parallel extraction with sensible defaults
+        let mut config = ParallelConfig::new()
+            .batch_size(10) // Default batch size
+            .skip_errors(skip_errors);
 
-            let data_result = if let Some(ref entries) = file_entries {
-                // Use table indices for direct access when available
-                if let Some(entry) = entries.get(i) {
-                    if let Some((hash_index, block_index)) = entry.table_indices {
-                        archive.read_file_by_indices(hash_index, block_index)
-                    } else {
-                        archive.read_file(file)
-                    }
-                } else {
-                    archive.read_file(file)
-                }
-            } else {
-                // Fall back to filename-based access
-                archive.read_file(file)
-            };
+        if let Some(num_threads) = threads {
+            config = config.threads(num_threads);
+        }
+
+        // Extract files in parallel
+        let file_refs: Vec<&str> = files_to_extract.iter().map(|s| s.as_str()).collect();
+        let results = if skip_errors {
+            use wow_mpq::single_archive_parallel::extract_with_config;
+            extract_with_config(archive_path, &file_refs, config)?
+        } else {
+            // If not skipping errors, use the simpler API
+            parallel_archive
+                .extract_files_parallel(&file_refs)
+                .context("Failed to extract files")?
+                .into_iter()
+                .map(|(name, data)| (name, Ok(data)))
+                .collect()
+        };
+
+        // Write extracted files to disk
+        let mut success_count = 0;
+        let mut error_count = 0;
+
+        for (file, data_result) in results {
+            pb.set_message(format!("Writing: {}", file));
 
             match data_result {
                 Ok(data) => {
                     let output_path = if preserve_paths {
-                        // Convert MPQ path separators to system path separators
-                        let system_path = mpq_path_to_system(file);
+                        let system_path = mpq_path_to_system(&file);
                         Path::new(output_dir).join(system_path)
                     } else {
-                        // Convert MPQ path to system path, then extract just the filename
-                        let system_path = mpq_path_to_system(file);
+                        let system_path = mpq_path_to_system(&file);
                         let filename = Path::new(&system_path).file_name().unwrap_or_default();
                         Path::new(output_dir).join(filename)
                     };
@@ -481,16 +516,26 @@ fn extract_files(
                     }
 
                     fs::write(&output_path, data)?;
+                    success_count += 1;
                 }
                 Err(e) => {
                     log::warn!("Failed to extract {}: {}", file, e);
+                    error_count += 1;
                 }
             }
 
             pb.inc(1);
         }
 
-        pb.finish_with_message("Extraction complete");
+        let msg = if error_count > 0 {
+            format!(
+                "Extraction complete: {} succeeded, {} failed",
+                success_count, error_count
+            )
+        } else {
+            format!("Extraction complete: {} files", success_count)
+        };
+        pb.finish_with_message(msg);
     } else {
         // Use patch chain logic
         let spinner = create_spinner("Building patch chain...");
@@ -657,41 +702,64 @@ fn show_info(path: &str, include_hash_table: bool, include_block_table: bool) ->
     Ok(())
 }
 
-fn validate_archive(path: &str, check_checksums: bool) -> Result<()> {
+fn validate_archive(path: &str, check_checksums: bool, threads: Option<usize>) -> Result<()> {
+    // Use parallel validation by default
     let spinner = create_spinner("Opening archive...");
-    let mut archive = Archive::open(path).context("Failed to open archive")?;
+    let parallel_archive = ParallelArchive::open(path).context("Failed to open archive")?;
     spinner.finish_and_clear();
 
-    let files: Vec<String> = archive.list()?.into_iter().map(|e| e.name).collect();
+    let files: Vec<&str> = parallel_archive
+        .list_files()
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
     let pb = create_progress_bar(files.len() as u64, "Validating files");
 
+    // Configure parallel processing
+    let mut config = ParallelConfig::new().skip_errors(true);
+    if let Some(num_threads) = threads {
+        config = config.threads(num_threads);
+    }
+
+    // Validate files by trying to read them
+    use wow_mpq::single_archive_parallel::extract_with_config;
+    let validation_results = extract_with_config(path, &files, config)?;
+
     let mut errors = 0;
+    let mut total_size = 0u64;
 
-    for file in &files {
-        pb.set_message(format!("Validating: {}", file));
-
-        match archive.read_file(file) {
-            Ok(_) => {
-                // File read successfully
+    for (filename, result) in validation_results {
+        pb.set_message(format!("Validating: {}", filename));
+        match result {
+            Ok(data) => {
+                total_size += data.len() as u64;
                 if check_checksums {
                     // TODO: Implement checksum validation
                 }
             }
             Err(e) => {
-                log::error!("Failed to read {}: {}", file, e);
+                log::error!("Failed to read {}: {}", filename, e);
                 errors += 1;
             }
         }
-
         pb.inc(1);
     }
 
     pb.finish_and_clear();
 
     if errors == 0 {
-        println!("✓ Archive validation passed");
+        println!(
+            "✓ Archive validation passed - {} files ({} total)",
+            files.len(),
+            format_bytes(total_size)
+        );
     } else {
         println!("✗ Archive validation failed with {} errors", errors);
+        println!(
+            "  Successfully validated: {} files ({})",
+            files.len() - errors,
+            format_bytes(total_size)
+        );
     }
 
     Ok(())

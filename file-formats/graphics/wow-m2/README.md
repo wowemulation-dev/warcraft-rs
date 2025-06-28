@@ -51,7 +51,9 @@ cargo add wow-m2
 use wow_m2::{M2Model, M2Version, M2Converter};
 
 // Load a model
-let model = M2Model::load("path/to/model.m2")?;
+let data = std::fs::read("path/to/model.m2")?;
+let mut cursor = std::io::Cursor::new(data);
+let model = M2Model::parse(&mut cursor)?;
 
 // Print basic information
 println!("Model version: {:?}", model.header.version());
@@ -61,7 +63,9 @@ println!("Bones: {}", model.bones.len());
 // Convert to a different version
 let converter = M2Converter::new();
 let converted = converter.convert(&model, M2Version::WotLK)?;
-converted.save("path/to/converted.m2")?;
+// Save the converted model
+let output_data = converted.write_to_bytes()?;
+std::fs::write("path/to/converted.m2", output_data)?;
 ```
 
 ### Working with Skin Files
@@ -70,7 +74,9 @@ converted.save("path/to/converted.m2")?;
 use wow_m2::Skin;
 
 // Load a skin file
-let skin = Skin::load("path/to/model00.skin")?;
+let data = std::fs::read("path/to/model00.skin")?;
+let mut cursor = std::io::Cursor::new(data);
+let skin = Skin::parse(&mut cursor)?;
 
 // Access submesh information
 for submesh in &skin.submeshes {

@@ -124,7 +124,7 @@ fn extract_all_files(archive: &mut Archive, output_dir: &str) -> Result<(), Box<
     // Create output directory
     fs::create_dir_all(output_dir)?;
 
-    // Get file list (requires listfile)
+    // Get file list from listfile (or use list_all() to include all files)
     let entries = archive.list()?;
 
     for entry in entries {

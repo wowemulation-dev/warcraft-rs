@@ -2069,6 +2069,11 @@ impl Archive {
         // Read and decompress each sector
         let mut decompressed_data = Vec::with_capacity(file_info.file_size as usize);
 
+        // Pre-allocate a reusable buffer for sector reading
+        // Add some overhead for compression headers
+        let max_sector_size = sector_size + 1024;
+        let mut sector_buffer = vec![0u8; max_sector_size];
+
         for i in 0..sector_count {
             let sector_start = sector_offsets[i] as u64;
             let sector_end = sector_offsets[i + 1] as u64;
@@ -2100,9 +2105,14 @@ impl Archive {
             self.reader
                 .seek(SeekFrom::Start(file_info.file_pos + sector_start))?;
 
-            // Read sector data
-            let mut sector_data = vec![0u8; sector_size_compressed];
-            self.reader.read_exact(&mut sector_data)?;
+            // Ensure our buffer is large enough
+            if sector_size_compressed > sector_buffer.len() {
+                sector_buffer.resize(sector_size_compressed, 0);
+            }
+
+            // Read sector data into the reusable buffer
+            let sector_data = &mut sector_buffer[..sector_size_compressed];
+            self.reader.read_exact(sector_data)?;
 
             if i == 0 {
                 log::debug!(
@@ -2116,7 +2126,7 @@ impl Archive {
             // Decrypt sector if needed
             if file_info.is_encrypted() {
                 let sector_key = key.wrapping_add(i as u32);
-                decrypt_file_data(&mut sector_data, sector_key);
+                decrypt_file_data(sector_data, sector_key);
             }
 
             // Validate CRC if present - MUST be done AFTER decryption but BEFORE decompression

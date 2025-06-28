@@ -56,7 +56,7 @@ fn extract_dbc_files(mpq_path: &str, output_dir: &str) -> Result<Vec<String>, Bo
     fs::create_dir_all(output_dir)?;
 
     // List all files in the archive
-    let entries = archive.list()?;
+    let entries = archive.list_all()?;
     for entry in entries {
         if entry.name.ends_with(".dbc") && entry.name.contains("DBFilesClient") {
             match archive.read_file(&entry.name) {
@@ -278,7 +278,7 @@ impl DbcRecord for SpellRecord {
 
 ```rust
 use std::collections::HashMap;
-use wow_dbc::*;
+use wow_cdbc::*;
 
 pub struct DbcDatabase {
     spells: HashMap<u32, SpellRecord>,
@@ -495,7 +495,7 @@ fn print_spell_info(spell: &SpellRecord) {
 ### Complete DBC Parser Library
 
 ```rust
-use wow_dbc::*;
+use wow_cdbc::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -565,7 +565,7 @@ fn read_cstring_at_offset(data: &[u8], offset: usize) -> String {
 ### Localized DBC Support
 
 ```rust
-use wow_dbc::{DbcString, LocalizedString};
+use wow_cdbc::{DbcString, LocalizedString};
 
 #[derive(Debug)]
 pub struct LocalizedDbcString {
@@ -802,7 +802,7 @@ fn decode_dbc_string(bytes: &[u8]) -> String {
 fn find_dbc_in_multiple_mpqs(filename: &str, mpq_paths: &[&str]) -> Option<Vec<u8>> {
     for mpq_path in mpq_paths {
         if let Ok(mut archive) = Archive::open(mpq_path) {
-            if let Ok(data) = archive.extract(&format!("DBFilesClient/{}", filename)) {
+            if let Ok(data) = archive.read_file(&format!("DBFilesClient/{}", filename)) {
                 return Some(data);
             }
         }

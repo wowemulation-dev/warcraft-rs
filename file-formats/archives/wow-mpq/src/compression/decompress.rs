@@ -88,7 +88,10 @@ fn decompress_multiple(data: &[u8], flags: u8, expected_size: usize) -> Result<V
     // 2. Then decompress PKWare if present
     // 3. Finally decompress ADPCM if present (ADPCM is applied first during compression)
 
-    let mut current_data = data.to_vec();
+    // Pre-allocate buffer with worst-case size to avoid reallocations
+    let buffer_size = std::cmp::max(expected_size * 4, data.len() * 4);
+    let mut current_data = Vec::with_capacity(buffer_size);
+    current_data.extend_from_slice(data);
 
     // Step 1: Decompress the primary compression method
     if has_huffman {
@@ -137,6 +140,7 @@ fn decompress_multiple(data: &[u8], flags: u8, expected_size: usize) -> Result<V
 
     // If no multi-compression was detected, try single method decompression
     if !has_adpcm && !has_pkware && (has_huffman || has_zlib || has_bzip2 || has_sparse) {
+        // Single compression method detected - no need for intermediate data
         if has_huffman {
             return algorithms::huffman::decompress(data, expected_size);
         } else if has_zlib {

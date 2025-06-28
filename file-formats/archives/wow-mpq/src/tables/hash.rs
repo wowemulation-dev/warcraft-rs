@@ -74,6 +74,7 @@ impl HashEntry {
 #[derive(Debug)]
 pub struct HashTable {
     entries: Vec<HashEntry>,
+    mask: usize,
 }
 
 impl HashTable {
@@ -85,7 +86,10 @@ impl HashTable {
         }
 
         let entries = vec![HashEntry::empty(); size];
-        Ok(Self { entries })
+        Ok(Self {
+            entries,
+            mask: size - 1,
+        })
     }
 
     /// Read and decrypt a hash table from the archive
@@ -127,7 +131,10 @@ impl HashTable {
             entries.push(entry);
         }
 
-        Ok(Self { entries })
+        Ok(Self {
+            entries,
+            mask: size as usize - 1,
+        })
     }
 
     /// Create a hash table from bytes (needs decryption)
@@ -170,7 +177,10 @@ impl HashTable {
             entries.push(entry);
         }
 
-        Ok(Self { entries })
+        Ok(Self {
+            entries,
+            mask: size as usize - 1,
+        })
     }
 
     /// Get all entries
@@ -195,8 +205,8 @@ impl HashTable {
         let name_b = hash_string(filename, hash_type::NAME_B);
         let start_index = hash_string(filename, hash_type::TABLE_OFFSET) as usize;
 
-        let table_size = self.entries.len();
-        let mut index = start_index & (table_size - 1);
+        let mut index = start_index & self.mask;
+        let end_index = index;
 
         // Linear probing to find the file
         loop {
@@ -217,10 +227,10 @@ impl HashTable {
             }
 
             // Continue to next entry
-            index = (index + 1) & (table_size - 1);
+            index = (index + 1) & self.mask;
 
             // If we've wrapped around to where we started, file doesn't exist
-            if index == (start_index & (table_size - 1)) {
+            if index == end_index {
                 return None;
             }
         }
@@ -234,7 +244,10 @@ impl HashTable {
         }
 
         let entries = vec![HashEntry::empty(); size];
-        Ok(Self { entries })
+        Ok(Self {
+            entries,
+            mask: size as usize - 1,
+        })
     }
 
     /// Get a mutable reference to a specific entry

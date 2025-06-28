@@ -78,7 +78,7 @@ if let Ok(Some(file_info)) = archive.find_file("Interface/FrameXML/UIParent.lua"
     println!("File found: {} bytes", file_info.file_size);
 }
 
-// List all files (requires listfile)
+// List files from listfile
 if let Ok(entries) = archive.list() {
     for entry in entries {
         println!("{}: {} bytes (compressed: {} bytes)",
@@ -86,6 +86,13 @@ if let Ok(entries) = archive.list() {
             entry.size,
             entry.compressed_size
         );
+    }
+}
+
+// Or list ALL files by scanning tables (includes files not in listfile)
+if let Ok(entries) = archive.list_all() {
+    for entry in entries {
+        println!("{}: {} bytes", entry.name, entry.size);
     }
 }
 ```
@@ -99,8 +106,8 @@ use std::fs;
 
 let mut archive = Archive::open("Data/art.mpq")?;
 
-// Extract all files
-if let Ok(entries) = archive.list() {
+// Extract all files (use list_all() to include files not in listfile)
+if let Ok(entries) = archive.list_all() {
     for entry in entries {
         if let Ok(data) = archive.read_file(&entry.name) {
             // Convert MPQ path to system path
@@ -195,7 +202,9 @@ heightmap.save("azeroth_heightmap.png")?;
 use wow_m2::{Model, version::M2Version};
 
 // Load M2 model
-let model = Model::from_file("Creature/Murloc/Murloc.m2")?;
+let data = std::fs::read("Creature/Murloc/Murloc.m2")?;
+let mut cursor = std::io::Cursor::new(data);
+let model = Model::parse(&mut cursor)?;
 
 println!("Model info:");
 println!("  Name: {}", model.header.name());
@@ -205,9 +214,10 @@ println!("  Bones: {}", model.bones.len());
 println!("  Textures: {}", model.textures.len());
 
 // Load associated skin file
-let skin = model.load_skin("Creature/Murloc/Murloc00.skin", 0)?;
-println!("Skin vertices: {}", skin.vertices.len());
-println!("Skin triangles: {}", skin.triangles.len() / 3);
+let skin_data = std::fs::read("Creature/Murloc/Murloc00.skin")?;
+let mut skin_cursor = std::io::Cursor::new(skin_data);
+let skin = wow_m2::skin::SkinFile::parse(&mut skin_cursor)?;
+println!("Skin vertices: {}", skin.submeshes.len());
 ```
 
 ## Loading World Data
@@ -339,13 +349,11 @@ println!("Group triangles: {}", group.movi.indices.len() / 3);
 ### Basic DBC Reading
 
 ```rust
-use wow_cdbc::parser::DbcParser;
+use wow_cdbc::parser::parse_dbc_file;
 use wow_cdbc::schema::Schema;
 
-// Parse DBC with schema
-let schema = Schema::from_yaml_file("schemas/Item.yaml")?;
-let mut parser = DbcParser::with_schema(schema);
-let dbc = parser.parse_file("DBFilesClient/Item.dbc")?;
+// Parse DBC file
+let dbc = parse_dbc_file("DBFilesClient/Item.dbc")?;
 
 println!("Item database:");
 println!("  Records: {}", dbc.record_count());

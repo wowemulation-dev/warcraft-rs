@@ -31,7 +31,7 @@ Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 
 ## Supported File Formats
 
-- **MPQ Archives** - Game data archives with StormLib compatibility
+- **MPQ Archives** - Game data archives with StormLib compatibility and **parallel processing**
 - **DBC** - Client database files containing game data
 - **BLP Textures** - Compressed texture format with DXT and palette support
 - **M2 Models** - Character, creature, and object 3D models
@@ -45,13 +45,19 @@ Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 ### Command-Line Usage
 
 ```bash
-# Extract files from MPQ archives
+# Extract files from MPQ archives (uses parallel processing by default)
 warcraft-rs mpq extract patch.mpq --output ./extracted
+
+# Extract with custom thread count
+warcraft-rs mpq extract patch.mpq --output ./extracted --threads 4
 
 # Get information about any file format
 warcraft-rs mpq info archive.mpq
 warcraft-rs blp info texture.blp
 warcraft-rs wdt info map.wdt
+
+# Validate archive integrity (parallel by default)
+warcraft-rs mpq validate archive.mpq --check-checksums
 
 # Convert between formats and versions
 warcraft-rs blp convert texture.blp texture.png
@@ -66,7 +72,13 @@ use wow_blp::parser::load_blp;
 
 // Read files from MPQ archives
 let mut archive = Archive::open("patch.mpq")?;
-let file_data = archive.read_file("Interface/Icons/spell.blp")?;
+let file_data = archive.read_file("Interface\\Icons\\spell.blp")?;
+
+// List files in archive (from listfile)
+let files = archive.list()?;
+for entry in files {
+    println!("{}: {} bytes", entry.name, entry.size);
+}
 
 // Parse BLP textures
 let blp_image = load_blp("texture.blp")?;

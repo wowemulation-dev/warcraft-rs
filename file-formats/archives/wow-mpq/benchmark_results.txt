@@ -1,0 +1,419 @@
+   Compiling wow-mpq v0.1.0 (/home/danielsreichenbach/Repos/github.com/wowemulation-dev/warcraft-rs/file-formats/archives/wow-mpq)
+    Finished `bench` profile [optimized] target(s) in 4.11s
+     Running unittests src/lib.rs (/home/danielsreichenbach/Repos/github.com/wowemulation-dev/warcraft-rs/target/release/deps/wow_mpq-617689a744e1c278)
+
+running 130 tests
+test archive::tests::test_crc_calculation ... ignored
+test archive::tests::test_decrypt_file_data ... ignored
+test archive::tests::test_file_info_flags ... ignored
+test archive::tests::test_open_options ... ignored
+test compare::tests::test_compare_options_default ... ignored
+test compare::tests::test_comparison_summary_new ... ignored
+test compare::tests::test_simple_pattern_match ... ignored
+test compression::algorithms::adpcm::tests::test_basic_compress_decompress ... ignored
+test compression::algorithms::adpcm::tests::test_channel_count_validation ... ignored
+test compression::algorithms::adpcm::tests::test_empty_input ... ignored
+test compression::algorithms::adpcm::tests::test_max_channels_constant ... ignored
+test compression::algorithms::adpcm::tests::test_predicted_sample_clamping ... ignored
+test compression::algorithms::adpcm::tests::test_read_write_sample ... ignored
+test compression::algorithms::adpcm::tests::test_simple_values ... ignored
+test compression::algorithms::adpcm::tests::test_step_index_bounds ... ignored
+test compression::algorithms::adpcm::tests::test_stereo_basic ... ignored
+test compression::algorithms::adpcm::tests::test_stereo_channels_independent ... ignored
+test compression::algorithms::adpcm::tests::test_stereo_silence ... ignored
+test compression::algorithms::bzip2::tests::test_round_trip ... ignored
+test compression::algorithms::huffman::tests::test_huffman_basic_structure ... ignored
+test compression::algorithms::huffman::tests::test_huffman_compression_not_implemented ... ignored
+test compression::algorithms::huffman::tests::test_huffman_empty_data ... ignored
+test compression::algorithms::implode::tests::test_implode_compression_not_implemented ... ignored
+test compression::algorithms::implode::tests::test_implode_empty_data ... ignored
+test compression::algorithms::lzma::tests::test_round_trip ... ignored
+test compression::algorithms::lzma::tests::test_xz_format ... ignored
+test compression::algorithms::pkware::tests::test_pkware_empty_data ... ignored
+test compression::algorithms::pkware::tests::test_pkware_large_data ... ignored
+test compression::algorithms::pkware::tests::test_pkware_roundtrip ... ignored
+test compression::algorithms::pkware::tests::test_pkware_with_options ... ignored
+test compression::algorithms::sparse::tests::test_all_zeros ... ignored
+test compression::algorithms::sparse::tests::test_decompress ... ignored
+test compression::algorithms::sparse::tests::test_round_trip ... ignored
+test compression::algorithms::zlib::tests::test_compression_efficiency ... ignored
+test compression::algorithms::zlib::tests::test_round_trip ... ignored
+test compression::compress::tests::test_adpcm_zlib_multi_compression ... ignored
+test compression::compress::tests::test_compress_api_small_data ... ignored
+test compression::compress::tests::test_lzma_api ... ignored
+test compression::decompress::tests::test_decompress_api ... ignored
+test compression::methods::tests::test_compression_method_from_flags ... ignored
+test crypto::encryption::tests::test_different_keys_produce_different_results ... ignored
+test crypto::encryption::tests::test_encrypt_decrypt_round_trip ... ignored
+test crypto::encryption::tests::test_known_encryption ... ignored
+test crypto::encryption::tests::test_zero_key ... ignored
+test crypto::hash::tests::test_case_insensitivity ... ignored
+test crypto::hash::tests::test_encryption_key_calculation ... ignored
+test crypto::hash::tests::test_hash_string_test_vectors ... ignored
+test crypto::hash::tests::test_hash_table_lookup_process ... ignored
+test crypto::hash::tests::test_path_separator_normalization ... ignored
+test crypto::jenkins::tests::test_jenkins_hashlittle2_attributes ... ignored
+test crypto::jenkins::tests::test_jenkins_hashlittle2_normalization ... ignored
+test crypto::jenkins::tests::test_jenkins_one_at_a_time ... ignored
+test crypto::keys::tests::test_ascii_tables ... ignored
+test crypto::keys::tests::test_encryption_table_generation ... ignored
+test crypto::signature::tests::test_parse_strong_signature ... ignored
+test crypto::signature::tests::test_parse_strong_signature_invalid_header ... ignored
+test crypto::signature::tests::test_parse_strong_signature_too_small ... ignored
+test crypto::signature::tests::test_parse_strong_signature_zero_signature ... ignored
+test crypto::signature::tests::test_parse_weak_signature ... ignored
+test crypto::signature::tests::test_parse_weak_signature_too_small ... ignored
+test crypto::signature::tests::test_parse_weak_signature_zero_signature ... ignored
+test crypto::signature::tests::test_pkcs1_padding_creation ... ignored
+test crypto::signature::tests::test_reverse_bytes ... ignored
+test crypto::signature::tests::test_strong_public_key_loading ... ignored
+test crypto::signature::tests::test_verify_mpq_strong_signature_padding ... ignored
+test crypto::signature::tests::test_verify_mpq_strong_signature_padding_wrong_hash ... ignored
+test crypto::signature::tests::test_verify_mpq_strong_signature_padding_wrong_padding ... ignored
+test crypto::signature::tests::test_verify_mpq_strong_signature_padding_wrong_type ... ignored
+test crypto::signature::tests::test_weak_private_key_loading ... ignored
+test crypto::signature::tests::test_weak_public_key_loading ... ignored
+test crypto::signature::tests::test_weak_signature_generation_and_verification ... ignored
+test debug::tests::test_format_size ... ignored
+test debug::tests::test_hex_dump ... ignored
+test debug::tests::test_table_formatter ... ignored
+test error::tests::test_error_classification ... ignored
+test error::tests::test_error_creation ... ignored
+test io::tests::test_buffered_mpq_reader_creation ... ignored
+test io::tests::test_combined_operations ... ignored
+test io::tests::test_large_buffer_read ... ignored
+test io::tests::test_read_at ... ignored
+test io::tests::test_read_at_calls_seek_and_read ... ignored
+test io::tests::test_read_at_multiple_calls ... ignored
+test io::tests::test_read_at_out_of_bounds ... ignored
+test io::tests::test_read_empty_buffer ... ignored
+test io::tests::test_read_past_end ... ignored
+test io::tests::test_read_trait ... ignored
+test io::tests::test_seek_beyond_bounds ... ignored
+test io::tests::test_seek_negative_position ... ignored
+test io::tests::test_seek_trait ... ignored
+test io::tests::test_zero_length_read_at ... ignored
+test modification::tests::test_add_file_options ... ignored
+test modification::tests::test_fix_key_enables_encryption ... ignored
+test patch_chain::integration_tests::test_find_file_archive ... ignored
+test patch_chain::integration_tests::test_patch_chain_listing ... ignored
+test patch_chain::integration_tests::test_patch_chain_priority ... ignored
+test patch_chain::integration_tests::test_priority_reordering ... ignored
+test patch_chain::integration_tests::test_remove_archive ... ignored
+test patch_chain::tests::test_custom_patch_priority ... ignored
+test patch_chain::tests::test_expansion_loading_order ... ignored
+test patch_chain::tests::test_locale_patch_priority ... ignored
+test patch_chain::tests::test_wow_loading_order ... ignored
+test path::tests::test_mpq_path_to_system ... ignored
+test path::tests::test_normalize_mpq_path ... ignored
+test rebuild::tests::test_extract_compression_method ... ignored
+test rebuild::tests::test_is_signature_file ... ignored
+test rebuild::tests::test_rebuild_options_default ... ignored
+test special_files::attributes::tests::test_attribute_flags ... ignored
+test special_files::attributes::tests::test_parse_crc32_only ... ignored
+test special_files::attributes::tests::test_parse_empty_attributes ... ignored
+test special_files::attributes::tests::test_roundtrip ... ignored
+test special_files::info::tests::test_special_file_info ... ignored
+test special_files::listfile::tests::test_parse_empty_listfile ... ignored
+test special_files::listfile::tests::test_parse_listfile_only_comments ... ignored
+test special_files::listfile::tests::test_parse_listfile_with_comments ... ignored
+test special_files::listfile::tests::test_parse_listfile_with_empty_lines ... ignored
+test special_files::listfile::tests::test_parse_listfile_with_metadata ... ignored
+test special_files::listfile::tests::test_parse_listfile_with_whitespace ... ignored
+test special_files::listfile::tests::test_parse_simple_listfile ... ignored
+test tables::block::tests::test_block_entry_flags ... ignored
+test tables::hash::tests::test_hash_entry_states ... ignored
+test tables::hash::tests::test_hash_table_size_validation ... ignored
+test test_utils::data_generator::tests::test_nested_structure ... ignored
+test test_utils::data_generator::tests::test_simple_data_generation ... ignored
+test test_utils::mpq_builder::tests::test_compressed_archive_creation ... ignored
+test test_utils::mpq_builder::tests::test_minimal_archive_creation ... ignored
+test tests::test_calculate_sector_size ... ignored
+test tests::test_calculate_sector_size_edge_cases ... ignored
+test tests::test_hash_table_size_validation ... ignored
+test tests::test_is_power_of_two ... ignored
+test tests::test_typical_mpq_configurations ... ignored
+
+test result: ok. 0 passed; 0 failed; 130 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running benches/archive_creation.rs (/home/danielsreichenbach/Repos/github.com/wowemulation-dev/warcraft-rs/target/release/deps/archive_creation-9d7fbbc7ccd31d27)
+Benchmarking archive_creation/single_file/1KB
+Benchmarking archive_creation/single_file/1KB: Warming up for 3.0000 s
+Benchmarking archive_creation/single_file/1KB: Collecting 100 samples in estimated 5.1002 s (116k iterations)
+Benchmarking archive_creation/single_file/1KB: Analyzing
+archive_creation/single_file/1KB
+                        time:   [41.221 µs 41.467 µs 41.741 µs]
+                        thrpt:  [23.396 MiB/s 23.550 MiB/s 23.691 MiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  6 (6.00%) high mild
+Benchmarking archive_creation/single_file/64KB
+Benchmarking archive_creation/single_file/64KB: Warming up for 3.0000 s
+Benchmarking archive_creation/single_file/64KB: Collecting 100 samples in estimated 5.2313 s (40k iterations)
+Benchmarking archive_creation/single_file/64KB: Analyzing
+archive_creation/single_file/64KB
+                        time:   [129.26 µs 130.12 µs 131.04 µs]
+                        thrpt:  [476.95 MiB/s 480.33 MiB/s 483.52 MiB/s]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking archive_creation/single_file/1MB
+Benchmarking archive_creation/single_file/1MB: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 7.1s, enable flat sampling, or reduce sample count to 50.
+Benchmarking archive_creation/single_file/1MB: Collecting 100 samples in estimated 7.1366 s (5050 iterations)
+Benchmarking archive_creation/single_file/1MB: Analyzing
+archive_creation/single_file/1MB
+                        time:   [1.4057 ms 1.4139 ms 1.4235 ms]
+                        thrpt:  [702.47 MiB/s 707.26 MiB/s 711.37 MiB/s]
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+Benchmarking archive_creation/single_file/10MB
+Benchmarking archive_creation/single_file/10MB: Warming up for 3.0000 s
+Benchmarking archive_creation/single_file/10MB: Collecting 100 samples in estimated 7.1394 s (300 iterations)
+Benchmarking archive_creation/single_file/10MB: Analyzing
+archive_creation/single_file/10MB
+                        time:   [23.819 ms 23.965 ms 24.124 ms]
+                        thrpt:  [414.53 MiB/s 417.27 MiB/s 419.84 MiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking archive_creation/multi_file/10_files_100KB
+Benchmarking archive_creation/multi_file/10_files_100KB: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 8.4s, enable flat sampling, or reduce sample count to 50.
+Benchmarking archive_creation/multi_file/10_files_100KB: Collecting 100 samples in estimated 8.3530 s (5050 iterations)
+Benchmarking archive_creation/multi_file/10_files_100KB: Analyzing
+archive_creation/multi_file/10_files_100KB
+                        time:   [1.6491 ms 1.6625 ms 1.6777 ms]
+                        thrpt:  [582.07 MiB/s 587.42 MiB/s 592.18 MiB/s]
+Found 7 outliers among 100 measurements (7.00%)
+  4 (4.00%) high mild
+  3 (3.00%) high severe
+Benchmarking archive_creation/multi_file/100_files_10KB
+Benchmarking archive_creation/multi_file/100_files_10KB: Warming up for 3.0000 s
+Benchmarking archive_creation/multi_file/100_files_10KB: Collecting 100 samples in estimated 5.1679 s (1700 iterations)
+Benchmarking archive_creation/multi_file/100_files_10KB: Analyzing
+archive_creation/multi_file/100_files_10KB
+                        time:   [3.0465 ms 3.0758 ms 3.1079 ms]
+                        thrpt:  [314.22 MiB/s 317.50 MiB/s 320.56 MiB/s]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+Benchmarking archive_creation/multi_file/1000_files_1KB
+Benchmarking archive_creation/multi_file/1000_files_1KB: Warming up for 3.0000 s
+Benchmarking archive_creation/multi_file/1000_files_1KB: Collecting 100 samples in estimated 6.4263 s (400 iterations)
+Benchmarking archive_creation/multi_file/1000_files_1KB: Analyzing
+archive_creation/multi_file/1000_files_1KB
+                        time:   [15.149 ms 15.213 ms 15.281 ms]
+                        thrpt:  [63.905 MiB/s 64.194 MiB/s 64.462 MiB/s]
+Found 9 outliers among 100 measurements (9.00%)
+  6 (6.00%) high mild
+  3 (3.00%) high severe
+
+Benchmarking archive_creation/compression/none/high_compress
+Benchmarking archive_creation/compression/none/high_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/none/high_compress: Collecting 100 samples in estimated 5.4914 s (10k iterations)
+Benchmarking archive_creation/compression/none/high_compress: Analyzing
+archive_creation/compression/none/high_compress
+                        time:   [539.54 µs 545.02 µs 550.76 µs]
+                        thrpt:  [1.7731 GiB/s 1.7918 GiB/s 1.8100 GiB/s]
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) low mild
+  5 (5.00%) high mild
+Benchmarking archive_creation/compression/none/medium_compress
+Benchmarking archive_creation/compression/none/medium_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/none/medium_compress: Collecting 100 samples in estimated 5.7980 s (10k iterations)
+Benchmarking archive_creation/compression/none/medium_compress: Analyzing
+archive_creation/compression/none/medium_compress
+                        time:   [552.50 µs 559.46 µs 567.13 µs]
+                        thrpt:  [1.7219 GiB/s 1.7455 GiB/s 1.7675 GiB/s]
+Benchmarking archive_creation/compression/none/low_compress
+Benchmarking archive_creation/compression/none/low_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/none/low_compress: Collecting 100 samples in estimated 6.1075 s (10k iterations)
+Benchmarking archive_creation/compression/none/low_compress: Analyzing
+archive_creation/compression/none/low_compress
+                        time:   [538.49 µs 542.93 µs 548.42 µs]
+                        thrpt:  [1.7807 GiB/s 1.7987 GiB/s 1.8135 GiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) high mild
+  5 (5.00%) high severe
+Benchmarking archive_creation/compression/zlib/high_compress
+Benchmarking archive_creation/compression/zlib/high_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/zlib/high_compress: Collecting 100 samples in estimated 5.0184 s (2100 iterations)
+Benchmarking archive_creation/compression/zlib/high_compress: Analyzing
+archive_creation/compression/zlib/high_compress
+                        time:   [2.3675 ms 2.3773 ms 2.3881 ms]
+                        thrpt:  [418.75 MiB/s 420.65 MiB/s 422.39 MiB/s]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking archive_creation/compression/zlib/medium_compress
+Benchmarking archive_creation/compression/zlib/medium_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/zlib/medium_compress: Collecting 100 samples in estimated 5.1119 s (2100 iterations)
+Benchmarking archive_creation/compression/zlib/medium_compress: Analyzing
+archive_creation/compression/zlib/medium_compress
+                        time:   [2.4412 ms 2.4524 ms 2.4648 ms]
+                        thrpt:  [405.71 MiB/s 407.77 MiB/s 409.64 MiB/s]
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) high mild
+  3 (3.00%) high severe
+Benchmarking archive_creation/compression/zlib/low_compress
+Benchmarking archive_creation/compression/zlib/low_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/zlib/low_compress: Collecting 100 samples in estimated 6.2414 s (500 iterations)
+Benchmarking archive_creation/compression/zlib/low_compress: Analyzing
+archive_creation/compression/zlib/low_compress
+                        time:   [12.461 ms 12.523 ms 12.591 ms]
+                        thrpt:  [79.421 MiB/s 79.853 MiB/s 80.247 MiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  3 (3.00%) high mild
+  3 (3.00%) high severe
+Benchmarking archive_creation/compression/bzip2/high_compress
+Benchmarking archive_creation/compression/bzip2/high_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/bzip2/high_compress: Collecting 100 samples in estimated 5.2295 s (700 iterations)
+Benchmarking archive_creation/compression/bzip2/high_compress: Analyzing
+archive_creation/compression/bzip2/high_compress
+                        time:   [7.4521 ms 7.5084 ms 7.5652 ms]
+                        thrpt:  [132.18 MiB/s 133.18 MiB/s 134.19 MiB/s]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking archive_creation/compression/bzip2/medium_compress
+Benchmarking archive_creation/compression/bzip2/medium_compress: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 8.7s, or reduce sample count to 50.
+Benchmarking archive_creation/compression/bzip2/medium_compress: Collecting 100 samples in estimated 8.7316 s (100 iterations)
+Benchmarking archive_creation/compression/bzip2/medium_compress: Analyzing
+archive_creation/compression/bzip2/medium_compress
+                        time:   [86.036 ms 86.414 ms 86.820 ms]
+                        thrpt:  [11.518 MiB/s 11.572 MiB/s 11.623 MiB/s]
+Found 8 outliers among 100 measurements (8.00%)
+  5 (5.00%) high mild
+  3 (3.00%) high severe
+Benchmarking archive_creation/compression/bzip2/low_compress
+Benchmarking archive_creation/compression/bzip2/low_compress: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 10.4s, or reduce sample count to 40.
+Benchmarking archive_creation/compression/bzip2/low_compress: Collecting 100 samples in estimated 10.411 s (100 iterations)
+Benchmarking archive_creation/compression/bzip2/low_compress: Analyzing
+archive_creation/compression/bzip2/low_compress
+                        time:   [103.54 ms 103.94 ms 104.37 ms]
+                        thrpt:  [9.5818 MiB/s 9.6206 MiB/s 9.6584 MiB/s]
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+Benchmarking archive_creation/compression/lzma/high_compress
+Benchmarking archive_creation/compression/lzma/high_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/lzma/high_compress: Collecting 100 samples in estimated 5.9040 s (500 iterations)
+Benchmarking archive_creation/compression/lzma/high_compress: Analyzing
+archive_creation/compression/lzma/high_compress
+                        time:   [11.723 ms 11.755 ms 11.791 ms]
+                        thrpt:  [84.810 MiB/s 85.070 MiB/s 85.301 MiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+Benchmarking archive_creation/compression/lzma/medium_compress
+Benchmarking archive_creation/compression/lzma/medium_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/lzma/medium_compress: Collecting 100 samples in estimated 5.6852 s (400 iterations)
+Benchmarking archive_creation/compression/lzma/medium_compress: Analyzing
+archive_creation/compression/lzma/medium_compress
+                        time:   [14.417 ms 14.523 ms 14.637 ms]
+                        thrpt:  [68.318 MiB/s 68.855 MiB/s 69.362 MiB/s]
+Found 7 outliers among 100 measurements (7.00%)
+  5 (5.00%) high mild
+  2 (2.00%) high severe
+Benchmarking archive_creation/compression/lzma/low_compress
+Benchmarking archive_creation/compression/lzma/low_compress: Warming up for 3.0000 s
+Benchmarking archive_creation/compression/lzma/low_compress: Collecting 100 samples in estimated 7.3609 s (200 iterations)
+Benchmarking archive_creation/compression/lzma/low_compress: Analyzing
+archive_creation/compression/lzma/low_compress
+                        time:   [35.389 ms 35.730 ms 36.294 ms]
+                        thrpt:  [27.553 MiB/s 27.987 MiB/s 28.257 MiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking archive_creation/versions/v1
+Benchmarking archive_creation/versions/v1: Warming up for 3.0000 s
+Benchmarking archive_creation/versions/v1: Collecting 100 samples in estimated 5.0693 s (1500 iterations)
+Benchmarking archive_creation/versions/v1: Analyzing
+archive_creation/versions/v1
+                        time:   [3.1424 ms 3.2025 ms 3.2725 ms]
+                        thrpt:  [152.79 MiB/s 156.13 MiB/s 159.11 MiB/s]
+Found 8 outliers among 100 measurements (8.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+  3 (3.00%) high severe
+Benchmarking archive_creation/versions/v2
+Benchmarking archive_creation/versions/v2: Warming up for 3.0000 s
+Benchmarking archive_creation/versions/v2: Collecting 100 samples in estimated 5.1966 s (1600 iterations)
+Benchmarking archive_creation/versions/v2: Analyzing
+archive_creation/versions/v2
+                        time:   [3.2885 ms 3.3725 ms 3.4666 ms]
+                        thrpt:  [144.23 MiB/s 148.26 MiB/s 152.04 MiB/s]
+Found 11 outliers among 100 measurements (11.00%)
+  4 (4.00%) high mild
+  7 (7.00%) high severe
+Benchmarking archive_creation/versions/v3_het_bet
+Benchmarking archive_creation/versions/v3_het_bet: Warming up for 3.0000 s
+Benchmarking archive_creation/versions/v3_het_bet: Collecting 100 samples in estimated 5.0623 s (1600 iterations)
+Benchmarking archive_creation/versions/v3_het_bet: Analyzing
+archive_creation/versions/v3_het_bet
+                        time:   [2.8567 ms 2.9798 ms 3.0969 ms]
+                        thrpt:  [161.45 MiB/s 167.80 MiB/s 175.03 MiB/s]
+Found 20 outliers among 100 measurements (20.00%)
+  10 (10.00%) low severe
+  7 (7.00%) low mild
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+Benchmarking archive_creation/versions/v4_het_bet
+Benchmarking archive_creation/versions/v4_het_bet: Warming up for 3.0000 s
+Benchmarking archive_creation/versions/v4_het_bet: Collecting 100 samples in estimated 5.0003 s (1500 iterations)
+Benchmarking archive_creation/versions/v4_het_bet: Analyzing
+archive_creation/versions/v4_het_bet
+                        time:   [2.8786 ms 2.9803 ms 3.0754 ms]
+                        thrpt:  [162.58 MiB/s 167.77 MiB/s 173.70 MiB/s]
+Found 17 outliers among 100 measurements (17.00%)
+  5 (5.00%) low severe
+  11 (11.00%) low mild
+  1 (1.00%) high mild
+
+Benchmarking archive_creation/encrypted/no_encryption
+Benchmarking archive_creation/encrypted/no_encryption: Warming up for 3.0000 s
+Benchmarking archive_creation/encrypted/no_encryption: Collecting 100 samples in estimated 6.4956 s (10k iterations)
+Benchmarking archive_creation/encrypted/no_encryption: Analyzing
+archive_creation/encrypted/no_encryption
+                        time:   [639.69 µs 687.02 µs 751.06 µs]
+                        thrpt:  [332.86 MiB/s 363.89 MiB/s 390.81 MiB/s]
+Found 16 outliers among 100 measurements (16.00%)
+  4 (4.00%) high mild
+  12 (12.00%) high severe
+Benchmarking archive_creation/encrypted/with_encryption
+Benchmarking archive_creation/encrypted/with_encryption: Warming up for 3.0000 s
+Benchmarking archive_creation/encrypted/with_encryption: Collecting 100 samples in estimated 6.6229 s (10k iterations)
+Benchmarking archive_creation/encrypted/with_encryption: Analyzing
+archive_creation/encrypted/with_encryption
+                        time:   [659.77 µs 680.40 µs 707.42 µs]
+                        thrpt:  [353.40 MiB/s 367.43 MiB/s 378.92 MiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) high mild
+  4 (4.00%) high severe
+
+Benchmarking archive_creation/block_sizes/4KB
+Benchmarking archive_creation/block_sizes/4KB: Warming up for 3.0000 s
+Benchmarking archive_creation/block_sizes/4KB: Collecting 100 samples in estimated 6.8018 s (300 iterations)
+Benchmarking archive_creation/block_sizes/4KB: Analyzing
+archive_creation/block_sizes/4KB
+                        time:   [21.798 ms 21.995 ms 22.200 ms]
+                        thrpt:  [180.18 MiB/s 181.86 MiB/s 183.50 MiB/s]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking archive_creation/block_sizes/16KB
+Benchmarking archive_creation/block_sizes/16KB: Warming up for 3.0000 s
+Benchmarking archive_creation/block_sizes/16KB: Collecting 100 samples in estimated 5.4813 s (500 iterations)
+Benchmarking archive_creation/block_sizes/16KB: Analyzing
+archive_creation/block_sizes/16KB
+                        time:   [10.187 ms 10.731 ms 11.400 ms]
+                        thrpt:  [350.87 MiB/s 372.76 MiB/s 392.66 MiB/s]
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) high mild
+  5 (5.00%) high severe

@@ -39,6 +39,9 @@ bytes = "1.10"
 rand = { workspace = true }
 tempfile = { workspace = true }
 
+# Parallel processing
+rayon = "1.10"
+
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -71,6 +74,14 @@ harness = false
 
 [[bench]]
 name = "archive_extraction"
+harness = false
+
+[[bench]]
+name = "parallel_processing"
+harness = false
+
+[[bench]]
+name = "single_archive_parallel"
 harness = false
 
 [features]

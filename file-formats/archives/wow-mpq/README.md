@@ -34,6 +34,7 @@ comprehensive support for all format versions and features.
 - 📊 **Advanced Tables** - HET/BET tables for v3+ archives with optimal compression
 - 🤝 **StormLib Compatibility** - 100% bidirectional compatibility with the reference implementation
 - 🚀 **High Performance** - Efficient I/O, zero-copy where possible, comprehensive benchmarks
+- ⚡ **Parallel Processing** - Multi-threaded extraction and validation for better performance
 
 ## Installation
 

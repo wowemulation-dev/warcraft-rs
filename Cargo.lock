@@ -3061,6 +3061,7 @@ dependencies = [
  "pretty_assertions",
  "proptest",
  "rand 0.9.1",
+ "rayon",
  "rsa",
  "sha1",
  "tempfile",

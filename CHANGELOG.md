@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **wow-mpq**: Complete parallel processing support for multi-threaded archive operations
+- **wow-mpq**: `ParallelArchive` struct for thread-safe concurrent file extraction from single archives
+- **wow-mpq**: Four parallel processing functions: `extract_from_multiple_archives()`, `search_in_multiple_archives()`, `process_archives_parallel()`, `validate_archives_parallel()`
+- **wow-mpq**: Parallel patch chain loading with `from_archives_parallel()` and `add_archives_parallel()` methods
+- **wow-mpq**: Thread-safe file handle cloning strategy for concurrent archive access
+- **wow-mpq**: Comprehensive parallel processing benchmarks showing up to 6x performance improvements
+- **wow-mpq**: Thread safety validation tests with 11 test cases covering concurrent operations
+- **wow-mpq**: Buffer pre-allocation optimizations for sector reading operations
+- **wow-mpq**: Hash table mask caching for improved file lookup performance
+- **wow-mpq**: Multi-compression decompression buffer pre-allocation
+- **wow-mpq**: Public `list_files()` and `read_file_with_new_handle()` methods for parallel access
+- **wow-mpq**: Rayon integration for CPU-optimal work distribution
+- **wow-mpq**: Complete documentation for parallel processing features
+- **wow-mpq**: Single archive parallel processing examples and benchmarks
+- **warcraft-rs CLI**: Parallel processing enabled by default for `extract` and `validate` commands
+- **warcraft-rs CLI**: `--threads N` parameter for customizing parallel thread count
+- **warcraft-rs CLI**: Automatic CPU core detection for optimal default threading
 - **warcraft-rs CLI**: Added `--patch` parameter to `mpq extract` command for patch chain support
 - **warcraft-rs CLI**: Multiple patch archives can be specified with repeated `--patch` flags
 - **warcraft-rs CLI**: Patch archives are applied in order with increasing priority (100, 200, 300, etc.)
@@ -16,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **wow-mpq**: Made parallel processing the default behavior for all CLI operations
+- **wow-mpq**: Simplified CLI interface by removing sequential processing options
+- **wow-mpq**: Enhanced performance through strategic buffer optimizations
+- **wow-mpq**: Improved thread safety architecture for concurrent operations
+- **Documentation**: Fixed all API discrepancies between documentation and actual implementation
+- **Documentation**: Updated code examples to use correct method names (`list()` vs `list_all()` clarification)
+- **Documentation**: Corrected import statements from `wow_dbc` to `wow_cdbc` throughout all guides
+- **Documentation**: Fixed M2 model loading examples to use actual `parse()` method instead of non-existent `load()` method
+- **Documentation**: Updated path separator usage to consistently use backslashes with auto-conversion explanations
+- **Documentation**: All code examples now compile correctly and match actual API
 - **Project-wide**: Comprehensive reorganization of tests and examples for better maintainability
 - **wow-mpq**: Consolidated examples from 50+ to 15 focused demonstrations
 - **wow-mpq**: Enhanced `create_archive.rs` example with comprehensive functionality (basic creation, compression, encryption, attributes, version comparison)
@@ -31,8 +58,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **deny.toml**: Added MPL-2.0 and bzip2-1.0.6 to allowed licenses for cbindgen and libbz2-rs-sys dependencies
 - **deny.toml**: Added exceptions for RUSTSEC-2023-0071 (rsa timing attack - local use only) and windows-link yanked version
 
+### Fixed
+
+- **wow-mpq**: Fixed compression method detection for SINGLE_UNIT files (they DO have compression byte prefixes)
+- **wow-mpq**: Resolved buffer underrun issues in sparse compression decompression
+- **wow-mpq**: Fixed ZLIB decompression failures for specific file types
+- **Documentation**: Fixed compilation errors in all documentation code examples
+- **Documentation**: Resolved API method name mismatches throughout guides
+- **Documentation**: Fixed incorrect crate names in import statements
+
+### Performance
+
+- **wow-mpq**: Up to 6x performance improvement for multi-archive operations through parallel processing
+- **wow-mpq**: Optimized sector reading with buffer pre-allocation strategies
+- **wow-mpq**: Enhanced file lookup performance through hash table mask caching
+- **wow-mpq**: Improved memory usage patterns in decompression workflows
+- **wow-mpq**: CPU-optimal work distribution using rayon thread pools
+
 ### Removed
 
+- **warcraft-rs CLI**: Removed `--parallel` and `--sequential` flags (parallel is now default)
+- **warcraft-rs CLI**: Removed `--batch-size` option (automatically optimized)
 - **wow-mpq**: Removed redundant examples: `patch_chain_demo.rs`, `wotlk_patch_chain_demo.rs`, `tbc_patch_chain_demo.rs`, `cata_patch_chain_demo.rs`, `mop_patch_chain_demo.rs`, `patch_chain_dbc_demo.rs`
 - **wow-mpq**: Removed specialized examples: `create_archive_with_attributes.rs`, `create_comparison_archives.rs`, `create_encrypted_archive.rs`, `create_compressed_tables.rs`
 - **wow-mpq**: Removed development-focused examples: `analyze_blizzard_attributes.rs`, `analyze_v4_header.rs`, `generate_test_data.rs`, `comprehensive_archive_verification.rs`, etc.
