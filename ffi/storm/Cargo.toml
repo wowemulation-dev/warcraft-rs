@@ -16,7 +16,7 @@ name = "storm"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-wow-mpq = { path = "../../file-formats/archives/wow-mpq", version = "0.1.0" }
+wow-mpq = { path = "../../file-formats/archives/wow-mpq", version = "0.2.0" }
 libc = { workspace = true }
 log = { workspace = true }
 # For file verification

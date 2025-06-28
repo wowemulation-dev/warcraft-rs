@@ -475,7 +475,7 @@ warcraft-rs mpq compare original.mpq modern.mpq --metadata-only
 use wow_mpq::Archive;
 use regex::Regex;
 
-fn search_files(archive: &Archive, pattern: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+fn search_files(archive: &mut Archive, pattern: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let re = Regex::new(pattern)?;
 
     // Get listfile (required for file enumeration)
@@ -496,12 +496,12 @@ fn search_files(archive: &Archive, pattern: &str) -> Result<Vec<String>, Box<dyn
 }
 
 // Example: Find all BLP textures
-fn find_textures(archive: &Archive) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+fn find_textures(archive: &mut Archive) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     search_files(archive, r"\.blp$")
 }
 
 // Example: Find a specific file if you know part of the name
-fn find_specific_file(archive: &Archive, partial_name: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
+fn find_specific_file(archive: &mut Archive, partial_name: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let entries = archive.list()?;
 
     for entry in entries {
@@ -533,17 +533,17 @@ impl MpqExplorer {
     }
 
     fn info(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let info = self.archive.get_info();
+        let info = self.archive.get_info()?;
         println!("Archive Information:");
         println!("  Path: {}", info.path.display());
         println!("  Format Version: {:?}", info.format_version);
         println!("  File Count: {}", info.file_count);
-        println!("  Archive Size: {:.2} MB", info.archive_size as f64 / 1024.0 / 1024.0);
-        println!("  Block Size: {} bytes", info.block_size);
+        println!("  Archive Size: {:.2} MB", info.file_size as f64 / 1024.0 / 1024.0);
+        println!("  Sector Size: {} bytes", info.sector_size);
         Ok(())
     }
 
-    fn list(&self, filter: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    fn list(&mut self, filter: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
         let entries = self.archive.list()?;
 
         for entry in entries {
@@ -561,7 +561,7 @@ impl MpqExplorer {
         Ok(())
     }
 
-    fn extract(&self, filename: &str, output: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    fn extract(&mut self, filename: &str, output: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
         let data = self.archive.read_file(filename)?;
         let output_path = output.unwrap_or(filename);
 
@@ -575,7 +575,7 @@ impl MpqExplorer {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let explorer = MpqExplorer::new("Data/common.MPQ")?;
+    let mut explorer = MpqExplorer::new("Data/common.MPQ")?;
 
     loop {
         print!("> ");
@@ -616,7 +616,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 // For large files, consider the file size before extraction
 use wow_mpq::Archive;
 
-fn extract_with_size_check(archive: &Archive, filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn extract_with_size_check(archive: &mut Archive, filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Get file list and check size
     let entries = archive.list()?;
     for entry in &entries {
@@ -638,7 +638,7 @@ fn extract_with_size_check(archive: &Archive, filename: &str) -> Result<Vec<u8>,
 ```rust
 use wow_mpq::{Archive, Error};
 
-fn safe_extract(archive: &Archive, filename: &str) -> Result<Vec<u8>, String> {
+fn safe_extract(archive: &mut Archive, filename: &str) -> Result<Vec<u8>, String> {
     match archive.read_file(filename) {
         Ok(data) => Ok(data),
         Err(Error::FileNotFound(_)) => {
@@ -700,7 +700,7 @@ impl CachedArchive {
 
 ```rust
 // Debug file lookup
-fn debug_file_lookup(archive: &Archive, partial_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn debug_file_lookup(archive: &mut Archive, partial_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let entries = archive.list()?;
 
     println!("Files containing '{}':", partial_name);
@@ -714,7 +714,7 @@ fn debug_file_lookup(archive: &Archive, partial_name: &str) -> Result<(), Box<dy
 }
 
 // Check if file exists before extraction
-fn safe_file_check(archive: &Archive, filename: &str) -> Result<bool, Box<dyn std::error::Error>> {
+fn safe_file_check(archive: &mut Archive, filename: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let entries = archive.list()?;
     for entry in &entries {
         if entry.name == filename {
@@ -736,7 +736,7 @@ fn safe_file_check(archive: &Archive, filename: &str) -> Result<bool, Box<dyn st
 3. Some archives don't have listfiles - this is normal
 
 ```rust
-fn handle_missing_listfile(archive: &Archive) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_missing_listfile(archive: &mut Archive) -> Result<(), Box<dyn std::error::Error>> {
     match archive.list() {
         Ok(entries) => {
             println!("Found {} files with listfile:", entries.len());
@@ -767,8 +767,8 @@ fn handle_missing_listfile(archive: &Archive) -> Result<(), Box<dyn std::error::
 2. Try to read a few files to test basic functionality
 
 ```rust
-fn basic_archive_test(archive: &Archive) -> Result<(), Box<dyn std::error::Error>> {
-    let info = archive.get_info();
+fn basic_archive_test(archive: &mut Archive) -> Result<(), Box<dyn std::error::Error>> {
+    let info = archive.get_info()?;
     println!("Archive format: {:?}", info.format_version);
     println!("File count: {}", info.file_count);
 
@@ -1022,7 +1022,7 @@ fn batch_extract(archive: &Archive, filenames: &[&str]) -> Result<Vec<(String, V
 ```rust
 use wow_mpq::Archive;
 
-fn efficient_file_search(archive: &Archive, pattern: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+fn efficient_file_search(archive: &mut Archive, pattern: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     // Get file list once and reuse it
     let entries = archive.list()?;
 
@@ -1054,8 +1054,8 @@ impl ArchivePool {
         Ok(Self { archives })
     }
 
-    fn find_and_extract(&self, filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        for archive in &self.archives {
+    fn find_and_extract(&mut self, filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        for archive in &mut self.archives {
             if let Ok(data) = archive.read_file(filename) {
                 return Ok(data);
             }
@@ -1071,9 +1071,9 @@ impl ArchivePool {
 ```rust
 use wow_mpq::Archive;
 
-fn smart_extract(archive: &Archive, filename: &str) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>> {
+fn smart_extract(archive: &mut Archive, filename: &str) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>> {
     // Check if file exists first (cheaper than attempting extraction)
-    match archive.find_file(filename)? {
+    if let Some(file_info) = archive.find_file(filename)? {
         Some(file_info) => {
             println!("File {} exists ({} bytes), extracting...", filename, file_info.file_size);
             Ok(Some(archive.read_file(filename)?))

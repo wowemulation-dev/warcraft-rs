@@ -13,7 +13,7 @@ Before working with DBC files, ensure you have:
 
 - Understanding of database concepts (tables, rows, columns)
 - Basic knowledge of binary file formats
-- `warcraft-rs` installed with the `dbc` feature enabled
+- `warcraft-rs` installed with the `cdbc` feature enabled
 - Access to WoW client files (MPQ archives)
 - Familiarity with WoW data structures
 

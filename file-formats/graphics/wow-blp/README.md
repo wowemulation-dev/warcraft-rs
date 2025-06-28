@@ -43,7 +43,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-blp = "0.1.0"
+wow-blp = "0.2.0"
 ```
 
 Or use cargo add:

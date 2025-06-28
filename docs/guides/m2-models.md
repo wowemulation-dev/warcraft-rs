@@ -46,25 +46,26 @@ M2 models consist of multiple files:
 ### 1. Loading M2 Model Files
 
 ```rust
-use warcraft_rs::m2::{M2Model, M2Skin, M2Version};
+use wow_m2::{M2Model, Skin};
 use std::path::Path;
 
-fn load_m2_model(model_path: &str) -> Result<(M2Model, Vec<M2Skin>), Box<dyn std::error::Error>> {
+fn load_m2_model(model_path: &str) -> Result<(M2Model, Vec<Skin>), Box<dyn std::error::Error>> {
     // Load main M2 file
-    let m2 = M2Model::from_file(model_path)?;
+    let m2 = M2Model::load(model_path)?;
 
-    println!("Loaded M2 model: {}", m2.name);
-    println!("Version: {:?}", m2.version);
-    println!("Vertices: {}", m2.vertex_count);
+    println!("Loaded M2 model: {:?}", m2.name);
+    println!("Version: {:?}", m2.header.version());
+    println!("Vertices: {}", m2.vertices.len());
     println!("Bones: {}", m2.bones.len());
     println!("Animations: {}", m2.animations.len());
 
     // Load associated skin files
     let mut skins = Vec::new();
-    for i in 0..m2.skin_profile_count {
+    // Note: The actual number of skin files varies by model
+    for i in 0..4 {
         let skin_path = model_path.replace(".m2", &format!("{:02}.skin", i));
         if Path::new(&skin_path).exists() {
-            let skin = M2Skin::from_file(&skin_path)?;
+            let skin = Skin::load(&skin_path)?;
             skins.push(skin);
         }
     }
@@ -73,16 +74,15 @@ fn load_m2_model(model_path: &str) -> Result<(M2Model, Vec<M2Skin>), Box<dyn std
 }
 
 // For models with external animations
-fn load_external_animations(m2: &M2Model, model_path: &str) -> Result<Vec<M2Animation>, Box<dyn std::error::Error>> {
+fn load_external_animations(m2: &M2Model, model_path: &str) -> Result<Vec<wow_m2::AnimFile>, Box<dyn std::error::Error>> {
     let mut animations = Vec::new();
 
-    for anim_ref in &m2.animation_lookup {
-        if anim_ref.is_external() {
-            let anim_path = model_path.replace(".m2", &format!("{:04}.anim", anim_ref.animation_id));
-            if Path::new(&anim_path).exists() {
-                let anim = M2Animation::from_file(&anim_path)?;
-                animations.push(anim);
-            }
+    // Check for external animation files
+    for i in 0..m2.animation_lookup.len() {
+        let anim_path = model_path.replace(".m2", &format!("{:04}.anim", i));
+        if Path::new(&anim_path).exists() {
+            let anim = wow_m2::AnimFile::load(&anim_path)?;
+            animations.push(anim);
         }
     }
 
@@ -93,7 +93,7 @@ fn load_external_animations(m2: &M2Model, model_path: &str) -> Result<Vec<M2Anim
 ### 2. Processing Model Vertices
 
 ```rust
-use warcraft_rs::m2::{M2Vertex, M2Model};
+use wow_m2::M2Model;
 
 #[derive(Debug, Clone)]
 struct ProcessedVertex {
@@ -108,8 +108,8 @@ fn process_model_vertices(m2: &M2Model) -> Vec<ProcessedVertex> {
     let mut processed = Vec::with_capacity(m2.vertices.len());
 
     for vertex in &m2.vertices {
-        // Transform vertex position by global model bounds
-        let position = transform_vertex_position(vertex.position, &m2.bounding_box);
+        // Vertex positions are already in model space
+        let position = vertex.position;
 
         // Normalize the normal vector
         let normal = normalize_vec3(vertex.normal);
@@ -118,8 +118,8 @@ fn process_model_vertices(m2: &M2Model) -> Vec<ProcessedVertex> {
             position: [position.x, position.y, position.z],
             normal: [normal.x, normal.y, normal.z],
             tex_coords: [
-                [vertex.tex_coords[0].x, vertex.tex_coords[0].y],
-                [vertex.tex_coords[1].x, vertex.tex_coords[1].y],
+                vertex.texture_coords[0],
+                vertex.texture_coords[1],
             ],
             bone_indices: vertex.bone_indices,
             bone_weights: vertex.bone_weights,
