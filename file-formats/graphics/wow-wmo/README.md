@@ -14,8 +14,6 @@ A comprehensive Rust library for parsing, editing, validating, and converting Wo
 
 ✅ **Production Ready** - Comprehensive WMO parser with full format support
 
-See [STATUS.md](STATUS.md) for detailed implementation status.
-
 ## Overview
 
 WMO files represent buildings, dungeons, and other large structures in World of Warcraft. They consist of a root file containing metadata and multiple group files containing geometry data.

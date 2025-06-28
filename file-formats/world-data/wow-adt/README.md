@@ -14,8 +14,6 @@ Parser for World of Warcraft ADT (terrain) files.
 
 ✅ **Production Ready** - Full parsing and validation support for ADT terrain files.
 
-See [STATUS.md](STATUS.md) for detailed implementation status.
-
 ## Overview
 
 ADT files contain terrain and object information for WoW map tiles. Each map in

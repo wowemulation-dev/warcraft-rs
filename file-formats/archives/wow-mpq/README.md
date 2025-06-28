@@ -247,7 +247,6 @@ performance and specialized features are not implemented:
 - **Archive Compacting** - Use rebuild instead for optimization
 - **Async I/O** - Synchronous operations only
 
-See [STATUS.md](STATUS.md) for detailed feature compatibility information.
 
 ## Compatibility Notes
 
