@@ -2,7 +2,8 @@
 name: Release-plz
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
 
   schedule:
@@ -23,6 +24,11 @@ jobs:
   release-plz:
     name: Release-plz
     runs-on: ubuntu-latest
+    # Only run when PR is merged (not just closed) or for schedule/workflow_dispatch
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
