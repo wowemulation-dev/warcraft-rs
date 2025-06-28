@@ -11,8 +11,8 @@ mod tests {
         let block_table_key = hash_string("(block table)", hash_type::FILE_KEY);
 
         // These are the expected keys based on the MPQ specification
-        println!("Hash table key: 0x{:08X}", hash_table_key);
-        println!("Block table key: 0x{:08X}", block_table_key);
+        println!("Hash table key: 0x{hash_table_key:08X}");
+        println!("Block table key: 0x{block_table_key:08X}");
 
         // Keys should be different
         assert_ne!(hash_table_key, block_table_key);
@@ -32,17 +32,16 @@ mod tests {
         let hash_b = hash_string(filename, hash_type::NAME_B);
         let table_offset = hash_string(filename, hash_type::TABLE_OFFSET);
 
-        println!("Filename: {}", filename);
-        println!("Hash A: 0x{:08X}", hash_a);
-        println!("Hash B: 0x{:08X}", hash_b);
-        println!("Table offset: 0x{:08X}", table_offset);
+        println!("Filename: {filename}");
+        println!("Hash A: 0x{hash_a:08X}");
+        println!("Hash B: 0x{hash_b:08X}");
+        println!("Table offset: 0x{table_offset:08X}");
 
         // Simulate a hash table of size 1024
         let table_size = 1024u32;
         let initial_index = table_offset & (table_size - 1);
         println!(
-            "Initial index for table size {}: {}",
-            table_size, initial_index
+            "Initial index for table size {table_size}: {initial_index}"
         );
 
         // Create a dummy hash entry
@@ -85,7 +84,7 @@ mod tests {
         ];
 
         for (flags, description) in test_cases {
-            println!("Testing: {} (flags: 0x{:08X})", description, flags);
+            println!("Testing: {description} (flags: 0x{flags:08X})");
 
             let entry = BlockEntry {
                 file_pos: 0x1000,
@@ -119,11 +118,10 @@ mod tests {
         // Calculate full 64-bit position
         let full_pos = ((hi_block_value as u64) << 32) | (block_pos_low as u64);
 
-        println!("Low 32 bits: 0x{:08X}", block_pos_low);
-        println!("High 16 bits: 0x{:04X}", hi_block_value);
+        println!("Low 32 bits: 0x{block_pos_low:08X}");
+        println!("High 16 bits: 0x{hi_block_value:04X}");
         println!(
-            "Full 64-bit position: 0x{:016X} ({} bytes)",
-            full_pos, full_pos
+            "Full 64-bit position: 0x{full_pos:016X} ({full_pos} bytes)"
         );
 
         // This should be 6GB (0x180000000)
@@ -140,7 +138,7 @@ mod tests {
         for filename in &filenames {
             let hash_offset = hash_string(filename, hash_type::TABLE_OFFSET);
             let index = hash_offset & (table_size - 1);
-            println!("{} -> index {}", filename, index);
+            println!("{filename} -> index {index}");
         }
 
         // In a real implementation, if two files hash to the same index,
@@ -164,7 +162,7 @@ mod tests {
         ];
 
         for (code, name) in locales {
-            println!("Locale 0x{:04X}: {}", code, name);
+            println!("Locale 0x{code:04X}: {name}");
         }
     }
 }

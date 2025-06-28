@@ -229,9 +229,8 @@ pub fn extract_with_config<P: AsRef<Path>>(
             .num_threads(threads)
             .build()
             .map_err(|e| {
-                Error::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to create thread pool: {}", e),
+                Error::Io(std::io::Error::other(
+                    format!("Failed to create thread pool: {e}"),
                 ))
             })?
     } else {
@@ -278,8 +277,8 @@ mod tests {
         // Add multiple files for parallel testing
         for i in 0..20 {
             let content =
-                format!("File {} content with some data to make it larger", i).repeat(100);
-            builder = builder.add_file_data(content.into_bytes(), &format!("file_{:02}.txt", i));
+                format!("File {i} content with some data to make it larger").repeat(100);
+            builder = builder.add_file_data(content.into_bytes(), &format!("file_{i:02}.txt"));
         }
 
         builder.build(&path).unwrap();
@@ -320,7 +319,7 @@ mod tests {
         let archive = ParallelArchive::open(&archive_path).unwrap();
 
         let files: Vec<&str> = (0..10)
-            .map(|i| Box::leak(format!("file_{:02}.txt", i).into_boxed_str()) as &str)
+            .map(|i| Box::leak(format!("file_{i:02}.txt").into_boxed_str()) as &str)
             .collect();
 
         let results = archive.extract_files_batched(&files, 3).unwrap();

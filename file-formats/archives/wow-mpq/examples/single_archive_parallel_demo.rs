@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let archive_path = &args[1];
     let pattern = args.get(2).map(|s| s.as_str());
 
-    println!("Opening archive: {}", archive_path);
+    println!("Opening archive: {archive_path}");
     let archive = ParallelArchive::open(archive_path)?;
 
     // Example 1: Extract specific files
@@ -32,13 +32,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Err(e) => {
-            println!("Note: Some files may not exist in this archive: {}", e);
+            println!("Note: Some files may not exist in this archive: {e}");
         }
     }
 
     // Example 2: Extract by pattern
     if let Some(pattern) = pattern {
-        println!("\n=== Example 2: Extract Files Matching '{}' ===", pattern);
+        println!("\n=== Example 2: Extract Files Matching '{pattern}' ===");
         let start = Instant::now();
 
         let results = archive.extract_matching_parallel(|name| name.contains(pattern))?;
@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match checksums {
         Ok(results) => {
             for (name, checksum) in results {
-                println!("{}: checksum = {}", name, checksum);
+                println!("{name}: checksum = {checksum}");
             }
         }
         Err(_) => {
@@ -145,7 +145,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (filename, result) in results {
         match result {
             Ok(data) => println!("{}: SUCCESS ({} bytes)", filename, data.len()),
-            Err(e) => println!("{}: ERROR - {}", filename, e),
+            Err(e) => println!("{filename}: ERROR - {e}"),
         }
     }
 

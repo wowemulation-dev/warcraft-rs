@@ -440,7 +440,7 @@ impl M2Model {
 
                 // TODO: Actually retrieve the filename from somewhere
                 // For now, we'll just use a placeholder
-                let filename = format!("texture{}.blp", i);
+                let filename = format!("texture{i}.blp");
                 let filename_bytes = filename.as_bytes();
 
                 // Write the filename
@@ -715,8 +715,7 @@ impl M2Model {
             // Check if the texture has a valid filename
             if texture.filename.count > 0 && texture.filename.offset == 0 {
                 return Err(M2Error::ValidationError(format!(
-                    "Texture {} has invalid filename offset",
-                    i
+                    "Texture {i} has invalid filename offset"
                 )));
             }
         }

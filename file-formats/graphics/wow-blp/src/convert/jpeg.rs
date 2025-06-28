@@ -24,8 +24,7 @@ pub fn image_to_jpeg(
 ) -> Result<BlpJpeg, Error> {
     if alpha_bits != 0 && alpha_bits != 8 {
         warn!(
-            "Invalid alpha bits value for JPEG encoding {}, defaulting to 0",
-            alpha_bits
+            "Invalid alpha bits value for JPEG encoding {alpha_bits}, defaulting to 0"
         );
         alpha_bits = 0;
     }
@@ -97,7 +96,7 @@ fn fetch_common_header(images: &mut [Vec<u8>]) -> Vec<u8> {
         }
         common_bytes += 1;
     }
-    trace!("Common bytes in jpegs are {}", common_bytes);
+    trace!("Common bytes in jpegs are {common_bytes}");
     if common_bytes > 0 {
         header.extend(&images[0][0..common_bytes]);
         for image in images.iter_mut() {

@@ -87,7 +87,7 @@ fn export_to_obj<P: AsRef<Path>>(
         let mtl_path = path.with_extension("mtl");
         let mtl_filename = mtl_path.file_name().unwrap().to_string_lossy();
 
-        writeln!(writer, "mtllib {}", mtl_filename)?;
+        writeln!(writer, "mtllib {mtl_filename}")?;
         writeln!(writer)?;
 
         export_to_mtl(adt, &mtl_path, options)?;
@@ -106,7 +106,7 @@ fn export_to_obj<P: AsRef<Path>>(
         if options.split_chunks {
             let chunk_y = chunk_idx / 16;
             let chunk_x = chunk_idx % 16;
-            writeln!(writer, "o chunk_{}_{}", chunk_x, chunk_y)?;
+            writeln!(writer, "o chunk_{chunk_x}_{chunk_y}")?;
         }
 
         // If including materials, add material reference
@@ -129,7 +129,7 @@ fn export_to_obj<P: AsRef<Path>>(
                     format!("material_{}", layer.texture_id)
                 };
 
-                writeln!(writer, "usemtl {}", material_name)?;
+                writeln!(writer, "usemtl {material_name}")?;
             } else {
                 // Default material
                 writeln!(writer, "usemtl default")?;
@@ -246,19 +246,7 @@ fn export_to_obj<P: AsRef<Path>>(
                     // f v1/t1/n1 v2/t2/n2 v3/t3/n3
                     writeln!(
                         writer,
-                        "f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}",
-                        v1_idx,
-                        t1_idx,
-                        n1_idx,
-                        v2_idx,
-                        t2_idx,
-                        n2_idx,
-                        v3_idx,
-                        t3_idx,
-                        n3_idx,
-                        v4_idx,
-                        t4_idx,
-                        n4_idx
+                        "f {v1_idx}/{t1_idx}/{n1_idx} {v2_idx}/{t2_idx}/{n2_idx} {v3_idx}/{t3_idx}/{n3_idx} {v4_idx}/{t4_idx}/{n4_idx}"
                     )?;
                 } else if options.include_uvs {
                     let t1_idx = v1 + uv_offset;
@@ -269,8 +257,7 @@ fn export_to_obj<P: AsRef<Path>>(
                     // f v1/t1 v2/t2 v3/t3
                     writeln!(
                         writer,
-                        "f {}/{} {}/{} {}/{} {}/{}",
-                        v1_idx, t1_idx, v2_idx, t2_idx, v3_idx, t3_idx, v4_idx, t4_idx
+                        "f {v1_idx}/{t1_idx} {v2_idx}/{t2_idx} {v3_idx}/{t3_idx} {v4_idx}/{t4_idx}"
                     )?;
                 } else if options.include_normals {
                     let n1_idx = v1 + normal_offset;
@@ -281,12 +268,11 @@ fn export_to_obj<P: AsRef<Path>>(
                     // f v1//n1 v2//n2 v3//n3
                     writeln!(
                         writer,
-                        "f {}//{}  {}//{}  {}//{}  {}//{}",
-                        v1_idx, n1_idx, v2_idx, n2_idx, v3_idx, n3_idx, v4_idx, n4_idx
+                        "f {v1_idx}//{n1_idx}  {v2_idx}//{n2_idx}  {v3_idx}//{n3_idx}  {v4_idx}//{n4_idx}"
                     )?;
                 } else {
                     // f v1 v2 v3
-                    writeln!(writer, "f {} {} {} {}", v1_idx, v2_idx, v3_idx, v4_idx)?;
+                    writeln!(writer, "f {v1_idx} {v2_idx} {v3_idx} {v4_idx}")?;
                 }
             }
         }
@@ -333,14 +319,14 @@ fn export_to_mtl<P: AsRef<Path>>(
             let basename = filename.split('/').next_back().unwrap_or(filename);
             let material_name = basename.split('.').next().unwrap_or(basename);
 
-            writeln!(writer, "newmtl {}", material_name)?;
+            writeln!(writer, "newmtl {material_name}")?;
             writeln!(writer, "Ka 0.2 0.2 0.2")?; // Ambient color
             writeln!(writer, "Kd 0.8 0.8 0.8")?; // Diffuse color
             writeln!(writer, "Ks 0.0 0.0 0.0")?; // Specular color
             writeln!(writer, "Ns 0.0")?; // Shininess
 
             // Reference texture if needed
-            writeln!(writer, "# Original texture: {}", filename)?;
+            writeln!(writer, "# Original texture: {filename}")?;
             // Note: We don't know the actual texture file path, so we don't include map_Kd
 
             writeln!(writer)?;

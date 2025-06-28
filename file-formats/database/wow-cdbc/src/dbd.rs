@@ -452,7 +452,7 @@ pub fn convert_to_yaml_schemas(
         let version_suffix = "Latest".to_string();
         let yaml_content =
             generate_yaml_schema(&column_map, &pseudo_build, base_name, &version_suffix);
-        let filename = format!("{}_latest.yaml", base_name);
+        let filename = format!("{base_name}_latest.yaml");
         results.push((filename, yaml_content, version_suffix));
     }
 
@@ -508,7 +508,7 @@ fn determine_version_suffix(versions: &[String]) -> String {
     if first == last {
         first.clone()
     } else {
-        format!("{} - {}", first, last)
+        format!("{first} - {last}")
     }
 }
 
@@ -519,7 +519,7 @@ fn generate_filename(base_name: &str, version: &str) -> String {
         .collect::<String>()
         .replace('.', "_");
 
-    format!("{}_{}.yaml", base_name, sanitized_version)
+    format!("{base_name}_{sanitized_version}.yaml")
 }
 
 fn generate_yaml_schema(
@@ -532,13 +532,12 @@ fn generate_yaml_schema(
 
     // Header
     yaml.push_str(&format!(
-        "# {} schema for WoW {}\n",
-        base_name, version_suffix
+        "# {base_name} schema for WoW {version_suffix}\n"
     ));
-    yaml.push_str(&format!("# Generated from {}.dbd\n", base_name));
+    yaml.push_str(&format!("# Generated from {base_name}.dbd\n"));
     yaml.push_str(&format!("# Build range: {}\n\n", build.versions.join(", ")));
 
-    yaml.push_str(&format!("name: {}\n", base_name));
+    yaml.push_str(&format!("name: {base_name}\n"));
 
     // Find key field
     let key_field = build
@@ -548,7 +547,7 @@ fn generate_yaml_schema(
         .map(|f| f.name.clone())
         .unwrap_or_else(|| "ID".to_string());
 
-    yaml.push_str(&format!("key_field: {}\n", key_field));
+    yaml.push_str(&format!("key_field: {key_field}\n"));
     yaml.push_str("fields:\n");
 
     // Generate fields
@@ -570,12 +569,12 @@ fn generate_yaml_schema(
         };
 
         yaml.push_str(&format!("  - name: {}\n", field.name));
-        yaml.push_str(&format!("    type_name: {}\n", field_type));
+        yaml.push_str(&format!("    type_name: {field_type}\n"));
 
         if field.is_array {
             yaml.push_str("    is_array: true\n");
             if let Some(size) = field.array_size {
-                yaml.push_str(&format!("    array_size: {}\n", size));
+                yaml.push_str(&format!("    array_size: {size}\n"));
             }
         }
 
@@ -590,7 +589,7 @@ fn generate_yaml_schema(
         } else {
             description
         };
-        yaml.push_str(&format!("    description: {}\n", description));
+        yaml.push_str(&format!("    description: {description}\n"));
     }
 
     yaml

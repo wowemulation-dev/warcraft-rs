@@ -155,7 +155,7 @@ impl super::Chunk for MphdChunk {
         let flags_raw = u32::from_le_bytes(buf);
         let flags = MphdFlags::from_bits(flags_raw).ok_or_else(|| Error::InvalidChunkData {
             chunk: "MPHD".to_string(),
-            message: format!("Invalid flags: 0x{:08X}", flags_raw),
+            message: format!("Invalid flags: 0x{flags_raw:08X}"),
         })?;
 
         let mut buf = [0u8; 4];

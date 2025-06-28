@@ -38,22 +38,22 @@ pub enum Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Int32(v) => write!(f, "{}", v),
-            Value::UInt32(v) => write!(f, "{}", v),
-            Value::Float32(v) => write!(f, "{}", v),
+            Value::Int32(v) => write!(f, "{v}"),
+            Value::UInt32(v) => write!(f, "{v}"),
+            Value::Float32(v) => write!(f, "{v}"),
             Value::StringRef(r) => write!(f, "StringRef({})", r.offset()),
-            Value::Bool(v) => write!(f, "{}", v),
-            Value::UInt8(v) => write!(f, "{}", v),
-            Value::Int8(v) => write!(f, "{}", v),
-            Value::UInt16(v) => write!(f, "{}", v),
-            Value::Int16(v) => write!(f, "{}", v),
+            Value::Bool(v) => write!(f, "{v}"),
+            Value::UInt8(v) => write!(f, "{v}"),
+            Value::Int8(v) => write!(f, "{v}"),
+            Value::UInt16(v) => write!(f, "{v}"),
+            Value::Int16(v) => write!(f, "{v}"),
             Value::Array(values) => {
                 write!(f, "[")?;
                 for (i, v) in values.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", v)?;
+                    write!(f, "{v}")?;
                 }
                 write!(f, "]")
             }
@@ -308,8 +308,7 @@ impl DbcParser {
             }
             _ => {
                 return Err(Error::InvalidHeader(format!(
-                    "Unsupported DBC version: {:?}",
-                    version
+                    "Unsupported DBC version: {version:?}"
                 )));
             }
         };

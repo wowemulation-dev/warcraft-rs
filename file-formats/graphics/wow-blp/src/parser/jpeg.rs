@@ -19,8 +19,7 @@ where
     let header_size = reader.read_u32_le()?;
     if header_size as usize > MAX_JPEG_HEADER {
         warn!(
-            "JPEG header size {} is greater than {}, that might cause crashes of some tools.",
-            header_size, MAX_JPEG_HEADER,
+            "JPEG header size {header_size} is greater than {MAX_JPEG_HEADER}, that might cause crashes of some tools.",
         );
     }
     // There is two additional bytes that are not covered by the header size

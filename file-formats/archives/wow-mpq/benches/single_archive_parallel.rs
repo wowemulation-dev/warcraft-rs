@@ -28,7 +28,7 @@ fn create_benchmark_archive(
     for i in 0..num_files {
         builder = builder.add_file_data(
             content.clone().into_bytes(),
-            &format!("data/file_{:04}.dat", i),
+            &format!("data/file_{i:04}.dat"),
         );
     }
 
@@ -45,7 +45,7 @@ fn bench_multiple_file_extraction(c: &mut Criterion) {
 
     for &count in &file_counts {
         let files: Vec<&str> = (0..count)
-            .map(|i| Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str)
+            .map(|i| Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str)
             .collect();
 
         group.throughput(Throughput::Elements(count as u64));
@@ -140,7 +140,7 @@ fn bench_file_size_impact(c: &mut Criterion) {
     for (count, size_kb) in file_sizes {
         let (_temp_dir, archive_path) = create_benchmark_archive(count, size_kb);
         let files: Vec<&str> = (0..count)
-            .map(|i| Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str)
+            .map(|i| Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str)
             .collect();
 
         let total_mb = (count * size_kb) as f64 / 1024.0;
@@ -148,7 +148,7 @@ fn bench_file_size_impact(c: &mut Criterion) {
 
         // Sequential
         group.bench_with_input(
-            BenchmarkId::new("sequential", format!("{:.1}MB", total_mb)),
+            BenchmarkId::new("sequential", format!("{total_mb:.1}MB")),
             &files,
             |b, files| {
                 b.iter(|| {
@@ -165,7 +165,7 @@ fn bench_file_size_impact(c: &mut Criterion) {
 
         // Parallel
         group.bench_with_input(
-            BenchmarkId::new("parallel", format!("{:.1}MB", total_mb)),
+            BenchmarkId::new("parallel", format!("{total_mb:.1}MB")),
             &files,
             |b, files| {
                 let archive = ParallelArchive::open(&archive_path).unwrap();
@@ -186,7 +186,7 @@ fn bench_thread_pool_scaling(c: &mut Criterion) {
 
     let (_temp_dir, archive_path) = create_benchmark_archive(100, 20); // 100 files, 20KB each
     let files: Vec<&str> = (0..100)
-        .map(|i| Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str)
+        .map(|i| Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str)
         .collect();
 
     let thread_counts = vec![1, 2, 4, 8, 16];
@@ -219,7 +219,7 @@ fn bench_parallel_overhead(c: &mut Criterion) {
 
     // Small extraction (where overhead might dominate)
     let small_files: Vec<&str> = (0..5)
-        .map(|i| Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str)
+        .map(|i| Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str)
         .collect();
 
     group.bench_function("sequential_small", |b| {
@@ -246,7 +246,7 @@ fn bench_parallel_overhead(c: &mut Criterion) {
 
     // Large extraction (where parallelism should win)
     let large_files: Vec<&str> = (0..100)
-        .map(|i| Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str)
+        .map(|i| Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str)
         .collect();
 
     group.bench_function("sequential_large", |b| {
@@ -280,7 +280,7 @@ fn bench_custom_processing(c: &mut Criterion) {
 
     let (_temp_dir, archive_path) = create_benchmark_archive(50, 50); // 50 files, 50KB each
     let files: Vec<&str> = (0..50)
-        .map(|i| Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str)
+        .map(|i| Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str)
         .collect();
 
     // Sequential processing
@@ -327,8 +327,8 @@ fn bench_error_handling(c: &mut Criterion) {
     let mixed_files: Vec<&str> = (0..50)
         .flat_map(|i| {
             vec![
-                Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str,
-                Box::leak(format!("missing_{:04}.dat", i).into_boxed_str()) as &str,
+                Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str,
+                Box::leak(format!("missing_{i:04}.dat").into_boxed_str()) as &str,
             ]
         })
         .collect();
@@ -346,7 +346,7 @@ fn bench_error_handling(c: &mut Criterion) {
 
     // Process only valid files
     let valid_files: Vec<&str> = (0..50)
-        .map(|i| Box::leak(format!("data/file_{:04}.dat", i).into_boxed_str()) as &str)
+        .map(|i| Box::leak(format!("data/file_{i:04}.dat").into_boxed_str()) as &str)
         .collect();
 
     group.bench_function("valid_only", |b| {

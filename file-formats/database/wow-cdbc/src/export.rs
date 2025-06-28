@@ -85,7 +85,7 @@ impl SerializableRecord {
             // No schema, use numeric field names
             for (i, value) in record.values().iter().enumerate() {
                 let serializable_value = SerializableValue::from_value(value, record_set)?;
-                values.insert(format!("field_{}", i), serializable_value);
+                values.insert(format!("field_{i}"), serializable_value);
             }
         }
 
@@ -127,7 +127,7 @@ pub fn export_to_csv<W: io::Write>(record_set: &RecordSet, writer: W) -> Result<
         // No schema, use numeric field names
         let record = record_set.get_record(0).unwrap();
         (0..record.len())
-            .map(|i| format!("field_{}", i))
+            .map(|i| format!("field_{i}"))
             .collect::<Vec<_>>()
     };
 

@@ -233,8 +233,7 @@ fn extract_png_normal_map<P: AsRef<Path>>(
     // Save the image
     img.save(output_path).map_err(|e| {
         crate::error::AdtError::Io(std::io::Error::other(format!(
-            "Failed to save PNG image: {}",
-            e
+            "Failed to save PNG image: {e}"
         )))
     })?;
 

@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    println!("Testing file integrity with: {}", source_mpq);
+    println!("Testing file integrity with: {source_mpq}");
 
     // Open the source archive
     let mut source = Archive::open(&source_mpq)?;
@@ -111,14 +111,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match archive.read_file(filename) {
             Ok(read_data) => {
                 if read_data == *original_data {
-                    println!("  ✓ {} - Verified", filename);
+                    println!("  ✓ {filename} - Verified");
                 } else {
-                    println!("  ✗ {} - Mismatch!", filename);
+                    println!("  ✗ {filename} - Mismatch!");
                     all_match = false;
                 }
             }
             Err(e) => {
-                println!("  ✗ {} - Read error: {}", filename, e);
+                println!("  ✗ {filename} - Read error: {e}");
                 all_match = false;
             }
         }

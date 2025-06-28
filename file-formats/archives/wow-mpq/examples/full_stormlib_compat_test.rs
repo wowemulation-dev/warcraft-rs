@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let listfile_str = String::from_utf8_lossy(&listfile);
         println!("\nListfile contents:");
         for line in listfile_str.lines() {
-            println!("  {}", line);
+            println!("  {line}");
         }
 
         // Check attributes
@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stormlib_exe = "test_modification_stormlib_compat";
 
     if std::path::Path::new(stormlib_exe).exists() {
-        let output = Command::new(format!("./{}", stormlib_exe))
+        let output = Command::new(format!("./{stormlib_exe}"))
             .arg(&archive_path)
             .output()?;
 
@@ -120,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     } else {
         println!("StormLib test binary not found in current directory");
-        println!("Expected: ./{}", stormlib_exe);
+        println!("Expected: ./{stormlib_exe}");
         println!("Current dir: {}", std::env::current_dir()?.display());
     }
 

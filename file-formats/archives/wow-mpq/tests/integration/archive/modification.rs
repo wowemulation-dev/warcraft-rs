@@ -100,7 +100,7 @@ fn test_add_file_from_memory() {
                 content.len()
             );
             println!("Expected: {:?}", b"Memory file content");
-            println!("Actual:   {:?}", content);
+            println!("Actual:   {content:?}");
 
             // Get file info to see flags
             if let Some(file_info) = archive.find_file("memory\\file.dat").unwrap() {
@@ -112,7 +112,7 @@ fn test_add_file_from_memory() {
             assert_eq!(content, b"Memory file content");
         }
         Err(e) => {
-            println!("Failed to read memory\\file.dat: {}", e);
+            println!("Failed to read memory\\file.dat: {e}");
         }
     }
 

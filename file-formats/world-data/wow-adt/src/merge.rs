@@ -109,7 +109,7 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                     };
 
                     // Store the mapping for this ADT's texture ID
-                    texture_map.insert(format!("adt{}:{}", adt_idx, i), merged_id);
+                    texture_map.insert(format!("adt{adt_idx}:{i}"), merged_id);
                 }
             }
         }
@@ -144,7 +144,7 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                     };
 
                     // Store the mapping for this ADT's model ID
-                    model_map.insert(format!("adt{}:{}", adt_idx, i), merged_id);
+                    model_map.insert(format!("adt{adt_idx}:{i}"), merged_id);
                 }
             }
         }
@@ -179,7 +179,7 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                     };
 
                     // Store the mapping for this ADT's WMO ID
-                    wmo_map.insert(format!("adt{}:{}", adt_idx, i), merged_id);
+                    wmo_map.insert(format!("adt{adt_idx}:{i}"), merged_id);
                 }
             }
         }
@@ -213,7 +213,7 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                         }
                     } else {
                         // Look up by ADT index and original ID
-                        let key = format!("adt{}:{}", adt_idx, orig_id);
+                        let key = format!("adt{adt_idx}:{orig_id}");
 
                         if let Some(&id) = model_map.get(&key) {
                             id as u32
@@ -262,7 +262,7 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                         }
                     } else {
                         // Look up by ADT index and original ID
-                        let key = format!("adt{}:{}", adt_idx, orig_id);
+                        let key = format!("adt{adt_idx}:{orig_id}");
 
                         if let Some(&id) = wmo_map.get(&key) {
                             id as u32
@@ -310,7 +310,7 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                     for layer in &mut new_mcnk.texture_layers {
                         // Look up the remapped texture ID
                         let orig_id = layer.texture_id;
-                        let key = format!("adt{}:{}", adt_idx, orig_id);
+                        let key = format!("adt{adt_idx}:{orig_id}");
 
                         if let Some(&id) = texture_map.get(&key) {
                             layer.texture_id = id as u32;

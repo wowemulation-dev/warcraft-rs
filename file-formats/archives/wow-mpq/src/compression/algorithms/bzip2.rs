@@ -13,7 +13,7 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
 
     decoder
         .read_to_end(&mut decompressed)
-        .map_err(|e| Error::compression(format!("BZip2 decompression failed: {}", e)))?;
+        .map_err(|e| Error::compression(format!("BZip2 decompression failed: {e}")))?;
 
     if decompressed.len() != expected_size {
         return Err(Error::compression(format!(
@@ -31,11 +31,11 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut encoder = BzEncoder::new(Vec::new(), Compression::default());
     encoder
         .write_all(data)
-        .map_err(|e| Error::compression(format!("BZip2 compression failed: {}", e)))?;
+        .map_err(|e| Error::compression(format!("BZip2 compression failed: {e}")))?;
 
     encoder
         .finish()
-        .map_err(|e| Error::compression(format!("BZip2 compression failed: {}", e)))
+        .map_err(|e| Error::compression(format!("BZip2 compression failed: {e}")))
 }
 
 #[cfg(test)]

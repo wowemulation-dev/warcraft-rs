@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let archives = ["stormlib_v1.mpq", "wowmpq_v1.mpq"];
 
     for archive_path in &archives {
-        println!("\n=== Contents of {} ===", archive_path);
+        println!("\n=== Contents of {archive_path} ===");
 
         let mut archive = Archive::open(archive_path)?;
         let files = archive.list_all()?;
@@ -20,10 +20,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             Ok(data) => {
                 let listfile_content = String::from_utf8_lossy(&data);
                 println!("\n(listfile) content:");
-                println!("{}", listfile_content);
+                println!("{listfile_content}");
             }
             Err(e) => {
-                println!("\nNo (listfile) or error reading: {}", e);
+                println!("\nNo (listfile) or error reading: {e}");
             }
         }
     }

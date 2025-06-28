@@ -133,8 +133,7 @@ impl BlpHeader {
         let compression_type =
             BlpCompressionType::from_u8(compression_type_raw).ok_or_else(|| {
                 M2Error::ParseError(format!(
-                    "Invalid BLP compression type: {}",
-                    compression_type_raw
+                    "Invalid BLP compression type: {compression_type_raw}"
                 ))
             })?;
 
@@ -148,7 +147,7 @@ impl BlpHeader {
         // Read pixel format
         let pixel_format_raw = reader.read_u8()?;
         let pixel_format = BlpPixelFormat::from_u8(pixel_format_raw).ok_or_else(|| {
-            M2Error::ParseError(format!("Invalid BLP pixel format: {}", pixel_format_raw))
+            M2Error::ParseError(format!("Invalid BLP pixel format: {pixel_format_raw}"))
         })?;
 
         // Read mipmap levels

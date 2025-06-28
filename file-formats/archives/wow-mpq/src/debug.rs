@@ -46,12 +46,12 @@ pub fn hex_dump(data: &[u8], config: &HexDumpConfig) -> String {
 
         // Offset
         if config.show_offset {
-            output.push_str(&format!("{:08X}  ", offset));
+            output.push_str(&format!("{offset:08X}  "));
         }
 
         // Hex bytes
         for (i, byte) in chunk.iter().enumerate() {
-            output.push_str(&format!("{:02X} ", byte));
+            output.push_str(&format!("{byte:02X} "));
             if i == 7 && config.bytes_per_line > 8 {
                 output.push(' '); // Extra space in the middle
             }
@@ -106,7 +106,7 @@ pub fn hex_dump_custom(data: &[u8], bytes_per_line: usize, max_bytes: usize) -> 
 /// Format a single hex line for inline display
 pub fn hex_string(data: &[u8], max_len: usize) -> String {
     let len = data.len().min(max_len);
-    let hex: Vec<String> = data[..len].iter().map(|b| format!("{:02X}", b)).collect();
+    let hex: Vec<String> = data[..len].iter().map(|b| format!("{b:02X}")).collect();
     if data.len() > max_len {
         format!("{} ... ({} bytes total)", hex.join(" "), data.len())
     } else {
@@ -283,7 +283,7 @@ pub fn format_flags(value: u32, flag_names: &[(u32, &str)]) -> String {
     }
 
     if flags.is_empty() {
-        format!("0x{:08X} (none)", value)
+        format!("0x{value:08X} (none)")
     } else {
         format!("0x{:08X} ({})", value, flags.join(" | "))
     }
@@ -314,7 +314,7 @@ impl DebugContext {
     /// Enter a new scope, increasing indentation
     pub fn enter_scope(&mut self, name: &str) {
         let indent = "  ".repeat(self.indent);
-        log::trace!("{}→ {}", indent, name);
+        log::trace!("{indent}→ {name}");
         self.indent += 1;
     }
 
@@ -328,7 +328,7 @@ impl DebugContext {
     /// Log a message at the current indentation level
     pub fn log(&self, message: &str) {
         let indent = "  ".repeat(self.indent);
-        log::trace!("{}  {}", indent, message);
+        log::trace!("{indent}  {message}");
     }
 
     fn elapsed_ms(&self) -> u64 {
@@ -631,7 +631,7 @@ impl ArchiveStructureVisualizer {
             }
 
             output.push_str("├──────────────────────┤\n");
-            output.push_str(&format!("│ {:^20} │ @ 0x{:08X}\n", name, offset));
+            output.push_str(&format!("│ {name:^20} │ @ 0x{offset:08X}\n"));
             output.push_str(&format!("│ {:^20} │ {}\n", format_size(*size), ""));
 
             current_offset = offset + size;
@@ -667,7 +667,7 @@ pub fn visualize_archive_structure(info: &crate::ArchiveInfo) -> String {
                 .compressed_size
                 .unwrap_or(size as u64 * 16),
             "Hash Table",
-            &format!("{} entries", size),
+            &format!("{size} entries"),
         );
     }
 
@@ -679,7 +679,7 @@ pub fn visualize_archive_structure(info: &crate::ArchiveInfo) -> String {
                 .compressed_size
                 .unwrap_or(size as u64 * 16),
             "Block Table",
-            &format!("{} entries", size),
+            &format!("{size} entries"),
         );
     }
 
@@ -766,7 +766,7 @@ impl FileExtractionTracer {
         for (i, (step, details)) in self.steps.iter().enumerate() {
             output.push_str(&format!("{:2}. {}\n", i + 1, step));
             if let Some(details) = details {
-                output.push_str(&format!("    └─ {}\n", details));
+                output.push_str(&format!("    └─ {details}\n"));
             }
         }
 
@@ -916,7 +916,7 @@ impl CompressionAnalyzer {
 
         output.push_str("Compression methods used:\n");
         for (method, count) in method_counts.iter() {
-            output.push_str(&format!("  {}: {} files\n", method, count));
+            output.push_str(&format!("  {method}: {count} files\n"));
         }
 
         // Detailed results table
@@ -964,14 +964,14 @@ pub fn format_het_table(het: &crate::tables::HetTable) -> String {
 
     // Header information
     output.push_str("HET Table Header:\n");
-    output.push_str(&format!("  Table Size: {} bytes\n", table_size));
-    output.push_str(&format!("  Max File Count: {}\n", max_file_count));
-    output.push_str(&format!("  Hash Table Size: {} bytes\n", hash_table_size));
-    output.push_str(&format!("  Hash Entry Size: {} bits\n", hash_entry_size));
-    output.push_str(&format!("  Total Index Size: {} bits\n", total_index_size));
-    output.push_str(&format!("  Index Size Extra: {} bits\n", index_size_extra));
-    output.push_str(&format!("  Index Size: {} bits\n", index_size));
-    output.push_str(&format!("  Block Table Size: {} bytes\n", block_table_size));
+    output.push_str(&format!("  Table Size: {table_size} bytes\n"));
+    output.push_str(&format!("  Max File Count: {max_file_count}\n"));
+    output.push_str(&format!("  Hash Table Size: {hash_table_size} bytes\n"));
+    output.push_str(&format!("  Hash Entry Size: {hash_entry_size} bits\n"));
+    output.push_str(&format!("  Total Index Size: {total_index_size} bits\n"));
+    output.push_str(&format!("  Index Size Extra: {index_size_extra} bits\n"));
+    output.push_str(&format!("  Index Size: {index_size} bits\n"));
+    output.push_str(&format!("  Block Table Size: {block_table_size} bytes\n"));
 
     output
 }
@@ -1003,48 +1003,40 @@ pub fn format_bet_table(bet: &crate::tables::BetTable) -> String {
 
     // Header information
     output.push_str("BET Table Header:\n");
-    output.push_str(&format!("  Table Size: {} bytes\n", table_size));
-    output.push_str(&format!("  File Count: {}\n", file_count));
-    output.push_str(&format!("  Unknown: 0x{:08X}\n", unknown_08));
-    output.push_str(&format!("  Table Entry Size: {} bits\n", table_entry_size));
+    output.push_str(&format!("  Table Size: {table_size} bytes\n"));
+    output.push_str(&format!("  File Count: {file_count}\n"));
+    output.push_str(&format!("  Unknown: 0x{unknown_08:08X}\n"));
+    output.push_str(&format!("  Table Entry Size: {table_entry_size} bits\n"));
 
     output.push_str("\nBit Field Positions:\n");
     output.push_str(&format!(
-        "  File Position: bit {} (width: {})\n",
-        bit_index_file_pos, bit_count_file_pos
+        "  File Position: bit {bit_index_file_pos} (width: {bit_count_file_pos})\n"
     ));
     output.push_str(&format!(
-        "  File Size: bit {} (width: {})\n",
-        bit_index_file_size, bit_count_file_size
+        "  File Size: bit {bit_index_file_size} (width: {bit_count_file_size})\n"
     ));
     output.push_str(&format!(
-        "  Compressed Size: bit {} (width: {})\n",
-        bit_index_cmp_size, bit_count_cmp_size
+        "  Compressed Size: bit {bit_index_cmp_size} (width: {bit_count_cmp_size})\n"
     ));
     output.push_str(&format!(
-        "  Flag Index: bit {} (width: {})\n",
-        bit_index_flag_index, bit_count_flag_index
+        "  Flag Index: bit {bit_index_flag_index} (width: {bit_count_flag_index})\n"
     ));
     output.push_str(&format!(
-        "  Unknown: bit {} (width: {})\n",
-        bit_index_unknown, bit_count_unknown
+        "  Unknown: bit {bit_index_unknown} (width: {bit_count_unknown})\n"
     ));
 
     output.push_str("\nHash Information:\n");
     output.push_str(&format!(
-        "  Total Hash Size: {} bytes\n",
-        total_bet_hash_size
+        "  Total Hash Size: {total_bet_hash_size} bytes\n"
     ));
     output.push_str(&format!(
-        "  BET Hash Size Extra: {} bits\n",
-        bet_hash_size_extra
+        "  BET Hash Size Extra: {bet_hash_size_extra} bits\n"
     ));
-    output.push_str(&format!("  BET Hash Size: {} bits\n", bet_hash_size));
+    output.push_str(&format!("  BET Hash Size: {bet_hash_size} bits\n"));
     output.push_str(&format!(
-        "  BET Hash Array Size: {} bytes\n",
-        bet_hash_array_size
+        "  BET Hash Array Size: {bet_hash_array_size} bytes\n"
     ));
-    output.push_str(&format!("  Flag Count: {}\n", flag_count));
+    output.push_str(&format!("  Flag Count: {flag_count}\n"));
 
     output
 }

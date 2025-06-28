@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Write buffer to file
     std::fs::write(&output_path, buffer)?;
 
-    println!("WDL file saved to {:?}", output_path);
+    println!("WDL file saved to {output_path:?}");
 
     // Example 2: Read a WDL file
     println!("\nReading WDL file...");
@@ -109,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Write buffer to file
     std::fs::write(&legion_path, buffer)?;
 
-    println!("Legion WDL file saved to {:?}", legion_path);
+    println!("Legion WDL file saved to {legion_path:?}");
 
     Ok(())
 }

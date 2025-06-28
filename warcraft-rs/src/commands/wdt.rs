@@ -214,7 +214,7 @@ fn execute_info(path: PathBuf, version_str: String, detailed: bool) -> Result<()
 
         // MAIN details
         println!("\n{} ({} bytes)", style("MAIN").yellow(), 64 * 64 * 8);
-        println!("  Existing tiles: {}", tile_count);
+        println!("  Existing tiles: {tile_count}");
 
         // MAID details
         if let Some(ref maid) = wdt.maid {
@@ -228,7 +228,7 @@ fn execute_info(path: PathBuf, version_str: String, detailed: bool) -> Result<()
             println!("\n{} ({} bytes)", style("MWMO").yellow(), mwmo.size());
             println!("  Filenames: {}", mwmo.filenames.len());
             for (i, filename) in mwmo.filenames.iter().enumerate() {
-                println!("    [{}] {}", i, filename);
+                println!("    [{i}] {filename}");
             }
         }
 
@@ -236,7 +236,7 @@ fn execute_info(path: PathBuf, version_str: String, detailed: bool) -> Result<()
         if let Some(ref modf) = wdt.modf {
             println!("\n{} ({} bytes)", style("MODF").yellow(), modf.size());
             for (i, entry) in modf.entries.iter().enumerate() {
-                println!("  Entry {}:", i);
+                println!("  Entry {i}:");
                 println!(
                     "    Position: [{:.2}, {:.2}, {:.2}]",
                     entry.position[0], entry.position[1], entry.position[2]
@@ -427,7 +427,7 @@ fn execute_tiles(path: PathBuf, version_str: String, format: String) -> Result<(
         "csv" => {
             println!("x,y,area_id");
             for (x, y, area_id) in tiles {
-                println!("{},{},{}", x, y, area_id);
+                println!("{x},{y},{area_id}");
             }
         }
         _ => {
@@ -438,7 +438,7 @@ fn execute_tiles(path: PathBuf, version_str: String, format: String) -> Result<(
             println!();
 
             for (x, y, area_id) in tiles {
-                println!("  [{:2},{:2}] - Area ID: {}", x, y, area_id);
+                println!("  [{x:2},{y:2}] - Area ID: {area_id}");
             }
         }
     }
@@ -537,7 +537,7 @@ fn execute_tree(
 
     for (flag, desc) in flag_descriptions {
         if wdt.mphd.flags.contains(flag) {
-            let flag_node = TreeNode::new(format!("Flag: {}", desc), NodeType::Property)
+            let flag_node = TreeNode::new(format!("Flag: {desc}"), NodeType::Property)
                 .with_metadata("value", &format!("0x{:04X}", flag.bits()));
             mphd_node = mphd_node.add_child(flag_node);
         }
@@ -547,13 +547,13 @@ fn execute_tree(
     if wdt.mphd.has_maid() {
         if let Some(lgt_id) = wdt.mphd.lgt_file_data_id {
             mphd_node = mphd_node.with_external_ref(
-                &format!("LGT FileDataID: {}", lgt_id),
+                &format!("LGT FileDataID: {lgt_id}"),
                 detect_ref_type("file.lgt"),
             );
         }
         if let Some(occ_id) = wdt.mphd.occ_file_data_id {
             mphd_node = mphd_node.with_external_ref(
-                &format!("OCC FileDataID: {}", occ_id),
+                &format!("OCC FileDataID: {occ_id}"),
                 detect_ref_type("file.occ"),
             );
         }
@@ -580,13 +580,13 @@ fn execute_tree(
                     // Show first few tiles as examples
                     if tile_count <= 5 || !compact {
                         let mut tile_node =
-                            TreeNode::new(format!("[{:02},{:02}]", x, y), NodeType::Data)
+                            TreeNode::new(format!("[{x:02},{y:02}]"), NodeType::Data)
                                 .with_metadata("area_id", &tile_info.area_id.to_string())
                                 .with_metadata("has_adt", "true");
 
                         if show_external_refs {
                             tile_node = tile_node.with_external_ref(
-                                &format!("{}_{:02}_{:02}.adt", base_name, x, y),
+                                &format!("{base_name}_{x:02}_{y:02}.adt"),
                                 detect_ref_type("file.adt"),
                             );
                         }
@@ -632,7 +632,7 @@ fn execute_tree(
         for (i, section_name) in sections.iter().enumerate() {
             if i < maid.section_count() {
                 let section_node = TreeNode::new(
-                    format!("Section {}: {}", i, section_name),
+                    format!("Section {i}: {section_name}"),
                     NodeType::Property,
                 )
                 .with_metadata("entries", "4096");
@@ -656,7 +656,7 @@ fn execute_tree(
             mwmo_node = mwmo_node.add_child(empty_node);
         } else {
             for (i, filename) in mwmo.filenames.iter().enumerate() {
-                let mut wmo_node = TreeNode::new(format!("[{}] {}", i, filename), NodeType::File);
+                let mut wmo_node = TreeNode::new(format!("[{i}] {filename}"), NodeType::File);
 
                 if show_external_refs {
                     wmo_node = wmo_node.with_external_ref(filename, detect_ref_type("file.wmo"));
@@ -677,7 +677,7 @@ fn execute_tree(
             .with_metadata("purpose", "WMO placement data");
 
         for (i, entry) in modf.entries.iter().enumerate() {
-            let placement_node = TreeNode::new(format!("Placement {}", i), NodeType::Data)
+            let placement_node = TreeNode::new(format!("Placement {i}"), NodeType::Data)
                 .with_metadata(
                     "position",
                     &format!(

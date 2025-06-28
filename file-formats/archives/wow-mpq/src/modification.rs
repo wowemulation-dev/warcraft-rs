@@ -1160,7 +1160,7 @@ impl MutableArchive {
         for entry in hash_table.entries() {
             if !entry.is_empty() {
                 // Reconstruct filename from hash (this is an approximation)
-                let filename = format!("file_{}", file_index); // Placeholder - in real implementation we'd need to track filenames
+                let filename = format!("file_{file_index}"); // Placeholder - in real implementation we'd need to track filenames
 
                 let hash_bits = 8;
                 let (hash, name_hash1) = het_hash(&filename, hash_bits);
@@ -1296,7 +1296,7 @@ impl MutableArchive {
             result.extend_from_slice(&entry.compressed_size.to_le_bytes());
 
             // Generate a hash for this file (placeholder)
-            let hash = jenkins_hash(&format!("file_{}", i));
+            let hash = jenkins_hash(&format!("file_{i}"));
             result.extend_from_slice(&hash.to_le_bytes());
         }
 

@@ -42,7 +42,7 @@ impl StringBlock {
 
         // Convert the bytes to a string
         std::str::from_utf8(&self.data[offset..end])
-            .map_err(|e| Error::TypeConversion(format!("Invalid UTF-8 string: {}", e)))
+            .map_err(|e| Error::TypeConversion(format!("Invalid UTF-8 string: {e}")))
     }
 
     /// Get the raw data of the string block
@@ -97,7 +97,7 @@ impl CachedStringBlock {
         if let Some((start, end)) = self.cache.get(&string_ref.offset()) {
             // Convert the bytes to a string
             std::str::from_utf8(&self.data[*start..*end])
-                .map_err(|e| Error::TypeConversion(format!("Invalid UTF-8 string: {}", e)))
+                .map_err(|e| Error::TypeConversion(format!("Invalid UTF-8 string: {e}")))
         } else {
             // If not cached, find the end of the string
             if offset >= self.data.len() {
@@ -115,7 +115,7 @@ impl CachedStringBlock {
 
             // Convert the bytes to a string
             std::str::from_utf8(&self.data[offset..end])
-                .map_err(|e| Error::TypeConversion(format!("Invalid UTF-8 string: {}", e)))
+                .map_err(|e| Error::TypeConversion(format!("Invalid UTF-8 string: {e}")))
         }
     }
 }

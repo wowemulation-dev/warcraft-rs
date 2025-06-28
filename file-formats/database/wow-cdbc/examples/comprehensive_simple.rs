@@ -70,7 +70,7 @@ fn parse_with_code_schema() -> Result<(), Box<dyn std::error::Error>> {
     // Access records by index
     if let Some(record) = record_set.get_record(0) {
         if let Some(Value::Int32(id)) = record.get_value_by_name("ClassID") {
-            println!("   First record ClassID: {}", id);
+            println!("   First record ClassID: {id}");
         }
     }
 
@@ -78,7 +78,7 @@ fn parse_with_code_schema() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(record) = record_set.get_record_by_key(2) {
         if let Some(Value::StringRef(name_ref)) = record.get_value_by_name("ClassName") {
             let name = record_set.get_string(*name_ref)?;
-            println!("   Class 2 name: {}", name);
+            println!("   Class 2 name: {name}");
         }
     }
 
@@ -91,7 +91,7 @@ fn parse_with_code_schema() -> Result<(), Box<dyn std::error::Error>> {
                 record.get_value_by_name("ClassName"),
             ) {
                 let name = record_set.get_string(*name_ref)?;
-                println!("     - Class {}: {}", id, name);
+                println!("     - Class {id}: {name}");
             }
         }
     }
@@ -128,7 +128,7 @@ fn parse_with_lazy_loading() -> Result<(), Box<dyn std::error::Error>> {
     // Add remaining fields as Int32 for simplicity
     let field_count = parser.header().field_count as usize;
     for i in 4..field_count {
-        schema.add_field(SchemaField::new(format!("Field{}", i), FieldType::Int32));
+        schema.add_field(SchemaField::new(format!("Field{i}"), FieldType::Int32));
     }
     schema.set_key_field("ID");
 
@@ -156,13 +156,13 @@ fn parse_with_lazy_loading() -> Result<(), Box<dyn std::error::Error>> {
         // Only process first few records for demo
         if count <= 3 {
             if let Some(Value::UInt32(id)) = record.get_value_by_name("ID") {
-                println!("   - Record {}: ID = {}", count, id);
+                println!("   - Record {count}: ID = {id}");
             }
         }
     }
 
     let elapsed = start.elapsed();
-    println!("   Processed {} records in {:?}", count, elapsed);
+    println!("   Processed {count} records in {elapsed:?}");
 
     // Compare with direct access
     println!("   Direct access to specific records:");
@@ -171,7 +171,7 @@ fn parse_with_lazy_loading() -> Result<(), Box<dyn std::error::Error>> {
         if idx < parser.header().record_count {
             let record = lazy_parser.get_record(idx)?;
             if let Some(Value::UInt32(id)) = record.get_value_by_name("ID") {
-                println!("   - Record {}: ID = {}", idx, id);
+                println!("   - Record {idx}: ID = {id}");
             }
         }
     }
@@ -214,12 +214,12 @@ fn parse_without_schema() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Raw data from first 3 records:");
     for i in 0..3.min(record_set.len()) {
         if let Some(record) = record_set.get_record(i) {
-            print!("   Record {}: ", i);
+            print!("   Record {i}: ");
             for (j, value) in record.values().iter().enumerate() {
                 if j > 0 {
                     print!(", ");
                 }
-                print!("{}", value);
+                print!("{value}");
             }
             println!();
         }

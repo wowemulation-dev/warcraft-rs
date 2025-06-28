@@ -26,7 +26,7 @@ pub fn format_timestamp(timestamp: u64) -> String {
 
 /// Format a percentage
 pub fn format_percentage(value: f64) -> String {
-    format!("{:.1}%", value)
+    format!("{value:.1}%")
 }
 
 /// Format a compression ratio

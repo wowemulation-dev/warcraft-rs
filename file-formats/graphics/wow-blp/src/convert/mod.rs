@@ -54,9 +54,9 @@ impl Default for BlpTarget {
 impl fmt::Display for BlpTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BlpTarget::Blp0(format) => write!(f, "BLP0 {}", format),
-            BlpTarget::Blp1(format) => write!(f, "BLP1 {}", format),
-            BlpTarget::Blp2(format) => write!(f, "BLP2 {}", format),
+            BlpTarget::Blp0(format) => write!(f, "BLP0 {format}"),
+            BlpTarget::Blp1(format) => write!(f, "BLP1 {format}"),
+            BlpTarget::Blp2(format) => write!(f, "BLP2 {format}"),
         }
     }
 }
@@ -85,7 +85,7 @@ impl Default for BlpOldFormat {
 impl fmt::Display for BlpOldFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BlpOldFormat::Raw1 { alpha_bits } => write!(f, "Palleted image with {}", alpha_bits),
+            BlpOldFormat::Raw1 { alpha_bits } => write!(f, "Palleted image with {alpha_bits}"),
             BlpOldFormat::Jpeg { has_alpha } => {
                 if *has_alpha {
                     write!(f, "Jpeg image with alpha")
@@ -194,7 +194,7 @@ impl Default for Blp2Format {
 impl fmt::Display for Blp2Format {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Blp2Format::Raw1 { alpha_bits } => write!(f, "Palleted image with {}", alpha_bits),
+            Blp2Format::Raw1 { alpha_bits } => write!(f, "Palleted image with {alpha_bits}"),
             Blp2Format::Raw3 => write!(f, "RGBA raw data"),
             Blp2Format::Jpeg { has_alpha } => {
                 if *has_alpha {
@@ -213,12 +213,11 @@ impl fmt::Display for Blp2Format {
                     DxtAlgorithm::IterativeClusterFit => "very slow/best quality",
                 };
                 if *has_alpha {
-                    write!(f, "DXT1 image with alpha and compression {}", compress_str)
+                    write!(f, "DXT1 image with alpha and compression {compress_str}")
                 } else {
                     write!(
                         f,
-                        "DXT1 image without alpha and compression {}",
-                        compress_str
+                        "DXT1 image without alpha and compression {compress_str}"
                     )
                 }
             }
@@ -232,12 +231,11 @@ impl fmt::Display for Blp2Format {
                     DxtAlgorithm::IterativeClusterFit => "very slow/best quality",
                 };
                 if *has_alpha {
-                    write!(f, "DXT3 image with alpha and compression {}", compress_str)
+                    write!(f, "DXT3 image with alpha and compression {compress_str}")
                 } else {
                     write!(
                         f,
-                        "DXT3 image without alpha and compression {}",
-                        compress_str
+                        "DXT3 image without alpha and compression {compress_str}"
                     )
                 }
             }
@@ -251,12 +249,11 @@ impl fmt::Display for Blp2Format {
                     DxtAlgorithm::IterativeClusterFit => "very slow/best quality",
                 };
                 if *has_alpha {
-                    write!(f, "DXT5 image with alpha and compression {}", compress_str)
+                    write!(f, "DXT5 image with alpha and compression {compress_str}")
                 } else {
                     write!(
                         f,
-                        "DXT5 image without alpha and compression {}",
-                        compress_str
+                        "DXT5 image without alpha and compression {compress_str}"
                     )
                 }
             }

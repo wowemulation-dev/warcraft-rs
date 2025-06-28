@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             serde_yaml_ng::Value::String(if i == 0 {
                 "ID".to_string()
             } else {
-                format!("Field{}", i)
+                format!("Field{i}")
             }),
         );
         field.insert(
@@ -98,7 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         // Print schema to stdout
         let yaml = serde_yaml_ng::to_string(&serde_yaml_ng::Value::Mapping(schema))?;
-        println!("\n{}", yaml);
+        println!("\n{yaml}");
     }
 
     println!("\nNote: This is a basic schema. For accurate field type detection,");

@@ -17,17 +17,17 @@ fn create_large_test_archive() -> (TempDir, std::path::PathBuf) {
 
     // Add 100 files with varying sizes
     for i in 0..100 {
-        let content = format!("File {} content: ", i);
+        let content = format!("File {i} content: ");
         let content = content.repeat(100 + i); // Varying sizes
-        builder = builder.add_file_data(content.into_bytes(), &format!("test/file_{:03}.txt", i));
+        builder = builder.add_file_data(content.into_bytes(), &format!("test/file_{i:03}.txt"));
     }
 
     // Add some larger files
     for i in 0..10 {
-        let large_content = format!("Large file {} with lots of data\n", i).repeat(1000);
+        let large_content = format!("Large file {i} with lots of data\n").repeat(1000);
         builder = builder.add_file_data(
             large_content.into_bytes(),
-            &format!("test/large_{:02}.dat", i),
+            &format!("test/large_{i:02}.dat"),
         );
     }
 
@@ -115,7 +115,7 @@ fn test_concurrent_reads_different_files() {
             // Each thread reads different files
             let start = thread_id * 10;
             let files: Vec<&str> = (start..start + 10)
-                .map(|i| Box::leak(format!("test/file_{:03}.txt", i).into_boxed_str()) as &str)
+                .map(|i| Box::leak(format!("test/file_{i:03}.txt").into_boxed_str()) as &str)
                 .collect();
 
             // Synchronize start
@@ -174,7 +174,7 @@ fn test_batched_extraction_performance() {
 
     // Extract many small files
     let files: Vec<&str> = (0..50)
-        .map(|i| Box::leak(format!("test/file_{:03}.txt", i).into_boxed_str()) as &str)
+        .map(|i| Box::leak(format!("test/file_{i:03}.txt").into_boxed_str()) as &str)
         .collect();
 
     // Test different batch sizes
@@ -184,7 +184,7 @@ fn test_batched_extraction_performance() {
 
         // Verify all files extracted correctly
         for (i, (filename, data)) in results.iter().enumerate() {
-            assert_eq!(filename, &format!("test/file_{:03}.txt", i));
+            assert_eq!(filename, &format!("test/file_{i:03}.txt"));
             assert!(!data.is_empty());
         }
     }
@@ -257,7 +257,7 @@ fn test_custom_thread_pool() {
         let config = ParallelConfig::new().threads(*num_threads).batch_size(5);
 
         let files: Vec<&str> = (0..20)
-            .map(|i| Box::leak(format!("test/file_{:03}.txt", i).into_boxed_str()) as &str)
+            .map(|i| Box::leak(format!("test/file_{i:03}.txt").into_boxed_str()) as &str)
             .collect();
 
         let results = extract_with_config(&archive_path, &files, config).unwrap();
@@ -355,5 +355,5 @@ fn test_thread_count() {
 
     let thread_count = archive.thread_count();
     assert!(thread_count > 0);
-    println!("Current thread count: {}", thread_count);
+    println!("Current thread count: {thread_count}");
 }

@@ -20,8 +20,7 @@ fn test_crc32_algorithm() {
         let crc = crc32fast::hash(data);
         assert_eq!(
             crc, expected,
-            "CRC mismatch for {:?}: got 0x{:08X}, expected 0x{:08X}",
-            data, crc, expected
+            "CRC mismatch for {data:?}: got 0x{crc:08X}, expected 0x{expected:08X}"
         );
     }
 }

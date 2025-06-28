@@ -129,7 +129,7 @@ where
                     }))
                 }
                 Compression::Dxtc => {
-                    error!("Alpha type {} is not supported for BLP2!", alpha_type);
+                    error!("Alpha type {alpha_type} is not supported for BLP2!");
                     Err(Error::Blp2UnknownAlphaType(alpha_type))
                 }
             },

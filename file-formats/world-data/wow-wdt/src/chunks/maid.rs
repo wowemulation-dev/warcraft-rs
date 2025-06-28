@@ -114,12 +114,12 @@ impl MaidChunk {
             .get_mut(y)
             .ok_or_else(|| Error::InvalidChunkData {
                 chunk: "MAID".to_string(),
-                message: format!("Invalid Y coordinate: {}", y),
+                message: format!("Invalid Y coordinate: {y}"),
             })?;
 
         let cell = row.get_mut(x).ok_or_else(|| Error::InvalidChunkData {
             chunk: "MAID".to_string(),
-            message: format!("Invalid X coordinate: {}", x),
+            message: format!("Invalid X coordinate: {x}"),
         })?;
 
         *cell = file_data_id;
@@ -188,8 +188,7 @@ impl super::Chunk for MaidChunk {
             return Err(Error::InvalidChunkData {
                 chunk: "MAID".to_string(),
                 message: format!(
-                    "Size {} is not a multiple of section size {}",
-                    size, BYTES_PER_SECTION
+                    "Size {size} is not a multiple of section size {BYTES_PER_SECTION}"
                 ),
             });
         }

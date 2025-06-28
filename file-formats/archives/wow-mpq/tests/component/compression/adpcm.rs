@@ -81,7 +81,7 @@ fn test_adpcm_compression_basic() {
     let snr = calculate_snr(&original_samples, &decoded_samples);
 
     // ADPCM should maintain at least 20dB SNR for typical audio
-    assert!(snr > 20.0, "SNR too low: {} dB", snr);
+    assert!(snr > 20.0, "SNR too low: {snr} dB");
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn test_adpcm_silence() {
     // Decompressed should be very close to silence (allow small rounding errors)
     let samples = extract_samples(&decompressed);
     for sample in samples {
-        assert!(sample.abs() <= 1, "Silence sample too large: {}", sample);
+        assert!(sample.abs() <= 1, "Silence sample too large: {sample}");
     }
 }
 
@@ -132,7 +132,7 @@ fn test_adpcm_maximum_values() {
     for (orig, decoded) in original_samples.iter().zip(decoded_samples.iter()) {
         // Allow some error but values should be in the right ballpark
         let error = (orig - decoded).abs();
-        assert!(error < 5000, "Error too large: {} vs {}", orig, decoded);
+        assert!(error < 5000, "Error too large: {orig} vs {decoded}");
     }
 }
 
@@ -164,7 +164,7 @@ fn test_adpcm_gradual_change() {
         / original_samples.len() as f32;
 
     // Average error should be small for gradual changes
-    assert!(avg_error < 100.0, "Average error too large: {}", avg_error);
+    assert!(avg_error < 100.0, "Average error too large: {avg_error}");
 }
 
 #[test]
@@ -207,13 +207,11 @@ fn test_adpcm_compression_ratio() {
     // Our implementation with headers and markers may be less efficient
     assert!(
         sine_ratio < 0.7,
-        "Sine wave compression ratio too poor: {}",
-        sine_ratio
+        "Sine wave compression ratio too poor: {sine_ratio}"
     );
     assert!(
         noise_ratio < 0.8,
-        "Noise compression ratio too poor: {}",
-        noise_ratio
+        "Noise compression ratio too poor: {noise_ratio}"
     );
 
     // Sine should compress better than noise
@@ -297,13 +295,11 @@ fn test_adpcm_stereo_compression_basic() {
     // Both channels should maintain reasonable quality
     assert!(
         max_left_error < 1500,
-        "Left channel error too high: {}",
-        max_left_error
+        "Left channel error too high: {max_left_error}"
     );
     assert!(
         max_right_error < 1500,
-        "Right channel error too high: {}",
-        max_right_error
+        "Right channel error too high: {max_right_error}"
     );
 }
 
@@ -323,7 +319,7 @@ fn test_adpcm_stereo_silence() {
     // Check that silence is preserved (allowing small errors)
     let samples = extract_samples(&decompressed);
     for (i, &sample) in samples.iter().enumerate() {
-        assert!(sample.abs() <= 1, "Sample {} not silent: {}", i, sample);
+        assert!(sample.abs() <= 1, "Sample {i} not silent: {sample}");
     }
 }
 
@@ -363,13 +359,11 @@ fn test_adpcm_stereo_compression_ratio() {
     // ADPCM should achieve reasonable compression for stereo
     assert!(
         sine_ratio < 0.7,
-        "Stereo sine compression ratio too poor: {}",
-        sine_ratio
+        "Stereo sine compression ratio too poor: {sine_ratio}"
     );
     assert!(
         noise_ratio < 0.8,
-        "Stereo noise compression ratio too poor: {}",
-        noise_ratio
+        "Stereo noise compression ratio too poor: {noise_ratio}"
     );
 
     // Sine should compress better than noise
@@ -436,13 +430,11 @@ fn test_adpcm_stereo_bzip2_multi_compression() {
 
         assert!(
             left_diff < 2000,
-            "Left channel sample {} error too large",
-            i
+            "Left channel sample {i} error too large"
         );
         assert!(
             right_diff < 2000,
-            "Right channel sample {} error too large",
-            i
+            "Right channel sample {i} error too large"
         );
     }
 }

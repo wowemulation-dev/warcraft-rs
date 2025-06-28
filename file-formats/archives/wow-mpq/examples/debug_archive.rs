@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mpq_path = &args[1];
     let options: Vec<&str> = args[2..].iter().map(|s| s.as_str()).collect();
 
-    println!("🔍 Debug Analysis: {}", mpq_path);
+    println!("🔍 Debug Analysis: {mpq_path}");
     println!("=====================================\n");
 
     // Open the archive
@@ -122,7 +122,7 @@ fn show_structure_visualization(info: &ArchiveInfo) {
     println!("🏗️  Archive Structure Visualization");
     println!("------------------------------------");
     let viz = visualize_archive_structure(info);
-    println!("{}", viz);
+    println!("{viz}");
 }
 
 fn show_hash_table_debug(archive: &mut Archive) -> Result<(), Box<dyn std::error::Error>> {
@@ -152,8 +152,8 @@ fn show_hash_table_debug(archive: &mut Archive) -> Result<(), Box<dyn std::error
             used_entries,
             (used_entries as f64 / entries.len() as f64) * 100.0
         );
-        println!("Deleted entries: {}", deleted_entries);
-        println!("Free entries: {}", free_entries);
+        println!("Deleted entries: {deleted_entries}");
+        println!("Free entries: {free_entries}");
 
         // Show first few valid entries as examples
         println!("\nFirst few entries:");
@@ -218,9 +218,9 @@ fn show_block_table_debug(archive: &mut Archive) -> Result<(), Box<dyn std::erro
                 (total_compressed as f64 / total_uncompressed as f64) * 100.0
             );
         }
-        println!("Encrypted files: {}", encrypted_count);
-        println!("Compressed files: {}", compressed_count);
-        println!("Single unit files: {}", single_unit_count);
+        println!("Encrypted files: {encrypted_count}");
+        println!("Compressed files: {compressed_count}");
+        println!("Single unit files: {single_unit_count}");
 
         // Show first few entries as examples
         println!("\nFirst few entries:");
@@ -239,7 +239,7 @@ fn show_block_table_debug(archive: &mut Archive) -> Result<(), Box<dyn std::erro
 }
 
 fn hex_dump_file(archive: &mut Archive, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!("🔢 Hex Dump: {}", filename);
+    println!("🔢 Hex Dump: {filename}");
     println!("--------------------");
 
     match archive.read_file(filename) {
@@ -258,7 +258,7 @@ fn hex_dump_file(archive: &mut Archive, filename: &str) -> Result<(), Box<dyn st
             }
         }
         Err(e) => {
-            eprintln!("Error reading file '{}': {}", filename, e);
+            eprintln!("Error reading file '{filename}': {e}");
         }
     }
 
@@ -270,7 +270,7 @@ fn trace_file_extraction(
     archive: &mut Archive,
     filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("🔍 Extraction Trace: {}", filename);
+    println!("🔍 Extraction Trace: {filename}");
     println!("-------------------------");
 
     // Create a tracer

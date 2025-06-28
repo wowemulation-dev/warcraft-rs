@@ -28,8 +28,7 @@ fn validate_map_tiles(file: &WdlFile) -> Result<()> {
     for &(x, y) in file.heightmap_tiles.keys() {
         if x >= 64 || y >= 64 {
             return Err(WdlError::ValidationError(format!(
-                "Map tile coordinates out of bounds: ({}, {})",
-                x, y
+                "Map tile coordinates out of bounds: ({x}, {y})"
             )));
         }
     }
@@ -38,8 +37,7 @@ fn validate_map_tiles(file: &WdlFile) -> Result<()> {
     for &(x, y) in file.holes_data.keys() {
         if x >= 64 || y >= 64 {
             return Err(WdlError::ValidationError(format!(
-                "Holes data coordinates out of bounds: ({}, {})",
-                x, y
+                "Holes data coordinates out of bounds: ({x}, {y})"
             )));
         }
     }
@@ -53,8 +51,7 @@ fn validate_map_tiles(file: &WdlFile) -> Result<()> {
 
             if has_offset != has_heightmap {
                 return Err(WdlError::ValidationError(format!(
-                    "Map tile offset mismatch at ({}, {}): offset={}, heightmap={}",
-                    x, y, has_offset, has_heightmap
+                    "Map tile offset mismatch at ({x}, {y}): offset={has_offset}, heightmap={has_heightmap}"
                 )));
             }
         }

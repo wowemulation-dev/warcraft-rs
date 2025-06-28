@@ -32,7 +32,7 @@ fn bench_image_sizes(c: &mut Criterion) {
     let mut group = c.benchmark_group("image_sizes");
 
     for size in [64, 128, 256, 512].iter() {
-        group.bench_function(format!("size_{}", size), |b| {
+        group.bench_function(format!("size_{size}"), |b| {
             b.iter(|| {
                 let img = create_test_image(*size);
                 black_box(img.as_raw().len())

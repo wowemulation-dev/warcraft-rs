@@ -16,8 +16,8 @@ fn test_encryption_key_diagnosis() {
     let content = b"Memory file content";
 
     println!("=== Encryption Key Diagnosis ===");
-    println!("Filename: {}", filename);
-    println!("Content: {:?}", content);
+    println!("Filename: {filename}");
+    println!("Content: {content:?}");
     println!("Content length: {}", content.len());
 
     // Create a simple test archive
@@ -26,7 +26,7 @@ fn test_encryption_key_diagnosis() {
 
     // Calculate encryption key as our modification code does
     let modification_key = hash_string(filename, hash_type::FILE_KEY);
-    println!("Modification code key: 0x{:08X}", modification_key);
+    println!("Modification code key: 0x{modification_key:08X}");
 
     // Open for modification and add encrypted file
     {
@@ -73,7 +73,7 @@ fn test_encryption_key_diagnosis() {
                 0
             };
 
-            println!("Reading code key: 0x{:08X}", reading_key);
+            println!("Reading code key: 0x{reading_key:08X}");
 
             if modification_key == reading_key {
                 println!("✅ Keys match!");
@@ -94,14 +94,14 @@ fn test_encryption_key_diagnosis() {
             let mut raw_data = vec![0u8; file_info.compressed_size as usize];
             file.read_exact(&mut raw_data).unwrap();
 
-            println!("Raw encrypted data: {:?}", raw_data);
+            println!("Raw encrypted data: {raw_data:?}");
 
             // Test our decryption function directly
             let mut test_data = raw_data.clone();
             wow_mpq::decrypt_file_data(&mut test_data, reading_key);
             test_data.truncate(file_info.file_size as usize);
 
-            println!("After decryption: {:?}", test_data);
+            println!("After decryption: {test_data:?}");
 
             if test_data == content {
                 println!("✅ Manual decryption works!");
@@ -113,17 +113,17 @@ fn test_encryption_key_diagnosis() {
             match archive.read_file(filename) {
                 Ok(read_content) => {
                     println!("\nFile read through API: {} bytes", read_content.len());
-                    println!("API content: {:?}", read_content);
+                    println!("API content: {read_content:?}");
                     if read_content == content {
                         println!("✅ API content matches!");
                     } else {
                         println!("❌ API content does NOT match!");
-                        println!("Expected: {:?}", content);
-                        println!("Got:      {:?}", read_content);
+                        println!("Expected: {content:?}");
+                        println!("Got:      {read_content:?}");
                     }
                 }
                 Err(e) => {
-                    println!("❌ Failed to read file: {}", e);
+                    println!("❌ Failed to read file: {e}");
                 }
             }
         } else {

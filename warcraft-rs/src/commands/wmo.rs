@@ -195,7 +195,7 @@ fn info(path: &str, detailed: bool) -> Result<()> {
     println!("\nHeader Flags: {:?}", wmo.header.flags);
 
     if let Some(ref skybox) = wmo.skybox {
-        println!("Skybox: {}", skybox);
+        println!("Skybox: {skybox}");
     }
 
     if detailed {
@@ -275,14 +275,14 @@ fn validate(path: &str, show_warnings: bool, detailed: bool) -> Result<()> {
             if !report.errors.is_empty() {
                 println!("Errors:");
                 for error in &report.errors {
-                    println!("  ✗ {}", error);
+                    println!("  ✗ {error}");
                 }
             }
 
             if show_warnings && !report.warnings.is_empty() {
                 println!("\nWarnings:");
                 for warning in &report.warnings {
-                    println!("  ⚠ {}", warning);
+                    println!("  ⚠ {warning}");
                 }
             }
         }
@@ -560,7 +560,7 @@ fn tree(
 
         if !compact {
             for (i, mat) in wmo.materials.iter().take(5).enumerate() {
-                let mut mat_node = TreeNode::new(format!("Material {}", i), NodeType::Data);
+                let mut mat_node = TreeNode::new(format!("Material {i}"), NodeType::Data);
                 mat_node
                     .metadata
                     .insert("shader".to_string(), mat.shader.to_string());
@@ -660,7 +660,7 @@ fn tree(
 
         if !compact {
             for (i, name) in wmo.textures.iter().take(5).enumerate() {
-                let mut tex_node = TreeNode::new(format!("Texture {}", i), NodeType::File);
+                let mut tex_node = TreeNode::new(format!("Texture {i}"), NodeType::File);
                 tex_node
                     .external_refs
                     .push(crate::utils::tree::ExternalRef {
@@ -683,7 +683,7 @@ fn tree(
     }
 
     let output = crate::utils::tree::render_tree(&root, &options);
-    print!("{}", output);
+    print!("{output}");
 
     Ok(())
 }

@@ -34,8 +34,7 @@ impl WowVersion {
         let parts: Vec<&str> = s.split('.').collect();
         if parts.is_empty() {
             return Err(Error::ValidationError(format!(
-                "Invalid version string: {}",
-                s
+                "Invalid version string: {s}"
             )));
         }
 
@@ -56,8 +55,7 @@ impl WowVersion {
             10 => WowVersion::Dragonflight,
             _ => {
                 return Err(Error::ValidationError(format!(
-                    "Unknown WoW version: {}",
-                    major
+                    "Unknown WoW version: {major}"
                 )));
             }
         })

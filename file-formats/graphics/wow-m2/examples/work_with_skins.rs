@@ -20,12 +20,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if file exists
     if !Path::new(path).exists() {
-        eprintln!("Error: File not found: {}", path);
+        eprintln!("Error: File not found: {path}");
         std::process::exit(1);
     }
 
     // Load the skin file
-    println!("Loading skin file from: {}", path);
+    println!("Loading skin file from: {path}");
     let skin = Skin::load(path)?;
 
     // Print header information
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !skin.submeshes.is_empty() {
         println!("\n=== Submeshes ===");
         for (i, submesh) in skin.submeshes.iter().enumerate() {
-            println!("\nSubmesh {}:", i);
+            println!("\nSubmesh {i}:");
             println!("  ID: {}", submesh.id);
             println!("  Level: {}", submesh.level);
             println!("  Start Triangle: {}", submesh.triangle_start);
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Calculate approximate triangle count
             let approx_triangles = submesh.triangle_count / 3;
-            println!("  Approximate Triangles: {}", approx_triangles);
+            println!("  Approximate Triangles: {approx_triangles}");
         }
     }
 
@@ -65,10 +65,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Determine LOD level based on submesh levels
     let max_lod_level = skin.submeshes.iter().map(|s| s.level).max().unwrap_or(0);
 
-    println!("Maximum LOD level in submeshes: {}", max_lod_level);
+    println!("Maximum LOD level in submeshes: {max_lod_level}");
 
     let total_triangles: u16 = skin.submeshes.iter().map(|s| s.triangle_count / 3).sum();
-    println!("Total triangles (approx): {}", total_triangles);
+    println!("Total triangles (approx): {total_triangles}");
 
     // Provide recommendations based on LOD level
     match max_lod_level {
@@ -77,8 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         2 => println!("This skin contains low detail (LOD 2) submeshes"),
         3 => println!("This skin contains very low detail (LOD 3) submeshes"),
         _ => println!(
-            "This skin contains ultra-low detail (LOD {}) submeshes",
-            max_lod_level
+            "This skin contains ultra-low detail (LOD {max_lod_level}) submeshes"
         ),
     }
 
@@ -100,10 +99,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (i, submesh) in skin.submeshes.iter().enumerate() {
         if submesh.triangle_count == 0 {
-            issues.push(format!("Submesh {} has no triangles", i));
+            issues.push(format!("Submesh {i} has no triangles"));
         }
         if submesh.vertex_count == 0 {
-            issues.push(format!("Submesh {} has no vertices", i));
+            issues.push(format!("Submesh {i} has no vertices"));
         }
     }
 
@@ -112,7 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         println!("❌ Found {} issue(s):", issues.len());
         for issue in &issues {
-            println!("  - {}", issue);
+            println!("  - {issue}");
         }
     }
 

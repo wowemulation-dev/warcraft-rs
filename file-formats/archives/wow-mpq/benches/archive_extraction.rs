@@ -46,7 +46,7 @@ fn create_test_archive(
     compression: u8,
     version: FormatVersion,
 ) -> std::path::PathBuf {
-    let archive_path = temp_dir.join(format!("{}.mpq", name));
+    let archive_path = temp_dir.join(format!("{name}.mpq"));
     let mut builder = ArchiveBuilder::new()
         .version(version)
         .default_compression(compression)
@@ -157,7 +157,7 @@ fn bench_file_listing(c: &mut Criterion) {
     for (name, count) in file_counts {
         let files: Vec<(&str, Vec<u8>)> = (0..count)
             .map(|i| {
-                let filename = Box::leak(format!("file_{:05}.dat", i).into_boxed_str()) as &str;
+                let filename = Box::leak(format!("file_{i:05}.dat").into_boxed_str()) as &str;
                 let data = vec![0u8; 100]; // Small files
                 (filename, data)
             })
@@ -197,7 +197,7 @@ fn bench_random_access(c: &mut Criterion) {
 
     let files: Vec<(&str, Vec<u8>)> = (0..file_count)
         .map(|i| {
-            let filename = Box::leak(format!("file_{:03}.dat", i).into_boxed_str()) as &str;
+            let filename = Box::leak(format!("file_{i:03}.dat").into_boxed_str()) as &str;
             let data = generate_test_data(file_size, "medium");
             (filename, data)
         })
@@ -213,7 +213,7 @@ fn bench_random_access(c: &mut Criterion) {
 
     // Generate access patterns
     let sequential: Vec<String> = (0..file_count)
-        .map(|i| format!("file_{:03}.dat", i))
+        .map(|i| format!("file_{i:03}.dat"))
         .collect();
     let random = {
         let mut indices: Vec<usize> = (0..file_count).collect();
@@ -224,7 +224,7 @@ fn bench_random_access(c: &mut Criterion) {
         }
         indices
             .iter()
-            .map(|&i| format!("file_{:03}.dat", i))
+            .map(|&i| format!("file_{i:03}.dat"))
             .collect::<Vec<_>>()
     };
 
@@ -312,7 +312,7 @@ fn bench_parallel_extraction(c: &mut Criterion) {
 
     let files: Vec<(&str, Vec<u8>)> = (0..file_count)
         .map(|i| {
-            let filename = Box::leak(format!("file_{:02}.dat", i).into_boxed_str()) as &str;
+            let filename = Box::leak(format!("file_{i:02}.dat").into_boxed_str()) as &str;
             let data = generate_test_data(file_size, "medium");
             (filename, data)
         })
@@ -334,7 +334,7 @@ fn bench_parallel_extraction(c: &mut Criterion) {
         b.iter(|| {
             let mut archive = Archive::open(black_box(&archive_path)).unwrap();
             for i in 0..file_count {
-                let filename = format!("file_{:02}.dat", i);
+                let filename = format!("file_{i:02}.dat");
                 let data = archive.read_file(&filename).unwrap();
                 black_box(data);
             }
@@ -351,7 +351,7 @@ fn bench_parallel_extraction(c: &mut Criterion) {
 
             for (i, archive) in archives.iter_mut().enumerate() {
                 for j in (i..file_count).step_by(4) {
-                    let filename = format!("file_{:02}.dat", j);
+                    let filename = format!("file_{j:02}.dat");
                     let data = archive.read_file(&filename).unwrap();
                     black_box(data);
                 }

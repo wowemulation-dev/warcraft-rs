@@ -411,7 +411,7 @@ fn list_archive(path: &str, long: bool, filter: Option<String>) -> Result<()> {
     filtered_files.sort();
 
     if filtered_files.is_empty() {
-        println!("No files found matching pattern: {}", pattern);
+        println!("No files found matching pattern: {pattern}");
         return Ok(());
     }
 
@@ -438,7 +438,7 @@ fn list_archive(path: &str, long: bool, filter: Option<String>) -> Result<()> {
         table.printstd();
     } else {
         for file in filtered_files {
-            println!("{}", file);
+            println!("{file}");
         }
     }
 
@@ -462,7 +462,7 @@ fn extract_files(
         spinner.finish_and_clear();
 
         let files_to_extract: Vec<String> = if files.is_empty() {
-            parallel_archive.list_files().iter().cloned().collect()
+            parallel_archive.list_files().to_vec()
         } else {
             files
         };
@@ -498,7 +498,7 @@ fn extract_files(
         let mut error_count = 0;
 
         for (file, data_result) in results {
-            pb.set_message(format!("Writing: {}", file));
+            pb.set_message(format!("Writing: {file}"));
 
             match data_result {
                 Ok(data) => {
@@ -519,7 +519,7 @@ fn extract_files(
                     success_count += 1;
                 }
                 Err(e) => {
-                    log::warn!("Failed to extract {}: {}", file, e);
+                    log::warn!("Failed to extract {file}: {e}");
                     error_count += 1;
                 }
             }
@@ -529,11 +529,10 @@ fn extract_files(
 
         let msg = if error_count > 0 {
             format!(
-                "Extraction complete: {} succeeded, {} failed",
-                success_count, error_count
+                "Extraction complete: {success_count} succeeded, {error_count} failed"
             )
         } else {
-            format!("Extraction complete: {} files", success_count)
+            format!("Extraction complete: {success_count} files")
         };
         pb.finish_with_message(msg);
     } else {
@@ -551,7 +550,7 @@ fn extract_files(
             let priority = (index + 1) * 100;
             chain
                 .add_archive(patch_path, priority as i32)
-                .with_context(|| format!("Failed to add patch archive: {}", patch_path))?;
+                .with_context(|| format!("Failed to add patch archive: {patch_path}"))?;
         }
 
         spinner.finish_and_clear();
@@ -569,7 +568,7 @@ fn extract_files(
         let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
 
         for file in files_to_extract.iter() {
-            pb.set_message(format!("Extracting: {}", file));
+            pb.set_message(format!("Extracting: {file}"));
 
             match chain.read_file(file) {
                 Ok(data) => {
@@ -596,7 +595,7 @@ fn extract_files(
                     }
                 }
                 Err(e) => {
-                    log::warn!("Failed to extract {}: {}", file, e);
+                    log::warn!("Failed to extract {file}: {e}");
                 }
             }
 
@@ -656,7 +655,7 @@ fn create_archive(
     let pb = create_progress_bar(files.len() as u64, "Adding files");
 
     for file_path in files {
-        pb.set_message(format!("Adding: {}", file_path));
+        pb.set_message(format!("Adding: {file_path}"));
         let data = fs::read(&file_path)?;
         let archive_path = Path::new(&file_path)
             .file_name()
@@ -684,7 +683,7 @@ fn show_info(path: &str, include_hash_table: bool, include_block_table: bool) ->
 
     println!("MPQ Archive Information");
     println!("======================");
-    println!("Path: {}", path);
+    println!("Path: {path}");
     println!("Format version: {:?}", info.format_version);
     println!("Archive size: {}", format_bytes(info.file_size));
     println!("Number of files: {}", info.file_count);
@@ -729,7 +728,7 @@ fn validate_archive(path: &str, check_checksums: bool, threads: Option<usize>) -
     let mut total_size = 0u64;
 
     for (filename, result) in validation_results {
-        pb.set_message(format!("Validating: {}", filename));
+        pb.set_message(format!("Validating: {filename}"));
         match result {
             Ok(data) => {
                 total_size += data.len() as u64;
@@ -738,7 +737,7 @@ fn validate_archive(path: &str, check_checksums: bool, threads: Option<usize>) -
                 }
             }
             Err(e) => {
-                log::error!("Failed to read {}: {}", filename, e);
+                log::error!("Failed to read {filename}: {e}");
                 errors += 1;
             }
         }
@@ -754,7 +753,7 @@ fn validate_archive(path: &str, check_checksums: bool, threads: Option<usize>) -
             format_bytes(total_size)
         );
     } else {
-        println!("✗ Archive validation failed with {} errors", errors);
+        println!("✗ Archive validation failed with {errors} errors");
         println!(
             "  Successfully validated: {} files ({})",
             files.len() - errors,
@@ -819,7 +818,7 @@ fn rebuild_mpq_archive(params: RebuildParams<'_>) -> Result<()> {
     // Set up progress callback
     let progress_callback = Some(Box::new(|current: usize, total: usize, file: &str| {
         if current % 100 == 0 || current == total {
-            println!("  [{}/{}] Processing: {}", current, total, file);
+            println!("  [{current}/{total}] Processing: {file}");
         }
     }) as Box<dyn Fn(usize, usize, &str) + Send + Sync>);
 
@@ -929,8 +928,8 @@ fn display_summary_output(
 ) -> Result<()> {
     println!("Archive Comparison Summary");
     println!("=========================");
-    println!("Source: {}", source_path);
-    println!("Target: {}", target_path);
+    println!("Source: {source_path}");
+    println!("Target: {target_path}");
     println!();
 
     if result.identical {
@@ -1133,7 +1132,7 @@ fn display_table_output(
             if !files.source_only.is_empty() {
                 println!("\nFiles only in source ({}):", files.source_only.len());
                 for file in files.source_only.iter().take(10) {
-                    println!("  - {}", file);
+                    println!("  - {file}");
                 }
                 if files.source_only.len() > 10 {
                     println!("  ... and {} more", files.source_only.len() - 10);
@@ -1143,7 +1142,7 @@ fn display_table_output(
             if !files.target_only.is_empty() {
                 println!("\nFiles only in target ({}):", files.target_only.len());
                 for file in files.target_only.iter().take(10) {
-                    println!("  + {}", file);
+                    println!("  + {file}");
                 }
                 if files.target_only.len() > 10 {
                     println!("  ... and {} more", files.target_only.len() - 10);
@@ -1187,7 +1186,7 @@ fn display_table_output(
                     files.content_differences.len()
                 );
                 for file in files.content_differences.iter().take(10) {
-                    println!("  ≠ {}", file);
+                    println!("  ≠ {file}");
                 }
                 if files.content_differences.len() > 10 {
                     println!("  ... and {} more", files.content_differences.len() - 10);
@@ -1215,7 +1214,7 @@ fn display_table_output(
 fn display_json_output(result: &wow_mpq::ComparisonResult) -> Result<()> {
     // For now, just pretty-print the debug representation
     // In a real implementation, you'd use serde_json
-    println!("{:#?}", result);
+    println!("{result:#?}");
     Ok(())
 }
 
@@ -1423,7 +1422,7 @@ fn create_file_node(
                 // WDT files reference ADT files
                 let base_name = file_name.trim_end_matches(".wdt");
                 node = node.with_external_ref(
-                    &format!("{}/*.adt", base_name),
+                    &format!("{base_name}/*.adt"),
                     detect_ref_type("file.adt"),
                 );
             }
@@ -1436,7 +1435,7 @@ fn create_file_node(
                 // M2 files reference textures and animations
                 let base_name = file_name.trim_end_matches(".m2");
                 node = node.with_external_ref(
-                    &format!("{}.skin", base_name),
+                    &format!("{base_name}.skin"),
                     detect_ref_type("file.skin"),
                 );
                 node = node.with_external_ref("*.blp", detect_ref_type("file.blp"));
@@ -1508,7 +1507,7 @@ fn show_hash_table(archive: &mut Archive, raw_dump: bool) -> Result<()> {
             // Show raw hex dump of the hash table
             let entries = hash_table.entries();
             let data_size = std::mem::size_of_val(entries);
-            println!("Raw data ({} bytes):", data_size);
+            println!("Raw data ({data_size} bytes):");
 
             // Convert entries to bytes for hex dump
             let bytes =
@@ -1542,7 +1541,7 @@ fn show_block_table(archive: &mut Archive, raw_dump: bool) -> Result<()> {
             // Show raw hex dump of the block table
             let entries = block_table.entries();
             let data_size = std::mem::size_of_val(entries);
-            println!("Raw data ({} bytes):", data_size);
+            println!("Raw data ({data_size} bytes):");
 
             // Convert entries to bytes for hex dump
             let bytes =
@@ -1606,7 +1605,7 @@ fn show_bet_table(archive: &mut Archive, raw_dump: bool) -> Result<()> {
 }
 
 fn find_file_entries(archive: &mut Archive, filename: &str, _raw_dump: bool) -> Result<()> {
-    println!("🔎 Finding entries for: {}", filename);
+    println!("🔎 Finding entries for: {filename}");
     println!("========================");
 
     // Try to find the file using the archive's find_file method
@@ -1650,7 +1649,7 @@ fn find_file_entries(archive: &mut Archive, filename: &str, _raw_dump: bool) -> 
 }
 
 fn show_entry_at_index(archive: &mut Archive, index: usize, _raw_dump: bool) -> Result<()> {
-    println!("📍 Entry at index: {}", index);
+    println!("📍 Entry at index: {index}");
     println!("===================");
 
     let mut found = false;
@@ -1677,7 +1676,7 @@ fn show_entry_at_index(archive: &mut Archive, index: usize, _raw_dump: bool) -> 
     }
 
     if !found {
-        println!("No entry found at index {}", index);
+        println!("No entry found at index {index}");
     }
 
     Ok(())

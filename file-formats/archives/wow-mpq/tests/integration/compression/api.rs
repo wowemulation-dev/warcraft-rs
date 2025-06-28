@@ -157,8 +157,7 @@ fn test_empty_data_decompression_error() {
         let result = decompress(empty, *method, 100);
         assert!(
             result.is_err(),
-            "Decompressing empty data with method 0x{:02X} should fail",
-            method
+            "Decompressing empty data with method 0x{method:02X} should fail"
         );
     }
 }

@@ -441,12 +441,12 @@ impl WmoParser {
             let name = if name_offset < group_names_data.len() as u32 {
                 let name = self.get_string_at_offset(&group_names_data, name_offset as usize);
                 if name.is_empty() {
-                    format!("Group_{}", i)
+                    format!("Group_{i}")
                 } else {
                     name
                 }
             } else {
-                format!("Group_{}", i)
+                format!("Group_{i}")
             };
 
             groups.push(WmoGroupInfo {
@@ -673,7 +673,7 @@ impl WmoParser {
         for _ in 0..n_lights {
             let light_type_raw = reader.read_u8()?;
             let light_type = WmoLightType::from_raw(light_type_raw).ok_or_else(|| {
-                WmoError::InvalidFormat(format!("Invalid light type: {}", light_type_raw))
+                WmoError::InvalidFormat(format!("Invalid light type: {light_type_raw}"))
             })?;
 
             // Read 3 flag bytes

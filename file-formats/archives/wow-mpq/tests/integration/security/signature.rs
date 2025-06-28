@@ -11,7 +11,7 @@ fn test_weak_signature_verification() {
     let test_archive = "test-data/signed/weak_signature.mpq";
 
     if !Path::new(test_archive).exists() {
-        eprintln!("Skipping test: {} not found", test_archive);
+        eprintln!("Skipping test: {test_archive} not found");
         return;
     }
 

@@ -76,7 +76,7 @@ pub fn setup_vanilla_1_12_1(data_path: &Path, _locale: &str) -> Result<PatchChai
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
@@ -90,7 +90,7 @@ pub fn setup_vanilla_1_12_1(data_path: &Path, _locale: &str) -> Result<PatchChai
         let path = data_path.join(patch);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", patch, priority);
+            println!("  Added: {patch} (priority: {priority})");
         }
     }
 
@@ -104,7 +104,7 @@ pub fn setup_vanilla_1_12_1(data_path: &Path, _locale: &str) -> Result<PatchChai
 pub fn setup_tbc_2_4_3(data_path: &Path, locale: &str) -> Result<PatchChain> {
     let mut chain = PatchChain::new();
 
-    println!("Setting up WoW 2.4.3 patch chain for locale: {}...", locale);
+    println!("Setting up WoW 2.4.3 patch chain for locale: {locale}...");
 
     // Base archives
     let archives = [
@@ -117,21 +117,21 @@ pub fn setup_tbc_2_4_3(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
     // Locale archives
     let locale_path = data_path.join(locale);
     let locale_archives = [
-        (format!("locale-{}.MPQ", locale), priorities::LOCALE_BASE),
-        (format!("speech-{}.MPQ", locale), priorities::SPEECH_BASE),
+        (format!("locale-{locale}.MPQ"), priorities::LOCALE_BASE),
+        (format!("speech-{locale}.MPQ"), priorities::SPEECH_BASE),
         (
-            format!("expansion-locale-{}.MPQ", locale),
+            format!("expansion-locale-{locale}.MPQ"),
             priorities::EXPANSION_LOCALE,
         ),
         (
-            format!("expansion-speech-{}.MPQ", locale),
+            format!("expansion-speech-{locale}.MPQ"),
             priorities::EXPANSION_SPEECH,
         ),
     ];
@@ -140,7 +140,7 @@ pub fn setup_tbc_2_4_3(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = locale_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {}/{} (priority: {})", locale, archive, priority);
+            println!("  Added: {locale}/{archive} (priority: {priority})");
         }
     }
 
@@ -154,15 +154,15 @@ pub fn setup_tbc_2_4_3(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = data_path.join(patch);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", patch, priority);
+            println!("  Added: {patch} (priority: {priority})");
         }
     }
 
     // Locale patches
     let locale_patches = [
-        (format!("patch-{}.MPQ", locale), priorities::PATCH_LOCALE_1),
+        (format!("patch-{locale}.MPQ"), priorities::PATCH_LOCALE_1),
         (
-            format!("patch-{}-2.MPQ", locale),
+            format!("patch-{locale}-2.MPQ"),
             priorities::PATCH_LOCALE_2,
         ),
     ];
@@ -171,7 +171,7 @@ pub fn setup_tbc_2_4_3(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = locale_path.join(patch);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {}/{} (priority: {})", locale, patch, priority);
+            println!("  Added: {locale}/{patch} (priority: {priority})");
         }
     }
 
@@ -184,8 +184,7 @@ pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> 
     let mut chain = PatchChain::new();
 
     println!(
-        "Setting up WoW 3.3.5a patch chain for locale: {}...",
-        locale
+        "Setting up WoW 3.3.5a patch chain for locale: {locale}..."
     );
     println!("Using TrinityCore's definitive loading order");
 
@@ -201,28 +200,28 @@ pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> 
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
     // Step 5-10: Locale and speech archives
     let locale_archives = [
-        (format!("locale-{}.MPQ", locale), priorities::LOCALE_BASE),
-        (format!("speech-{}.MPQ", locale), priorities::SPEECH_BASE),
+        (format!("locale-{locale}.MPQ"), priorities::LOCALE_BASE),
+        (format!("speech-{locale}.MPQ"), priorities::SPEECH_BASE),
         (
-            format!("expansion-locale-{}.MPQ", locale),
+            format!("expansion-locale-{locale}.MPQ"),
             priorities::EXPANSION_LOCALE,
         ),
         (
-            format!("lichking-locale-{}.MPQ", locale),
+            format!("lichking-locale-{locale}.MPQ"),
             priorities::LICHKING_LOCALE,
         ),
         (
-            format!("expansion-speech-{}.MPQ", locale),
+            format!("expansion-speech-{locale}.MPQ"),
             priorities::EXPANSION_SPEECH,
         ),
         (
-            format!("lichking-speech-{}.MPQ", locale),
+            format!("lichking-speech-{locale}.MPQ"),
             priorities::LICHKING_SPEECH,
         ),
     ];
@@ -231,7 +230,7 @@ pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> 
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
@@ -246,20 +245,20 @@ pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> 
         let path = data_path.join(patch);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", patch, priority);
+            println!("  Added: {patch} (priority: {priority})");
         }
     }
 
     // Step 14-16: Locale patches (in locale subdirectory)
     let locale_path = data_path.join(locale);
     let locale_patches = [
-        (format!("patch-{}.MPQ", locale), priorities::PATCH_LOCALE_1),
+        (format!("patch-{locale}.MPQ"), priorities::PATCH_LOCALE_1),
         (
-            format!("patch-{}-2.MPQ", locale),
+            format!("patch-{locale}-2.MPQ"),
             priorities::PATCH_LOCALE_2,
         ),
         (
-            format!("patch-{}-3.MPQ", locale),
+            format!("patch-{locale}-3.MPQ"),
             priorities::PATCH_LOCALE_3,
         ),
     ];
@@ -268,7 +267,7 @@ pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> 
         let path = locale_path.join(patch);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {}/{} (priority: {})", locale, patch, priority);
+            println!("  Added: {locale}/{patch} (priority: {priority})");
         }
     }
 
@@ -279,7 +278,7 @@ pub fn setup_wotlk_3_3_5a(data_path: &Path, locale: &str) -> Result<PatchChain> 
 pub fn setup_cata_4_3_4(data_path: &Path, locale: &str) -> Result<PatchChain> {
     let mut chain = PatchChain::new();
 
-    println!("Setting up WoW 4.3.4 patch chain for locale: {}...", locale);
+    println!("Setting up WoW 4.3.4 patch chain for locale: {locale}...");
 
     // Base archives (Cataclysm restructured some files)
     let base_archives = [
@@ -295,23 +294,23 @@ pub fn setup_cata_4_3_4(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
     // Locale archives
     let locale_archives = [
-        (format!("locale-{}.MPQ", locale), priorities::LOCALE_BASE),
+        (format!("locale-{locale}.MPQ"), priorities::LOCALE_BASE),
         (
-            format!("expansion1-locale-{}.MPQ", locale),
+            format!("expansion1-locale-{locale}.MPQ"),
             priorities::EXPANSION_LOCALE,
         ),
         (
-            format!("expansion2-locale-{}.MPQ", locale),
+            format!("expansion2-locale-{locale}.MPQ"),
             priorities::LICHKING_LOCALE,
         ),
         (
-            format!("expansion3-locale-{}.MPQ", locale),
+            format!("expansion3-locale-{locale}.MPQ"),
             priorities::CATACLYSM_LOCALE,
         ),
     ];
@@ -320,7 +319,7 @@ pub fn setup_cata_4_3_4(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
@@ -366,7 +365,7 @@ pub fn setup_cata_4_3_4(data_path: &Path, locale: &str) -> Result<PatchChain> {
 pub fn setup_mop_5_4_8(data_path: &Path, locale: &str) -> Result<PatchChain> {
     let mut chain = PatchChain::new();
 
-    println!("Setting up WoW 5.4.8 patch chain for locale: {}...", locale);
+    println!("Setting up WoW 5.4.8 patch chain for locale: {locale}...");
 
     // Base archives
     let base_archives = [
@@ -385,27 +384,27 @@ pub fn setup_mop_5_4_8(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
     // Locale archives
     let locale_archives = [
-        (format!("locale-{}.MPQ", locale), priorities::LOCALE_BASE),
+        (format!("locale-{locale}.MPQ"), priorities::LOCALE_BASE),
         (
-            format!("expansion1-locale-{}.MPQ", locale),
+            format!("expansion1-locale-{locale}.MPQ"),
             priorities::EXPANSION_LOCALE,
         ),
         (
-            format!("expansion2-locale-{}.MPQ", locale),
+            format!("expansion2-locale-{locale}.MPQ"),
             priorities::LICHKING_LOCALE,
         ),
         (
-            format!("expansion3-locale-{}.MPQ", locale),
+            format!("expansion3-locale-{locale}.MPQ"),
             priorities::CATACLYSM_LOCALE,
         ),
         (
-            format!("expansion4-locale-{}.MPQ", locale),
+            format!("expansion4-locale-{locale}.MPQ"),
             priorities::PANDARIA_LOCALE,
         ),
     ];
@@ -414,7 +413,7 @@ pub fn setup_mop_5_4_8(data_path: &Path, locale: &str) -> Result<PatchChain> {
         let path = data_path.join(archive);
         if path.exists() {
             chain.add_archive(&path, *priority)?;
-            println!("  Added: {} (priority: {})", archive, priority);
+            println!("  Added: {archive} (priority: {priority})");
         }
     }
 
@@ -489,7 +488,7 @@ fn demonstrate_patch_chain(chain: &mut PatchChain) -> Result<()> {
                     .to_string_lossy()
             );
         } else {
-            println!("  {} -> Not found", filename);
+            println!("  {filename} -> Not found");
         }
     }
 
@@ -551,7 +550,7 @@ fn main() -> Result<()> {
         if let Some(path) = data_path {
             found_any = true;
             println!("\n{}", "=".repeat(60));
-            println!("WoW {} Demo", version_str);
+            println!("WoW {version_str} Demo");
             println!("{}", "=".repeat(60));
             println!("Data path: {}", path.display());
             println!();
@@ -569,7 +568,7 @@ fn main() -> Result<()> {
                     demonstrate_patch_chain(&mut chain)?;
                 }
                 Err(e) => {
-                    println!("Error setting up patch chain: {}", e);
+                    println!("Error setting up patch chain: {e}");
                 }
             }
         }

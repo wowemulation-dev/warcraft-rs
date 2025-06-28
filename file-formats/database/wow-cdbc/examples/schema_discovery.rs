@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Schema is valid: {}", discovered_schema.is_valid);
 
     if let Some(msg) = &discovered_schema.validation_message {
-        println!("  Validation message: {}", msg);
+        println!("  Validation message: {msg}");
     }
 
     // Print discovered fields
@@ -101,7 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Print key field if detected
     if let Some(key_index) = discovered_schema.key_field_index {
-        println!("\nDetected key field: {}", key_index);
+        println!("\nDetected key field: {key_index}");
     } else {
         println!("\nNo key field detected");
     }
@@ -143,7 +143,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("First record values:");
 
         for (i, value) in record.values().iter().enumerate() {
-            println!("  Field {}: {:?}", i, value);
+            println!("  Field {i}: {value:?}");
         }
     }
 

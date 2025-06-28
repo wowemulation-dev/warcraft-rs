@@ -37,8 +37,7 @@ impl DbcHeader {
         // Validate the magic signature
         if magic != DBC_MAGIC {
             return Err(Error::InvalidHeader(format!(
-                "Invalid magic signature: {:?}, expected: {:?}",
-                magic, DBC_MAGIC
+                "Invalid magic signature: {magic:?}, expected: {DBC_MAGIC:?}"
             )));
         }
 

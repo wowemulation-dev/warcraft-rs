@@ -70,7 +70,7 @@ fn demonstrate_weak_signature(archive_data: &[u8]) -> Result<()> {
         vec![],                          // Empty signature initially
     );
 
-    println!("Archive size: {} bytes", archive_size);
+    println!("Archive size: {archive_size} bytes");
     println!("Signature position: 0x{:X}", sig_info.begin_exclude);
 
     // Generate the weak signature
@@ -96,7 +96,7 @@ fn demonstrate_weak_signature(archive_data: &[u8]) -> Result<()> {
     match verify_weak_signature_stormlib(cursor, &signature, &verify_info) {
         Ok(true) => println!("✓ Signature verified successfully!"),
         Ok(false) => println!("✗ Signature verification failed"),
-        Err(e) => println!("✗ Error verifying signature: {}", e),
+        Err(e) => println!("✗ Error verifying signature: {e}"),
     }
 
     // Demonstrate what would happen with a tampered archive
@@ -110,7 +110,7 @@ fn demonstrate_weak_signature(archive_data: &[u8]) -> Result<()> {
     match verify_weak_signature_stormlib(cursor, &signature, &verify_info) {
         Ok(true) => println!("✗ Unexpected: Tampered archive verified!"),
         Ok(false) => println!("✓ Correctly rejected tampered archive"),
-        Err(e) => println!("Error: {}", e),
+        Err(e) => println!("Error: {e}"),
     }
 
     Ok(())
@@ -172,7 +172,7 @@ fn verify_existing_archive(path: &Path) -> Result<()> {
                 // and calculating proper offsets
             }
             Err(e) => {
-                println!("Failed to parse signature: {}", e);
+                println!("Failed to parse signature: {e}");
             }
         }
     } else {

@@ -133,7 +133,7 @@ impl Schema {
             .fields
             .iter()
             .position(|f| f.name == name)
-            .unwrap_or_else(|| panic!("Field not found: {}", name));
+            .unwrap_or_else(|| panic!("Field not found: {name}"));
         self.set_key_field_index(index)
     }
 
@@ -143,7 +143,7 @@ impl Schema {
             .fields
             .iter()
             .position(|f| f.name == name)
-            .ok_or_else(|| format!("Field not found: {}", name))?;
+            .ok_or_else(|| format!("Field not found: {name}"))?;
         Ok(self.set_key_field_index(index))
     }
 
@@ -172,16 +172,14 @@ impl Schema {
 
         if schema_field_count != field_count {
             return Err(format!(
-                "Field count mismatch: schema has {} fields, but DBC has {} fields",
-                schema_field_count, field_count
+                "Field count mismatch: schema has {schema_field_count} fields, but DBC has {field_count} fields"
             ));
         }
 
         let schema_record_size = self.record_size() as u32;
         if schema_record_size != record_size {
             return Err(format!(
-                "Record size mismatch: schema defines {} bytes, but DBC has {} bytes per record",
-                schema_record_size, record_size
+                "Record size mismatch: schema defines {schema_record_size} bytes, but DBC has {record_size} bytes per record"
             ));
         }
 

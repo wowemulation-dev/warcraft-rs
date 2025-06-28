@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-mpq**: Fixed compression method detection for SINGLE_UNIT files (they DO have compression byte prefixes)
 - **wow-mpq**: Resolved buffer underrun issues in sparse compression decompression
 - **wow-mpq**: Fixed ZLIB decompression failures for specific file types
+- **wow-mpq**: Fixed handling of PATCH flag files in update archives - now returns proper error message explaining patch files cannot be read directly
+- **wow-mpq**: Fixed `simple_list` example to use `list()` instead of `list_all()` to show proper filenames from listfile
 - **Documentation**: Fixed compilation errors in all documentation code examples
 - **Documentation**: Resolved API method name mismatches throughout guides
 - **Documentation**: Fixed incorrect crate names in import statements

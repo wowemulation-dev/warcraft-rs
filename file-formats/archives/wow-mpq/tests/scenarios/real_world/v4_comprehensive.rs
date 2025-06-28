@@ -59,7 +59,7 @@ fn test_v4_comprehensive() {
 
     // Get archive info
     let info = archive.get_info().unwrap();
-    println!("Archive info: {:?}", info);
+    println!("Archive info: {info:?}");
 
     // Verify MD5 checksums
     assert!(info.md5_status.is_some());
@@ -136,7 +136,7 @@ fn test_v4_empty_archive() {
         if e.to_string().contains("No block table loaded") {
             Vec::new()
         } else {
-            panic!("Unexpected error listing files: {}", e);
+            panic!("Unexpected error listing files: {e}");
         }
     });
     assert_eq!(files.len(), 0);
@@ -163,7 +163,7 @@ fn test_v4_large_file_support() {
     // Add multiple 1MB files
     for i in 0..10 {
         let data = vec![i as u8; 1024 * 1024]; // 1MB each
-        builder = builder.add_file_data(data, &format!("large_{}.dat", i));
+        builder = builder.add_file_data(data, &format!("large_{i}.dat"));
     }
 
     builder.build(path).unwrap();
@@ -181,7 +181,7 @@ fn test_v4_large_file_support() {
     // List all files and their info
     println!("File information in archive:");
     for i in 0..10 {
-        let filename = format!("large_{}.dat", i);
+        let filename = format!("large_{i}.dat");
         if let Some(file_info) = archive.find_file(&filename).unwrap() {
             println!(
                 "  {}: size={}, compressed_size={}, flags=0x{:08X}, pos=0x{:X}",
@@ -192,17 +192,17 @@ fn test_v4_large_file_support() {
                 file_info.file_pos
             );
         } else {
-            println!("  {}: NOT FOUND", filename);
+            println!("  {filename}: NOT FOUND");
         }
     }
     println!();
 
     for i in 0..10 {
-        let filename = format!("large_{}.dat", i);
-        println!("Testing file {}: {}", i, filename);
+        let filename = format!("large_{i}.dat");
+        println!("Testing file {i}: {filename}");
 
         let data = archive.read_file(&filename).unwrap();
-        assert_eq!(data.len(), 1024 * 1024, "File {} has wrong size", i);
+        assert_eq!(data.len(), 1024 * 1024, "File {i} has wrong size");
 
         // Check data integrity with detailed error reporting
         let mut corruption_found = false;
@@ -234,28 +234,28 @@ fn test_v4_large_file_support() {
                 corruption_count,
                 data.len()
             );
-            println!("First corruption at offset: {:?}", first_corruption_offset);
+            println!("First corruption at offset: {first_corruption_offset:?}");
 
             // Show pattern around first corruption
             if let Some(offset) = first_corruption_offset {
                 let start = offset.saturating_sub(16);
                 let end = (offset + 32).min(data.len());
-                println!("Data around first corruption (offset {}):", offset);
+                println!("Data around first corruption (offset {offset}):");
                 print!("  ");
                 for (j, &byte) in data[start..end].iter().enumerate() {
                     let idx = start + j;
                     if idx == offset {
-                        print!("[{:02X}] ", byte);
+                        print!("[{byte:02X}] ");
                     } else {
-                        print!("{:02X} ", byte);
+                        print!("{byte:02X} ");
                     }
                 }
                 println!();
             }
 
-            panic!("File {} data integrity check failed", i);
+            panic!("File {i} data integrity check failed");
         } else {
-            println!("File {} integrity check passed", i);
+            println!("File {i} integrity check passed");
         }
     }
 }

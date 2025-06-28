@@ -105,7 +105,7 @@ fn convert_dbd_to_yaml(
         }
 
         println!();
-        println!("Total schemas generated: {}", count);
+        println!("Total schemas generated: {count}");
         println!();
         println!("Note: DBD definitions are sourced from https://github.com/wowdev/WoWDBDefs");
     }

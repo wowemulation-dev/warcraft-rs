@@ -12,7 +12,7 @@ fn create_large_test_dbc(record_count: u32) -> Vec<u8> {
     let mut offsets = Vec::new();
     for i in 0..record_count {
         offsets.push(string_block.len() as u32);
-        let name = format!("Item_{}", i);
+        let name = format!("Item_{i}");
         string_block.extend_from_slice(name.as_bytes());
         string_block.push(0); // Null terminator
     }

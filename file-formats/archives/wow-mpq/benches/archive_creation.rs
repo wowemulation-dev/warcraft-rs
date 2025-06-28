@@ -90,7 +90,7 @@ fn bench_multi_file_archive(c: &mut Criterion) {
             |b, &(count, size)| {
                 let files: Vec<(String, Vec<u8>)> = (0..count)
                     .map(|i| {
-                        let filename = format!("file_{:04}.dat", i);
+                        let filename = format!("file_{i:04}.dat");
                         let data = generate_test_data(size, "medium");
                         (filename, data)
                     })
@@ -139,7 +139,7 @@ fn bench_compression_methods(c: &mut Criterion) {
     for (compression_name, compression) in &compressions {
         for (data_name, compressibility) in &data_types {
             let data = generate_test_data(data_size, compressibility);
-            let bench_name = format!("{}/{}", compression_name, data_name);
+            let bench_name = format!("{compression_name}/{data_name}");
 
             group.throughput(Throughput::Bytes(data_size as u64));
             group.bench_with_input(

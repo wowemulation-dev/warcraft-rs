@@ -82,7 +82,7 @@ fn main() -> Result<()> {
     ];
 
     for dbc_name in important_dbcs {
-        println!("\n{}", dbc_name);
+        println!("\n{dbc_name}");
         println!("{}", "-".repeat(dbc_name.len()));
 
         // Get from each archive
@@ -91,7 +91,7 @@ fn main() -> Result<()> {
 
         if let Ok(data) = dbc_archive.read_file(dbc_name) {
             base_size = data.len();
-            println!("  Base (dbc.MPQ): {} bytes", base_size);
+            println!("  Base (dbc.MPQ): {base_size} bytes");
         }
 
         if let Ok(data) = patch_archive.read_file(dbc_name) {
@@ -108,8 +108,7 @@ fn main() -> Result<()> {
             let total_change = patch2_size as i64 - base_size as i64;
             let from_patch1 = patch2_size as i64 - patch_size.max(base_size) as i64;
             println!(
-                "  Patch 2: {} bytes (+{} total, +{} from patch 1)",
-                patch2_size, total_change, from_patch1
+                "  Patch 2: {patch2_size} bytes (+{total_change} total, +{from_patch1} from patch 1)"
             );
         }
     }
@@ -121,7 +120,7 @@ fn main() -> Result<()> {
     if !patch_new_dbcs.is_empty() {
         println!("\nAdded in patch.MPQ:");
         for dbc in patch_new_dbcs.iter().take(5) {
-            println!("  + {}", dbc);
+            println!("  + {dbc}");
         }
         if patch_new_dbcs.len() > 5 {
             println!("  ... and {} more", patch_new_dbcs.len() - 5);
@@ -131,7 +130,7 @@ fn main() -> Result<()> {
     if !patch2_new_dbcs.is_empty() {
         println!("\nAdded in patch-2.MPQ:");
         for dbc in patch2_new_dbcs.iter().take(5) {
-            println!("  + {}", dbc);
+            println!("  + {dbc}");
         }
         if patch2_new_dbcs.len() > 5 {
             println!("  ... and {} more", patch2_new_dbcs.len() - 5);

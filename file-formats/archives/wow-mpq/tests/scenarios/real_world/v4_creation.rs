@@ -26,7 +26,7 @@ fn test_v4_archive_creation() {
     for (i, chunk) in all_data[..64.min(all_data.len())].chunks(16).enumerate() {
         print!("{:04X}: ", i * 16);
         for b in chunk {
-            print!("{:02X} ", b);
+            print!("{b:02X} ");
         }
         println!();
     }
@@ -34,7 +34,7 @@ fn test_v4_archive_creation() {
     // Look for MPQ signature
     for i in 0..all_data.len().saturating_sub(4) {
         if all_data[i..i + 4] == [0x4D, 0x50, 0x51, 0x1A] {
-            println!("\nFound MPQ signature at offset 0x{:X}", i);
+            println!("\nFound MPQ signature at offset 0x{i:X}");
             break;
         }
     }

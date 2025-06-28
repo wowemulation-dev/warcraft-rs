@@ -43,8 +43,7 @@ where
             .build_global()
             .map_err(|e| {
                 crate::error::AdtError::ParseError(format!(
-                    "Failed to configure thread pool: {}",
-                    e
+                    "Failed to configure thread pool: {e}"
                 ))
             })?;
     }

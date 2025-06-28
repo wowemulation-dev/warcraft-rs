@@ -105,7 +105,7 @@ fn parse_with_code_schema() -> Result<(), Box<dyn std::error::Error>> {
         let record = record_set.get_record(i).unwrap();
         let class_id = record.get_value_by_name("ClassID").unwrap();
         let class_name = record.get_value_by_name("ClassName").unwrap();
-        println!("   - {}: {}", class_id, class_name);
+        println!("   - {class_id}: {class_name}");
     }
 
     println!();
@@ -128,12 +128,12 @@ fn parse_with_lazy_loading() -> Result<(), Box<dyn std::error::Error>> {
     let parser = DbcParser::parse(&mut reader)?;
     let record_count = parser.header().record_count;
     let field_count = parser.header().field_count;
-    println!("   Processing {} records lazily", record_count);
+    println!("   Processing {record_count} records lazily");
 
     // Create minimal schema for demonstration
     let mut schema = Schema::new("Spell");
     for i in 0..field_count as usize {
-        schema.add_field(SchemaField::new(format!("Field{}", i), FieldType::Int32));
+        schema.add_field(SchemaField::new(format!("Field{i}"), FieldType::Int32));
     }
 
     let parser = parser.with_schema(schema)?;
@@ -180,7 +180,7 @@ fn parse_with_yaml_schema() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Loaded schema: {}", schema.name);
     println!("   - Fields: {}", schema.fields.len());
     if let Some(key_index) = schema.key_field_index {
-        println!("   - Key field index: {}", key_index);
+        println!("   - Key field index: {key_index}");
     }
 
     // Parse DBC with schema
@@ -195,7 +195,7 @@ fn parse_with_yaml_schema() -> Result<(), Box<dyn std::error::Error>> {
     // Show a sample spell
     if let Some(record) = record_set.get_record(0) {
         if let Some(wow_cdbc::Value::UInt32(id)) = record.get_value_by_name("ID") {
-            println!("   First spell ID: {}", id);
+            println!("   First spell ID: {id}");
         }
     }
 
@@ -231,7 +231,7 @@ fn parse_with_memory_mapping() -> Result<(), Box<dyn std::error::Error>> {
     let mut schema = Schema::new("WorldMapArea");
     let field_count = parser.header().field_count as usize;
     for i in 0..field_count {
-        schema.add_field(SchemaField::new(format!("Field{}", i), FieldType::Int32));
+        schema.add_field(SchemaField::new(format!("Field{i}"), FieldType::Int32));
     }
 
     let parser = parser.with_schema(schema)?;
@@ -267,7 +267,7 @@ fn parse_with_parallel_processing() -> Result<(), Box<dyn std::error::Error>> {
     let mut schema = Schema::new("Records");
     let field_count = parser.header().field_count as usize;
     for i in 0..field_count {
-        schema.add_field(SchemaField::new(format!("Field{}", i), FieldType::Int32));
+        schema.add_field(SchemaField::new(format!("Field{i}"), FieldType::Int32));
     }
 
     let parser = parser.with_schema(schema)?;
@@ -285,8 +285,8 @@ fn parse_with_parallel_processing() -> Result<(), Box<dyn std::error::Error>> {
     let records = wow_cdbc::parse_records_parallel(&file, header, parser.schema(), string_block)?;
     let parallel_time = start.elapsed();
 
-    println!("   Sequential parsing: {:?}", sequential_time);
-    println!("   Parallel parsing: {:?}", parallel_time);
+    println!("   Sequential parsing: {sequential_time:?}");
+    println!("   Parallel parsing: {parallel_time:?}");
     if parallel_time.as_secs_f64() > 0.0 {
         println!(
             "   Speedup: {:.2}x",
@@ -334,7 +334,7 @@ fn export_to_json_example() -> Result<(), Box<dyn std::error::Error>> {
     let lines: Vec<&str> = json_content.lines().take(5).collect();
     println!("   Sample JSON output:");
     for line in lines {
-        println!("   {}", line);
+        println!("   {line}");
     }
     if json_content.lines().count() > 5 {
         println!("   ...");
@@ -383,7 +383,7 @@ fn export_to_csv_example() -> Result<(), Box<dyn std::error::Error>> {
     let lines: Vec<&str> = csv_content.lines().take(5).collect();
     println!("   Sample CSV output:");
     for line in lines {
-        println!("   {}", line);
+        println!("   {line}");
     }
 
     // Clean up

@@ -164,8 +164,7 @@ impl<W: Write + Seek> DbcWriter<W> {
             }
             _ => {
                 return Err(Error::TypeConversion(format!(
-                    "Type mismatch: {:?} is not compatible with {:?}",
-                    value, field_type
+                    "Type mismatch: {value:?} is not compatible with {field_type:?}"
                 )));
             }
         }

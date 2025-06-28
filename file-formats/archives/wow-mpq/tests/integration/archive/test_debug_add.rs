@@ -13,7 +13,7 @@ fn test_debug_add_file() {
     let builder = ArchiveBuilder::new().add_file_data(b"Test content 1".to_vec(), "file1.txt");
     builder.build(&archive_path).unwrap();
 
-    println!("Created archive at: {:?}", archive_path);
+    println!("Created archive at: {archive_path:?}");
 
     // Check initial state and print header info
     {
@@ -57,10 +57,10 @@ fn test_debug_add_file() {
         println!("\nBefore flush:");
         let (block_count, hash_count) = mutable_archive.debug_state();
         if let Some(count) = block_count {
-            println!("  Block table entries: {}", count);
+            println!("  Block table entries: {count}");
         }
         if let Some(count) = hash_count {
-            println!("  Hash table size: {}", count);
+            println!("  Hash table size: {count}");
         }
 
         // Explicitly flush
@@ -93,7 +93,7 @@ fn test_debug_add_file() {
                 assert_eq!(content, b"New file content");
             }
             Err(e) => {
-                println!("Failed to read new_file.txt: {}", e);
+                println!("Failed to read new_file.txt: {e}");
 
                 // Debug: Try to find the file in hash table
                 if let Some(entry) = archive.find_file("new_file.txt").unwrap() {

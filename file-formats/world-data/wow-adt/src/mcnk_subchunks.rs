@@ -363,16 +363,14 @@ impl MclqSubchunk {
             .checked_mul(y_vertices as usize)
             .ok_or_else(|| {
                 AdtError::ParseError(format!(
-                    "Vertex count overflow: {} * {}",
-                    x_vertices, y_vertices
+                    "Vertex count overflow: {x_vertices} * {y_vertices}"
                 ))
             })?;
 
         // Sanity check - liquid layers shouldn't have more than 9x9 vertices typically
         if vertex_count > 10000 {
             return Err(AdtError::ParseError(format!(
-                "Unreasonable vertex count for liquid layer: {} ({}x{})",
-                vertex_count, x_vertices, y_vertices
+                "Unreasonable vertex count for liquid layer: {vertex_count} ({x_vertices}x{y_vertices})"
             )));
         }
 

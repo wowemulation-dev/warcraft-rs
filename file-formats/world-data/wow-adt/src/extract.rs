@@ -160,13 +160,13 @@ fn extract_pgm_heightmap<P: AsRef<Path>>(
         8 => {
             // 8-bit grayscale
             writeln!(&mut writer, "P5")?;
-            writeln!(&mut writer, "{} {}", width, height)?;
+            writeln!(&mut writer, "{width} {height}")?;
             writeln!(&mut writer, "255")?;
         }
         16 => {
             // 16-bit grayscale
             writeln!(&mut writer, "P5")?;
-            writeln!(&mut writer, "{} {}", width, height)?;
+            writeln!(&mut writer, "{width} {height}")?;
             writeln!(&mut writer, "65535")?;
         }
         _ => {
@@ -304,8 +304,7 @@ fn extract_png_heightmap<P: AsRef<Path>>(
     // Save the image
     img.save(output_path).map_err(|e| {
         crate::error::AdtError::Io(std::io::Error::other(format!(
-            "Failed to save PNG image: {}",
-            e
+            "Failed to save PNG image: {e}"
         )))
     })?;
 
@@ -371,8 +370,7 @@ fn extract_tiff_heightmap<P: AsRef<Path>>(
     // Save the image
     img.save(output_path).map_err(|e| {
         crate::error::AdtError::Io(std::io::Error::other(format!(
-            "Failed to save TIFF image: {}",
-            e
+            "Failed to save TIFF image: {e}"
         )))
     })?;
 
@@ -470,7 +468,7 @@ pub fn extract_textures<P: AsRef<Path>>(adt: &Adt, output_dir: P) -> Result<()> 
 
     if let Some(ref mtex) = adt.mtex {
         for (i, filename) in mtex.filenames.iter().enumerate() {
-            writeln!(&mut texture_list, "{}: {}", i, filename)?;
+            writeln!(&mut texture_list, "{i}: {filename}")?;
         }
     }
 
@@ -525,7 +523,7 @@ pub fn extract_models<P: AsRef<Path>>(adt: &Adt, output_dir: P) -> Result<()> {
         let mut doodad_file = File::create(doodad_path)?;
 
         for (i, filename) in mmdx.filenames.iter().enumerate() {
-            writeln!(&mut doodad_file, "{}: {}", i, filename)?;
+            writeln!(&mut doodad_file, "{i}: {filename}")?;
         }
     }
 
@@ -535,7 +533,7 @@ pub fn extract_models<P: AsRef<Path>>(adt: &Adt, output_dir: P) -> Result<()> {
         let mut wmo_file = File::create(wmo_path)?;
 
         for (i, filename) in mwmo.filenames.iter().enumerate() {
-            writeln!(&mut wmo_file, "{}: {}", i, filename)?;
+            writeln!(&mut wmo_file, "{i}: {filename}")?;
         }
     }
 

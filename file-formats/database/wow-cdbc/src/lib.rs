@@ -225,11 +225,11 @@ mod tests {
 
         // Test array display
         let array = Value::Array(vec![Value::Int32(1), Value::Int32(2), Value::Int32(3)]);
-        assert_eq!(format!("{}", array), "[1, 2, 3]");
+        assert_eq!(format!("{array}"), "[1, 2, 3]");
 
         // Test empty array
         let empty_array = Value::Array(vec![]);
-        assert_eq!(format!("{}", empty_array), "[]");
+        assert_eq!(format!("{empty_array}"), "[]");
     }
 
     #[test]

@@ -235,8 +235,7 @@ impl Adt {
         const MIN_ADT_SIZE: u64 = 12 + 8 + 64 + 8; // MVER header + data + MHDR header + data
         if file_size < MIN_ADT_SIZE {
             return Err(AdtError::InvalidFileSize(format!(
-                "File too small to be a valid ADT: {} bytes",
-                file_size
+                "File too small to be a valid ADT: {file_size} bytes"
             )));
         }
 
@@ -318,8 +317,7 @@ impl Adt {
                         }
                         Err(e) => {
                             eprintln!(
-                                "Warning: Failed to parse MFBO chunk ({}), marking as present for version detection",
-                                e
+                                "Warning: Failed to parse MFBO chunk ({e}), marking as present for version detection"
                             );
                             // For version detection purposes, just mark that we found MFBO
                             // Skip the actual parsing since there are size variations between versions
@@ -343,7 +341,7 @@ impl Adt {
                             chunks.mh2o = Some(chunk);
                         }
                         Err(e) => {
-                            eprintln!("Warning: Failed to parse MH2O chunk: {}", e);
+                            eprintln!("Warning: Failed to parse MH2O chunk: {e}");
                             // Skip the chunk data on error
                             context
                                 .reader
@@ -397,7 +395,7 @@ impl Adt {
                     let header = match ChunkHeader::read(&mut context.reader) {
                         Ok(h) => h,
                         Err(e) => {
-                            eprintln!("Error reading MCNK chunk {} header: {}", i, e);
+                            eprintln!("Error reading MCNK chunk {i} header: {e}");
                             continue;
                         }
                     };
@@ -407,7 +405,7 @@ impl Adt {
                         match McnkChunk::read_with_header(header, &mut context) {
                             Ok(chunk) => chunks.mcnk.push(chunk),
                             Err(e) => {
-                                eprintln!("Error reading MCNK chunk {} content: {}", i, e);
+                                eprintln!("Error reading MCNK chunk {i} content: {e}");
                                 // Continue with other chunks instead of failing completely
                                 continue;
                             }
@@ -431,8 +429,7 @@ impl Adt {
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!(
-                            "Error seeking to direct MCNK chunk at offset {}: {}",
-                            chunk_pos, e
+                            "Error seeking to direct MCNK chunk at offset {chunk_pos}: {e}"
                         );
                         continue;
                     }
@@ -443,8 +440,7 @@ impl Adt {
                     Ok(h) => h,
                     Err(e) => {
                         eprintln!(
-                            "Error reading direct MCNK chunk header at offset {}: {}",
-                            chunk_pos, e
+                            "Error reading direct MCNK chunk header at offset {chunk_pos}: {e}"
                         );
                         continue;
                     }
@@ -458,8 +454,7 @@ impl Adt {
                         }
                         Err(e) => {
                             eprintln!(
-                                "Warning: Error reading MCNK chunk at offset {}: {}",
-                                chunk_pos, e
+                                "Warning: Error reading MCNK chunk at offset {chunk_pos}: {e}"
                             );
                             continue;
                         }

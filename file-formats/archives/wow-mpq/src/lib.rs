@@ -270,8 +270,7 @@ mod tests {
         for size in &valid_sizes {
             assert!(
                 is_power_of_two(*size),
-                "Hash table size {} should be valid",
-                size
+                "Hash table size {size} should be valid"
             );
         }
 
@@ -280,8 +279,7 @@ mod tests {
         for size in &invalid_sizes {
             assert!(
                 !is_power_of_two(*size),
-                "Hash table size {} should be invalid",
-                size
+                "Hash table size {size} should be invalid"
             );
         }
     }

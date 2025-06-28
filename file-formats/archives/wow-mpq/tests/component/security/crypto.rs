@@ -65,10 +65,10 @@ fn test_different_data_patterns() {
         let mut data = original.clone();
 
         encrypt_block(&mut data, key);
-        assert_ne!(&data, original, "Pattern {} should be encrypted", i);
+        assert_ne!(&data, original, "Pattern {i} should be encrypted");
 
         decrypt_block(&mut data, key);
-        assert_eq!(&data, original, "Pattern {} should decrypt correctly", i);
+        assert_eq!(&data, original, "Pattern {i} should decrypt correctly");
     }
 }
 

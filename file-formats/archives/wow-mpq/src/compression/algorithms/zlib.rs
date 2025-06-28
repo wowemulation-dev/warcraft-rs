@@ -37,7 +37,7 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
             Ok(decompressed)
         }
         Err(e) => {
-            log::debug!("Zlib decompression failed: {}", e);
+            log::debug!("Zlib decompression failed: {e}");
             log::trace!(
                 "First 16 bytes of data: {:02X?}",
                 &data[..16.min(data.len())]
@@ -46,8 +46,7 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
                 log::trace!("Full data ({} bytes): {:02X?}", data.len(), data);
             }
             Err(Error::compression(format!(
-                "Zlib decompression failed: {}",
-                e
+                "Zlib decompression failed: {e}"
             )))
         }
     }
@@ -58,11 +57,11 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
     encoder
         .write_all(data)
-        .map_err(|e| Error::compression(format!("Zlib compression failed: {}", e)))?;
+        .map_err(|e| Error::compression(format!("Zlib compression failed: {e}")))?;
 
     encoder
         .finish()
-        .map_err(|e| Error::compression(format!("Zlib compression failed: {}", e)))
+        .map_err(|e| Error::compression(format!("Zlib compression failed: {e}")))
 }
 
 #[cfg(test)]

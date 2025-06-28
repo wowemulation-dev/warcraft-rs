@@ -25,11 +25,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if file exists
     if !Path::new(adt_path).exists() {
-        eprintln!("Error: File '{}' does not exist", adt_path);
+        eprintln!("Error: File '{adt_path}' does not exist");
         std::process::exit(1);
     }
 
-    println!("🔍 ADT Version Analysis: {}", adt_path);
+    println!("🔍 ADT Version Analysis: {adt_path}");
     println!("{}", "=".repeat(60));
 
     // Open and parse the ADT file

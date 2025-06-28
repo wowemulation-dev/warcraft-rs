@@ -183,8 +183,7 @@ impl MpqHeader {
         // Validate header size
         if header_size < format_version.header_size() {
             return Err(Error::invalid_format(format!(
-                "Header size {} too small for version {:?}",
-                header_size, format_version
+                "Header size {header_size} too small for version {format_version:?}"
             )));
         }
 
@@ -231,9 +230,7 @@ impl MpqHeader {
 
             if remaining_header < v4_data_size as u64 {
                 log::warn!(
-                    "Header size is 208 but not enough space for V4 data. Remaining: {}, needed: {}",
-                    remaining_header,
-                    v4_data_size
+                    "Header size is 208 but not enough space for V4 data. Remaining: {remaining_header}, needed: {v4_data_size}"
                 );
             } else {
                 // Version 4 fields
@@ -392,7 +389,7 @@ impl MpqHeader {
 
         if let Some(hi_pos) = self.hi_block_table_pos {
             output.push_str("\nVersion 2+ fields:\n");
-            output.push_str(&format!("  Hi-Block Table: offset=0x{:016X}\n", hi_pos));
+            output.push_str(&format!("  Hi-Block Table: offset=0x{hi_pos:016X}\n"));
             output.push_str(&format!(
                 "  Hash Table High: 0x{:04X}\n",
                 self.hash_table_pos_hi.unwrap_or(0)

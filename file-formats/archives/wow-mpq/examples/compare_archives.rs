@@ -4,7 +4,7 @@ use wow_mpq::Archive;
 
 fn hexdump(data: &[u8], offset: usize, max_len: usize) {
     let len = data.len().min(max_len);
-    println!("Hexdump at offset 0x{:04X}:", offset);
+    println!("Hexdump at offset 0x{offset:04X}:");
     for i in (0..len).step_by(16) {
         print!("{:04X}: ", offset + i);
 
@@ -38,7 +38,7 @@ fn hexdump(data: &[u8], offset: usize, max_len: usize) {
 }
 
 fn compare_archives(stormlib_path: &str, wowmpq_path: &str) -> Result<(), Box<dyn Error>> {
-    println!("\n=== Comparing {} vs {} ===", stormlib_path, wowmpq_path);
+    println!("\n=== Comparing {stormlib_path} vs {wowmpq_path} ===");
 
     // Read raw files
     let stormlib_data = fs::read(stormlib_path)?;

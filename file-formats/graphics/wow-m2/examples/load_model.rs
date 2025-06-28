@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = &args[1];
 
     // Load the model
-    println!("Loading model from: {}", path);
+    println!("Loading model from: {path}");
     let model = M2Model::load(path)?;
 
     // Print basic information

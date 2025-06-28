@@ -124,8 +124,7 @@ fn test_no_compression_for_small_data() {
         // Should return original data (no compression beneficial)
         assert_eq!(
             compressed, test_data,
-            "Small data should not be compressed with method 0x{:02X}",
-            method
+            "Small data should not be compressed with method 0x{method:02X}"
         );
     }
 }

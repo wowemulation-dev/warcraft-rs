@@ -177,9 +177,9 @@ fn handle_convert(input: PathBuf, output: PathBuf, version_str: String) -> Resul
         .with_context(|| format!("Failed to load M2 model from {}", input.display()))?;
 
     let target_version = M2Version::from_expansion_name(&version_str)
-        .with_context(|| format!("Invalid target version: {}", version_str))?;
+        .with_context(|| format!("Invalid target version: {version_str}"))?;
 
-    println!("Converting to {:?}", target_version);
+    println!("Converting to {target_version:?}");
 
     let converter = M2Converter::new();
     let converted = converter
@@ -207,7 +207,7 @@ fn handle_validate(path: PathBuf, show_warnings: bool) -> Result<()> {
             println!("✓ Model validation passed!");
         }
         Err(e) => {
-            println!("❌ Model validation failed: {}", e);
+            println!("❌ Model validation failed: {e}");
             if !show_warnings {
                 println!("Use --warnings to show additional details");
             }
@@ -236,7 +236,7 @@ fn handle_tree(path: PathBuf, max_depth: usize, _show_size: bool, _show_refs: bo
     };
 
     let tree_output = render_tree(&root, &options);
-    print!("{}", tree_output);
+    print!("{tree_output}");
 
     println!("\n(Note: Full tree visualization requires additional public API methods)");
     Ok(())
@@ -266,9 +266,9 @@ fn handle_skin_convert(input: PathBuf, output: PathBuf, version_str: String) -> 
         .with_context(|| format!("Failed to load Skin file from {}", input.display()))?;
 
     let target_version = M2Version::from_expansion_name(&version_str)
-        .with_context(|| format!("Invalid target version: {}", version_str))?;
+        .with_context(|| format!("Invalid target version: {version_str}"))?;
 
-    println!("Converting to {:?}", target_version);
+    println!("Converting to {target_version:?}");
 
     println!("Saving converted Skin file to: {}", output.display());
     skin.save(&output)
@@ -302,9 +302,9 @@ fn handle_anim_convert(input: PathBuf, output: PathBuf, version_str: String) -> 
         .with_context(|| format!("Failed to load ANIM file from {}", input.display()))?;
 
     let target_version = M2Version::from_expansion_name(&version_str)
-        .with_context(|| format!("Invalid target version: {}", version_str))?;
+        .with_context(|| format!("Invalid target version: {version_str}"))?;
 
-    println!("Converting to {:?}", target_version);
+    println!("Converting to {target_version:?}");
 
     println!("Saving converted ANIM file to: {}", output.display());
     anim.save(&output)

@@ -41,15 +41,14 @@ fn validate_model(model: &M2Model) -> Vec<String> {
             let weight_sum: u8 = vertex.bone_weights.iter().sum();
             if weight_sum != 255 && weight_sum != 0 {
                 issues.push(format!(
-                    "Vertex {}: bone weights don't sum to 1.0 (sum={})",
-                    i, weight_sum
+                    "Vertex {i}: bone weights don't sum to 1.0 (sum={weight_sum})"
                 ));
             }
 
             // Check bone indices are valid
             for (j, &bone_idx) in vertex.bone_indices.iter().enumerate() {
                 if vertex.bone_weights[j] > 0 && bone_idx as usize >= model.bones.len() {
-                    issues.push(format!("Vertex {}: invalid bone index {}", i, bone_idx));
+                    issues.push(format!("Vertex {i}: invalid bone index {bone_idx}"));
                 }
             }
         }
@@ -58,7 +57,7 @@ fn validate_model(model: &M2Model) -> Vec<String> {
     // Check textures
     for (i, texture) in model.textures.iter().enumerate() {
         if texture.filename.is_empty() {
-            issues.push(format!("Texture {}: empty filename", i));
+            issues.push(format!("Texture {i}: empty filename"));
         }
     }
 
@@ -67,7 +66,7 @@ fn validate_model(model: &M2Model) -> Vec<String> {
         // Materials don't directly reference textures in this model format
         // The texture-material mapping is handled differently
         if material.flags.is_empty() && material.blend_mode.is_empty() {
-            issues.push(format!("Material {}: has no flags or blend mode set", i));
+            issues.push(format!("Material {i}: has no flags or blend mode set"));
         }
     }
 
@@ -76,12 +75,12 @@ fn validate_model(model: &M2Model) -> Vec<String> {
         // For Classic format, check if end_timestamp > start_timestamp
         if let Some(end_ts) = anim.end_timestamp {
             if end_ts <= anim.start_timestamp {
-                issues.push(format!("Animation {}: end timestamp <= start timestamp", i));
+                issues.push(format!("Animation {i}: end timestamp <= start timestamp"));
             }
         } else {
             // For BC+ format, start_timestamp contains duration
             if anim.start_timestamp == 0 {
-                issues.push(format!("Animation {}: zero duration", i));
+                issues.push(format!("Animation {i}: zero duration"));
             }
         }
     }
@@ -95,7 +94,7 @@ fn validate_model(model: &M2Model) -> Vec<String> {
                     i, bone.parent_bone
                 ));
             } else if bone.parent_bone as usize == i {
-                issues.push(format!("Bone {}: references itself as parent", i));
+                issues.push(format!("Bone {i}: references itself as parent"));
             }
         }
     }
@@ -114,16 +113,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if file exists
     if !Path::new(path).exists() {
-        eprintln!("Error: File not found: {}", path);
+        eprintln!("Error: File not found: {path}");
         std::process::exit(1);
     }
 
     // Load the model
-    println!("Loading model from: {}", path);
+    println!("Loading model from: {path}");
     let model = match M2Model::load(path) {
         Ok(model) => model,
         Err(e) => {
-            eprintln!("Failed to load model: {}", e);
+            eprintln!("Failed to load model: {e}");
             std::process::exit(1);
         }
     };
@@ -140,7 +139,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         println!("❌ Model validation found {} issue(s):", issues.len());
         for issue in &issues {
-            println!("  - {}", issue);
+            println!("  - {issue}");
         }
     }
 

@@ -84,8 +84,8 @@ fn test_het_bet_with_many_files() {
     let mut builder = ArchiveBuilder::new().version(FormatVersion::V3);
 
     for i in 0..50 {
-        let filename = format!("file_{:03}.txt", i);
-        let content = format!("This is file number {}", i);
+        let filename = format!("file_{i:03}.txt");
+        let content = format!("This is file number {i}");
         builder = builder.add_file_data(content.into_bytes(), &filename);
     }
 
@@ -98,12 +98,12 @@ fn test_het_bet_with_many_files() {
 
     // Check first, middle, and last files
     for i in [0, 25, 49] {
-        let filename = format!("file_{:03}.txt", i);
-        let expected_content = format!("This is file number {}", i);
+        let filename = format!("file_{i:03}.txt");
+        let expected_content = format!("This is file number {i}");
 
         let data = archive
             .read_file(&filename)
-            .unwrap_or_else(|_| panic!("Failed to read {}", filename));
+            .unwrap_or_else(|_| panic!("Failed to read {filename}"));
         assert_eq!(data, expected_content.as_bytes());
     }
 }

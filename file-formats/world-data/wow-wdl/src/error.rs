@@ -54,14 +54,14 @@ mod tests {
     #[test]
     fn test_error_display() {
         let error = WdlError::ParseError("Test error".to_string());
-        assert_eq!(format!("{}", error), "Parse error: Test error");
+        assert_eq!(format!("{error}"), "Parse error: Test error");
 
         let error = WdlError::InvalidMagic {
             expected: "MVER".to_string(),
             found: "ABCD".to_string(),
         };
         assert_eq!(
-            format!("{}", error),
+            format!("{error}"),
             "Invalid magic value: expected 'MVER', found 'ABCD'"
         );
     }

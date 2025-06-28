@@ -35,7 +35,7 @@ fn bench_zlib_compression(c: &mut Criterion) {
             let data = create_test_data(size, pattern);
 
             group.bench_with_input(
-                BenchmarkId::new(*data_name, format!("{}B", size)),
+                BenchmarkId::new(*data_name, format!("{size}B")),
                 &data,
                 |b, test_data| {
                     b.iter(|| compress(black_box(test_data), flags::ZLIB));
@@ -58,7 +58,7 @@ fn bench_zlib_decompression(c: &mut Criterion) {
         let compressed = compress(&data, flags::ZLIB).expect("Compression failed");
 
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}B", size)),
+            BenchmarkId::from_parameter(format!("{size}B")),
             &(compressed, size),
             |b, (compressed_data, original_size)| {
                 b.iter(|| decompress(black_box(compressed_data), flags::ZLIB, *original_size));
@@ -79,7 +79,7 @@ fn bench_bzip2_compression(c: &mut Criterion) {
         let data = create_test_data(size, pattern);
 
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}B", size)),
+            BenchmarkId::from_parameter(format!("{size}B")),
             &data,
             |b, test_data| {
                 b.iter(|| compress(black_box(test_data), flags::BZIP2));

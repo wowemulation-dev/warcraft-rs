@@ -178,10 +178,10 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
 
     // Load the ADT file
     let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {}", file))?;
+        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     // Basic information
-    println!("File: {}", file);
+    println!("File: {file}");
     println!("Version: {}", format_version(&adt.version()));
 
     // Check for split files
@@ -191,24 +191,24 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
 
     if !stem.ends_with("_obj0") && !stem.ends_with("_tex0") {
         // Check for Cataclysm+ split files
-        let tex0 = dir.join(format!("{}_tex0.adt", stem));
-        let tex1 = dir.join(format!("{}_tex1.adt", stem));
-        let obj0 = dir.join(format!("{}_obj0.adt", stem));
-        let obj1 = dir.join(format!("{}_obj1.adt", stem));
+        let tex0 = dir.join(format!("{stem}_tex0.adt"));
+        let tex1 = dir.join(format!("{stem}_tex1.adt"));
+        let obj0 = dir.join(format!("{stem}_obj0.adt"));
+        let obj1 = dir.join(format!("{stem}_obj1.adt"));
 
         if tex0.exists() || obj0.exists() {
             println!("\n📁 Split Files Detected (Cataclysm+):");
             if tex0.exists() {
-                println!("  ✓ {}_tex0.adt", stem);
+                println!("  ✓ {stem}_tex0.adt");
             }
             if tex1.exists() {
-                println!("  ✓ {}_tex1.adt", stem);
+                println!("  ✓ {stem}_tex1.adt");
             }
             if obj0.exists() {
-                println!("  ✓ {}_obj0.adt", stem);
+                println!("  ✓ {stem}_obj0.adt");
             }
             if obj1.exists() {
-                println!("  ✓ {}_obj1.adt", stem);
+                println!("  ✓ {stem}_obj1.adt");
             }
         }
     }
@@ -216,7 +216,7 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
     // Terrain chunks
     let mcnk_count = adt.mcnk_chunks().len();
     println!("\n🏔️  Terrain Information:");
-    println!("  Chunks: {}/256", mcnk_count);
+    println!("  Chunks: {mcnk_count}/256");
 
     if mcnk_count > 0 {
         // Note: Height data would require accessing MCVT subchunk data
@@ -237,7 +237,7 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
             .filter(|c| !c.instances.is_empty())
             .count();
         if water_chunks > 0 {
-            println!("\n💧 Water: {} chunks with water", water_chunks);
+            println!("\n💧 Water: {water_chunks} chunks with water");
         }
     }
 
@@ -300,13 +300,13 @@ fn execute_validate(file: &str, level: &str, warnings: bool) -> Result<()> {
     println!("🔍 Validating ADT File");
     println!("=====================");
     println!();
-    println!("File: {}", file);
-    println!("Level: {:?}", validation_level);
+    println!("File: {file}");
+    println!("Level: {validation_level:?}");
     println!();
 
     // Load and validate
     let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {}", file))?;
+        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     let report = adt.validate_with_report_and_context(validation_level, file)?;
 
@@ -335,7 +335,7 @@ fn execute_validate(file: &str, level: &str, warnings: bool) -> Result<()> {
     if !report.info.is_empty() {
         println!("\nℹ️  Additional information:");
         for info in &report.info {
-            println!("  • {}", info);
+            println!("  • {info}");
         }
     }
 
@@ -348,14 +348,14 @@ fn execute_convert(input: &str, output: &str, to_version: &str) -> Result<()> {
     println!("🔄 Converting ADT File");
     println!("====================");
     println!();
-    println!("Input: {}", input);
-    println!("Output: {}", output);
+    println!("Input: {input}");
+    println!("Output: {output}");
     println!("Target: {}", format_version(&target_version));
     println!();
 
     // Load the ADT
     let adt =
-        Adt::from_path(input).with_context(|| format!("Failed to parse ADT file: {}", input))?;
+        Adt::from_path(input).with_context(|| format!("Failed to parse ADT file: {input}"))?;
 
     println!("Source version: {}", format_version(&adt.version()));
 
@@ -369,12 +369,12 @@ fn execute_convert(input: &str, output: &str, to_version: &str) -> Result<()> {
     use std::io::BufWriter;
 
     let file = File::create(output)
-        .with_context(|| format!("Failed to create output file: {}", output))?;
+        .with_context(|| format!("Failed to create output file: {output}"))?;
     let mut writer = BufWriter::new(file);
 
     converted
         .write(&mut writer)
-        .with_context(|| format!("Failed to write ADT file: {}", output))?;
+        .with_context(|| format!("Failed to write ADT file: {output}"))?;
 
     println!("✅ Conversion complete!");
 
@@ -399,7 +399,7 @@ fn execute_extract(
 
     // Load the ADT
     let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {}", file))?;
+        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     // Determine output directory
     let output_path = if let Some(dir) = output_dir {
@@ -488,7 +488,7 @@ fn execute_tree(
 
     // Load the ADT
     let adt =
-        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {}", file))?;
+        Adt::from_path(file).with_context(|| format!("Failed to parse ADT file: {file}"))?;
 
     // Build tree structure
     let mut root = TreeNode::new(
@@ -699,7 +699,7 @@ fn execute_tree(
             .filter(|c| !c.instances.is_empty())
             .count();
         let water_node = TreeNode::new(
-            format!("MH2O ({} water chunks)", water_chunks),
+            format!("MH2O ({water_chunks} water chunks)"),
             NodeType::Chunk,
         );
         root = root.add_child(water_node);
@@ -751,9 +751,9 @@ fn execute_batch(
     }
 
     println!("🔄 Batch Processing {} files", files.len());
-    println!("Operation: {}", operation);
+    println!("Operation: {operation}");
     if let Some(v) = to_version {
-        println!("Target version: {}", v);
+        println!("Target version: {v}");
     }
     println!();
 
@@ -818,8 +818,8 @@ fn execute_batch(
     let total_failed = failed.load(Ordering::Relaxed);
 
     println!("\n📊 Results:");
-    println!("  Processed: {}", total_processed);
-    println!("  Failed: {}", total_failed);
+    println!("  Processed: {total_processed}");
+    println!("  Failed: {total_failed}");
 
     if total_failed > 0 {
         anyhow::bail!("{} files failed processing", total_failed);

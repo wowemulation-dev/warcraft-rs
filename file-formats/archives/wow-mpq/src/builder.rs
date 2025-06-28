@@ -620,11 +620,7 @@ impl ArchiveBuilder {
                     header_size + estimated_file_data_size + estimated_table_size;
 
                 log::debug!(
-                    "Pre-allocating buffer of {} bytes for v3+ archive (header: {}, estimated data: {}, tables: {})",
-                    total_estimated_size,
-                    header_size,
-                    estimated_file_data_size,
-                    estimated_table_size
+                    "Pre-allocating buffer of {total_estimated_size} bytes for v3+ archive (header: {header_size}, estimated data: {estimated_file_data_size}, tables: {estimated_table_size})"
                 );
 
                 let mut vec = Vec::with_capacity(total_estimated_size);
@@ -1209,9 +1205,7 @@ impl ArchiveBuilder {
             // Compress if needed
             let compressed_data = if *compression != 0 && !file_data.is_empty() {
                 log::debug!(
-                    "Compressing {} with method 0x{:02X}",
-                    archive_name,
-                    compression
+                    "Compressing {archive_name} with method 0x{compression:02X}"
                 );
                 let compressed = compress(file_data, *compression)?;
 
@@ -1259,9 +1253,7 @@ impl ArchiveBuilder {
                 let crc = adler::adler32_slice(file_data);
                 writer.write_u32_le(crc)?;
                 log::debug!(
-                    "Generated CRC for single unit file {}: 0x{:08X}",
-                    archive_name,
-                    crc
+                    "Generated CRC for single unit file {archive_name}: 0x{crc:08X}"
                 );
             }
 
@@ -1485,8 +1477,7 @@ impl ArchiveBuilder {
             // Check for duplicate
             if entry.name_1 == name_a && entry.name_2 == name_b && entry.locale == locale {
                 return Err(Error::invalid_format(format!(
-                    "Duplicate file in archive: {}",
-                    filename
+                    "Duplicate file in archive: {filename}"
                 )));
             }
 
@@ -1764,9 +1755,7 @@ impl ArchiveBuilder {
         let hash_table_entries = (file_count * 2).next_power_of_two();
 
         log::debug!(
-            "Creating HET table from hash_table: {} files, {} hash entries",
-            file_count,
-            hash_table_entries
+            "Creating HET table from hash_table: {file_count} files, {hash_table_entries} hash entries"
         );
 
         // Create header
@@ -1903,8 +1892,7 @@ impl ArchiveBuilder {
         result.extend_from_slice(&file_indices);
 
         log::debug!(
-            "HET table created with {} files (including attributes)",
-            file_count
+            "HET table created with {file_count} files (including attributes)"
         );
 
         Ok((result, final_header))
@@ -2028,7 +2016,7 @@ impl ArchiveBuilder {
         // Encrypt the data portion (after extended header)
         if encrypt {
             let key = hash_string("(hash table)", hash_type::FILE_KEY);
-            log::debug!("Encrypting HET table with key: 0x{:08X}", key);
+            log::debug!("Encrypting HET table with key: 0x{key:08X}");
             log::debug!(
                 "Data size: {} bytes (multiple of 4: {})",
                 processed_data.len(),

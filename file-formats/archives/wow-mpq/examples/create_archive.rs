@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nVerifying archives...");
 
     for archive_name in &["simple.mpq", "from_files.mpq", "custom.mpq"] {
-        println!("\nChecking {}:", archive_name);
+        println!("\nChecking {archive_name}:");
 
         let mut archive = Archive::open(archive_name)?;
 
@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         builder.build(name)?;
-        println!("  Created {} (version {:?})", name, version);
+        println!("  Created {name} (version {version:?})");
     }
 
     // Verification of all created archives
@@ -164,11 +164,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     );
                 }
                 Err(_) => {
-                    println!("  {} - Could not get archive info", archive_name);
+                    println!("  {archive_name} - Could not get archive info");
                 }
             },
             Err(e) => {
-                println!("  {} - Error: {}", archive_name, e);
+                println!("  {archive_name} - Error: {e}");
             }
         }
     }

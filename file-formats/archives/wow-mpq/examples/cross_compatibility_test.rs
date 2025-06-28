@@ -2,7 +2,7 @@ use std::error::Error;
 use wow_mpq::Archive;
 
 fn test_archive(path: &str, expected_files: &[(&str, usize)]) -> Result<(), Box<dyn Error>> {
-    println!("\nTesting archive: {}", path);
+    println!("\nTesting archive: {path}");
 
     let mut archive = Archive::open(path)?;
     let info = archive.get_info()?;
@@ -28,7 +28,7 @@ fn test_archive(path: &str, expected_files: &[(&str, usize)]) -> Result<(), Box<
                 }
             }
             Err(e) => {
-                println!("✗ {}: Error - {}", filename, e);
+                println!("✗ {filename}: Error - {e}");
             }
         }
     }

@@ -49,9 +49,9 @@ pub fn truncate_path(path: &str, max_len: usize) -> String {
             }
 
             if result.is_empty() || result == "..." {
-                format!(".../{}", filename)
+                format!(".../{filename}")
             } else {
-                format!("{}/{}", result, filename)
+                format!("{result}/{filename}")
             }
         }
     }
@@ -128,15 +128,13 @@ mod tests {
         // Result should contain ellipsis to indicate truncation
         assert!(
             result.contains("..."),
-            "Result '{}' should contain '...'",
-            result
+            "Result '{result}' should contain '...'"
         );
 
         // Result should contain the filename (unless the filename itself is too long)
         assert!(
             result.contains("file.txt") || result.ends_with("...txt"),
-            "Result '{}' should contain filename",
-            result
+            "Result '{result}' should contain filename"
         );
 
         // Test edge cases

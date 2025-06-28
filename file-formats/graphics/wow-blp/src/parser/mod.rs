@@ -58,7 +58,7 @@ where
     }
 
     let image = parse_blp_with_externals(input, |i| preloaded_mipmaps(&mipmaps, i))
-        .map_err(|e| LoadError::Parsing(format!("{}", e)))?;
+        .map_err(|e| LoadError::Parsing(format!("{e}")))?;
     Ok(image)
 }
 

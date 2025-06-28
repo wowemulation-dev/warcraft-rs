@@ -51,7 +51,7 @@ impl DiscoveredSchema {
         let mut schema = Schema::new(name);
 
         for (i, field) in self.fields.iter().enumerate() {
-            let field_name = format!("field_{}", i);
+            let field_name = format!("field_{i}");
 
             if field.is_array {
                 schema.add_field(SchemaField::new_array(
@@ -524,12 +524,12 @@ impl<'a> SchemaDiscoverer<'a> {
                 "ID".to_string()
             } else {
                 match field.field_type {
-                    FieldType::String => format!("String_{}", i),
-                    FieldType::Float32 => format!("Float_{}", i),
-                    FieldType::Bool => format!("Flag_{}", i),
-                    FieldType::UInt32 | FieldType::Int32 => format!("Value_{}", i),
-                    FieldType::UInt8 | FieldType::Int8 => format!("Byte_{}", i),
-                    FieldType::UInt16 | FieldType::Int16 => format!("Short_{}", i),
+                    FieldType::String => format!("String_{i}"),
+                    FieldType::Float32 => format!("Float_{i}"),
+                    FieldType::Bool => format!("Flag_{i}"),
+                    FieldType::UInt32 | FieldType::Int32 => format!("Value_{i}"),
+                    FieldType::UInt8 | FieldType::Int8 => format!("Byte_{i}"),
+                    FieldType::UInt16 | FieldType::Int16 => format!("Short_{i}"),
                 }
             };
 

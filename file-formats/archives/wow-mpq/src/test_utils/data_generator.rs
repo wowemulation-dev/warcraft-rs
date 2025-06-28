@@ -369,7 +369,7 @@ fn generate_text_content(size_kb: usize, compressibility: Compressibility) -> Ve
                         let value: String = (0..10)
                             .map(|_| (b'a' + rng.random::<u8>() % 26) as char)
                             .collect();
-                        let json = format!("{{\"id\": {}, \"value\": \"{}\"}}\n", id, value);
+                        let json = format!("{{\"id\": {id}, \"value\": \"{value}\"}}\n");
                         content.extend_from_slice(json.as_bytes());
                     } else {
                         let csv = format!(

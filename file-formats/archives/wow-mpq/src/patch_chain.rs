@@ -572,14 +572,14 @@ mod integration_tests {
         // Create multiple test archives
         let mut archive_paths = Vec::new();
         for i in 0..5 {
-            let common_content = format!("Common content v{}", i);
-            let unique_name = format!("unique_{}.txt", i);
-            let unique_content = format!("Unique to archive {}", i);
+            let common_content = format!("Common content v{i}");
+            let unique_name = format!("unique_{i}.txt");
+            let unique_content = format!("Unique to archive {i}");
             let files: Vec<(&str, &[u8])> = vec![
                 ("common.txt", common_content.as_bytes()),
                 (&unique_name, unique_content.as_bytes()),
             ];
-            let path = create_test_archive(temp.path(), &format!("archive_{}.mpq", i), &files);
+            let path = create_test_archive(temp.path(), &format!("archive_{i}.mpq"), &files);
             archive_paths.push((path, i * 100)); // Increasing priorities
         }
 
@@ -608,14 +608,14 @@ mod integration_tests {
 
         // Verify all unique files are accessible
         for i in 0..5 {
-            let unique_file = format!("unique_{}.txt", i);
+            let unique_file = format!("unique_{i}.txt");
             let content = chain_par.read_file(&unique_file).unwrap();
-            assert_eq!(content, format!("Unique to archive {}", i).as_bytes());
+            assert_eq!(content, format!("Unique to archive {i}").as_bytes());
         }
 
         // Parallel should be faster (or at least not significantly slower)
-        println!("Sequential loading: {:?}", seq_duration);
-        println!("Parallel loading: {:?}", par_duration);
+        println!("Sequential loading: {seq_duration:?}");
+        println!("Parallel loading: {par_duration:?}");
     }
 
     #[test]
@@ -633,14 +633,14 @@ mod integration_tests {
         // Create multiple patch archives
         let mut patch_archives = Vec::new();
         for i in 1..=3 {
-            let patch_name = format!("patch_{}.txt", i);
-            let patch_content = format!("Patch {} content", i);
-            let common_content = format!("Common from patch {}", i);
+            let patch_name = format!("patch_{i}.txt");
+            let patch_content = format!("Patch {i} content");
+            let common_content = format!("Common from patch {i}");
             let files: Vec<(&str, &[u8])> = vec![
                 (&patch_name, patch_content.as_bytes()),
                 ("common.txt", common_content.as_bytes()),
             ];
-            let path = create_test_archive(temp.path(), &format!("patch_{}.mpq", i), &files);
+            let path = create_test_archive(temp.path(), &format!("patch_{i}.mpq"), &files);
             patch_archives.push((path, i * 100));
         }
 
@@ -671,9 +671,9 @@ mod integration_tests {
         // Create some valid archives
         let mut archives = Vec::new();
         for i in 0..2 {
-            let file_name = format!("file_{}.txt", i);
+            let file_name = format!("file_{i}.txt");
             let files: Vec<(&str, &[u8])> = vec![(&file_name, b"content")];
-            let path = create_test_archive(temp.path(), &format!("valid_{}.mpq", i), &files);
+            let path = create_test_archive(temp.path(), &format!("valid_{i}.mpq"), &files);
             archives.push((path, i * 100));
         }
 

@@ -38,7 +38,7 @@ impl WmoApp {
 
                 let path = &args[2];
                 if let Err(err) = self.show_info(path) {
-                    println!("Error: {}", err);
+                    println!("Error: {err}");
                     return 1;
                 }
             }
@@ -57,18 +57,18 @@ impl WmoApp {
                     Ok(v) => match WmoVersion::from_raw(v) {
                         Some(version) => version,
                         None => {
-                            println!("Error: Invalid WMO version: {}", v);
+                            println!("Error: Invalid WMO version: {v}");
                             return 1;
                         }
                     },
                     Err(_) => {
-                        println!("Error: Invalid version number: {}", version_str);
+                        println!("Error: Invalid version number: {version_str}");
                         return 1;
                     }
                 };
 
                 if let Err(err) = self.convert_wmo(input_path, output_path, version) {
-                    println!("Error: {}", err);
+                    println!("Error: {err}");
                     return 1;
                 }
             }
@@ -83,7 +83,7 @@ impl WmoApp {
                 let output_dir = &args[3];
 
                 if let Err(err) = self.extract_resources(wmo_path, output_dir) {
-                    println!("Error: {}", err);
+                    println!("Error: {err}");
                     return 1;
                 }
             }
@@ -101,7 +101,7 @@ impl WmoApp {
                 let format = if args.len() >= 5 { &args[4] } else { "obj" };
 
                 if let Err(err) = self.export_model(wmo_path, output_dir, format) {
-                    println!("Error: {}", err);
+                    println!("Error: {err}");
                     return 1;
                 }
             }
@@ -122,7 +122,7 @@ impl WmoApp {
                 let output_path = &args[3];
 
                 if let Err(err) = self.edit_wmo(wmo_path, output_path, &args[4..]) {
-                    println!("Error: {}", err);
+                    println!("Error: {err}");
                     return 1;
                 }
             }
@@ -135,12 +135,12 @@ impl WmoApp {
                 let path = &args[2];
 
                 if let Err(err) = self.validate_wmo(path) {
-                    println!("Error: {}", err);
+                    println!("Error: {err}");
                     return 1;
                 }
             }
             _ => {
-                println!("Unknown command: {}", command);
+                println!("Unknown command: {command}");
                 print_usage();
                 return 1;
             }
@@ -151,7 +151,7 @@ impl WmoApp {
 
     /// Show information about a WMO file
     fn show_info(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Loading WMO file: {}", path);
+        println!("Loading WMO file: {path}");
 
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
@@ -189,7 +189,7 @@ impl WmoApp {
                     // Load group file
                     let group_filename = Self::get_group_filename(path, i);
                     if let Ok(group_file) = File::open(&group_filename) {
-                        println!("    Loading group file: {}", group_filename);
+                        println!("    Loading group file: {group_filename}");
                         let mut group_reader = BufReader::new(group_file);
 
                         if let Ok(group_data) = parse_wmo_group(&mut group_reader, i as u32) {
@@ -233,7 +233,7 @@ impl WmoApp {
         println!("\nHeader Flags: {:?}", wmo.header.flags);
 
         if let Some(ref skybox) = wmo.skybox {
-            println!("\nSkybox: {}", skybox);
+            println!("\nSkybox: {skybox}");
         }
 
         Ok(())
@@ -294,7 +294,7 @@ impl WmoApp {
             let group_filename = format!("{}_{:03}.wmo", base_input_path.display(), i);
 
             if let Ok(group_file) = File::open(&group_filename) {
-                println!("Converting group file: {}", group_filename);
+                println!("Converting group file: {group_filename}");
 
                 let mut group_reader = BufReader::new(group_file);
                 let group = parse_wmo_group(&mut group_reader, i as u32)?;
@@ -320,7 +320,7 @@ impl WmoApp {
         wmo_path: &str,
         output_dir: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Extracting resources from: {} to {}", wmo_path, output_dir);
+        println!("Extracting resources from: {wmo_path} to {output_dir}");
 
         // Ensure output directory exists
         fs::create_dir_all(output_dir)?;
@@ -333,9 +333,9 @@ impl WmoApp {
         let wmo = parse_wmo(&mut reader)?;
 
         // Create subdirectories
-        let textures_dir = format!("{}/textures", output_dir);
-        let doodads_dir = format!("{}/doodads", output_dir);
-        let groups_dir = format!("{}/groups", output_dir);
+        let textures_dir = format!("{output_dir}/textures");
+        let doodads_dir = format!("{output_dir}/doodads");
+        let groups_dir = format!("{output_dir}/groups");
 
         fs::create_dir_all(&textures_dir)?;
         fs::create_dir_all(&doodads_dir)?;
@@ -344,19 +344,19 @@ impl WmoApp {
         // Create a list of textures
         if !wmo.textures.is_empty() {
             println!("\nTextures:");
-            let texture_list_path = format!("{}/textures.txt", output_dir);
+            let texture_list_path = format!("{output_dir}/textures.txt");
             let mut texture_list = File::create(texture_list_path)?;
 
             for (i, texture) in wmo.textures.iter().enumerate() {
-                writeln!(texture_list, "{}. {}", i, texture)?;
-                println!("  {}. {}", i, texture);
+                writeln!(texture_list, "{i}. {texture}")?;
+                println!("  {i}. {texture}");
             }
         }
 
         // Create a list of doodads
         if !wmo.doodad_defs.is_empty() {
             println!("\nDoodads:");
-            let doodad_list_path = format!("{}/doodads.txt", output_dir);
+            let doodad_list_path = format!("{output_dir}/doodads.txt");
             let mut doodad_list = File::create(doodad_list_path)?;
 
             for (i, doodad) in wmo.doodad_defs.iter().enumerate() {
@@ -376,7 +376,7 @@ impl WmoApp {
         // Create a list of groups
         if !wmo.groups.is_empty() {
             println!("\nGroups:");
-            let group_list_path = format!("{}/groups.txt", output_dir);
+            let group_list_path = format!("{output_dir}/groups.txt");
             let mut group_list = File::create(group_list_path)?;
 
             for (i, group) in wmo.groups.iter().enumerate() {
@@ -390,7 +390,7 @@ impl WmoApp {
 
                     if let Ok(group_data) = parse_wmo_group(&mut group_reader, i as u32) {
                         // Save group info
-                        let group_info_path = format!("{}/group_{}.txt", groups_dir, i);
+                        let group_info_path = format!("{groups_dir}/group_{i}.txt");
                         let mut group_info = File::create(group_info_path)?;
 
                         writeln!(group_info, "Group: {}", group.name)?;
@@ -437,8 +437,8 @@ impl WmoApp {
             let obj = visualizer.export_to_obj(&wmo, &groups);
             let mtl = visualizer.export_to_mtl(&wmo);
 
-            let obj_path = format!("{}/model.obj", output_dir);
-            let mtl_path = format!("{}/materials.mtl", output_dir);
+            let obj_path = format!("{output_dir}/model.obj");
+            let mtl_path = format!("{output_dir}/materials.mtl");
 
             fs::write(obj_path, obj)?;
             fs::write(mtl_path, mtl)?;
@@ -459,8 +459,7 @@ impl WmoApp {
         format: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         println!(
-            "Exporting WMO: {} to {} format in {}",
-            wmo_path, format, output_dir
+            "Exporting WMO: {wmo_path} to {format} format in {output_dir}"
         );
 
         // Ensure output directory exists
@@ -479,7 +478,7 @@ impl WmoApp {
         for i in 0..wmo.groups.len() {
             let group_filename = Self::get_group_filename(wmo_path, i);
             if let Ok(group_file) = File::open(&group_filename) {
-                println!("Loading group file: {}", group_filename);
+                println!("Loading group file: {group_filename}");
                 let mut group_reader = BufReader::new(group_file);
 
                 if let Ok(group_data) = parse_wmo_group(&mut group_reader, i as u32) {
@@ -501,8 +500,8 @@ impl WmoApp {
                 let obj = visualizer.export_to_obj(&wmo, &groups);
                 let mtl = visualizer.export_to_mtl(&wmo);
 
-                let obj_path = format!("{}/model.obj", output_dir);
-                let mtl_path = format!("{}/materials.mtl", output_dir);
+                let obj_path = format!("{output_dir}/model.obj");
+                let mtl_path = format!("{output_dir}/materials.mtl");
 
                 fs::write(obj_path, obj)?;
                 fs::write(mtl_path, mtl)?;
@@ -510,12 +509,12 @@ impl WmoApp {
                 println!("OBJ/MTL export complete");
             }
             "fbx" | "gltf" => {
-                println!("Export to {} format is not yet implemented", format);
-                return Err(format!("Export to {} format is not yet implemented", format).into());
+                println!("Export to {format} format is not yet implemented");
+                return Err(format!("Export to {format} format is not yet implemented").into());
             }
             _ => {
-                println!("Unknown format: {}", format);
-                return Err(format!("Unknown format: {}", format).into());
+                println!("Unknown format: {format}");
+                return Err(format!("Unknown format: {format}").into());
             }
         }
 
@@ -529,7 +528,7 @@ impl WmoApp {
         output_path: &str,
         operations: &[String],
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Editing WMO: {} -> {}", wmo_path, output_path);
+        println!("Editing WMO: {wmo_path} -> {output_path}");
 
         // Open input file
         let input_file = File::open(wmo_path)?;
@@ -554,7 +553,7 @@ impl WmoApp {
 
                     let factor = operations[i + 1].parse::<f32>()?;
 
-                    println!("Scaling by factor: {}", factor);
+                    println!("Scaling by factor: {factor}");
 
                     // We need to load and scale each group
                     for group_idx in 0..editor.group_count() {
@@ -599,7 +598,7 @@ impl WmoApp {
                     let y = operations[i + 2].parse::<f32>()?;
                     let z = operations[i + 3].parse::<f32>()?;
 
-                    println!("Translating by ({}, {}, {})", x, y, z);
+                    println!("Translating by ({x}, {y}, {z})");
 
                     // We need to load and translate each group
                     for group_idx in 0..editor.group_count() {
@@ -649,7 +648,7 @@ impl WmoApp {
 
                     let group_idx = operations[i + 1].parse::<usize>()?;
 
-                    println!("Removing group: {}", group_idx);
+                    println!("Removing group: {group_idx}");
 
                     // Remove group
                     editor.remove_group(group_idx)?;
@@ -664,13 +663,13 @@ impl WmoApp {
                     let group_idx = operations[i + 1].parse::<usize>()?;
                     let new_name = &operations[i + 2];
 
-                    println!("Renaming group {} to: {}", group_idx, new_name);
+                    println!("Renaming group {group_idx} to: {new_name}");
 
                     // Rename group
                     if let Some(group) = editor.root_mut().groups.get_mut(group_idx) {
                         group.name = new_name.clone();
                     } else {
-                        return Err(format!("Group {} does not exist", group_idx).into());
+                        return Err(format!("Group {group_idx} does not exist").into());
                     }
 
                     i += 3;
@@ -686,8 +685,7 @@ impl WmoApp {
                     let z = operations[i + 4].parse::<f32>()?;
 
                     println!(
-                        "Adding vertex to group {}: ({}, {}, {})",
-                        group_idx, x, y, z
+                        "Adding vertex to group {group_idx}: ({x}, {y}, {z})"
                     );
 
                     // Try to load group file if not already loaded
@@ -702,7 +700,7 @@ impl WmoApp {
                                 editor.add_group(group_data)?;
                             }
                         } else {
-                            return Err(format!("Group {} file not found", group_idx).into());
+                            return Err(format!("Group {group_idx} file not found").into());
                         }
                     }
 
@@ -712,7 +710,7 @@ impl WmoApp {
                     i += 5;
                 }
                 _ => {
-                    return Err(format!("Unknown operation: {}", operation).into());
+                    return Err(format!("Unknown operation: {operation}").into());
                 }
             }
         }
@@ -742,7 +740,7 @@ impl WmoApp {
 
     /// Validate a WMO file
     fn validate_wmo(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Validating WMO file: {}", path);
+        println!("Validating WMO file: {path}");
 
         // Open input file
         let input_file = File::open(path)?;
@@ -762,7 +760,7 @@ impl WmoApp {
         if report.has_errors() {
             println!("Errors: {}", report.error_count());
             for error in &report.errors {
-                println!("  - {}", error);
+                println!("  - {error}");
             }
         } else {
             println!("No errors found!");
@@ -771,7 +769,7 @@ impl WmoApp {
         if report.has_warnings() {
             println!("\nWarnings: {}", report.warning_count());
             for warning in &report.warnings {
-                println!("  - {}", warning);
+                println!("  - {warning}");
             }
         } else {
             println!("No warnings found!");
@@ -782,7 +780,7 @@ impl WmoApp {
             for i in 0..wmo.groups.len() {
                 let group_filename = Self::get_group_filename(path, i);
                 if let Ok(group_file) = File::open(&group_filename) {
-                    println!("\nValidating group file: {}", group_filename);
+                    println!("\nValidating group file: {group_filename}");
                     let mut group_reader = BufReader::new(group_file);
 
                     if let Ok(group_data) = parse_wmo_group(&mut group_reader, i as u32) {
@@ -791,7 +789,7 @@ impl WmoApp {
                         if group_report.has_errors() {
                             println!("Errors: {}", group_report.error_count());
                             for error in &group_report.errors {
-                                println!("  - {}", error);
+                                println!("  - {error}");
                             }
                         } else {
                             println!("No errors found!");
@@ -800,7 +798,7 @@ impl WmoApp {
                         if group_report.has_warnings() {
                             println!("Warnings: {}", group_report.warning_count());
                             for warning in &group_report.warnings {
-                                println!("  - {}", warning);
+                                println!("  - {warning}");
                             }
                         } else {
                             println!("No warnings found!");

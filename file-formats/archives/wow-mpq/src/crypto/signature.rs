@@ -189,27 +189,27 @@ L4MWaiKuOzq08mSyNqPeN8oSy18q848CIHeMn+3s+eOmu7su1UYQl6yH7OrdBd1q
     /// Get the weak signature public key
     pub fn weak_public_key() -> Result<RsaPublicKey> {
         let n = RsaBigUint::from_str_radix(BLIZZARD_WEAK_PUBLIC_KEY_N, 16)
-            .map_err(|e| Error::invalid_format(format!("Invalid weak key modulus: {}", e)))?;
+            .map_err(|e| Error::invalid_format(format!("Invalid weak key modulus: {e}")))?;
         let e = RsaBigUint::from(BLIZZARD_WEAK_PUBLIC_KEY_E);
 
         RsaPublicKey::new(n, e)
-            .map_err(|e| Error::invalid_format(format!("Invalid weak public key: {}", e)))
+            .map_err(|e| Error::invalid_format(format!("Invalid weak public key: {e}")))
     }
 
     /// Get the strong signature public key
     pub fn strong_public_key() -> Result<RsaPublicKey> {
         let n = RsaBigUint::from_str_radix(BLIZZARD_STRONG_PUBLIC_KEY_N, 16)
-            .map_err(|e| Error::invalid_format(format!("Invalid strong key modulus: {}", e)))?;
+            .map_err(|e| Error::invalid_format(format!("Invalid strong key modulus: {e}")))?;
         let e = RsaBigUint::from(BLIZZARD_STRONG_PUBLIC_KEY_E);
 
         RsaPublicKey::new(n, e)
-            .map_err(|e| Error::invalid_format(format!("Invalid strong public key: {}", e)))
+            .map_err(|e| Error::invalid_format(format!("Invalid strong public key: {e}")))
     }
 
     /// Get the weak signature private key (for testing/educational purposes only)
     pub fn weak_private_key() -> Result<RsaPrivateKey> {
         RsaPrivateKey::from_pkcs1_pem(BLIZZARD_WEAK_PRIVATE_KEY_PEM)
-            .map_err(|e| Error::invalid_format(format!("Failed to parse weak private key: {}", e)))
+            .map_err(|e| Error::invalid_format(format!("Failed to parse weak private key: {e}")))
     }
 }
 
@@ -325,11 +325,7 @@ pub fn calculate_mpq_hash_md5<R: Read + std::io::Seek>(
             }
 
             log::debug!(
-                "Chunk 0x{:X}-0x{:X}: zeroed signature bytes [{}-{}]",
-                current_pos,
-                chunk_end_pos,
-                chunk_sig_start,
-                chunk_sig_end
+                "Chunk 0x{current_pos:X}-0x{chunk_end_pos:X}: zeroed signature bytes [{chunk_sig_start}-{chunk_sig_end}]"
             );
         }
 
@@ -382,7 +378,7 @@ pub fn verify_weak_signature_stormlib<R: Read + std::io::Seek>(
         decrypted_bytes.len(),
         &decrypted_bytes[0..16.min(decrypted_bytes.len())]
     );
-    log::debug!("Expected hash: {:02X?}", hash);
+    log::debug!("Expected hash: {hash:02X?}");
     verify_pkcs1_v15_md5(&decrypted_bytes, &hash)
 }
 
@@ -554,9 +550,7 @@ fn verify_mpq_strong_signature_padding(decrypted: &[u8], expected_hash: &[u8]) -
     for (i, &byte) in decrypted.iter().enumerate().take(236).skip(1) {
         if byte != 0xBB {
             log::debug!(
-                "Invalid padding byte at position {}: expected 0xBB, got 0x{:02X}",
-                i,
-                byte
+                "Invalid padding byte at position {i}: expected 0xBB, got 0x{byte:02X}"
             );
             return Ok(false);
         }
@@ -566,8 +560,8 @@ fn verify_mpq_strong_signature_padding(decrypted: &[u8], expected_hash: &[u8]) -
     let signature_hash = &decrypted[236..256];
     if signature_hash != expected_hash {
         log::debug!("Hash mismatch in strong signature");
-        log::debug!("Expected: {:02X?}", expected_hash);
-        log::debug!("Got:      {:02X?}", signature_hash);
+        log::debug!("Expected: {expected_hash:02X?}");
+        log::debug!("Got:      {signature_hash:02X?}");
         return Ok(false);
     }
 
@@ -585,7 +579,7 @@ pub fn generate_weak_signature<R: Read + std::io::Seek>(
 
     // Calculate MD5 hash using StormLib's approach
     let hash = calculate_mpq_hash_md5(reader, signature_info)?;
-    log::debug!("MD5 hash for signing: {:02X?}", hash);
+    log::debug!("MD5 hash for signing: {hash:02X?}");
 
     // Create PKCS#1 v1.5 padded message
     let padded_message = create_pkcs1_v15_padding_md5(&hash)?;
@@ -914,7 +908,7 @@ mod tests {
             vec![],
         );
 
-        log::debug!("Generating signature with sig_info: {:?}", sig_info);
+        log::debug!("Generating signature with sig_info: {sig_info:?}");
 
         // Generate signature
         let cursor = Cursor::new(&test_data);
@@ -932,7 +926,7 @@ mod tests {
         let mut sig_info_verify = sig_info.clone();
         sig_info_verify.signature = signature_file.clone();
 
-        log::debug!("Verifying with sig_info: {:?}", sig_info_verify);
+        log::debug!("Verifying with sig_info: {sig_info_verify:?}");
 
         let result = verify_weak_signature_stormlib(cursor, &signature, &sig_info_verify).unwrap();
         assert!(result, "Generated signature should verify successfully");

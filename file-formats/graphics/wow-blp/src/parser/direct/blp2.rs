@@ -40,7 +40,7 @@ pub fn parse_raw3<'a>(
             });
         }
 
-        trace!("Expecting size of image: {}", size);
+        trace!("Expecting size of image: {size}");
         let image_bytes = &original_input[offset as usize..(offset + size) as usize];
         trace!("We have {} bytes", image_bytes.len());
         let n = blp_header.mipmap_pixels(i);
@@ -67,7 +67,7 @@ pub fn parse_raw3<'a>(
             .skip(1)
         {
             if size == 0 {
-                trace!("Size of mipmap {} is 0 bytes, I stop reading of images", i);
+                trace!("Size of mipmap {i} is 0 bytes, I stop reading of images");
                 break;
             }
             read_image(i)?;
@@ -85,7 +85,7 @@ pub fn parse_dxtn<'a>(
     images: &mut Vec<DxtnImage>,
     _input: &'a [u8],
 ) -> ParseResult<()> {
-    trace!("{:?}", blp_header);
+    trace!("{blp_header:?}");
 
     let mut read_image = |i: usize| -> ParseResult<()> {
         let offset = offsets[i];

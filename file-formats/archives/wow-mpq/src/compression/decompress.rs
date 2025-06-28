@@ -40,7 +40,7 @@ pub fn decompress(data: &[u8], method: u8, decompressed_size: usize) -> Result<V
             algorithms::adpcm::decompress_stereo(data, decompressed_size)
         }
         CompressionMethod::Multiple(flags) => {
-            log::debug!("Multiple compression with flags 0x{:02X}", flags);
+            log::debug!("Multiple compression with flags 0x{flags:02X}");
             decompress_multiple(data, flags, decompressed_size)
         }
     }
@@ -53,8 +53,7 @@ fn decompress_multiple(data: &[u8], flags: u8, expected_size: usize) -> Result<V
     }
 
     log::debug!(
-        "Decompressing multiple compression with flags 0x{:02X}",
-        flags
+        "Decompressing multiple compression with flags 0x{flags:02X}"
     );
 
     // Check which compression methods are present
@@ -123,7 +122,7 @@ fn decompress_multiple(data: &[u8], flags: u8, expected_size: usize) -> Result<V
 
     // Step 3: Decompress ADPCM if present (applied last since it was first during compression)
     if let Some(adpcm_type) = adpcm_type {
-        log::debug!("Decompressing ADPCM {}", adpcm_type);
+        log::debug!("Decompressing ADPCM {adpcm_type}");
         current_data = match adpcm_type {
             "mono" => algorithms::adpcm::decompress_mono(&current_data, expected_size)?,
             "stereo" => algorithms::adpcm::decompress_stereo(&current_data, expected_size)?,

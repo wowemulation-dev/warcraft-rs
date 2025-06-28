@@ -91,7 +91,7 @@ impl TestArchiveConfig {
         };
 
         Self {
-            name: format!("compressed_{}", compression_type),
+            name: format!("compressed_{compression_type}"),
             version: FormatVersion::V2,
             files: vec![
                 TestFile {

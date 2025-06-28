@@ -130,10 +130,10 @@ mod tests {
         let index = hash_offset & (hash_table_size - 1);
 
         // Print for debugging
-        println!("Hash A: 0x{:08X}", hash_a);
-        println!("Hash B: 0x{:08X}", hash_b);
-        println!("Hash offset: 0x{:08X}", hash_offset);
-        println!("Table index: 0x{:04X}", index);
+        println!("Hash A: 0x{hash_a:08X}");
+        println!("Hash B: 0x{hash_b:08X}");
+        println!("Hash offset: 0x{hash_offset:08X}");
+        println!("Table index: 0x{index:04X}");
 
         // Verify we get consistent hash values
         assert_eq!(hash_offset, 0x5F3DE859);

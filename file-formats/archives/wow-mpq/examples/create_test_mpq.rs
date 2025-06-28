@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "edge-cases" => create_edge_cases_archive(output_path)?,
             "comprehensive" => create_comprehensive_archive(output_path, version)?,
             _ => {
-                eprintln!("Unknown archive type: {}", archive_type);
+                eprintln!("Unknown archive type: {archive_type}");
                 std::process::exit(1);
             }
         }
@@ -108,12 +108,12 @@ fn create_minimal_archive(
         3 => FormatVersion::V3,
         4 => FormatVersion::V4,
         _ => {
-            eprintln!("Invalid version: {}. Must be 1-4", version);
+            eprintln!("Invalid version: {version}. Must be 1-4");
             return Err("Invalid version".into());
         }
     };
 
-    let archive_path = output_path.join(format!("minimal_v{}.mpq", version));
+    let archive_path = output_path.join(format!("minimal_v{version}.mpq"));
     println!(
         "Creating minimal v{} archive: {}",
         version,
@@ -143,12 +143,12 @@ fn create_compressed_archive(
         "lzma" => compression::flags::LZMA,
         "sparse" => compression::flags::SPARSE,
         _ => {
-            eprintln!("Unknown compression type: {}", compression_type);
+            eprintln!("Unknown compression type: {compression_type}");
             return Err("Unknown compression".into());
         }
     };
 
-    let archive_path = output_path.join(format!("compressed_{}.mpq", compression_type));
+    let archive_path = output_path.join(format!("compressed_{compression_type}.mpq"));
     println!(
         "Creating compressed ({}) archive: {}",
         compression_type,
@@ -260,12 +260,12 @@ fn create_comprehensive_archive(
         3 => FormatVersion::V3,
         4 => FormatVersion::V4,
         _ => {
-            eprintln!("Invalid version: {}. Must be 1-4", version);
+            eprintln!("Invalid version: {version}. Must be 1-4");
             return Err("Invalid version".into());
         }
     };
 
-    let archive_path = output_path.join(format!("comprehensive_v{}.mpq", version));
+    let archive_path = output_path.join(format!("comprehensive_v{version}.mpq"));
     println!(
         "Creating comprehensive v{} archive: {}",
         version,

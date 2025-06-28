@@ -6,7 +6,7 @@ where
     Q: AsRef<Path>,
 {
     let mut base = path.as_ref().parent()?.join(path.as_ref().file_stem()?);
-    let extension = format!("b{:02}", i);
+    let extension = format!("b{i:02}");
     base.set_extension(extension);
     Some(base)
 }

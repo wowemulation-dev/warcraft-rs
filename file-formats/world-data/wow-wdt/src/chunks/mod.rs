@@ -404,7 +404,7 @@ impl Chunk for ModfChunk {
         if size % 64 != 0 {
             return Err(Error::InvalidChunkData {
                 chunk: "MODF".to_string(),
-                message: format!("Size {} is not a multiple of 64", size),
+                message: format!("Size {size} is not a multiple of 64"),
             });
         }
 

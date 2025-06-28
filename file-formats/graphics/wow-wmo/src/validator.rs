@@ -90,7 +90,7 @@ impl WmoValidator {
                 && material.texture1 as usize >= wmo.textures.len()
             {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("material[{}].texture1", i),
+                    field: format!("material[{i}].texture1"),
                     value: material.texture1,
                     max: wmo.textures.len() as u32 - 1,
                 });
@@ -101,7 +101,7 @@ impl WmoValidator {
                 && material.texture2 as usize >= wmo.textures.len()
             {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("material[{}].texture2", i),
+                    field: format!("material[{i}].texture2"),
                     value: material.texture2,
                     max: wmo.textures.len() as u32 - 1,
                 });
@@ -111,7 +111,7 @@ impl WmoValidator {
             // Special values above 0xFF000000 are used as markers
             if material.shader > 20 && material.shader < SPECIAL_TEXTURE_THRESHOLD {
                 report.add_warning(ValidationWarning::UnusualValue {
-                    field: format!("material[{}].shader", i),
+                    field: format!("material[{i}].shader"),
                     value: material.shader,
                     explanation: "Shader ID is unusually high".to_string(),
                 });
@@ -123,7 +123,7 @@ impl WmoValidator {
             let end_index = set.start_doodad + set.n_doodads;
             if end_index > wmo.doodad_defs.len() as u32 {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("doodad_set[{}]", i),
+                    field: format!("doodad_set[{i}]"),
                     value: end_index,
                     max: wmo.doodad_defs.len() as u32,
                 });
@@ -134,7 +134,7 @@ impl WmoValidator {
         for (i, portal_ref) in wmo.portal_references.iter().enumerate() {
             if portal_ref.portal_index as usize >= wmo.portals.len() {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("portal_reference[{}].portal_index", i),
+                    field: format!("portal_reference[{i}].portal_index"),
                     value: portal_ref.portal_index as u32,
                     max: wmo.portals.len() as u32 - 1,
                 });
@@ -142,7 +142,7 @@ impl WmoValidator {
 
             if portal_ref.group_index as usize >= wmo.groups.len() {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("portal_reference[{}].group_index", i),
+                    field: format!("portal_reference[{i}].group_index"),
                     value: portal_ref.group_index as u32,
                     max: wmo.groups.len() as u32 - 1,
                 });
@@ -150,7 +150,7 @@ impl WmoValidator {
 
             if portal_ref.side > 1 {
                 report.add_error(ValidationError::InvalidValue {
-                    field: format!("portal_reference[{}].side", i),
+                    field: format!("portal_reference[{i}].side"),
                     value: portal_ref.side as u32,
                     explanation: "Portal side must be 0 or 1".to_string(),
                 });
@@ -178,7 +178,7 @@ impl WmoValidator {
         for (i, portal) in wmo.portals.iter().enumerate() {
             if portal.vertices.is_empty() {
                 report.add_warning(ValidationWarning::UnusualStructure {
-                    field: format!("portal[{}]", i),
+                    field: format!("portal[{i}]"),
                     explanation: "Portal has no vertices".to_string(),
                 });
             }
@@ -200,7 +200,7 @@ impl WmoValidator {
             // Check if length is significantly different from 1.0
             if (length_squared - 1.0).abs() > 0.01 {
                 report.add_warning(ValidationWarning::UnusualValue {
-                    field: format!("portal[{}].normal", i),
+                    field: format!("portal[{i}].normal"),
                     value: length_squared as u32,
                     explanation: "Portal normal is not normalized".to_string(),
                 });
@@ -260,7 +260,7 @@ impl WmoValidator {
             let end_index = batch.start_index + batch.count as u32;
             if end_index > group.indices.len() as u32 {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("batch[{}].indices", i),
+                    field: format!("batch[{i}].indices"),
                     value: end_index,
                     max: group.indices.len() as u32,
                 });
@@ -268,7 +268,7 @@ impl WmoValidator {
 
             if batch.end_vertex as usize > group.vertices.len() {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("batch[{}].end_vertex", i),
+                    field: format!("batch[{i}].end_vertex"),
                     value: batch.end_vertex as u32,
                     max: group.vertices.len() as u32,
                 });
@@ -279,7 +279,7 @@ impl WmoValidator {
         for (i, &index) in group.indices.iter().enumerate() {
             if index as usize >= group.vertices.len() {
                 report.add_error(ValidationError::InvalidReference {
-                    field: format!("indices[{}]", i),
+                    field: format!("indices[{i}]"),
                     value: index as u32,
                     max: group.vertices.len() as u32 - 1,
                 });
@@ -428,7 +428,7 @@ impl WmoValidator {
                 || vertex.z > group.header.bounding_box.max.z
             {
                 report.add_warning(ValidationWarning::OutOfBounds {
-                    field: format!("vertex[{}]", i),
+                    field: format!("vertex[{i}]"),
                     value: format!("({}, {}, {})", vertex.x, vertex.y, vertex.z),
                     bounds: format!(
                         "({}, {}, {}) - ({}, {}, {})",
@@ -507,14 +507,14 @@ impl ValidationReport {
         if self.has_errors() {
             println!("Validation Errors:");
             for error in &self.errors {
-                println!("  - {}", error);
+                println!("  - {error}");
             }
         }
 
         if self.has_warnings() {
             println!("Validation Warnings:");
             for warning in &self.warnings {
-                println!("  - {}", warning);
+                println!("  - {warning}");
             }
         }
 
@@ -557,7 +557,7 @@ pub enum ValidationError {
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::UnsupportedVersion(version) => write!(f, "Unsupported WMO version: {}", version),
+            Self::UnsupportedVersion(version) => write!(f, "Unsupported WMO version: {version}"),
             Self::CountMismatch {
                 field,
                 expected,
@@ -565,15 +565,13 @@ impl std::fmt::Display for ValidationError {
             } => {
                 write!(
                     f,
-                    "Count mismatch for {}: expected {}, found {}",
-                    field, expected, actual
+                    "Count mismatch for {field}: expected {expected}, found {actual}"
                 )
             }
             Self::InvalidReference { field, value, max } => {
                 write!(
                     f,
-                    "Invalid reference in {}: {}, max allowed: {}",
-                    field, value, max
+                    "Invalid reference in {field}: {value}, max allowed: {max}"
                 )
             }
             Self::InvalidValue {
@@ -581,13 +579,13 @@ impl std::fmt::Display for ValidationError {
                 value,
                 explanation,
             } => {
-                write!(f, "Invalid value in {}: {} ({})", field, value, explanation)
+                write!(f, "Invalid value in {field}: {value} ({explanation})")
             }
             Self::InvalidBoundingBox { min, max } => {
-                write!(f, "Invalid bounding box: min {} exceeds max {}", min, max)
+                write!(f, "Invalid bounding box: min {min} exceeds max {max}")
             }
             Self::EmptyData { field, explanation } => {
-                write!(f, "Empty data for {}: {}", field, explanation)
+                write!(f, "Empty data for {field}: {explanation}")
             }
         }
     }
@@ -637,8 +635,7 @@ impl std::fmt::Display for ValidationWarning {
             } => {
                 write!(
                     f,
-                    "Flag inconsistency with {}: {} ({})",
-                    flag, field, explanation
+                    "Flag inconsistency with {flag}: {field} ({explanation})"
                 )
             }
             Self::UnusualValue {
@@ -646,16 +643,16 @@ impl std::fmt::Display for ValidationWarning {
                 value,
                 explanation,
             } => {
-                write!(f, "Unusual value in {}: {} ({})", field, value, explanation)
+                write!(f, "Unusual value in {field}: {value} ({explanation})")
             }
             Self::UnusualStructure { field, explanation } => {
-                write!(f, "Unusual structure in {}: {}", field, explanation)
+                write!(f, "Unusual structure in {field}: {explanation}")
             }
             Self::MissingData { field, explanation } => {
-                write!(f, "Missing data for {}: {}", field, explanation)
+                write!(f, "Missing data for {field}: {explanation}")
             }
             Self::EmptyData { field, explanation } => {
-                write!(f, "Empty data for {}: {}", field, explanation)
+                write!(f, "Empty data for {field}: {explanation}")
             }
             Self::OutOfBounds {
                 field,
@@ -664,8 +661,7 @@ impl std::fmt::Display for ValidationWarning {
             } => {
                 write!(
                     f,
-                    "{} is out of bounds: {} not within {}",
-                    field, value, bounds
+                    "{field} is out of bounds: {value} not within {bounds}"
                 )
             }
         }

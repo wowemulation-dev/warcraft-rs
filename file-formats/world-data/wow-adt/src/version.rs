@@ -93,7 +93,7 @@ impl std::fmt::Display for AdtVersion {
             AdtVersion::Shadowlands => "Shadowlands (9.x)",
             AdtVersion::Dragonflight => "Dragonflight (10.x)",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

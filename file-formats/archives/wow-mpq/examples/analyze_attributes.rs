@@ -1,7 +1,7 @@
 use wow_mpq::Archive;
 
 fn analyze_attributes(path: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n=== Analyzing {} attributes file ===", name);
+    println!("\n=== Analyzing {name} attributes file ===");
 
     let mut archive = Archive::open(path)?;
 
@@ -14,7 +14,7 @@ fn analyze_attributes(path: &str, name: &str) -> Result<(), Box<dyn std::error::
             for (i, chunk) in data.chunks(16).enumerate() {
                 print!("{:04X}: ", i * 16);
                 for &byte in chunk {
-                    print!("{:02X} ", byte);
+                    print!("{byte:02X} ");
                 }
                 // Pad if less than 16 bytes
                 for _ in chunk.len()..16 {
@@ -36,8 +36,8 @@ fn analyze_attributes(path: &str, name: &str) -> Result<(), Box<dyn std::error::
                 let version = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
                 let flags = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
                 println!("\nParsed structure:");
-                println!("  Version: {} (0x{:X})", version, version);
-                println!("  Flags: {} (0x{:X})", flags, flags);
+                println!("  Version: {version} (0x{version:X})");
+                println!("  Flags: {flags} (0x{flags:X})");
 
                 // Check what flags mean
                 println!("  Flag bits:");
@@ -67,22 +67,20 @@ fn analyze_attributes(path: &str, name: &str) -> Result<(), Box<dyn std::error::
                     let entry_size = 4 + 8 + 16; // 28 bytes
                     let file_count = remaining / entry_size;
                     println!(
-                        "  Estimated file count: {} (assuming {} bytes per entry)",
-                        file_count, entry_size
+                        "  Estimated file count: {file_count} (assuming {entry_size} bytes per entry)"
                     );
                 } else if flags & 0x01 != 0 {
                     // Just CRC32
                     let entry_size = 4;
                     let file_count = remaining / entry_size;
                     println!(
-                        "  Estimated file count: {} (assuming {} bytes per entry)",
-                        file_count, entry_size
+                        "  Estimated file count: {file_count} (assuming {entry_size} bytes per entry)"
                     );
                 }
             }
         }
         Err(e) => {
-            println!("Failed to read (attributes) file: {}", e);
+            println!("Failed to read (attributes) file: {e}");
         }
     }
 

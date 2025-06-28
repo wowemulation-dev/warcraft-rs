@@ -17,7 +17,7 @@ fn main() {
     ];
 
     for filename in &test_files {
-        println!("File: {}", filename);
+        println!("File: {filename}");
         println!("{}", "-".repeat(60));
 
         // Classic MPQ hash (used for hash tables in v1/v2)
@@ -27,23 +27,22 @@ fn main() {
         let name_b = hash_string(filename, hash_type::NAME_B);
         let file_key = hash_string(filename, hash_type::FILE_KEY);
 
-        println!("  TABLE_OFFSET: 0x{:08X}", table_offset);
-        println!("  NAME_A:       0x{:08X}", name_a);
-        println!("  NAME_B:       0x{:08X}", name_b);
-        println!("  FILE_KEY:     0x{:08X} (for encryption)", file_key);
+        println!("  TABLE_OFFSET: 0x{table_offset:08X}");
+        println!("  NAME_A:       0x{name_a:08X}");
+        println!("  NAME_B:       0x{name_b:08X}");
+        println!("  FILE_KEY:     0x{file_key:08X} (for encryption)");
 
         // Jenkins one-at-a-time (used for BET tables in v3+)
         println!("\nJenkins one-at-a-time (BET tables):");
         let bet_hash = jenkins_hash(filename);
-        println!("  BET hash:     0x{:016X}", bet_hash);
+        println!("  BET hash:     0x{bet_hash:016X}");
 
         // Jenkins hashlittle2 (used for HET tables in v3+)
         println!("\nJenkins hashlittle2 (HET tables):");
         for hash_bits in &[8u32, 48, 64] {
             let (file_hash, name_hash1) = het_hash(filename, *hash_bits);
             println!(
-                "  {}-bit hash:  0x{:016X}, NameHash1: 0x{:02X}",
-                hash_bits, file_hash, name_hash1
+                "  {hash_bits}-bit hash:  0x{file_hash:016X}, NameHash1: 0x{name_hash1:02X}"
             );
         }
 
@@ -65,19 +64,19 @@ fn main() {
     println!("MPQ hash (TABLE_OFFSET) for path variations:");
     for path in &variations {
         let hash = hash_string(path, hash_type::TABLE_OFFSET);
-        println!("  {:30} -> 0x{:08X}", path, hash);
+        println!("  {path:30} -> 0x{hash:08X}");
     }
 
     println!("\nJenkins one-at-a-time for path variations:");
     for path in &variations {
         let hash = jenkins_hash(path);
-        println!("  {:30} -> 0x{:016X}", path, hash);
+        println!("  {path:30} -> 0x{hash:016X}");
     }
 
     println!("\nJenkins hashlittle2 (48-bit) for path variations:");
     for path in &variations {
         let (hash, _) = het_hash(path, 48);
-        println!("  {:30} -> 0x{:016X}", path, hash);
+        println!("  {path:30} -> 0x{hash:016X}");
     }
 
     // Show special files
@@ -92,12 +91,11 @@ fn main() {
         let file_key = hash_string(filename, hash_type::FILE_KEY);
         let (het_hash_48, name_hash) = het_hash(filename, 48);
 
-        println!("{}:", filename);
-        println!("  MPQ TABLE_OFFSET: 0x{:08X}", hash_offset);
-        println!("  MPQ FILE_KEY:     0x{:08X}", file_key);
+        println!("{filename}:");
+        println!("  MPQ TABLE_OFFSET: 0x{hash_offset:08X}");
+        println!("  MPQ FILE_KEY:     0x{file_key:08X}");
         println!(
-            "  HET 48-bit:       0x{:016X} (NameHash1: 0x{:02X})",
-            het_hash_48, name_hash
+            "  HET 48-bit:       0x{het_hash_48:016X} (NameHash1: 0x{name_hash:02X})"
         );
     }
 }

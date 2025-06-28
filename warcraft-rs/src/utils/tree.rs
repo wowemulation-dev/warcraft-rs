@@ -238,7 +238,7 @@ fn render_node(
         let mut meta_parts = Vec::new();
         for (key, value) in &node.metadata {
             if ["version", "count", "flags", "type"].contains(&key.as_str()) {
-                meta_parts.push(format!("{}:{}", key, value));
+                meta_parts.push(format!("{key}:{value}"));
             }
         }
         if !meta_parts.is_empty() {
@@ -258,7 +258,7 @@ fn render_node(
         } else {
             "│   "
         };
-        let meta_prefix = format!("{}{}    ", prefix, child_prefix);
+        let meta_prefix = format!("{prefix}{child_prefix}    ");
 
         for (key, value) in &node.metadata {
             let meta_style = Style::new().dim();
@@ -280,7 +280,7 @@ fn render_node(
         } else {
             "│   "
         };
-        let ref_prefix = format!("{}{}    ", prefix, child_prefix);
+        let ref_prefix = format!("{prefix}{child_prefix}    ");
 
         for ext_ref in &node.external_refs {
             let icon = ext_ref.icon();

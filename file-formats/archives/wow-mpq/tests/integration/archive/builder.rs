@@ -239,8 +239,8 @@ fn test_hash_table_sizing() {
     let mut builder = ArchiveBuilder::new();
     for i in 0..50 {
         builder = builder.add_file_data(
-            format!("File {}", i).into_bytes(),
-            &format!("file_{:03}.txt", i),
+            format!("File {i}").into_bytes(),
+            &format!("file_{i:03}.txt"),
         );
     }
 
@@ -249,11 +249,11 @@ fn test_hash_table_sizing() {
     // Verify all files can be found
     let mut archive = Archive::open(&archive_path).unwrap();
     for i in 0..50 {
-        let filename = format!("file_{:03}.txt", i);
+        let filename = format!("file_{i:03}.txt");
         assert!(archive.find_file(&filename).unwrap().is_some());
 
         let data = archive.read_file(&filename).unwrap();
-        assert_eq!(data, format!("File {}", i).as_bytes());
+        assert_eq!(data, format!("File {i}").as_bytes());
     }
 }
 

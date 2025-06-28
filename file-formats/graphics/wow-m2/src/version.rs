@@ -43,8 +43,7 @@ impl M2Version {
         let parts: Vec<&str> = s.split('.').collect();
         if parts.is_empty() {
             return Err(crate::error::M2Error::UnsupportedVersion(format!(
-                "Invalid version string: {}",
-                s
+                "Invalid version string: {s}"
             )));
         }
 
@@ -69,8 +68,7 @@ impl M2Version {
             11 => M2Version::TheWarWithin,
             _ => {
                 return Err(crate::error::M2Error::UnsupportedVersion(format!(
-                    "Unknown WoW version: {}",
-                    major
+                    "Unknown WoW version: {major}"
                 )));
             }
         })

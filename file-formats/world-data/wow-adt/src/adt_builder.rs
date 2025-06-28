@@ -176,8 +176,7 @@ impl AdtBuilder {
 
         if chunk_idx >= self.heights.len() {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid chunk indices: ({}, {})",
-                chunk_x, chunk_y
+                "Invalid chunk indices: ({chunk_x}, {chunk_y})"
             )));
         }
 
@@ -207,8 +206,7 @@ impl AdtBuilder {
 
         if chunk_idx >= self.heights.len() {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid chunk indices: ({}, {})",
-                chunk_x, chunk_y
+                "Invalid chunk indices: ({chunk_x}, {chunk_y})"
             )));
         }
 
@@ -216,8 +214,7 @@ impl AdtBuilder {
 
         if vertex_idx >= 145 {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid vertex indices: ({}, {})",
-                vertex_x, vertex_y
+                "Invalid vertex indices: ({vertex_x}, {vertex_y})"
             )));
         }
 
@@ -241,15 +238,13 @@ impl AdtBuilder {
 
         if chunk_idx >= self.layers.len() {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid chunk indices: ({}, {})",
-                chunk_x, chunk_y
+                "Invalid chunk indices: ({chunk_x}, {chunk_y})"
             )));
         }
 
         if texture_id >= self.textures.len() as u32 {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid texture ID: {}",
-                texture_id
+                "Invalid texture ID: {texture_id}"
             )));
         }
 
@@ -301,8 +296,7 @@ impl AdtBuilder {
     ) -> Result<()> {
         if model_id >= self.models.len() as u32 {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid model ID: {}",
-                model_id
+                "Invalid model ID: {model_id}"
             )));
         }
 
@@ -334,8 +328,7 @@ impl AdtBuilder {
     ) -> Result<()> {
         if wmo_id >= self.wmos.len() as u32 {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid WMO ID: {}",
-                wmo_id
+                "Invalid WMO ID: {wmo_id}"
             )));
         }
 
@@ -373,8 +366,7 @@ impl AdtBuilder {
 
         if chunk_idx >= self.water_chunks.len() {
             return Err(crate::error::AdtError::ParseError(format!(
-                "Invalid chunk indices: ({}, {})",
-                chunk_x, chunk_y
+                "Invalid chunk indices: ({chunk_x}, {chunk_y})"
             )));
         }
 
@@ -917,7 +909,7 @@ pub fn create_terrain_from_heightmap<P: AsRef<std::path::Path>>(
 
     // Open the heightmap image
     let img = open(heightmap_path).map_err(|e| {
-        crate::error::AdtError::ParseError(format!("Failed to open heightmap image: {}", e))
+        crate::error::AdtError::ParseError(format!("Failed to open heightmap image: {e}"))
     })?;
 
     // Resize to 145x145 if needed

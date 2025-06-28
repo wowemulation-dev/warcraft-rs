@@ -92,10 +92,7 @@ impl BetTable {
         let ext_data_size = u32::from_le_bytes([data[8], data[9], data[10], data[11]]);
 
         log::debug!(
-            "BET extended header: sig=0x{:08X}, ver={}, data_size={}",
-            ext_signature,
-            ext_version,
-            ext_data_size
+            "BET extended header: sig=0x{ext_signature:08X}, ver={ext_version}, data_size={ext_data_size}"
         );
 
         // Verify extended header
@@ -112,8 +109,7 @@ impl BetTable {
         // The data after the extended header may be encrypted
         if key != 0 && data.len() > 12 {
             log::debug!(
-                "Decrypting BET data after extended header with key 0x{:08X}",
-                key
+                "Decrypting BET data after extended header with key 0x{key:08X}"
             );
             let data_portion = &mut data[12..];
             decrypt_table_data(data_portion, key);
@@ -124,9 +120,7 @@ impl BetTable {
         let expected_uncompressed_size = ext_data_size as usize + 12; // data_size + header
 
         log::debug!(
-            "BET table total_size={}, expected_uncompressed_size={}",
-            total_size,
-            expected_uncompressed_size
+            "BET table total_size={total_size}, expected_uncompressed_size={expected_uncompressed_size}"
         );
 
         let table_data = if expected_uncompressed_size > total_size {
@@ -141,7 +135,7 @@ impl BetTable {
 
             // First byte after extended header is compression type
             let compression_type = data[12];
-            log::debug!("BET compression type: 0x{:02X}", compression_type);
+            log::debug!("BET compression type: 0x{compression_type:02X}");
 
             // Decompress the data (skip extended header and compression byte)
             let compressed_data = &data[13..];
@@ -176,21 +170,10 @@ impl BetTable {
         let bit_index_flag_index = header.bit_index_flag_index;
 
         log::debug!(
-            "BET header: file_count={}, table_entry_size={} bits, flag_count={}",
-            file_count,
-            table_entry_size,
-            flag_count
+            "BET header: file_count={file_count}, table_entry_size={table_entry_size} bits, flag_count={flag_count}"
         );
         log::debug!(
-            "BET field bits: file_pos={} at {}, file_size={} at {}, cmp_size={} at {}, flag_index={} at {}",
-            bit_count_file_pos,
-            bit_index_file_pos,
-            bit_count_file_size,
-            bit_index_file_size,
-            bit_count_cmp_size,
-            bit_index_cmp_size,
-            bit_count_flag_index,
-            bit_index_flag_index
+            "BET field bits: file_pos={bit_count_file_pos} at {bit_index_file_pos}, file_size={bit_count_file_size} at {bit_index_file_size}, cmp_size={bit_count_cmp_size} at {bit_index_cmp_size}, flag_index={bit_count_flag_index} at {bit_index_flag_index}"
         );
 
         // No need to validate signature/version - they're in the extended header
@@ -262,23 +245,19 @@ impl BetTable {
         let file_count = self.header.file_count;
         if index >= file_count {
             log::debug!(
-                "BET get_file_info: index {} >= file_count {}",
-                index,
-                file_count
+                "BET get_file_info: index {index} >= file_count {file_count}"
             );
             return None;
         }
 
-        log::debug!("BET get_file_info: getting info for file index {}", index);
+        log::debug!("BET get_file_info: getting info for file index {index}");
 
         // Calculate the bit position for this entry
         let table_entry_size = self.header.table_entry_size as usize;
         let entry_bit_position = index as usize * table_entry_size;
 
         log::debug!(
-            "BET get_file_info: entry at bit position {}, entry size {} bits",
-            entry_bit_position,
-            table_entry_size
+            "BET get_file_info: entry at bit position {entry_bit_position}, entry size {table_entry_size} bits"
         );
 
         // Read each field directly from the bit stream
@@ -303,11 +282,7 @@ impl BetTable {
         )? as u32;
 
         log::debug!(
-            "BET get_file_info: file_pos=0x{:X}, file_size={}, cmp_size={}, flag_index={}",
-            file_pos,
-            file_size,
-            cmp_size,
-            flag_index
+            "BET get_file_info: file_pos=0x{file_pos:X}, file_size={file_size}, cmp_size={cmp_size}, flag_index={flag_index}"
         );
 
         // Get flags
@@ -332,7 +307,7 @@ impl BetTable {
         }
 
         if bit_count > 64 {
-            log::warn!("read_bits_from_table: bit_count {} > 64", bit_count);
+            log::warn!("read_bits_from_table: bit_count {bit_count} > 64");
             return None;
         }
 

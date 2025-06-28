@@ -436,7 +436,7 @@ fn execute_tree(
                     // MARE chunks reference the corresponding ADT heightmap data
                     let base_name = file_name.trim_end_matches(".wdl");
                     chunk_node = chunk_node.with_external_ref(
-                        &format!("{}/*.adt", base_name),
+                        &format!("{base_name}/*.adt"),
                         detect_ref_type("file.adt"),
                     );
                 }
@@ -470,8 +470,8 @@ fn execute_tree(
                             let x = i % 64;
                             let y = i / 64;
                             let tile_node =
-                                TreeNode::new(format!("[{:02},{:02}]", x, y), NodeType::Data)
-                                    .with_metadata("offset", &format!("0x{:08X}", offset))
+                                TreeNode::new(format!("[{x:02},{y:02}]"), NodeType::Data)
+                                    .with_metadata("offset", &format!("0x{offset:08X}"))
                                     .with_metadata("has_heightmap", "true");
 
                             chunk_node = chunk_node.add_child(tile_node);
@@ -500,7 +500,7 @@ fn execute_tree(
                 if !compact {
                     for (i, filename) in wdl.wmo_filenames.iter().enumerate().take(5) {
                         let wmo_node =
-                            TreeNode::new(format!("[{}] {}", i, filename), NodeType::File);
+                            TreeNode::new(format!("[{i}] {filename}"), NodeType::File);
                         chunk_node = chunk_node.add_child(wmo_node);
                     }
 

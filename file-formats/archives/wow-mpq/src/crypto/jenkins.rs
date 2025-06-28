@@ -322,8 +322,8 @@ mod tests {
         let (hash, name_hash1) = jenkins_hashlittle2("(attributes)", 48);
 
         println!("HET hash for '(attributes)' with 48-bit hash:");
-        println!("  Full hash: 0x{:016X}", hash);
-        println!("  NameHash1: 0x{:02X}", name_hash1);
+        println!("  Full hash: 0x{hash:016X}");
+        println!("  NameHash1: 0x{name_hash1:02X}");
 
         assert_eq!(
             name_hash1, 0xE9,

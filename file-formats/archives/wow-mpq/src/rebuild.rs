@@ -125,7 +125,7 @@ pub fn rebuild_archive<P: AsRef<Path>>(
         extract_files_with_metadata(&mut source, &metadata, &options, &progress_callback)?;
 
     let extracted_count = extracted_files.len();
-    log::info!("Extracted {} files from source archive", extracted_count);
+    log::info!("Extracted {extracted_count} files from source archive");
 
     if options.list_only {
         return Ok(RebuildSummary {
@@ -400,13 +400,12 @@ fn verify_rebuild(source_path: &Path, target_path: &Path, options: &RebuildOptio
     for expected_file in &expected_files {
         let source_data = source_archive.read_file(expected_file)?;
         let target_data = target_archive.read_file(expected_file).map_err(|e| {
-            Error::invalid_format(format!("File {} missing in target: {}", expected_file, e))
+            Error::invalid_format(format!("File {expected_file} missing in target: {e}"))
         })?;
 
         if source_data != target_data {
             return Err(Error::invalid_format(format!(
-                "Content mismatch for file: {}",
-                expected_file
+                "Content mismatch for file: {expected_file}"
             )));
         }
     }

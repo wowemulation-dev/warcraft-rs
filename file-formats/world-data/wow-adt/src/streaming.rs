@@ -432,8 +432,7 @@ impl<R: Read + Seek> AdtStreamer<R> {
 
         // Didn't find the chunk
         Err(AdtError::ParseError(format!(
-            "Could not find MCNK chunk at coordinates ({}, {})",
-            x, y
+            "Could not find MCNK chunk at coordinates ({x}, {y})"
         )))
     }
 }

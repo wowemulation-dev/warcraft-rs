@@ -75,28 +75,23 @@ fn test_listfile_updates_correctly() {
         let file_names: Vec<_> = files.iter().map(|f| f.name.as_str()).collect();
         assert!(
             file_names.contains(&"file1.txt"),
-            "file1.txt not found in: {:?}",
-            file_names
+            "file1.txt not found in: {file_names:?}"
         );
         assert!(
             file_names.contains(&"file2.txt"),
-            "file2.txt not found in: {:?}",
-            file_names
+            "file2.txt not found in: {file_names:?}"
         );
         assert!(
             file_names.contains(&"file3.txt"),
-            "file3.txt not found in: {:?}",
-            file_names
+            "file3.txt not found in: {file_names:?}"
         );
         assert!(
             file_names.contains(&"file4.txt"),
-            "file4.txt not found in: {:?}",
-            file_names
+            "file4.txt not found in: {file_names:?}"
         );
         assert!(
             file_names.contains(&"(listfile)"),
-            "(listfile) not found in: {:?}",
-            file_names
+            "(listfile) not found in: {file_names:?}"
         );
 
         // Verify we can read all files
@@ -156,8 +151,8 @@ fn test_multiple_listfile_updates() {
         let mut mutable = MutableArchive::open(path).unwrap();
 
         for i in 1..=5 {
-            let filename = format!("added_{}.txt", i);
-            let content = format!("Added file {}", i);
+            let filename = format!("added_{i}.txt");
+            let content = format!("Added file {i}");
             mutable
                 .add_file_data(content.as_bytes(), &filename, AddFileOptions::default())
                 .unwrap();
@@ -179,7 +174,6 @@ fn test_multiple_listfile_updates() {
     let block_growth = final_info.file_count - initial_block_count;
     assert_eq!(
         block_growth, 5,
-        "Block table grew by {} instead of expected 5",
-        block_growth
+        "Block table grew by {block_growth} instead of expected 5"
     );
 }

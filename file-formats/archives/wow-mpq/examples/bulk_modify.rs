@@ -53,7 +53,7 @@ fn create_test_archive(path: &str) -> Result<(), Box<dyn Error>> {
     }
 
     builder.build(path)?;
-    println!("✅ Created archive with {} files", file_count);
+    println!("✅ Created archive with {file_count} files");
 
     Ok(())
 }
@@ -76,7 +76,7 @@ fn bulk_modify_archive(path: &str) -> Result<(), Box<dyn Error>> {
         let options = AddFileOptions::new().compression(CompressionMethod::Zlib);
 
         archive.add_file_data(content.as_bytes(), name, options)?;
-        println!("  ✅ Added: {}", name);
+        println!("  ✅ Added: {name}");
     }
 
     // 2. Add encrypted sensitive files
@@ -92,7 +92,7 @@ fn bulk_modify_archive(path: &str) -> Result<(), Box<dyn Error>> {
             .encrypt();
 
         archive.add_file_data(content.as_bytes(), name, options)?;
-        println!("  🔒 Added encrypted: {}", name);
+        println!("  🔒 Added encrypted: {name}");
     }
 
     // 3. Add large binary files with optimal compression
@@ -109,7 +109,7 @@ fn bulk_modify_archive(path: &str) -> Result<(), Box<dyn Error>> {
         let options = AddFileOptions::new().compression(*method);
 
         archive.add_file_data(&large_data, name, options)?;
-        println!("  ✅ Added with {:?}: {}", method, name);
+        println!("  ✅ Added with {method:?}: {name}");
     }
 
     // 4. Test file replacement behavior
@@ -119,7 +119,7 @@ fn bulk_modify_archive(path: &str) -> Result<(), Box<dyn Error>> {
     let no_replace = AddFileOptions::new().replace_existing(false);
 
     match archive.add_file_data(b"New content", "docs/readme.txt", no_replace) {
-        Err(e) => println!("  ✅ Correctly rejected duplicate: {}", e),
+        Err(e) => println!("  ✅ Correctly rejected duplicate: {e}"),
         Ok(_) => println!("  ❌ Error: should have rejected duplicate!"),
     }
 
@@ -138,7 +138,7 @@ fn bulk_modify_archive(path: &str) -> Result<(), Box<dyn Error>> {
 
     for (old, new) in &renames {
         archive.rename_file(old, new)?;
-        println!("  ✅ Renamed: {} -> {}", old, new);
+        println!("  ✅ Renamed: {old} -> {new}");
     }
 
     // Save all changes

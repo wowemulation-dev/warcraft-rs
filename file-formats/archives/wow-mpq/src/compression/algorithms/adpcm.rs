@@ -42,8 +42,7 @@ fn compress_internal(input: &[u8], compression_level: u8, channel_count: usize) 
     // Validate channel count
     if channel_count == 0 || channel_count > MAX_ADPCM_CHANNEL_COUNT {
         return Err(Error::compression(format!(
-            "Invalid channel count: {}. ADPCM supports 1-{} channels",
-            channel_count, MAX_ADPCM_CHANNEL_COUNT
+            "Invalid channel count: {channel_count}. ADPCM supports 1-{MAX_ADPCM_CHANNEL_COUNT} channels"
         )));
     }
 
@@ -192,8 +191,7 @@ fn decompress_internal(input: &[u8], output_size: usize, channel_count: usize) -
     // Validate channel count
     if channel_count == 0 || channel_count > MAX_ADPCM_CHANNEL_COUNT {
         return Err(Error::compression(format!(
-            "Invalid channel count: {}. ADPCM supports 1-{} channels",
-            channel_count, MAX_ADPCM_CHANNEL_COUNT
+            "Invalid channel count: {channel_count}. ADPCM supports 1-{MAX_ADPCM_CHANNEL_COUNT} channels"
         )));
     }
 
@@ -219,8 +217,7 @@ fn decompress_internal(input: &[u8], output_size: usize, channel_count: usize) -
     // We'll cap at 31 to prevent shift overflow on i32
     if bit_shift > 31 {
         return Err(Error::compression(format!(
-            "Invalid ADPCM bit shift value: {}. Maximum allowed is 31",
-            bit_shift
+            "Invalid ADPCM bit shift value: {bit_shift}. Maximum allowed is 31"
         )));
     }
 
@@ -421,14 +418,14 @@ mod tests {
         write_sample(&mut input, -5000);
 
         let compressed = compress_mono(&input, 5).unwrap();
-        println!("Compressed: {:?}", compressed);
+        println!("Compressed: {compressed:?}");
 
         let decompressed = decompress_mono(&compressed, input.len()).unwrap();
 
         for i in 0..5 {
             let original = read_sample(&input, i).unwrap();
             let decoded = read_sample(&decompressed, i).unwrap();
-            println!("Sample {}: {} -> {}", i, original, decoded);
+            println!("Sample {i}: {original} -> {decoded}");
         }
     }
 
@@ -458,10 +455,7 @@ mod tests {
                 // Allow some error due to lossy compression
                 assert!(
                     diff < 1000,
-                    "Sample {} differs too much: {} vs {}",
-                    i,
-                    original,
-                    decoded
+                    "Sample {i} differs too much: {original} vs {decoded}"
                 );
             }
         }
@@ -497,8 +491,8 @@ mod tests {
             let right_dec = read_sample(&decompressed, i * 2 + 1).unwrap();
             let right_diff = (right_orig - right_dec).abs();
 
-            assert!(left_diff < 1000, "Left sample {} differs too much", i);
-            assert!(right_diff < 1000, "Right sample {} differs too much", i);
+            assert!(left_diff < 1000, "Left sample {i} differs too much");
+            assert!(right_diff < 1000, "Right sample {i} differs too much");
         }
     }
 
@@ -515,9 +509,7 @@ mod tests {
         for (i, sample) in samples.iter().enumerate() {
             assert!(
                 sample.abs() <= 1,
-                "Stereo silence sample {} too large: {}",
-                i,
-                sample
+                "Stereo silence sample {i} too large: {sample}"
             );
         }
     }
@@ -542,8 +534,7 @@ mod tests {
             let left = read_sample(&decompressed, i * 2).unwrap();
             assert!(
                 (left - 5000).abs() < 100,
-                "Left channel not constant at sample {}",
-                i
+                "Left channel not constant at sample {i}"
             );
         }
 

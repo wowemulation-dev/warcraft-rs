@@ -161,7 +161,7 @@ fn test_archive_load_attributes() {
 
     // Skip test if the file doesn't exist
     if !path.exists() {
-        eprintln!("Test archive not found at {:?}, skipping test", path);
+        eprintln!("Test archive not found at {path:?}, skipping test");
         return;
     }
 
@@ -177,10 +177,10 @@ fn test_archive_load_attributes() {
         // Get attributes for first file
         if let Some(file_attrs) = attrs.get_file_attributes(0) {
             if let Some(crc) = file_attrs.crc32 {
-                println!("First file CRC32: {:08X}", crc);
+                println!("First file CRC32: {crc:08X}");
             }
             if let Some(md5) = file_attrs.md5 {
-                println!("First file MD5: {:02X?}", md5);
+                println!("First file MD5: {md5:02X?}");
             }
         }
     }
@@ -193,7 +193,7 @@ fn test_attributes_loaded_automatically() {
 
     // Skip test if the file doesn't exist
     if !path.exists() {
-        eprintln!("Test archive not found at {:?}, skipping test", path);
+        eprintln!("Test archive not found at {path:?}, skipping test");
         return;
     }
 

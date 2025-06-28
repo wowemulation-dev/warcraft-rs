@@ -65,7 +65,7 @@ impl WdlVersion {
     pub fn from_version_number(version: u32) -> Result<Self, String> {
         match version {
             18 => Ok(WdlVersion::Latest), // All versions use 18 currently
-            _ => Err(format!("Unknown WDL version number: {}", version)),
+            _ => Err(format!("Unknown WDL version number: {version}")),
         }
     }
 

@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Write buffer to file
     std::fs::write(&output_path, buffer)?;
 
-    println!("Modified WDL file saved to {:?}", output_path);
+    println!("Modified WDL file saved to {output_path:?}");
     println!("\nSummary of modifications:");
     println!("- Added a hill to the terrain");
     println!("- The hill should be visible when viewing the terrain from a distance in-game");

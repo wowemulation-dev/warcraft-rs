@@ -246,7 +246,7 @@ impl HashTable {
         let entries = vec![HashEntry::empty(); size];
         Ok(Self {
             entries,
-            mask: size as usize - 1,
+            mask: size - 1,
         })
     }
 

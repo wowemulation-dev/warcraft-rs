@@ -13,7 +13,7 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
     // Use ASCII mode with 2KB dictionary as default for MPQ archives
     // This provides good compression ratio for most data types
     implode_bytes(data, CompressionMode::ASCII, DictionarySize::Size2K)
-        .map_err(|e| Error::compression(format!("PKWare compression failed: {}", e)))
+        .map_err(|e| Error::compression(format!("PKWare compression failed: {e}")))
 }
 
 /// Decompress PKWare compressed data
@@ -35,7 +35,7 @@ pub(crate) fn decompress(data: &[u8], _expected_size: usize) -> Result<Vec<u8>> 
             data.len(),
             e
         );
-        Error::compression(format!("PKWare decompression failed: {}", e))
+        Error::compression(format!("PKWare decompression failed: {e}"))
     })
 }
 
@@ -52,7 +52,7 @@ pub(crate) fn compress_with_options(
     }
 
     implode_bytes(data, mode, dict_size)
-        .map_err(|e| Error::compression(format!("PKWare compression failed: {}", e)))
+        .map_err(|e| Error::compression(format!("PKWare compression failed: {e}")))
 }
 
 #[cfg(test)]

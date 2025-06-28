@@ -14,7 +14,7 @@ fn main() {
 
     match load_blp(blp_filename) {
         Ok(blp_file) => {
-            println!("✓ Loaded BLP file: {}", blp_filename);
+            println!("✓ Loaded BLP file: {blp_filename}");
             println!("  Version: {:?}", blp_file.header.version);
             println!(
                 "  Dimensions: {}x{}",
@@ -24,14 +24,14 @@ fn main() {
 
             match blp_to_image(&blp_file, 0) {
                 Ok(image) => match image.save(output_filename) {
-                    Ok(_) => println!("✓ Saved as: {}", output_filename),
-                    Err(e) => eprintln!("✗ Failed to save image: {}", e),
+                    Ok(_) => println!("✓ Saved as: {output_filename}"),
+                    Err(e) => eprintln!("✗ Failed to save image: {e}"),
                 },
-                Err(e) => eprintln!("✗ Failed to convert BLP to image: {}", e),
+                Err(e) => eprintln!("✗ Failed to convert BLP to image: {e}"),
             }
         }
         Err(e) => {
-            eprintln!("✗ Failed to load BLP file '{}': {}", blp_filename, e);
+            eprintln!("✗ Failed to load BLP file '{blp_filename}': {e}");
             eprintln!("\nTip: Make sure the file exists and is a valid BLP texture file.");
         }
     }

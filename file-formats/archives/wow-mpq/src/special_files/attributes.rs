@@ -219,10 +219,7 @@ impl Attributes {
             let actual_byte_count = available_bytes.min(ideal_byte_count);
 
             log::debug!(
-                "Patch bits: ideal={} bytes, available={} bytes, reading={} bytes",
-                ideal_byte_count,
-                available_bytes,
-                actual_byte_count
+                "Patch bits: ideal={ideal_byte_count} bytes, available={available_bytes} bytes, reading={actual_byte_count} bytes"
             );
 
             let mut bits = vec![0u8; ideal_byte_count]; // Always allocate the ideal size

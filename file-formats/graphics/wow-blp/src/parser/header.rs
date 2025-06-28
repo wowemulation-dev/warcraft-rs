@@ -14,8 +14,7 @@ pub fn parse_header(input: &[u8]) -> ParseResult<BlpHeader> {
         .map_err(|e| e.with_context("content_field field"))?;
     let content = content_field.try_into().unwrap_or_else(|_| {
         warn!(
-            "Unexpected value for content {}, defaulting to jpeg",
-            content_field
+            "Unexpected value for content {content_field}, defaulting to jpeg"
         );
         BlpContentTag::Jpeg
     });
@@ -26,8 +25,7 @@ pub fn parse_header(input: &[u8]) -> ParseResult<BlpHeader> {
             .map_err(|e| e.with_context("compression field"))?;
         let compression: Compression = compression_field.try_into().map_err(|_| {
             error!(
-                "Unexpected value for compression {}, defaulting to jpeg",
-                content_field
+                "Unexpected value for compression {content_field}, defaulting to jpeg"
             );
             Error::Blp2UnknownCompression(compression_field)
         })?;
@@ -55,8 +53,7 @@ pub fn parse_header(input: &[u8]) -> ParseResult<BlpHeader> {
             && (alpha_bits_raw != 0 && alpha_bits_raw != 8)
         {
             warn!(
-                "For jpeg content detected non standard alpha bits value {} when 0 or 8 is expected, defaulting to 0",
-                alpha_bits_raw
+                "For jpeg content detected non standard alpha bits value {alpha_bits_raw} when 0 or 8 is expected, defaulting to 0"
             );
             0
         } else if content == BlpContentTag::Direct
@@ -66,8 +63,7 @@ pub fn parse_header(input: &[u8]) -> ParseResult<BlpHeader> {
                 && alpha_bits_raw != 8)
         {
             warn!(
-                "For direct content detected non standard alpha bits value {} when 0, 1, 4 or 8 is expected, defaulting to 0",
-                alpha_bits_raw
+                "For direct content detected non standard alpha bits value {alpha_bits_raw} when 0, 1, 4 or 8 is expected, defaulting to 0"
             );
             0
         } else {
@@ -124,7 +120,7 @@ fn parse_magic(reader: &mut impl ByteReader) -> ParseResult<BlpVersion> {
         Error::WrongMagic(
             str::from_utf8(&magic_fixed)
                 .map(|s| s.to_owned())
-                .unwrap_or_else(|_| format!("{:?}", magic_fixed)),
+                .unwrap_or_else(|_| format!("{magic_fixed:?}")),
         )
     })?;
 

@@ -66,8 +66,7 @@ fn test_compression_efficiency() {
             // Should compress well for repetitive data
             assert!(
                 compressed.len() < repetitive.len() / 2,
-                "Method 0x{:02X} should compress repetitive data to less than 50%",
-                method
+                "Method 0x{method:02X} should compress repetitive data to less than 50%"
             );
         }
 
@@ -96,8 +95,7 @@ fn test_all_methods_implemented() {
         let result = compress_with_method(data, *method);
         assert!(
             result.is_ok(),
-            "Method 0x{:02X} should be implemented",
-            method
+            "Method 0x{method:02X} should be implemented"
         );
     }
 

@@ -46,10 +46,10 @@ fn test_create_v3_archive_with_het_bet() {
         let index_size = het.header.index_size;
 
         println!("HET table header:");
-        println!("  max_file_count: {}", max_file_count);
-        println!("  hash_table_size: {}", hash_table_size);
-        println!("  hash_entry_size: {}", hash_entry_size);
-        println!("  index_size: {}", index_size);
+        println!("  max_file_count: {max_file_count}");
+        println!("  hash_table_size: {hash_table_size}");
+        println!("  hash_entry_size: {hash_entry_size}");
+        println!("  index_size: {index_size}");
         println!("  hash_table.len: {}", het.hash_table.len());
         println!("  file_indices.len: {}", het.file_indices.len());
     } else {
@@ -59,7 +59,7 @@ fn test_create_v3_archive_with_het_bet() {
     // Verify we can find files (using classic hash/block tables as fallback)
     println!("\nTrying to find file1.txt...");
     let file1_result = archive.find_file("file1.txt").unwrap();
-    println!("file1.txt result: {:?}", file1_result);
+    println!("file1.txt result: {file1_result:?}");
     assert!(file1_result.is_some());
 
     assert!(archive.find_file("file2.txt").unwrap().is_some());
@@ -127,7 +127,7 @@ fn test_jenkins_hash_lookup() {
 
     for filename in filenames {
         let hash = jenkins_hash(filename);
-        println!("Jenkins hash for '{}': 0x{:016X}", filename, hash);
+        println!("Jenkins hash for '{filename}': 0x{hash:016X}");
 
         // Verify hash is non-zero
         assert_ne!(hash, 0);

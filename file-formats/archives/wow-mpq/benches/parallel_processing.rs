@@ -17,7 +17,7 @@ fn create_test_archives(
     let mut paths = Vec::new();
 
     for i in 0..count {
-        let path = temp_dir.path().join(format!("archive_{}.mpq", i));
+        let path = temp_dir.path().join(format!("archive_{i}.mpq"));
         let mut builder = ArchiveBuilder::new()
             .block_size(7) // 64KB sectors
             .default_compression(flags::ZLIB);
@@ -25,11 +25,10 @@ fn create_test_archives(
         // Add files to each archive
         for j in 0..files_per_archive {
             let content = format!(
-                "Archive {} File {} Content with some padding to make it larger",
-                i, j
+                "Archive {i} File {j} Content with some padding to make it larger"
             )
             .repeat(100); // Make files reasonably sized
-            builder = builder.add_file_data(content.into_bytes(), &format!("file_{:03}.txt", j));
+            builder = builder.add_file_data(content.into_bytes(), &format!("file_{j:03}.txt"));
         }
 
         builder.build(&path).unwrap();
@@ -330,7 +329,7 @@ fn bench_scalability(c: &mut Criterion) {
 
     for &threads in &thread_counts {
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}_threads", threads)),
+            BenchmarkId::from_parameter(format!("{threads}_threads")),
             &threads,
             |b, &num_threads| {
                 b.iter(|| {

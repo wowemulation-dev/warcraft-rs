@@ -23,11 +23,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if file exists
     if !Path::new(adt_path).exists() {
-        eprintln!("Error: File '{}' does not exist", adt_path);
+        eprintln!("Error: File '{adt_path}' does not exist");
         std::process::exit(1);
     }
 
-    println!("🏔️  Parsing ADT File: {}", adt_path);
+    println!("🏔️  Parsing ADT File: {adt_path}");
     println!("{}", "=".repeat(50));
 
     // Open and parse the ADT file
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    println!("  • Active terrain chunks: {}/256", active_chunks);
+    println!("  • Active terrain chunks: {active_chunks}/256");
 
     // Display texture information
     if let Some(mtex) = &adt.mtex {
@@ -112,12 +112,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if water_chunks > 0 {
             println!();
             println!("💧 Water Information:");
-            println!("  • Chunks with water: {}/256", water_chunks);
+            println!("  • Chunks with water: {water_chunks}/256");
 
             // Find first water chunk with details
             for (i, chunk) in mh2o.chunks.iter().enumerate() {
                 if let Some(instance) = chunk.instances.first() {
-                    println!("  • Sample water chunk {} details:", i);
+                    println!("  • Sample water chunk {i} details:");
                     println!("    - Liquid type: {}", instance.liquid_type);
                     println!("    - Has vertex data: {}", instance.vertex_data.is_some());
                     match &instance.level_data {
@@ -125,7 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             min_height,
                             max_height,
                         } => {
-                            println!("    - Water level: {:.2} - {:.2}", min_height, max_height);
+                            println!("    - Water level: {min_height:.2} - {max_height:.2}");
                         }
                         WaterLevelData::Variable {
                             min_height,
@@ -133,8 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             ..
                         } => {
                             println!(
-                                "    - Water level: {:.2} - {:.2} (variable)",
-                                min_height, max_height
+                                "    - Water level: {min_height:.2} - {max_height:.2} (variable)"
                             );
                         }
                     }
@@ -160,12 +159,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Validation:");
     match adt.validate() {
         Ok(_) => println!("  ✅ Basic validation passed"),
-        Err(e) => println!("  ❌ Validation failed: {}", e),
+        Err(e) => println!("  ❌ Validation failed: {e}"),
     }
 
     match adt.validate_with_report(ValidationLevel::Standard) {
         Ok(_) => println!("  ✅ Standard validation passed"),
-        Err(e) => println!("  ⚠️  Standard validation warnings: {}", e),
+        Err(e) => println!("  ⚠️  Standard validation warnings: {e}"),
     }
 
     println!();

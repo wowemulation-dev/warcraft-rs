@@ -283,7 +283,7 @@ impl WmoVisualizer {
 
         // Process each group
         for (group_idx, group) in groups.iter().enumerate() {
-            obj.push_str(&format!("g Group_{}\n", group_idx));
+            obj.push_str(&format!("g Group_{group_idx}\n"));
 
             // Write vertices
             for v in &group.vertices {
@@ -303,7 +303,7 @@ impl WmoVisualizer {
             // Process batches
             for batch in &group.batches {
                 let material_id = batch.material_id;
-                obj.push_str(&format!("usemtl Material_{}\n", material_id));
+                obj.push_str(&format!("usemtl Material_{material_id}\n"));
 
                 // Write faces
                 for i in 0..(batch.count / 3) {
@@ -324,21 +324,18 @@ impl WmoVisualizer {
 
                         if !group.tex_coords.is_empty() && !group.normals.is_empty() {
                             obj.push_str(&format!(
-                                "f {}/{}/{} {}/{}/{} {}/{}/{}\n",
-                                idx1, tex1, norm1, idx2, tex2, norm2, idx3, tex3, norm3
+                                "f {idx1}/{tex1}/{norm1} {idx2}/{tex2}/{norm2} {idx3}/{tex3}/{norm3}\n"
                             ));
                         } else if !group.tex_coords.is_empty() {
                             obj.push_str(&format!(
-                                "f {}/{} {}/{} {}/{}\n",
-                                idx1, tex1, idx2, tex2, idx3, tex3
+                                "f {idx1}/{tex1} {idx2}/{tex2} {idx3}/{tex3}\n"
                             ));
                         } else if !group.normals.is_empty() {
                             obj.push_str(&format!(
-                                "f {}//{} {}//{} {}//{}\n",
-                                idx1, norm1, idx2, norm2, idx3, norm3
+                                "f {idx1}//{norm1} {idx2}//{norm2} {idx3}//{norm3}\n"
                             ));
                         } else {
-                            obj.push_str(&format!("f {} {} {}\n", idx1, idx2, idx3));
+                            obj.push_str(&format!("f {idx1} {idx2} {idx3}\n"));
                         }
                     }
                 }
@@ -367,7 +364,7 @@ impl WmoVisualizer {
 
         // Write each material
         for (i, material) in root.materials.iter().enumerate() {
-            mtl.push_str(&format!("newmtl Material_{}\n", i));
+            mtl.push_str(&format!("newmtl Material_{i}\n"));
 
             // Convert material properties to MTL format
             let diffuse = &material.diffuse_color;
@@ -398,7 +395,7 @@ impl WmoVisualizer {
             // Add texture if available
             if material.texture1 < root.textures.len() as u32 {
                 let texture = &root.textures[material.texture1 as usize];
-                mtl.push_str(&format!("map_Kd {}\n", texture));
+                mtl.push_str(&format!("map_Kd {texture}\n"));
             }
 
             // Add alpha if material has transparency

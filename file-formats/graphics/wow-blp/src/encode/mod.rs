@@ -166,7 +166,7 @@ fn encode_jpeg(
                 content.images.len()
             );
             for (i, ((offset, size), image)) in zip(pairs, content.images.iter()).enumerate() {
-                trace!("Writing mipmap {}", i);
+                trace!("Writing mipmap {i}");
                 let padding = (if offset as usize >= output.len() {
                     Ok(offset as usize - output.len())
                 } else {
@@ -204,7 +204,7 @@ fn encode_raw<T, F>(
 where
     F: FnMut(&T, &mut Vec<u8>),
 {
-    trace!("Header: {:?}", header);
+    trace!("Header: {header:?}");
 
     for c in cmap.iter() {
         push_le_u32(*c, output);
@@ -231,7 +231,7 @@ where
                 images.len()
             );
             for (i, ((offset, size), image)) in zip(pairs, images.iter()).enumerate() {
-                trace!("Writing mipmap {}", i);
+                trace!("Writing mipmap {i}");
                 let padding = (if offset as usize >= output.len() {
                     Ok(offset as usize - output.len())
                 } else {
@@ -308,7 +308,7 @@ fn encode_dxtn(
     images: &[DxtnImage],
     output: &mut Vec<u8>,
 ) -> Result<(), Error> {
-    trace!("Header: {:?}", header);
+    trace!("Header: {header:?}");
     let (offsets, sizes) = if let MipmapLocator::Internal { offsets, sizes } = header.mipmap_locator
     {
         (offsets, sizes)
@@ -329,7 +329,7 @@ fn encode_dxtn(
     );
 
     for (i, ((offset, size), image)) in zip(pairs, images.iter()).enumerate() {
-        trace!("Writing mipmap {}", i);
+        trace!("Writing mipmap {i}");
         let padding = (if offset as usize >= output.len() {
             Ok(offset as usize - output.len())
         } else {

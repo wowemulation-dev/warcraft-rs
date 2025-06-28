@@ -108,7 +108,7 @@ fn test_locale_patch_priority() {
 
     let locale_patch = create_test_archive(
         &temp.path().join(locale),
-        &format!("patch-{}.MPQ", locale),
+        &format!("patch-{locale}.MPQ"),
         &[(test_file, b"locale patch")],
     );
 

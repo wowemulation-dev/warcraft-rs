@@ -18,7 +18,7 @@ fn parse_version(version_str: &str) -> Result<M2Version, String> {
         "sl" | "shadowlands" => Ok(M2Version::Shadowlands),
         "df" | "dragonflight" => Ok(M2Version::Dragonflight),
         "tww" | "thewarwithin" | "modern" => Ok(M2Version::TheWarWithin),
-        _ => Err(format!("Unknown version: {}", version_str)),
+        _ => Err(format!("Unknown version: {version_str}")),
     }
 }
 
@@ -47,12 +47,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let target_version = parse_version(&args[3])?;
 
     // Load the model
-    println!("Loading model from: {}", input_path);
+    println!("Loading model from: {input_path}");
     let model = M2Model::load(input_path)?;
     let source_version = model.header.version();
 
-    println!("Source version: {:?}", source_version);
-    println!("Target version: {:?}", target_version);
+    println!("Source version: {source_version:?}");
+    println!("Target version: {target_version:?}");
 
     // Check if conversion is needed
     if source_version == Some(target_version) {
@@ -67,13 +67,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let converted_model = converter.convert(&model, target_version)?;
 
     // Save the converted model
-    println!("Saving converted model to: {}", output_path);
+    println!("Saving converted model to: {output_path}");
     converted_model.save(output_path)?;
 
     // Print conversion summary
     println!("\n=== Conversion Summary ===");
-    println!("Original version: {:?}", source_version);
-    println!("Converted to: {:?}", target_version);
+    println!("Original version: {source_version:?}");
+    println!("Converted to: {target_version:?}");
     println!(
         "Vertices: {} -> {}",
         model.vertices.len(),

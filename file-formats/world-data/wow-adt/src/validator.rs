@@ -190,8 +190,7 @@ fn xref_validation(adt: &Adt, report: &mut ValidationReport) -> Result<()> {
 
                 if !found {
                     report.add_info(format!(
-                        "MMID entry {} references offset {} in MMDX",
-                        i, offset
+                        "MMID entry {i} references offset {offset} in MMDX"
                     ));
                 }
             }
@@ -208,8 +207,7 @@ fn xref_validation(adt: &Adt, report: &mut ValidationReport) -> Result<()> {
 
                 if !found {
                     report.add_info(format!(
-                        "MWID entry {} references offset {} in MWMO",
-                        i, offset
+                        "MWID entry {i} references offset {offset} in MWMO"
                     ));
                 }
             }
@@ -271,15 +269,13 @@ fn xref_validation(adt: &Adt, report: &mut ValidationReport) -> Result<()> {
                 for (j, &doodad_ref) in chunk.doodad_refs.iter().enumerate() {
                     if doodad_ref as usize >= mmid.offsets.len() {
                         report.add_error(format!(
-                            "MCNK chunk {}, doodad ref {} references invalid MMID index: {}",
-                            i, j, doodad_ref
+                            "MCNK chunk {i}, doodad ref {j} references invalid MMID index: {doodad_ref}"
                         ));
                     }
                 }
             } else {
                 report.add_error(format!(
-                    "MCNK chunk {} references doodads but no MMID chunk found",
-                    i
+                    "MCNK chunk {i} references doodads but no MMID chunk found"
                 ));
             }
         }
@@ -289,15 +285,13 @@ fn xref_validation(adt: &Adt, report: &mut ValidationReport) -> Result<()> {
                 for (j, &map_obj_ref) in chunk.map_obj_refs.iter().enumerate() {
                     if map_obj_ref as usize >= mwid.offsets.len() {
                         report.add_error(format!(
-                            "MCNK chunk {}, map object ref {} references invalid MWID index: {}",
-                            i, j, map_obj_ref
+                            "MCNK chunk {i}, map object ref {j} references invalid MWID index: {map_obj_ref}"
                         ));
                     }
                 }
             } else {
                 report.add_error(format!(
-                    "MCNK chunk {} references map objects but no MWID chunk found",
-                    i
+                    "MCNK chunk {i} references map objects but no MWID chunk found"
                 ));
             }
         }

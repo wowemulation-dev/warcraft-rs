@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Add fields based on field count
             let field_count = parser.header().field_count;
             for i in 0..field_count {
-                schema.add_field(SchemaField::new(format!("Field{}", i), FieldType::UInt32));
+                schema.add_field(SchemaField::new(format!("Field{i}"), FieldType::UInt32));
             }
 
             let parser = parser.with_schema(schema)?;
@@ -97,7 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut schema = Schema::new("DBC");
             let field_count = parser.header().field_count;
             for i in 0..field_count {
-                schema.add_field(SchemaField::new(format!("Field{}", i), FieldType::UInt32));
+                schema.add_field(SchemaField::new(format!("Field{i}"), FieldType::UInt32));
             }
 
             let parser = parser.with_schema(schema)?;

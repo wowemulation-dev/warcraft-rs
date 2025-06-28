@@ -44,8 +44,7 @@ impl MmapDbcFile {
             }
             _ => {
                 return Err(Error::InvalidHeader(format!(
-                    "Unsupported DBC version: {:?}",
-                    version
+                    "Unsupported DBC version: {version:?}"
                 )));
             }
         };

@@ -205,7 +205,7 @@ mod tests {
             let orig_sample = i16::from_le_bytes([original[i * 2], original[i * 2 + 1]]);
             let dec_sample = i16::from_le_bytes([decompressed[i * 2], decompressed[i * 2 + 1]]);
             let diff = (orig_sample - dec_sample).abs();
-            assert!(diff < 2000, "Sample {} error too large: {}", i, diff);
+            assert!(diff < 2000, "Sample {i} error too large: {diff}");
         }
     }
 }

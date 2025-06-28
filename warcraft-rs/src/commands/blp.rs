@@ -407,7 +407,7 @@ fn convert_blp(args: ConvertArgs) -> Result<()> {
         .or_else(|| guess_output_format(&args.output))
         .context("Failed to determine output format. Please specify with --output-format")?;
 
-    log::info!("Converting from {:?} to {:?}", input_format, output_format);
+    log::info!("Converting from {input_format:?} to {output_format:?}");
 
     // Load input image
     let input_image = if input_format == InputFormat::Blp {
@@ -515,7 +515,7 @@ fn show_blp_info(
         println!("\nCompression Statistics:");
         println!("----------------------");
         let compression_ratio = blp.compression_ratio();
-        println!("Compression Ratio: {:.2}:1", compression_ratio);
+        println!("Compression Ratio: {compression_ratio:.2}:1");
         println!(
             "Compression Efficiency: {:.1}%",
             (1.0 - 1.0 / compression_ratio) * 100.0
@@ -547,11 +547,11 @@ fn show_blp_info(
 
     // Best mipmap for target size
     if let Some(target_size) = best_mipmap_for {
-        println!("\nBest Mipmap for {}x{} target:", target_size, target_size);
+        println!("\nBest Mipmap for {target_size}x{target_size} target:");
         println!("-------------------------------");
         let best_level = blp.best_mipmap_for_size(target_size);
         let (width, height) = blp.header.mipmap_size(best_level);
-        println!("Best Level: {} ({}x{})", best_level, width, height);
+        println!("Best Level: {best_level} ({width}x{height})");
     }
 
     // Mipmap info (using new convenience method)
@@ -589,7 +589,7 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
     let blp = match load_blp(&file) {
         Ok(blp) => blp,
         Err(e) => {
-            println!("✗ Failed to load BLP file: {}", e);
+            println!("✗ Failed to load BLP file: {e}");
             return Err(e.into());
         }
     };
@@ -620,8 +620,7 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
 
         if actual_levels < expected_levels {
             warnings.push(format!(
-                "Incomplete mipmap chain: expected {} levels, got {}",
-                expected_levels, actual_levels
+                "Incomplete mipmap chain: expected {expected_levels} levels, got {actual_levels}"
             ));
         }
     }
@@ -651,14 +650,14 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
         if !errors.is_empty() {
             println!("\nErrors:");
             for error in &errors {
-                println!("  ✗ {}", error);
+                println!("  ✗ {error}");
             }
         }
 
         if !warnings.is_empty() {
             println!("\nWarnings:");
             for warning in &warnings {
-                println!("  ⚠ {}", warning);
+                println!("  ⚠ {warning}");
             }
         }
 

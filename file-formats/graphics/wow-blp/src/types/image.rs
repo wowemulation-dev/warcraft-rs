@@ -95,11 +95,7 @@ impl BlpImage {
         for level in 0..image_count {
             let (width, height) = self.header.mipmap_size(level);
             let size = width.max(height);
-            let diff = if size >= target_size {
-                size - target_size
-            } else {
-                target_size - size
-            };
+            let diff = size.abs_diff(target_size);
 
             if diff < best_diff {
                 best_diff = diff;

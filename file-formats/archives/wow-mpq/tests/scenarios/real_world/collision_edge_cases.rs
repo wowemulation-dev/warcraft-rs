@@ -37,11 +37,10 @@ fn test_collision_edge_cases() {
     let mut archive = Archive::open(path).unwrap();
     for (i, filename) in collision_files.iter().enumerate() {
         let data = archive.read_file(filename).unwrap();
-        assert_eq!(data.len(), 1024, "File {} has wrong size", filename);
+        assert_eq!(data.len(), 1024, "File {filename} has wrong size");
         assert!(
             data.iter().all(|&b| b == i as u8),
-            "File {} has wrong content",
-            filename
+            "File {filename} has wrong content"
         );
     }
 }

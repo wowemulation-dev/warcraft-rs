@@ -43,12 +43,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if file exists
     if !Path::new(adt_path).exists() {
-        eprintln!("Error: File '{}' does not exist", adt_path);
+        eprintln!("Error: File '{adt_path}' does not exist");
         std::process::exit(1);
     }
 
-    println!("🔍 Validating ADT File: {}", adt_path);
-    println!("📊 Validation Level: {:?}", validation_level);
+    println!("🔍 Validating ADT File: {adt_path}");
+    println!("📊 Validation Level: {validation_level:?}");
     println!("{}", "=".repeat(60));
 
     // Open and parse the ADT file
@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             adt
         }
         Err(e) => {
-            println!("❌ Failed to parse ADT file: {}", e);
+            println!("❌ Failed to parse ADT file: {e}");
             std::process::exit(1);
         }
     };
@@ -75,12 +75,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let chunk_counts = get_chunk_counts(&adt);
     println!("  • Structure overview:");
     for (chunk_type, count) in chunk_counts {
-        println!("    - {}: {}", chunk_type, count);
+        println!("    - {chunk_type}: {count}");
     }
 
     // Perform validation
     println!();
-    println!("🔍 Running {:?} validation...", validation_level);
+    println!("🔍 Running {validation_level:?} validation...");
     println!("{}", "-".repeat(40));
 
     let validation_start = std::time::Instant::now();
@@ -93,17 +93,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match validation_result {
         Ok(_) => {
             println!("✅ Validation PASSED");
-            println!("⏱️  Validation completed in {:?}", validation_duration);
+            println!("⏱️  Validation completed in {validation_duration:?}");
 
             // Provide additional insights for successful validation
             provide_validation_insights(&adt, validation_level);
         }
         Err(e) => {
             println!("❌ Validation FAILED");
-            println!("⏱️  Validation completed in {:?}", validation_duration);
+            println!("⏱️  Validation completed in {validation_duration:?}");
             println!();
             println!("🚨 Validation Error:");
-            println!("  {}", e);
+            println!("  {e}");
 
             // Provide suggestions for common issues
             provide_validation_suggestions(&e.to_string());
@@ -176,7 +176,7 @@ fn get_chunk_counts(adt: &Adt) -> Vec<(&'static str, String)> {
     // Count MCNK chunks
     let mcnk_count = adt.mcnk_chunks.len();
     if mcnk_count > 0 {
-        counts.push(("MCNK", format!("{} terrain chunks", mcnk_count)));
+        counts.push(("MCNK", format!("{mcnk_count} terrain chunks")));
     }
 
     counts
@@ -192,8 +192,7 @@ fn provide_validation_insights(adt: &Adt, level: ValidationLevel) {
         println!("  • No terrain chunks found (this might be a split-format file)");
     } else if active_chunks < 256 {
         println!(
-            "  • Partial terrain coverage: {}/256 chunks active",
-            active_chunks
+            "  • Partial terrain coverage: {active_chunks}/256 chunks active"
         );
     } else {
         println!("  • Full terrain coverage: all 256 chunks present");
@@ -224,8 +223,7 @@ fn provide_validation_insights(adt: &Adt, level: ValidationLevel) {
             .count();
         if water_chunks > 0 {
             println!(
-                "  • Water features: {} chunks contain water data",
-                water_chunks
+                "  • Water features: {water_chunks} chunks contain water data"
             );
         }
     }

@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Try to read removed file (should fail)
     match readonly.read_file("remove_me.txt") {
-        Err(e) => println!("\n✅ Correctly failed to read removed file: {}", e),
+        Err(e) => println!("\n✅ Correctly failed to read removed file: {e}"),
         Ok(_) => println!("❌ Error: removed file still exists!"),
     }
 

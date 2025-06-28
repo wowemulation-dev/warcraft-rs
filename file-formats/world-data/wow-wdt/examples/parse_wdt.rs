@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
     let wdt = reader.read()?;
 
     // Display basic information
-    println!("WDT File: {}", path);
+    println!("WDT File: {path}");
     println!("Version: {}", wdt.mver.version);
     println!(
         "Type: {}",
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
 
     // Count existing tiles
     let tile_count = wdt.count_existing_tiles();
-    println!("\nExisting tiles: {} / 4096", tile_count);
+    println!("\nExisting tiles: {tile_count} / 4096");
 
     // List first 10 tiles
     println!("\nFirst 10 tiles:");
@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()> {
     if !warnings.is_empty() {
         println!("\nValidation warnings:");
         for warning in warnings {
-            println!("  - {}", warning);
+            println!("  - {warning}");
         }
     } else {
         println!("\nFile validation: OK");

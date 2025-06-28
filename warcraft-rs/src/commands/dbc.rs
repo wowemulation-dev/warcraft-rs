@@ -196,7 +196,7 @@ fn info_command(file: &Path) -> Result<()> {
         header
             .magic
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ")
     );
@@ -222,26 +222,26 @@ fn info_command(file: &Path) -> Result<()> {
         println!("=========================================");
         for (i, value) in record.values().iter().enumerate() {
             match value {
-                Value::UInt32(v) => println!("  Field {:2}: {:10} (UInt32)", i, v),
-                Value::Int32(v) => println!("  Field {:2}: {:10} (Int32)", i, v),
-                Value::Float32(v) => println!("  Field {:2}: {:10.4} (Float32)", i, v),
+                Value::UInt32(v) => println!("  Field {i:2}: {v:10} (UInt32)"),
+                Value::Int32(v) => println!("  Field {i:2}: {v:10} (Int32)"),
+                Value::Float32(v) => println!("  Field {i:2}: {v:10.4} (Float32)"),
                 Value::StringRef(v) => match record_set.get_string(*v) {
-                    Ok(s) => println!("  Field {:2}: \"{}\" (String)", i, s),
+                    Ok(s) => println!("  Field {i:2}: \"{s}\" (String)"),
                     Err(_) => println!(
                         "  Field {:2}: <Invalid string ref: {}> (String)",
                         i,
                         v.offset()
                     ),
                 },
-                Value::Bool(v) => println!("  Field {:2}: {:10} (Bool)", i, v),
-                Value::UInt8(v) => println!("  Field {:2}: {:10} (UInt8)", i, v),
-                Value::Int8(v) => println!("  Field {:2}: {:10} (Int8)", i, v),
-                Value::UInt16(v) => println!("  Field {:2}: {:10} (UInt16)", i, v),
-                Value::Int16(v) => println!("  Field {:2}: {:10} (Int16)", i, v),
+                Value::Bool(v) => println!("  Field {i:2}: {v:10} (Bool)"),
+                Value::UInt8(v) => println!("  Field {i:2}: {v:10} (UInt8)"),
+                Value::Int8(v) => println!("  Field {i:2}: {v:10} (Int8)"),
+                Value::UInt16(v) => println!("  Field {i:2}: {v:10} (UInt16)"),
+                Value::Int16(v) => println!("  Field {i:2}: {v:10} (Int16)"),
                 Value::Array(vals) => {
                     println!("  Field {:2}: Array[{}]", i, vals.len());
                     for (j, val) in vals.iter().enumerate().take(3) {
-                        println!("            [{}]: {:?}", j, val);
+                        println!("            [{j}]: {val:?}");
                     }
                     if vals.len() > 3 {
                         println!("            ... {} more items", vals.len() - 3);
@@ -286,7 +286,7 @@ fn list_command(file: &Path, schema_path: Option<&Path>, limit: usize) -> Result
 
     for i in 0..limit.min(record_set.len()) {
         if let Some(record) = record_set.get_record(i) {
-            println!("Record {}:", i);
+            println!("Record {i}:");
             if let Some(schema) = record.schema() {
                 // With schema - show field names
                 for (field_idx, field) in schema.fields.iter().enumerate() {
@@ -298,7 +298,7 @@ fn list_command(file: &Path, schema_path: Option<&Path>, limit: usize) -> Result
             } else {
                 // Without schema - show field indices
                 for (field_idx, value) in record.values().iter().enumerate() {
-                    print!("  Field {}: ", field_idx);
+                    print!("  Field {field_idx}: ");
                     print_value(value, &record_set)?;
                 }
             }
@@ -518,19 +518,19 @@ fn validate_command(file: &Path, schema_path: &Path) -> Result<()> {
                     }
 
                     if invalid_strings > 0 {
-                        println!("⚠ Found {} invalid string references", invalid_strings);
+                        println!("⚠ Found {invalid_strings} invalid string references");
                     } else {
                         println!("✓ All string references are valid");
                     }
                 }
                 Err(e) => {
-                    println!("✗ Failed to parse records: {}", e);
+                    println!("✗ Failed to parse records: {e}");
                     return Err(e.into());
                 }
             }
         }
         Err(e) => {
-            println!("✗ Schema validation failed: {}", e);
+            println!("✗ Schema validation failed: {e}");
             return Err(anyhow::anyhow!("Schema validation failed: {}", e));
         }
     }
@@ -544,18 +544,18 @@ fn validate_command(file: &Path, schema_path: &Path) -> Result<()> {
 /// Helper function to print a value
 fn print_value(value: &Value, record_set: &RecordSet) -> Result<()> {
     match value {
-        Value::UInt32(v) => println!("{}", v),
-        Value::Int32(v) => println!("{}", v),
-        Value::Float32(v) => println!("{:.4}", v),
+        Value::UInt32(v) => println!("{v}"),
+        Value::Int32(v) => println!("{v}"),
+        Value::Float32(v) => println!("{v:.4}"),
         Value::StringRef(v) => match record_set.get_string(*v) {
-            Ok(s) => println!("\"{}\"", s),
+            Ok(s) => println!("\"{s}\""),
             Err(_) => println!("<Invalid string ref: {}>", v.offset()),
         },
-        Value::Bool(v) => println!("{}", v),
-        Value::UInt8(v) => println!("{}", v),
-        Value::Int8(v) => println!("{}", v),
-        Value::UInt16(v) => println!("{}", v),
-        Value::Int16(v) => println!("{}", v),
+        Value::Bool(v) => println!("{v}"),
+        Value::UInt8(v) => println!("{v}"),
+        Value::Int8(v) => println!("{v}"),
+        Value::UInt16(v) => println!("{v}"),
+        Value::Int16(v) => println!("{v}"),
         Value::Array(vals) => {
             print!("[");
             for (i, val) in vals.iter().enumerate() {
@@ -563,10 +563,10 @@ fn print_value(value: &Value, record_set: &RecordSet) -> Result<()> {
                     print!(", ");
                 }
                 match val {
-                    Value::UInt32(v) => print!("{}", v),
-                    Value::Int32(v) => print!("{}", v),
-                    Value::Float32(v) => print!("{:.4}", v),
-                    _ => print!("{:?}", val),
+                    Value::UInt32(v) => print!("{v}"),
+                    Value::Int32(v) => print!("{v}"),
+                    Value::Float32(v) => print!("{v:.4}"),
+                    _ => print!("{val:?}"),
                 }
             }
             println!("]");
@@ -773,7 +773,7 @@ fn discover_command(
             } else {
                 println!("Generated Schema (YAML):");
                 println!("========================");
-                println!("{}", yaml_content);
+                println!("{yaml_content}");
             }
         }
 
@@ -810,9 +810,9 @@ fn discover_command(
             };
 
             if Some(i) == schema.key_field_index {
-                println!("  {} (Key field)", field_desc);
+                println!("  {field_desc} (Key field)");
             } else {
-                println!("  {}", field_desc);
+                println!("  {field_desc}");
             }
         }
 

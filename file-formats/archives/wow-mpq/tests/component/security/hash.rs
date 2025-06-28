@@ -12,7 +12,7 @@ mod tests {
 
         // This is the actual key used by MPQ archives
         // You can verify this matches StormLib's implementation
-        println!("Hash table key: 0x{:08X}", key);
+        println!("Hash table key: 0x{key:08X}");
 
         // Create some dummy hash table data
         let mut data = vec![0x12345678u32, 0x9ABCDEF0, 0xFEDCBA98, 0x76543210];
@@ -32,7 +32,7 @@ mod tests {
         // The block table is encrypted with a key derived from "(block table)"
         let key = hash_string("(block table)", hash_type::FILE_KEY);
 
-        println!("Block table key: 0x{:08X}", key);
+        println!("Block table key: 0x{key:08X}");
 
         // Test encryption/decryption
         let mut data = vec![0xDEADBEEFu32; 16]; // Simulating block table entries
@@ -56,8 +56,8 @@ mod tests {
         let file_size = 0x2000u32;
         let fixed_key = (base_key.wrapping_add(file_position)) ^ file_size;
 
-        println!("Base key for {}: 0x{:08X}", filename, base_key);
-        println!("Fixed key: 0x{:08X}", fixed_key);
+        println!("Base key for {filename}: 0x{base_key:08X}");
+        println!("Fixed key: 0x{fixed_key:08X}");
 
         // Test that we can encrypt/decrypt with this key
         let mut data = vec![0u32; 256];
@@ -78,7 +78,7 @@ mod tests {
 
         for filename in &special_files {
             let key = hash_string(filename, hash_type::FILE_KEY);
-            println!("{} key: 0x{:08X}", filename, key);
+            println!("{filename} key: 0x{key:08X}");
 
             // Verify the key works for encryption
             let mut test_data = vec![0xCAFEBABEu32; 4];

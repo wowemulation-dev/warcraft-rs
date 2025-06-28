@@ -11,8 +11,8 @@ fn create_test_archive(temp_dir: &TempDir, name: &str, file_count: usize) -> std
     let mut builder = ArchiveBuilder::new();
 
     for i in 0..file_count {
-        let content = format!("File {} content from {}", i, name);
-        builder = builder.add_file_data(content.into_bytes(), &format!("file_{:03}.txt", i));
+        let content = format!("File {i} content from {name}");
+        builder = builder.add_file_data(content.into_bytes(), &format!("file_{i:03}.txt"));
     }
 
     builder.build(&path).unwrap();
@@ -32,7 +32,7 @@ fn test_concurrent_archive_opening() {
                 let data = archive.read_file("file_005.txt").unwrap();
                 let content = String::from_utf8(data).unwrap();
                 assert!(content.contains("File 5 content"));
-                println!("Thread {} successfully read file", i);
+                println!("Thread {i} successfully read file");
             })
         })
         .collect();
@@ -51,7 +51,7 @@ fn test_parallel_multi_archive_consistency() {
     for i in 0..10 {
         archives.push(create_test_archive(
             &temp_dir,
-            &format!("archive_{}.mpq", i),
+            &format!("archive_{i}.mpq"),
             20,
         ));
     }
@@ -65,7 +65,7 @@ fn test_parallel_multi_archive_consistency() {
         assert_eq!(path, &archives[i]);
         let content = String::from_utf8_lossy(data);
         assert!(content.contains("File 10 content"));
-        assert!(content.contains(&format!("archive_{}.mpq", i)));
+        assert!(content.contains(&format!("archive_{i}.mpq")));
     }
 }
 
@@ -76,22 +76,22 @@ fn test_parallel_search_correctness() {
 
     // Create archives with different file sets
     for i in 0..5 {
-        let path = temp_dir.path().join(format!("search_{}.mpq", i));
+        let path = temp_dir.path().join(format!("search_{i}.mpq"));
         let mut builder = ArchiveBuilder::new();
 
         // Each archive has unique files plus some common ones
         for j in 0..10 {
             builder = builder.add_file_data(
-                format!("Common file {}", j).into_bytes(),
-                &format!("common/file_{:02}.txt", j),
+                format!("Common file {j}").into_bytes(),
+                &format!("common/file_{j:02}.txt"),
             );
         }
 
         // Unique files for each archive
         for j in 0..5 {
             builder = builder.add_file_data(
-                format!("Unique to archive {}", i).into_bytes(),
-                &format!("unique/archive_{}/file_{}.txt", i, j),
+                format!("Unique to archive {i}").into_bytes(),
+                &format!("unique/archive_{i}/file_{j}.txt"),
             );
         }
 
@@ -107,7 +107,7 @@ fn test_parallel_search_correctness() {
     // Verify each archive has its unique files
     for (i, (_path, matches)) in results.iter().enumerate() {
         // MPQ uses backslashes for paths
-        let expected_pattern = format!("unique\\archive_{}\\", i);
+        let expected_pattern = format!("unique\\archive_{i}\\");
 
         // Filter to just the unique files for this archive
         let unique_files: Vec<_> = matches
@@ -118,10 +118,7 @@ fn test_parallel_search_correctness() {
         assert_eq!(
             unique_files.len(),
             5,
-            "Archive {} should have 5 unique files matching pattern '{}', found: {:?}",
-            i,
-            expected_pattern,
-            unique_files
+            "Archive {i} should have 5 unique files matching pattern '{expected_pattern}', found: {unique_files:?}"
         );
     }
 }
@@ -136,7 +133,7 @@ fn test_parallel_extraction_data_integrity() {
 
     // Create archives with known content
     for i in 0..4 {
-        let path = temp_dir.path().join(format!("integrity_{}.mpq", i));
+        let path = temp_dir.path().join(format!("integrity_{i}.mpq"));
         let mut builder = ArchiveBuilder::new();
 
         let files_to_extract = vec!["test1.bin", "test2.bin", "test3.bin"];
@@ -170,8 +167,7 @@ fn test_parallel_extraction_data_integrity() {
             let expected = expected_data.get(&key).unwrap();
             assert_eq!(
                 data, expected,
-                "Data mismatch for archive {} file {}",
-                i, file_name
+                "Data mismatch for archive {i} file {file_name}"
             );
         }
     }
@@ -186,7 +182,7 @@ fn test_parallel_processing_with_errors() {
     for i in 0..3 {
         archives.push(create_test_archive(
             &temp_dir,
-            &format!("valid_{}.mpq", i),
+            &format!("valid_{i}.mpq"),
             5,
         ));
     }
@@ -207,7 +203,7 @@ fn test_rayon_thread_pool_sizes() {
 
     let temp_dir = TempDir::new().unwrap();
     let archives: Vec<_> = (0..16)
-        .map(|i| create_test_archive(&temp_dir, &format!("pool_{}.mpq", i), 5))
+        .map(|i| create_test_archive(&temp_dir, &format!("pool_{i}.mpq"), 5))
         .collect();
 
     // Test with different thread pool sizes
@@ -237,7 +233,7 @@ fn test_rayon_thread_pool_sizes() {
 fn test_custom_processor_thread_safety() {
     let temp_dir = TempDir::new().unwrap();
     let archives: Vec<_> = (0..8)
-        .map(|i| create_test_archive(&temp_dir, &format!("custom_{}.mpq", i), 10))
+        .map(|i| create_test_archive(&temp_dir, &format!("custom_{i}.mpq"), 10))
         .collect();
 
     // Use a custom processor that does multiple operations
@@ -247,7 +243,7 @@ fn test_custom_processor_thread_safety() {
 
         for entry in files {
             if let Some(info) = archive.find_file(&entry.name)? {
-                total_size += info.file_size as u64;
+                total_size += info.file_size;
             }
         }
 
