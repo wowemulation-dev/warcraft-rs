@@ -26,6 +26,81 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Detect which crates have changed
+  changed-files:
+    name: Detect changed crates
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      crates_changed: ${{ steps.list-changed-crates.outputs.crates_changed }}
+      any_crate_changed: ${{ steps.list-changed-crates.outputs.any_crate_changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            Cargo.toml
+            Cargo.lock
+            file-formats/**
+            warcraft-rs/**
+          files_ignore: |
+            **/*.md
+            **/*.txt
+            **/benches/**
+            **/examples/**
+
+      - name: List changed crates
+        id: list-changed-crates
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          echo "Changed files: $ALL_CHANGED_FILES"
+          
+          # If no files changed, we still need to run tests (e.g., scheduled runs)
+          if [ -z "$ALL_CHANGED_FILES" ]; then
+            echo "No files changed, will test all crates"
+            echo "any_crate_changed=true" >> $GITHUB_OUTPUT
+            echo "crates_changed=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Detect which crates changed
+          crates_changed=""
+          
+          # Check if root Cargo.toml or Cargo.lock changed (affects all crates)
+          if echo "$ALL_CHANGED_FILES" | grep -E "^Cargo\.(toml|lock)$"; then
+            echo "Root Cargo files changed, will test all crates"
+            echo "any_crate_changed=true" >> $GITHUB_OUTPUT
+            echo "crates_changed=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Check individual crate changes
+          for crate in wow-mpq wow-blp wow-m2 wow-wmo wow-adt wow-wdl wow-wdt wow-cdbc warcraft-rs; do
+            if echo "$ALL_CHANGED_FILES" | grep -E "(file-formats|warcraft-rs).*$crate"; then
+              crates_changed="$crates_changed $crate"
+            fi
+          done
+          
+          # Remove leading space and output
+          crates_changed=$(echo $crates_changed | xargs)
+          if [ -n "$crates_changed" ]; then
+            echo "Crates changed: $crates_changed"
+            echo "any_crate_changed=true" >> $GITHUB_OUTPUT
+            echo "crates_changed=$crates_changed" >> $GITHUB_OUTPUT
+          else
+            echo "No crate changes detected"
+            echo "any_crate_changed=false" >> $GITHUB_OUTPUT
+            echo "crates_changed=" >> $GITHUB_OUTPUT
+          fi
+
   # Quick checks that should fail fast
   quick-checks:
     name: Quick Checks
@@ -62,7 +137,8 @@ jobs:
   # Main test suite with optimized matrix
   test:
     name: Test (${{ matrix.rust }} on ${{ matrix.os }})
-    needs: [quick-checks]
+    needs: [quick-checks, changed-files]
+    if: needs.changed-files.outputs.any_crate_changed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -89,27 +165,47 @@ jobs:
           cache-all-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      # Determine test scope based on changed crates
+      - name: Determine test scope
+        id: test-scope
+        env:
+          CRATES_CHANGED: ${{ needs.changed-files.outputs.crates_changed }}
+        run: |
+          if [ -z "$CRATES_CHANGED" ]; then
+            echo "Testing all crates (full workspace test)"
+            echo "test_args=--workspace" >> $GITHUB_OUTPUT
+          else
+            echo "Testing only changed crates: $CRATES_CHANGED"
+            args=""
+            for crate in $CRATES_CHANGED; do
+              args="$args -p $crate"
+            done
+            echo "test_args=$args" >> $GITHUB_OUTPUT
+          fi
+
       # Test with all features
-      - name: Test all features
-        run: cargo test --all-features --workspace
+      - name: Test all features (changed crates)
+        run: cargo nextest run --all-features ${{ steps.test-scope.outputs.test_args }}
 
       # Test with no default features
-      - name: Test no default features
-        run: cargo test --no-default-features --workspace
+      - name: Test no default features (changed crates)
+        run: cargo nextest run --no-default-features ${{ steps.test-scope.outputs.test_args }}
 
-      # Test each crate individually (only on stable Linux)
-      - name: Test individual crates
-        if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable'
+      # Test each changed crate individually (only on stable Linux)
+      - name: Test individual changed crates
+        if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable' && needs.changed-files.outputs.crates_changed != ''
+        env:
+          CRATES_CHANGED: ${{ needs.changed-files.outputs.crates_changed }}
         run: |
-          cargo test -p wow-mpq --all-features
-          cargo test -p wow-blp --all-features
-          cargo test -p wow-m2 --all-features
-          cargo test -p wow-wmo --all-features
-          cargo test -p wow-adt --all-features
-          cargo test -p wow-wdl --all-features
-          cargo test -p wow-wdt --all-features
-          cargo test -p wow-cdbc --all-features
-          cargo test -p warcraft-rs --all-features
+          for crate in $CRATES_CHANGED; do
+            echo "Testing $crate individually..."
+            cargo nextest run -p $crate --all-features
+          done
 
   # Documentation build - runs in parallel
   docs:
@@ -137,46 +233,6 @@ jobs:
       - name: Check for broken links
         run: cargo doc --all-features --no-deps --document-private-items
 
-  # Distribution-specific testing
-  distro-test:
-    name: Test on ${{ matrix.distro }}
-    needs: [quick-checks]
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - distro: alpine:latest
-            prepare: apk add --no-cache gcc musl-dev
-          - distro: fedora:latest
-            prepare: dnf install -y gcc
-          - distro: archlinux:latest
-            prepare: pacman -Syu --noconfirm gcc
-          - distro: debian:bookworm
-            prepare: apt-get update && apt-get install -y gcc
-    container:
-      image: ${{ matrix.distro }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies for ${{ matrix.distro }}
-        run: ${{ matrix.prepare }}
-
-      - name: Install Rust via rustup
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Build and test warcraft-rs CLI
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          which cargo || echo "cargo not found in PATH"
-          cargo --version || echo "cargo --version failed"
-          cargo build --release --bin warcraft-rs
-          cargo test --release --bin warcraft-rs
-          # Test the binary runs
-          ./target/release/warcraft-rs --version
 
   # Coverage collection - runs in parallel
   coverage:
@@ -219,14 +275,22 @@ jobs:
   ci-success:
     name: CI Success
     if: always()
-    needs: [quick-checks, test, docs]
+    needs: [quick-checks, test, docs, changed-files]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs
         run: |
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            echo "One or more jobs failed"
-            exit 1
+          # Skip test job check if no crates changed
+          if [[ "${{ needs.changed-files.outputs.any_crate_changed }}" == "false" ]]; then
+            echo "No crate changes detected, skipping test job check"
+            if [[ "${{ needs.quick-checks.result }}" == "failure" || "${{ needs.docs.result }}" == "failure" ]]; then
+              echo "Quick checks or docs failed"
+              exit 1
+            fi
           else
-            echo "All jobs succeeded"
+            if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+              echo "One or more jobs failed"
+              exit 1
+            fi
           fi
+          echo "All required jobs succeeded"

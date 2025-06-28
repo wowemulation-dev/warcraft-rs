@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Examples**: Improved documentation with clear categories (Beginners, Modding, Advanced)
 - **deny.toml**: Added MPL-2.0 and bzip2-1.0.6 to allowed licenses for cbindgen and libbz2-rs-sys dependencies
 - **deny.toml**: Added exceptions for RUSTSEC-2023-0071 (rsa timing attack - local use only) and windows-link yanked version
+- **GitHub Actions**: Simplified release-plz workflow using official `MarcoIeni/release-plz-action@v0.5` (reduced from 83 to 42 lines)
+- **GitHub Actions**: Added smart change detection to CI - only tests crates that have been modified
+- **GitHub Actions**: Integrated cargo-nextest for faster test execution with better parallelization
+- **GitHub Actions**: Removed Alpine, Fedora, Arch Linux, and Debian container tests to simplify CI matrix
 
 ### Fixed
 
