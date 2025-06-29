@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Release-plz workflow configuration
+- **GitHub Actions**: Release-plz workflow now supports optional PAT token for PR creation permissions
 
 ## [0.2.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.2.0) - 2025-06-28
 
