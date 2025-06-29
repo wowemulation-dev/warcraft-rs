@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **storm FFI**: Renamed crate from `storm` to `storm-ffi` while retaining library name as `libstorm`
+
 ### Fixed
 
 - Release-plz workflow configuration

@@ -1,12 +1,12 @@
-# storm
+# storm-ffi
 
 StormLib-compatible C API for the World of Warcraft MPQ archive library.
 
 <div align="center">
 
-[![Crates.io](https://img.shields.io/crates/v/storm.svg)](https://crates.io/crates/storm)
-[![Documentation](https://docs.rs/storm/badge.svg)](https://docs.rs/storm)
-[![License](https://img.shields.io/crates/l/storm.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
+[![Crates.io](https://img.shields.io/crates/v/storm-ffi.svg)](https://crates.io/crates/storm-ffi)
+[![Documentation](https://docs.rs/storm-ffi/badge.svg)](https://docs.rs/storm-ffi)
+[![License](https://img.shields.io/crates/l/storm-ffi.svg)](https://github.com/wowemulation-dev/warcraft-rs#license)
 
 </div>
 
@@ -16,7 +16,7 @@ StormLib-compatible C API for the World of Warcraft MPQ archive library.
 
 ## Overview
 
-The storm crate provides a C-compatible Foreign Function Interface (FFI) that emulates the StormLib API, wrapping the native Rust `wow-mpq` implementation. This allows C/C++ applications that expect StormLib's interface to use the memory-safe Rust implementation instead.
+The storm-ffi crate provides a C-compatible Foreign Function Interface (FFI) that emulates the StormLib API, wrapping the native Rust `wow-mpq` implementation. This allows C/C++ applications that expect StormLib's interface to use the memory-safe Rust implementation instead.
 
 ## Features
 
@@ -40,14 +40,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-storm = "0.1"
+storm-ffi = "0.1"
 ```
 
 ### Building the Library
 
 ```bash
 # Build the library
-cargo build --release -p storm
+cargo build --release -p storm-ffi
 
 # Output libraries will be in target/release:
 # - libstorm.so (Linux)
@@ -160,19 +160,19 @@ git clone https://github.com/wowemulation-dev/warcraft-rs
 cd warcraft-rs
 
 # Build the storm crate
-cargo build --release -p storm
+cargo build --release -p storm-ffi
 
 # Generate C header
-cargo build -p storm  # cbindgen runs automatically
+cargo build -p storm-ffi  # cbindgen runs automatically
 
-# Header will be at: ffi/storm/include/StormLib.h
+# Header will be at: ffi/storm-ffi/include/StormLib.h
 ```
 
 ## Compatibility Notes
 
 ### StormLib Differences
 
-While the storm crate aims for StormLib compatibility, there are some differences:
+While the storm-ffi crate aims for StormLib compatibility, there are some differences:
 
 - Thread-safe by default (uses Rust's safety guarantees)
 - Error codes are translated from wow-mpq's error types

@@ -17,7 +17,7 @@ members = [
   "file-formats/database/wow-cdbc",
 
   # FFI
-  "ffi/storm",
+  "ffi/storm-ffi",
 
   # CLI
   "warcraft-rs",

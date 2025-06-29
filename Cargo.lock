@@ -2170,7 +2170,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "storm"
+name = "storm-ffi"
 version = "0.2.0"
 dependencies = [
  "cbindgen",
