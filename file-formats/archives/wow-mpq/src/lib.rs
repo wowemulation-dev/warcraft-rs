@@ -77,6 +77,7 @@ pub mod builder;
 pub mod compare;
 pub mod compression;
 pub mod crypto;
+pub mod database;
 pub mod error;
 pub mod header;
 pub mod io;

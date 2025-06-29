@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **wow-mpq**: SQLite database support for persistent MPQ filename hash storage and resolution
+- **wow-mpq**: Support for both traditional MPQ hashes (hash_a, hash_b) and HET hashes (40/48/56/64 bit)
+- **wow-mpq**: Database import functionality supporting listfiles, MPQ archives, and directory scanning
+- **wow-mpq**: Automatic filename resolution through database lookup during archive listing operations
+- **wow-mpq**: Database connection management with automatic schema initialization
+- **wow-mpq**: Batch processing for efficient bulk filename imports
+- **warcraft-rs CLI**: New `mpq db` subcommand with status, import, analyze, lookup, export, and list operations
+- **warcraft-rs CLI**: `--use-db` flag for `mpq list` to enable database lookups for unknown filenames
+- **warcraft-rs CLI**: `--record-to-db` flag for `mpq list` to store discovered filenames in database
+
 ## [0.2.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.2.0) - 2025-06-28
 
 ### Added
