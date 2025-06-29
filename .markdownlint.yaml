@@ -36,6 +36,7 @@ MD040:
       'dockerfile',
       'glsl',
       'json',
+      'ldif',
       'lua',
       'mermaid',
       'pgsql',
