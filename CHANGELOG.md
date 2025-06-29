@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-m2**: Added texture filename parsing functionality
 - **wow-m2**: Added support for old skin format in the skin-info command
 - **warcraft-rs**: Added `cargo-deny` configuration for dependency security scanning and duplicate management
+- **wow-mpq**: SQLite database support for persistent MPQ filename hash storage and resolution
+- **wow-mpq**: Support for both traditional MPQ hashes (hash_a, hash_b) and HET hashes (40/48/56/64 bit)
+- **wow-mpq**: Database import functionality supporting listfiles, MPQ archives, and directory scanning
+- **wow-mpq**: Automatic filename resolution through database lookup during archive listing operations
+- **wow-mpq**: Database connection management with automatic schema initialization
+- **wow-mpq**: Batch processing for efficient bulk filename imports
+- **warcraft-rs CLI**: New `mpq db` subcommand with status, import, analyze, lookup, export, and list operations
+- **warcraft-rs CLI**: `--use-db` flag for `mpq list` to enable database lookups for unknown filenames
+- **warcraft-rs CLI**: `--record-to-db` flag for `mpq list` to store discovered filenames in database
 
 ### Changed
 
