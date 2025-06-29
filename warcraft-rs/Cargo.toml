@@ -17,18 +17,18 @@ clap = { version = "4.5", features = ["derive", "cargo", "env"] }
 clap_complete = "4.5"
 
 # File format crates
-wow-mpq = { path = "../file-formats/archives/wow-mpq" }
-wow-cdbc = { path = "../file-formats/database/wow-cdbc", optional = true, features = [
+wow-mpq = { path = "../file-formats/archives/wow-mpq", version = "0.2.0" }
+wow-cdbc = { path = "../file-formats/database/wow-cdbc", version = "0.2.0", optional = true, features = [
   "cli",
   "mmap",
   "yaml",
 ] }
-wow-blp = { path = "../file-formats/graphics/wow-blp", optional = true }
-wow-m2 = { path = "../file-formats/graphics/wow-m2", optional = true }
-wow-wmo = { path = "../file-formats/graphics/wow-wmo", optional = true }
-wow-adt = { path = "../file-formats/world-data/wow-adt", optional = true }
-wow-wdt = { path = "../file-formats/world-data/wow-wdt", optional = true }
-wow-wdl = { path = "../file-formats/world-data/wow-wdl", optional = true }
+wow-blp = { path = "../file-formats/graphics/wow-blp", version = "0.2.0", optional = true }
+wow-m2 = { path = "../file-formats/graphics/wow-m2", version = "0.2.0", optional = true }
+wow-wmo = { path = "../file-formats/graphics/wow-wmo", version = "0.2.0", optional = true }
+wow-adt = { path = "../file-formats/world-data/wow-adt", version = "0.2.0", optional = true }
+wow-wdt = { path = "../file-formats/world-data/wow-wdt", version = "0.2.0", optional = true }
+wow-wdl = { path = "../file-formats/world-data/wow-wdl", version = "0.2.0", optional = true }
 
 # Error handling and logging
 anyhow = { workspace = true }

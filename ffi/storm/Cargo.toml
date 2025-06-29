@@ -1,6 +1,6 @@
 [package]
 name = "storm"
-version.workspace = true
+version = "0.2.0"
 authors.workspace = true
 edition = "2021"
 rust-version.workspace = true
@@ -8,7 +8,6 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "StormLib-compatible C API for the World of Warcraft MPQ archive library"
-readme = "README.md"
 
 [lib]
 # Output library will be named libstorm.{so,dylib,dll}
