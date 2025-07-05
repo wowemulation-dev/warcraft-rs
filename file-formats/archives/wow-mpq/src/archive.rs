@@ -2144,7 +2144,9 @@ impl Archive {
                         match compression::decompress(sector_data, 0x08, expected_size) {
                             Ok(decompressed) => decompressed,
                             Err(e) => {
-                                log::warn!("Failed to decompress IMPLODE sector {i}: {e}. Using zeros.");
+                                log::warn!(
+                                    "Failed to decompress IMPLODE sector {i}: {e}. Using zeros."
+                                );
                                 vec![0u8; expected_size]
                             }
                         }
@@ -2152,8 +2154,11 @@ impl Archive {
                         // COMPRESS flag - has compression type byte prefix
                         let compression_type = sector_data[0];
                         let compressed_data = &sector_data[1..];
-                        match compression::decompress(compressed_data, compression_type, expected_size)
-                        {
+                        match compression::decompress(
+                            compressed_data,
+                            compression_type,
+                            expected_size,
+                        ) {
                             Ok(decompressed) => decompressed,
                             Err(e) => {
                                 log::warn!("Failed to decompress sector {i}: {e}. Using zeros.");
@@ -2608,8 +2613,8 @@ impl FileInfo {
     /// Check if the file uses IMPLODE compression specifically
     pub fn is_implode(&self) -> bool {
         use crate::tables::BlockEntry;
-        (self.flags & BlockEntry::FLAG_IMPLODE) != 0 && 
-        (self.flags & BlockEntry::FLAG_COMPRESS) == 0
+        (self.flags & BlockEntry::FLAG_IMPLODE) != 0
+            && (self.flags & BlockEntry::FLAG_COMPRESS) == 0
     }
 
     /// Check if the file uses COMPRESS (multi-method compression)

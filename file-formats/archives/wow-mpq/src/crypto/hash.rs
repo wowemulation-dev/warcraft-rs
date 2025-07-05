@@ -26,7 +26,7 @@ pub fn hash_string(filename: &str, hash_type: u32) -> u32 {
         ch = ASCII_TO_UPPER[ch as usize];
 
         // Update the hash
-        let table_idx = (hash_type * 0x100 + ch as u32) as usize;
+        let table_idx = hash_type.wrapping_add(ch as u32) as usize;
         seed1 = ENCRYPTION_TABLE[table_idx] ^ (seed1.wrapping_add(seed2));
         seed2 = (ch as u32)
             .wrapping_add(seed1)
