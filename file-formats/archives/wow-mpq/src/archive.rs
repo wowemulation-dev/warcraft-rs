@@ -1952,22 +1952,33 @@ impl Archive {
                     return Err(Error::compression("File data is empty"));
                 }
 
-                let compression_type = data[0];
-                let compressed_data = &data[1..];
+                // Check if this is IMPLODE compression (no compression type prefix)
+                if file_info.is_implode() {
+                    log::debug!(
+                        "Decompressing single unit IMPLODE file: input_size={}, target_size={}",
+                        data.len(),
+                        actual_file_size
+                    );
+                    compression::decompress(&data, 0x08, actual_file_size as usize)
+                } else {
+                    // COMPRESS flag - has compression type byte prefix
+                    let compression_type = data[0];
+                    let compressed_data = &data[1..];
 
-                log::debug!(
-                    "Decompressing single unit file: method=0x{:02X}, input_size={}, target_size={}, first bytes: {:02X?}",
-                    compression_type,
-                    compressed_data.len(),
-                    actual_file_size,
-                    &compressed_data[..compressed_data.len().min(16)]
-                );
+                    log::debug!(
+                        "Decompressing single unit file: method=0x{:02X}, input_size={}, target_size={}, first bytes: {:02X?}",
+                        compression_type,
+                        compressed_data.len(),
+                        actual_file_size,
+                        &compressed_data[..compressed_data.len().min(16)]
+                    );
 
-                compression::decompress(
-                    compressed_data,
-                    compression_type,
-                    actual_file_size as usize,
-                )
+                    compression::decompress(
+                        compressed_data,
+                        compression_type,
+                        actual_file_size as usize,
+                    )
+                }
             } else {
                 Ok(data)
             }
@@ -2126,18 +2137,28 @@ impl Archive {
             let decompressed_sector = if file_info.is_compressed()
                 && sector_size_compressed < expected_size
             {
-                // All compressed sectors should have compression type byte prefix
-                // This matches StormLib's behavior
                 if !sector_data.is_empty() {
-                    let compression_type = sector_data[0];
-                    let compressed_data = &sector_data[1..];
-                    match compression::decompress(compressed_data, compression_type, expected_size)
-                    {
-                        Ok(decompressed) => decompressed,
-                        Err(e) => {
-                            log::warn!("Failed to decompress sector {i}: {e}. Using zeros.");
-                            // Return zeros for corrupted sector
-                            vec![0u8; expected_size]
+                    // Check if this is IMPLODE compression (no compression type prefix)
+                    if file_info.is_implode() {
+                        // IMPLODE compression - no compression type byte prefix
+                        match compression::decompress(sector_data, 0x08, expected_size) {
+                            Ok(decompressed) => decompressed,
+                            Err(e) => {
+                                log::warn!("Failed to decompress IMPLODE sector {i}: {e}. Using zeros.");
+                                vec![0u8; expected_size]
+                            }
+                        }
+                    } else {
+                        // COMPRESS flag - has compression type byte prefix
+                        let compression_type = sector_data[0];
+                        let compressed_data = &sector_data[1..];
+                        match compression::decompress(compressed_data, compression_type, expected_size)
+                        {
+                            Ok(decompressed) => decompressed,
+                            Err(e) => {
+                                log::warn!("Failed to decompress sector {i}: {e}. Using zeros.");
+                                vec![0u8; expected_size]
+                            }
                         }
                     }
                 } else {
@@ -2582,6 +2603,19 @@ impl FileInfo {
     pub fn is_patch_file(&self) -> bool {
         use crate::tables::BlockEntry;
         (self.flags & BlockEntry::FLAG_PATCH_FILE) != 0
+    }
+
+    /// Check if the file uses IMPLODE compression specifically
+    pub fn is_implode(&self) -> bool {
+        use crate::tables::BlockEntry;
+        (self.flags & BlockEntry::FLAG_IMPLODE) != 0 && 
+        (self.flags & BlockEntry::FLAG_COMPRESS) == 0
+    }
+
+    /// Check if the file uses COMPRESS (multi-method compression)
+    pub fn uses_compression_prefix(&self) -> bool {
+        use crate::tables::BlockEntry;
+        (self.flags & BlockEntry::FLAG_COMPRESS) != 0
     }
 
     /// Extract compression method from block table flags

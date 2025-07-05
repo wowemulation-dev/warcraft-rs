@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **wow-mpq**: Fixed Huffman decompression algorithm to match StormLib's linked list approach, resolving ADPCM audio decompression failures and file count discrepancies in Warcraft 3 MPQ archives (GitHub issue #4)
+- **wow-mpq**: Fixed IMPLODE compression handling for Warcraft III MPQ archives - IMPLODE-compressed files no longer incorrectly skip the first byte as a compression type prefix
 - **wow-mpq**: Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test failures
 - **GitHub Actions**: Release-plz workflow now supports optional PAT token for PR creation permissions
 
