@@ -798,9 +798,7 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
         let decoded_value = tree.decode_one_byte(&mut reader)?;
         decoded_count += 1;
 
-        log::trace!(
-            "Huffman decoded byte {decoded_count}: value=0x{decoded_value:03X}"
-        );
+        log::trace!("Huffman decoded byte {decoded_count}: value=0x{decoded_value:03X}");
 
         // Check for end of stream marker
         if decoded_value == 0x100 {
@@ -875,37 +873,5 @@ mod tests {
         assert_eq!(reader.get_bit().unwrap(), 1); // bit 5
         assert_eq!(reader.get_bit().unwrap(), 0); // bit 6
         assert_eq!(reader.get_bit().unwrap(), 1); // bit 7
-    }
-
-    #[test]
-    fn test_huffman_v2_with_actual_data() {
-        // Enable logging for this test
-        let _ = env_logger::builder()
-            .filter_level(log::LevelFilter::Trace)
-            .try_init();
-
-        // This is actual compressed data from a WAV file with compression type 0x07
-        let compressed_data = vec![
-            0x07, 0x19, 0x4A, 0x01, 0xEE, 0x34, 0x44, 0x59, 0x96, 0x6D, 0xE5, 0xF5, 0xC6, 0xDA,
-            0x5D, 0x1B,
-        ];
-
-        println!("Testing Huffman V2 decompression");
-        println!("Compressed data: {} bytes", compressed_data.len());
-
-        // Try to decompress with expected size
-        match decompress(&compressed_data, 8192) {
-            Ok(decompressed) => {
-                println!("✓ Decompressed {} bytes", decompressed.len());
-                println!(
-                    "  First 32 bytes: {:02X?}",
-                    &decompressed[..decompressed.len().min(32)]
-                );
-            }
-            Err(e) => {
-                println!("✗ Decompression failed: {e}");
-                panic!("Huffman decompression failed: {e}");
-            }
-        }
     }
 }

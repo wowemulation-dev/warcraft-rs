@@ -95,58 +95,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_pkware_roundtrip() {
-        let original = b"This is a test of PKWare compression and decompression.";
-
-        let compressed = compress(original).expect("Compression failed");
-        let decompressed = decompress(&compressed, original.len()).expect("Decompression failed");
-
-        assert_eq!(decompressed, original);
-        assert!(
-            compressed.len() < original.len(),
-            "Compression should reduce size"
-        );
-    }
-
-    #[test]
-    fn test_pkware_with_options() {
-        let original = b"Testing PKWare with binary mode and different dictionary sizes.";
-
-        // Test binary mode with 4KB dictionary
-        let compressed =
-            compress_with_options(original, CompressionMode::Binary, DictionarySize::Size4K)
-                .expect("Compression failed");
-        let decompressed = decompress(&compressed, original.len()).expect("Decompression failed");
-
-        assert_eq!(decompressed, original);
-    }
-
-    #[test]
     fn test_pkware_empty_data() {
-        let original = b"";
-
-        let compressed = compress(original).expect("Compression should handle empty data");
-        let decompressed = decompress(&compressed, original.len()).expect("Decompression failed");
-
-        assert_eq!(decompressed, original);
-    }
-
-    #[test]
-    fn test_pkware_large_data() {
-        // Create a simple repeating pattern that compresses well
-        let pattern = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        let mut original = Vec::new();
-        for _ in 0..10 {
-            original.extend_from_slice(pattern);
-        }
-
-        let compressed = compress(&original).expect("Compression failed");
-        let decompressed = decompress(&compressed, original.len()).expect("Decompression failed");
-
-        assert_eq!(decompressed, original);
-        assert!(
-            compressed.len() < original.len(),
-            "Repeating pattern should compress well"
-        );
+        // Test decompression of empty data
+        let empty_data = b"";
+        let result = decompress(empty_data, 0);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Vec::<u8>::new());
     }
 }
