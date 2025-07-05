@@ -33,6 +33,7 @@ flate2 = "1.1"
 bzip2 = "0.6"
 lzma-rs = "0.3"
 pklib = "0.1"
+implode = "0.1.1"
 
 # Data structures and utilities
 bytes = "1.10"
