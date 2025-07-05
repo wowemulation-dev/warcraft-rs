@@ -92,10 +92,16 @@ fn decompress_multiple(data: &[u8], flags: u8, expected_size: usize) -> Result<V
 
     // Step 1: Decompress the primary compression method
     if has_huffman {
-        log::debug!("Decompressing Huffman");
+        log::debug!("Decompressing Huffman in multi-compression mode");
+        log::debug!(
+            "Current data size: {}, first few bytes: {:02X?}",
+            current_data.len(),
+            &current_data[..current_data.len().min(16)]
+        );
         // For Huffman, we don't know the intermediate size, so we estimate conservatively
         let huffman_output_size = std::cmp::max(expected_size * 2, current_data.len() * 2);
         current_data = algorithms::huffman::decompress(&current_data, huffman_output_size)?;
+        log::debug!("After Huffman: {} bytes", current_data.len());
     } else if has_zlib {
         log::debug!("Decompressing Zlib");
         current_data = algorithms::zlib::decompress(&current_data, expected_size * 4)?;

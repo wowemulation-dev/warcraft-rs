@@ -56,9 +56,7 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
                 );
             }
             Err(e) => {
-                log::error!(
-                    "PKWare decompression failed at input position {input_pos}: {e:?}"
-                );
+                log::error!("PKWare decompression failed at input position {input_pos}: {e:?}");
                 return Err(Error::compression(format!(
                     "PKWare decompression failed: {e:?}"
                 )));

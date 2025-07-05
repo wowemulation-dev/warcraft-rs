@@ -1956,10 +1956,11 @@ impl Archive {
                 let compressed_data = &data[1..];
 
                 log::debug!(
-                    "Decompressing single unit file: method=0x{:02X}, input_size={}, target_size={}",
+                    "Decompressing single unit file: method=0x{:02X}, input_size={}, target_size={}, first bytes: {:02X?}",
                     compression_type,
                     compressed_data.len(),
-                    actual_file_size
+                    actual_file_size,
+                    &compressed_data[..compressed_data.len().min(16)]
                 );
 
                 compression::decompress(

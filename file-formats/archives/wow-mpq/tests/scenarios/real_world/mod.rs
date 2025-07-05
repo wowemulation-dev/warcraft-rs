@@ -7,3 +7,4 @@ mod compression_format;
 mod het_bet_creation;
 mod v4_comprehensive;
 mod v4_creation;
+mod war3_file_count;

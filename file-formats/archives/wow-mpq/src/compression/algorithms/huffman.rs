@@ -1,6 +1,6 @@
-//! Huffman compression implementation for MPQ archives
+//! Huffman compression implementation for MPQ archives (StormLib-compatible)
 //!
-//! This is a simplified port of the StormLib Huffman implementation, primarily used for WAVE files.
+//! This is a complete rewrite to match StormLib's linked list approach.
 //! Based on the algorithm from Ladislav Zezula's StormLib.
 
 use crate::{Error, Result};
@@ -281,23 +281,28 @@ impl<'a> BitReader<'a> {
 /// Huffman tree node based on StormLib's THTreeItem
 #[derive(Debug, Clone)]
 struct HuffmanItem {
-    decompressed_value: u32,
-    weight: u32,
-    parent: Option<usize>,
-    child_lo: Option<usize>,
-    _next: Option<usize>,
-    _prev: Option<usize>,
+    // Linked list pointers
+    next: Option<usize>, // Pointer to lower-weight tree item
+    prev: Option<usize>, // Pointer to higher-weight item
+
+    // Tree structure
+    decompressed_value: u32, // 08 - Decompressed byte value (also index in the array)
+    weight: u32,             // 0C - Weight
+    parent: Option<usize>,   // 10 - Pointer to parent item (NULL if none)
+    child_lo: Option<usize>, // 14 - Pointer to the child with lower-weight child ("left child")
+
+                             // In StormLib, the higher-weight child is accessed via pChildLo->pPrev
 }
 
 impl HuffmanItem {
     fn new(value: u32, weight: u32) -> Self {
         Self {
+            next: None,
+            prev: None,
             decompressed_value: value,
             weight,
             parent: None,
             child_lo: None,
-            _next: None,
-            _prev: None,
         }
     }
 }
@@ -308,6 +313,7 @@ struct QuickLink {
     valid_value: u32,
     valid_bits: u32,
     decompressed_value: u32,
+    item_index: Option<usize>,
 }
 
 impl QuickLink {
@@ -316,20 +322,23 @@ impl QuickLink {
             valid_value: 0,
             valid_bits: 0,
             decompressed_value: 0,
+            item_index: None,
         }
     }
 }
 
-/// Simplified Huffman tree based on StormLib
+/// Huffman tree based on StormLib
 struct HuffmanTree {
     items: Vec<HuffmanItem>,
     items_by_byte: [Option<usize>; 0x102],
     quick_links: [QuickLink; LINK_ITEM_COUNT],
-    first: Option<usize>,
-    last: Option<usize>,
+    first: Option<usize>, // Pointer to the highest weight item
+    last: Option<usize>,  // Pointer to the lowest weight item
     min_valid_value: u32,
-    is_cmp0: bool,
 }
+
+// Virtual list head marker
+const LIST_HEAD: Option<usize> = None;
 
 impl HuffmanTree {
     fn new() -> Self {
@@ -337,17 +346,175 @@ impl HuffmanTree {
             items: Vec::with_capacity(HUFF_ITEM_COUNT),
             items_by_byte: [None; 0x102],
             quick_links: std::array::from_fn(|_| QuickLink::new()),
-            first: None,
-            last: None,
+            first: LIST_HEAD,
+            last: LIST_HEAD,
             min_valid_value: 1,
-            is_cmp0: false,
         }
+    }
+
+    // Link two items in the linked list
+    fn link_two_items(&mut self, item1_idx: usize, item2_idx: usize) {
+        // pItem2->pNext = pItem1->pNext;
+        self.items[item2_idx].next = self.items[item1_idx].next;
+
+        // pItem2->pPrev = pItem1->pNext->pPrev;
+        if let Some(next_idx) = self.items[item1_idx].next {
+            self.items[item2_idx].prev = self.items[next_idx].prev;
+            // pItem1->pNext->pPrev = pItem2;
+            self.items[next_idx].prev = Some(item2_idx);
+        } else {
+            // item1 was the last item
+            self.items[item2_idx].prev = Some(item1_idx);
+        }
+
+        // pItem1->pNext = pItem2;
+        self.items[item1_idx].next = Some(item2_idx);
+    }
+
+    // Insert item after a given position
+    fn insert_after(&mut self, new_item_idx: usize, after_idx: Option<usize>) {
+        if let Some(idx) = after_idx {
+            self.link_two_items(idx, new_item_idx);
+        } else {
+            // Insert at the beginning of the list
+            self.items[new_item_idx].prev = None;
+            self.items[new_item_idx].next = self.first;
+
+            if let Some(first_idx) = self.first {
+                self.items[first_idx].prev = Some(new_item_idx);
+            }
+
+            self.first = Some(new_item_idx);
+
+            if self.last.is_none() {
+                self.last = Some(new_item_idx);
+            }
+        }
+    }
+
+    // Insert item before a given position
+    fn insert_before(&mut self, new_item_idx: usize, before_idx: Option<usize>) {
+        if let Some(idx) = before_idx {
+            // Get the previous item
+            let prev_idx = self.items[idx].prev;
+
+            self.items[new_item_idx].next = Some(idx);
+            self.items[new_item_idx].prev = prev_idx;
+            self.items[idx].prev = Some(new_item_idx);
+
+            if let Some(prev) = prev_idx {
+                self.items[prev].next = Some(new_item_idx);
+            } else {
+                // This was the first item
+                self.first = Some(new_item_idx);
+            }
+        } else {
+            // Insert at the end of the list
+            self.items[new_item_idx].next = None;
+            self.items[new_item_idx].prev = self.last;
+
+            if let Some(last_idx) = self.last {
+                self.items[last_idx].next = Some(new_item_idx);
+            }
+
+            self.last = Some(new_item_idx);
+
+            if self.first.is_none() {
+                self.first = Some(new_item_idx);
+            }
+        }
+    }
+
+    // Create a new item and add it to the list
+    fn create_new_item(
+        &mut self,
+        decompressed_value: u32,
+        weight: u32,
+        insert_after: bool,
+    ) -> usize {
+        let new_idx = self.items.len();
+        self.items
+            .push(HuffmanItem::new(decompressed_value, weight));
+
+        // For the initial list, just append to the end
+        // The fixup function will move it to the correct position
+        if self.first.is_none() {
+            self.first = Some(new_idx);
+            self.last = Some(new_idx);
+        } else if insert_after {
+            self.insert_after(new_idx, self.last);
+        } else {
+            self.insert_before(new_idx, self.first);
+        }
+
+        new_idx
+    }
+
+    // Find item with weight >= given weight
+    fn find_higher_or_equal_item(&self, start_idx: Option<usize>, weight: u32) -> Option<usize> {
+        let mut current = start_idx;
+
+        while let Some(idx) = current {
+            if self.items[idx].weight >= weight {
+                return Some(idx);
+            }
+            current = self.items[idx].prev;
+        }
+
+        None
+    }
+
+    // Fix item position by weight (insertion sort)
+    fn fixup_item_pos_by_weight(&mut self, item_idx: usize, mut max_weight: u32) -> u32 {
+        let item_weight = self.items[item_idx].weight;
+
+        // If this item's weight is less than max_weight, we need to move it
+        if item_weight < max_weight {
+            // Find the item with weight >= this item's weight, searching backwards from last
+            if let Some(higher_idx) = self.find_higher_or_equal_item(self.last, item_weight) {
+                // Remove item from its current position
+                self.remove_item_from_list(item_idx);
+
+                // Insert after the found item (LinkTwoItems behavior)
+                self.insert_after(item_idx, Some(higher_idx));
+            }
+        } else {
+            // This is the new maximum weight
+            max_weight = item_weight;
+        }
+
+        max_weight
+    }
+
+    // Remove item from linked list (but keep in items array)
+    fn remove_item_from_list(&mut self, item_idx: usize) {
+        let prev = self.items[item_idx].prev;
+        let next = self.items[item_idx].next;
+
+        if let Some(prev_idx) = prev {
+            self.items[prev_idx].next = next;
+        } else {
+            // This was the first item
+            self.first = next;
+        }
+
+        if let Some(next_idx) = next {
+            self.items[next_idx].prev = prev;
+        } else {
+            // This was the last item
+            self.last = prev;
+        }
+
+        self.items[item_idx].prev = None;
+        self.items[item_idx].next = None;
     }
 
     fn build_tree(&mut self, compression_type: u32) -> Result<()> {
         // Clear all items
         self.items.clear();
         self.items_by_byte = [None; 0x102];
+        self.first = LIST_HEAD;
+        self.last = LIST_HEAD;
 
         // Ensure compression type is valid
         let comp_type = (compression_type & 0x0F) as usize;
@@ -357,137 +524,244 @@ impl HuffmanTree {
 
         let weight_table = WEIGHT_TABLES[comp_type];
 
-        // Build items for all non-zero weight bytes
-        for (i, &weight) in weight_table.iter().enumerate() {
+        // Build the linear list of entries that is sorted by byte weight
+        // First pass: create all items
+        for (i, &weight) in weight_table.iter().enumerate().take(0x100) {
             if weight != 0 {
-                let item_index = self.items.len();
-                self.items.push(HuffmanItem::new(i as u32, weight as u32));
-                self.items_by_byte[i] = Some(item_index);
+                let item_idx = self.create_new_item(i as u32, weight as u32, true);
+                self.items_by_byte[i] = Some(item_idx);
             }
         }
 
-        // Add termination entries
-        let end_index = self.items.len();
-        self.items.push(HuffmanItem::new(0x100, 1));
-        self.items_by_byte[0x100] = Some(end_index);
+        // Insert termination entries
+        let end_idx = self.create_new_item(0x100, 1, true);
+        self.items_by_byte[0x100] = Some(end_idx);
 
-        let eof_index = self.items.len();
-        self.items.push(HuffmanItem::new(0x101, 1));
-        self.items_by_byte[0x101] = Some(eof_index);
+        let eof_idx = self.create_new_item(0x101, 1, true);
+        self.items_by_byte[0x101] = Some(eof_idx);
 
-        // Sort items by weight (simple bubble sort for this implementation)
-        self.items.sort_by_key(|item| item.weight);
+        // Now sort the entire list by weight using insertion sort
+        // Build a temporary sorted list
+        let mut sorted_items: Vec<(usize, u32)> = Vec::new();
+        let mut curr = self.first;
+        while let Some(idx) = curr {
+            sorted_items.push((idx, self.items[idx].weight));
+            curr = self.items[idx].next;
+        }
 
-        // Rebuild items_by_byte after sorting
-        for (i, item) in self.items.iter().enumerate() {
-            if item.decompressed_value <= 0x101 {
-                self.items_by_byte[item.decompressed_value as usize] = Some(i);
+        // Sort by weight (DESCENDING - highest weight first)
+        // This matches StormLib's organization where pLast points to lowest weight
+        sorted_items.sort_by_key(|&(_, weight)| std::cmp::Reverse(weight));
+
+        // Rebuild the linked list in sorted order
+        self.first = None;
+        self.last = None;
+
+        for &(idx, _) in &sorted_items {
+            // Clear existing links
+            self.items[idx].prev = None;
+            self.items[idx].next = None;
+
+            // Add to the end of the new list
+            if self.first.is_none() {
+                self.first = Some(idx);
+                self.last = Some(idx);
+            } else {
+                self.items[idx].prev = self.last;
+                if let Some(last_idx) = self.last {
+                    self.items[last_idx].next = Some(idx);
+                }
+                self.last = Some(idx);
             }
         }
 
-        // Set first and last
-        if !self.items.is_empty() {
-            self.first = Some(0);
-            self.last = Some(self.items.len() - 1);
+        log::debug!("Built initial list with {} leaf nodes", self.items.len());
+
+        // Debug: Print the linked list order
+        if log::log_enabled!(log::Level::Trace) {
+            log::trace!("Initial linked list (first -> last):");
+            let mut curr = self.first;
+            let mut count = 0;
+            while let Some(idx) = curr {
+                if count < 5 || count >= self.items.len() - 5 {
+                    log::trace!(
+                        "  [{}] idx={}, value=0x{:02X}, weight={}",
+                        count,
+                        idx,
+                        self.items[idx].decompressed_value,
+                        self.items[idx].weight
+                    );
+                } else if count == 5 {
+                    log::trace!("  ...");
+                }
+                curr = self.items[idx].next;
+                count += 1;
+            }
         }
 
-        // Build the tree structure (simplified version)
-        self.build_internal_tree()?;
+        // Now we need to build the tree
+        // IMPORTANT: After reviewing StormLib more carefully:
+        // - The list is sorted DESCENDING (highest weight first, lowest weight last)
+        // - pLast points to the LOWEST weight node
+        // - We start from pLast and use pPrev to go towards higher weights
+        // - This way we pair the lowest weight nodes first (correct for Huffman)
+        let mut child_lo = self.last;
+        let mut internal_nodes = 0;
+        // Max weight is at the beginning of the list (descending order)
+        let mut max_weight = if let Some(first_idx) = self.first {
+            self.items[first_idx].weight
+        } else {
+            0
+        };
 
+        // Work as long as both children are valid
+        while let Some(lo_idx) = child_lo {
+            // Get the previous child (pPrev points to higher weight in descending list)
+            let child_hi = self.items[lo_idx].prev;
+            if child_hi.is_none() {
+                log::debug!(
+                    "Tree building stopped: no more pairs (created {internal_nodes} internal nodes)"
+                );
+                break; // Can't create a parent with only one child
+            }
+            let hi_idx = child_hi.unwrap();
+
+            log::trace!(
+                "Building parent for children: lo={} (w={}), hi={} (w={})",
+                lo_idx,
+                self.items[lo_idx].weight,
+                hi_idx,
+                self.items[hi_idx].weight
+            );
+
+            // Create new parent item for the children
+            let parent_weight = self.items[hi_idx].weight + self.items[lo_idx].weight;
+            let parent_idx = self.create_new_item(0xFFFFFFFFu32, parent_weight, true);
+            internal_nodes += 1;
+
+            // Link both child items to their new parent
+            self.items[lo_idx].parent = Some(parent_idx);
+            self.items[hi_idx].parent = Some(parent_idx);
+            self.items[parent_idx].child_lo = Some(lo_idx);
+
+            // IMPORTANT: Save the next child BEFORE fixup
+            // In StormLib: pChildLo = pChildHi->pPrev
+            let next_child = self.items[hi_idx].prev;
+
+            // Fixup the item's position by its weight
+            max_weight = self.fixup_item_pos_by_weight(parent_idx, max_weight);
+
+            // Continue from where we left off
+            // In StormLib, they just continue with pChildHi->pPrev
+            // The paired nodes are effectively out of consideration because they have parents
+            child_lo = next_child;
+
+            log::trace!("Next iteration will start from: {child_lo:?}");
+        }
+
+        log::debug!(
+            "Tree building complete: {} total items ({} leaf + {} internal)",
+            self.items.len(),
+            self.items.len() - internal_nodes,
+            internal_nodes
+        );
+
+        // Initialize the MinValidValue to 1, which invalidates all quick-link items
         self.min_valid_value = 1;
         Ok(())
     }
 
-    fn build_internal_tree(&mut self) -> Result<()> {
-        // This is a simplified version of the StormLib tree building
-        // For a full implementation, we would need to port the complex tree rebalancing logic
-        // For now, we'll create a basic structure that should work for most cases
-
-        if self.items.len() < 2 {
-            return Ok(());
-        }
-
-        // Build parent-child relationships in a simplified manner
-        let mut work_items = self.items.len();
-
-        while work_items > 1 {
-            if work_items < 2 {
-                break;
-            }
-
-            // Take the two items with lowest weight
-            let child_lo_idx = work_items - 1;
-            let child_hi_idx = work_items - 2;
-
-            if child_lo_idx >= self.items.len() || child_hi_idx >= self.items.len() {
-                break;
-            }
-
-            let combined_weight = self.items[child_lo_idx].weight + self.items[child_hi_idx].weight;
-
-            // Create new parent item
-            let parent_idx = self.items.len();
-            self.items.push(HuffmanItem::new(0, combined_weight));
-
-            // Set up parent-child relationships
-            self.items[parent_idx].child_lo = Some(child_lo_idx);
-            self.items[child_lo_idx].parent = Some(parent_idx);
-            self.items[child_hi_idx].parent = Some(parent_idx);
-
-            work_items -= 1;
-        }
-
-        Ok(())
-    }
-
     fn decode_one_byte(&mut self, reader: &mut BitReader<'_>) -> Result<u32> {
-        // Try quick links first (simplified)
-        if let Ok(link_index) = reader.peek_7_bits() {
-            let link_index = link_index as usize;
-            if link_index < LINK_ITEM_COUNT {
-                let quick_link = &self.quick_links[link_index];
-                if quick_link.valid_value > self.min_valid_value && quick_link.valid_bits <= 7 {
-                    reader.skip_bits(quick_link.valid_bits);
-                    return Ok(quick_link.decompressed_value);
-                }
+        // Try quick links first
+        let item_link_index = reader.peek_7_bits().unwrap_or(0) as usize;
+        let has_item_link = item_link_index < LINK_ITEM_COUNT;
+
+        // Check if quick link is valid
+        let mut item_idx = if has_item_link
+            && self.quick_links[item_link_index].valid_value >= self.min_valid_value
+        {
+            // If that item needs less than 7 bits, we can get decompressed value directly
+            if self.quick_links[item_link_index].valid_bits <= 7 {
+                reader.skip_bits(self.quick_links[item_link_index].valid_bits);
+                return Ok(self.quick_links[item_link_index].decompressed_value);
             }
+
+            // Otherwise skip 7 bits and use the stored item
+            reader.skip_bits(7);
+            self.quick_links[item_link_index].item_index
+        } else {
+            // Start from the root (first item)
+            self.first
+        };
+
+        // Check if we have a valid starting point
+        if item_idx.is_none() {
+            return Err(Error::compression("Empty Huffman tree"));
         }
 
-        // Traverse the tree
-        let mut current_item = self.first;
+        let mut item_link: Option<usize> = None;
+        let mut bit_count = 0;
 
-        loop {
-            if let Some(item_idx) = current_item {
-                if item_idx >= self.items.len() {
-                    return Err(Error::compression("Invalid Huffman tree state"));
-                }
+        // Step down the tree until we find a terminal item
+        while let Some(idx) = item_idx {
+            let item = &self.items[idx];
 
-                let item = &self.items[item_idx];
+            // If this is a leaf node (no children), we found our value
+            if item.child_lo.is_none() {
+                break;
+            }
 
-                // If this is a leaf node (has a value)
-                if item.child_lo.is_none() {
-                    return Ok(item.decompressed_value);
-                }
+            // Get next bit to decide which child to traverse
+            let bit_value = reader.get_bit()?;
+            bit_count += 1;
 
-                // Get next bit and traverse
-                let bit = reader.get_bit()?;
-                if bit == 0 {
-                    current_item = item.child_lo;
-                } else {
-                    // For simplicity, we'll assume the other child is the next item
-                    // A full implementation would track both children properly
-                    current_item = item.child_lo.map(|idx| {
-                        if idx + 1 < self.items.len() {
-                            idx + 1
-                        } else {
-                            idx
-                        }
-                    });
-                }
+            // In StormLib:
+            // If bit is 1: go to pItem->pChildLo->pPrev (higher weight child)
+            // If bit is 0: go to pItem->pChildLo (lower weight child)
+            let child_lo_idx = item.child_lo.unwrap();
+            item_idx = if bit_value != 0 {
+                // Get the previous sibling of child_lo (higher weight)
+                self.items[child_lo_idx].prev
             } else {
-                return Err(Error::compression("Invalid Huffman tree traversal"));
+                // Get child_lo directly (lower weight)
+                Some(child_lo_idx)
+            };
+
+            // Remember item for quick link at depth 7
+            if bit_count == 7 {
+                item_link = item_idx;
             }
         }
+
+        // We should have a valid item now
+        let final_idx =
+            item_idx.ok_or_else(|| Error::compression("Invalid Huffman tree traversal"))?;
+        let decompressed_value = self.items[final_idx].decompressed_value;
+
+        // Update quick link if needed
+        if has_item_link && self.quick_links[item_link_index].valid_value < self.min_valid_value {
+            if bit_count > 7 {
+                // Store pointer to tree item for faster access
+                self.quick_links[item_link_index].valid_value = self.min_valid_value;
+                self.quick_links[item_link_index].valid_bits = bit_count;
+                self.quick_links[item_link_index].item_index = item_link;
+            } else if bit_count > 0 {
+                // Store decompressed value directly
+                let mut index = item_link_index;
+                if bit_count < 7 {
+                    index &= (0xFFFFFFFFu32 >> (32 - bit_count)) as usize;
+                }
+
+                while index < LINK_ITEM_COUNT {
+                    self.quick_links[index].valid_value = self.min_valid_value;
+                    self.quick_links[index].valid_bits = bit_count;
+                    self.quick_links[index].decompressed_value = decompressed_value;
+                    index += 1 << bit_count;
+                }
+            }
+        }
+
+        Ok(decompressed_value)
     }
 }
 
@@ -510,17 +784,27 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
     // Get compression type from the first byte
     let compression_type = reader.get_8_bits()?;
 
+    log::debug!("Huffman compression type: 0x{compression_type:02X}");
+
     // Build Huffman tree
     let mut tree = HuffmanTree::new();
-    tree.is_cmp0 = compression_type == 0;
     tree.build_tree(compression_type)?;
 
+    log::debug!("Huffman tree built with {} items", tree.items.len());
+
     // Decompress data
+    let mut decoded_count = 0;
     loop {
         let decoded_value = tree.decode_one_byte(&mut reader)?;
+        decoded_count += 1;
+
+        log::trace!(
+            "Huffman decoded byte {decoded_count}: value=0x{decoded_value:03X}"
+        );
 
         // Check for end of stream marker
         if decoded_value == 0x100 {
+            log::debug!("Huffman hit end marker after {decoded_count} symbols");
             break;
         }
 
@@ -560,13 +844,9 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
     Ok(output)
 }
 
-/// Huffman compression stub - not needed for reading HET/BET tables
-pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
-    if data.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    // For now, this is a stub since we only need decompression for HET/BET tables
+/// Huffman compression stub - not needed for reading MPQ archives
+pub(crate) fn compress(_data: &[u8]) -> Result<Vec<u8>> {
+    // Compression is not implemented as it's not needed for reading MPQ archives
     Err(Error::compression(
         "Huffman compression not implemented - only decompression is available",
     ))
@@ -579,19 +859,53 @@ mod tests {
     #[test]
     fn test_huffman_empty_data() {
         assert!(decompress(&[], 0).is_ok());
-        assert!(compress(&[]).is_ok());
     }
 
     #[test]
-    fn test_huffman_compression_not_implemented() {
-        let data = b"test data";
-        assert!(compress(data).is_err());
+    fn test_bit_reader() {
+        let data = vec![0b10101100, 0b11110000];
+        let mut reader = BitReader::new(&data);
+
+        // Read bits one by one (LSB first)
+        assert_eq!(reader.get_bit().unwrap(), 0); // bit 0
+        assert_eq!(reader.get_bit().unwrap(), 0); // bit 1
+        assert_eq!(reader.get_bit().unwrap(), 1); // bit 2
+        assert_eq!(reader.get_bit().unwrap(), 1); // bit 3
+        assert_eq!(reader.get_bit().unwrap(), 0); // bit 4
+        assert_eq!(reader.get_bit().unwrap(), 1); // bit 5
+        assert_eq!(reader.get_bit().unwrap(), 0); // bit 6
+        assert_eq!(reader.get_bit().unwrap(), 1); // bit 7
     }
 
     #[test]
-    fn test_huffman_basic_structure() {
-        let mut tree = HuffmanTree::new();
-        assert!(tree.build_tree(1).is_ok());
-        assert!(!tree.items.is_empty());
+    fn test_huffman_v2_with_actual_data() {
+        // Enable logging for this test
+        let _ = env_logger::builder()
+            .filter_level(log::LevelFilter::Trace)
+            .try_init();
+
+        // This is actual compressed data from a WAV file with compression type 0x07
+        let compressed_data = vec![
+            0x07, 0x19, 0x4A, 0x01, 0xEE, 0x34, 0x44, 0x59, 0x96, 0x6D, 0xE5, 0xF5, 0xC6, 0xDA,
+            0x5D, 0x1B,
+        ];
+
+        println!("Testing Huffman V2 decompression");
+        println!("Compressed data: {} bytes", compressed_data.len());
+
+        // Try to decompress with expected size
+        match decompress(&compressed_data, 8192) {
+            Ok(decompressed) => {
+                println!("✓ Decompressed {} bytes", decompressed.len());
+                println!(
+                    "  First 32 bytes: {:02X?}",
+                    &decompressed[..decompressed.len().min(32)]
+                );
+            }
+            Err(e) => {
+                println!("✗ Decompression failed: {e}");
+                panic!("Huffman decompression failed: {e}");
+            }
+        }
     }
 }
