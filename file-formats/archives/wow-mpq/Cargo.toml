@@ -37,12 +37,14 @@ implode = "0.1.1"
 
 # Data structures and utilities
 bytes = "1.10"
-rand = { workspace = true }
+# rand = { workspace = true }
 tempfile = { workspace = true }
 
 # Parallel processing
 rayon = "1.10"
 
+[target.'cfg(feature = "target_not_wasm32")'.build-dependencies]
+rand = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

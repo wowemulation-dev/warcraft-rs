@@ -18,8 +18,10 @@ use crate::{
     tables::{BetTable, BlockTable, HashTable, HetTable, HiBlockTable},
 };
 use std::fs::File;
-use std::io::{BufReader, Read, Seek, SeekFrom};
+use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+
+use std::fmt::Debug;
 
 /// Helper trait for reading little-endian integers
 trait ReadLittleEndian: Read {
@@ -36,7 +38,7 @@ impl<R: Read> ReadLittleEndian for R {}
 #[derive(Debug, Clone)]
 pub struct ArchiveInfo {
     /// Path to the archive file
-    pub path: PathBuf,
+    pub path: Option<PathBuf>,
     /// Total file size in bytes
     pub file_size: u64,
     /// Archive offset (if MPQ data starts after user data)
@@ -261,13 +263,41 @@ impl Default for OpenOptions {
     }
 }
 
+/// Enum to encapsulate the concrete reader types.
+/// This allows `Archive` to hold either a `File` or a `Cursor<Vec<u8>>`.
+#[derive(Debug)] // Derive Debug for the enum itself
+pub enum ArchiveReaderType {
+    File(File),
+    Buffer(Cursor<Vec<u8>>),
+}
+
+// Implement `Read` for `ArchiveReaderType` by delegating to the inner type.
+impl Read for ArchiveReaderType {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            ArchiveReaderType::File(f) => f.read(buf),
+            ArchiveReaderType::Buffer(c) => c.read(buf),
+        }
+    }
+}
+
+// Implement `Seek` for `ArchiveReaderType` by delegating to the inner type.
+impl Seek for ArchiveReaderType {
+    fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+        match self {
+            ArchiveReaderType::File(f) => f.seek(pos),
+            ArchiveReaderType::Buffer(c) => c.seek(pos),
+        }
+    }
+}
+
 /// An MPQ archive
 #[derive(Debug)]
 pub struct Archive {
     /// Path to the archive file
-    path: PathBuf,
-    /// Archive file reader
-    reader: BufReader<File>,
+    path: Option<PathBuf>,
+    /// Archive file reader (now uses the enum directly)
+    reader: BufReader<ArchiveReaderType>,
     /// Offset where the MPQ data starts in the file
     archive_offset: u64,
     /// Optional user data header
@@ -296,15 +326,18 @@ impl Archive {
 
     /// Open an archive with specific options
     pub fn open_with_options<P: AsRef<Path>>(path: P, options: OpenOptions) -> Result<Self> {
-        let path = path.as_ref().to_path_buf();
-        let file = File::open(&path)?;
-        let mut reader = BufReader::new(file);
+        let path_buf = path.as_ref().to_path_buf();
+        let file = File::open(&path_buf)?;
+
+        // Wrap the File in the enum variant
+        let reader_type = ArchiveReaderType::File(file);
+        let mut reader = BufReader::new(reader_type);
 
         // Find and read the MPQ header
         let (archive_offset, user_data, header) = header::find_header(&mut reader)?;
 
         let mut archive = Archive {
-            path,
+            path: Some(path_buf),
             reader,
             archive_offset,
             user_data,
@@ -323,6 +356,52 @@ impl Archive {
         }
 
         Ok(archive)
+    }
+
+    /// Open an archive from a Vec<u8> buffer with specific options.
+    pub fn load_from_buffer_with_options(buffer: Vec<u8>, options: OpenOptions) -> Result<Self> {
+        let cursor = Cursor::new(buffer);
+
+        // Wrap the Cursor in the enum variant
+        let reader_type = ArchiveReaderType::Buffer(cursor);
+        let mut reader = BufReader::new(reader_type);
+
+        // find_header needs a mutable reference to the inner reader
+        let (archive_offset, user_data, header) = header::find_header(reader.get_mut())?;
+
+        let mut archive = Archive {
+            path: None, // Provide a logical path for in-memory data
+            reader,     // This is BufReader<Cursor<Vec<u8>>>
+            archive_offset,
+            user_data,
+            header,
+            hash_table: None,
+            block_table: None,
+            hi_block_table: None,
+            bet_table: None,
+            het_table: None,
+            attributes: None,
+        };
+
+        if options.load_tables {
+            archive.load_tables()?;
+        }
+
+        Ok(archive)
+    }
+
+    pub fn get_archive_size(&self) -> Result<u64> {
+        match self.reader.get_ref() {
+            // Get an immutable reference to the inner ArchiveReaderType enum
+            ArchiveReaderType::File(f) => {
+                // We know it's a File, so we can call File-specific methods like metadata()
+                Ok(f.metadata()?.len() as u64)
+            }
+            ArchiveReaderType::Buffer(c) => {
+                // We know it's a Cursor<Vec<u8>>, so we can call Cursor/Vec-specific methods
+                Ok(c.get_ref().len() as u64)
+            }
+        }
     }
 
     /// Load hash and block tables
@@ -482,7 +561,7 @@ impl Archive {
             // For V4 archives, we have explicit compressed size info
             if let Some(v4_data) = &self.header.v4_data {
                 // Validate V4 sizes are reasonable (not corrupted)
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = self.get_archive_size()?;
                 let v4_size_valid = v4_data.hash_table_size_64 > 0
                     && v4_data.hash_table_size_64 < file_size
                     && v4_data.hash_table_size_64 < (uncompressed_size as u64 * 2); // Compressed shouldn't be much larger
@@ -496,7 +575,7 @@ impl Archive {
                     );
 
                     // Check if it would extend beyond file
-                    let file_size = self.reader.get_ref().metadata()?.len();
+                    let file_size = self.get_archive_size()?;
                     if hash_table_offset + compressed_size > file_size {
                         log::warn!("Hash table extends beyond file, skipping");
                     } else {
@@ -544,7 +623,7 @@ impl Archive {
                     (block_table_offset - hash_table_offset) as usize
                 } else {
                     // If block table comes before hash table, calculate differently
-                    let file_size = self.reader.get_ref().metadata()?.len();
+                    let file_size = self.get_archive_size()?;
                     (file_size - hash_table_offset) as usize
                 };
 
@@ -628,7 +707,7 @@ impl Archive {
             // For V4 archives, we have explicit compressed size info
             if let Some(v4_data) = &self.header.v4_data {
                 // Validate V4 sizes are reasonable (not corrupted)
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = self.get_archive_size()?;
                 let v4_size_valid = v4_data.block_table_size_64 > 0
                     && v4_data.block_table_size_64 < file_size
                     && v4_data.block_table_size_64 < (uncompressed_size as u64 * 2); // Compressed shouldn't be much larger
@@ -642,7 +721,7 @@ impl Archive {
                     );
 
                     // Check if it would extend beyond file
-                    let file_size = self.reader.get_ref().metadata()?.len();
+                    let file_size = self.get_archive_size()?;
                     if block_table_offset + compressed_size > file_size {
                         log::warn!("Block table extends beyond file, skipping");
                     } else {
@@ -685,7 +764,7 @@ impl Archive {
             if self.block_table.is_none() {
                 // For V3 and earlier, or V4 with invalid sizes, we need to detect if tables are compressed
                 // Calculate available space for block table
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = self.get_archive_size()?;
                 let next_section = if let Some(hi_block_pos) = self.header.hi_block_table_pos {
                     if hi_block_pos != 0 {
                         self.archive_offset + hi_block_pos
@@ -772,7 +851,7 @@ impl Archive {
                 let hi_block_offset = self.archive_offset + hi_block_pos;
                 let hi_block_end = hi_block_offset + (self.header.block_table_size as u64 * 8);
 
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = self.get_archive_size()?;
                 if hi_block_end > file_size {
                     log::warn!(
                         "Hi-block table extends beyond file (ends at 0x{hi_block_end:X}, file size 0x{file_size:X}). Skipping."
@@ -814,9 +893,9 @@ impl Archive {
         self.archive_offset
     }
 
-    /// Get the path to the archive
-    pub fn path(&self) -> &Path {
-        &self.path
+    /// Get the path to the archive, if it was loaded from a file.
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 
     /// Get the hi-block table if present (v2+ archives)
@@ -962,7 +1041,7 @@ impl Archive {
 
         // Get file size
         log::debug!("Getting file size");
-        let file_size = self.reader.get_ref().metadata()?.len();
+        let file_size = self.get_archive_size()?;
 
         // Count files
         let file_count = if let Some(bet) = &self.bet_table {
@@ -1044,27 +1123,56 @@ impl Archive {
             // For v3 without v4 data, try to determine the size
             if compressed_size.is_none() && self.header.format_version == header::FormatVersion::V3
             {
-                // Make a copy of the reader to avoid interfering with the main archive
-                if let Ok(temp_reader) =
-                    std::fs::File::open(&self.path).map(std::io::BufReader::new)
-                {
-                    let mut temp_archive = Self {
-                        path: self.path.clone(),
-                        reader: temp_reader,
-                        archive_offset: self.archive_offset,
-                        user_data: self.user_data.clone(),
-                        header: self.header.clone(),
-                        hash_table: None,
-                        block_table: None,
-                        hi_block_table: None,
-                        het_table: None,
-                        bet_table: None,
-                        attributes: None,
-                    };
-
-                    if let Ok(size) = temp_archive.read_het_table_size(pos) {
-                        compressed_size = Some(size);
+                  // Make a copy of the reader to avoid interfering with the main archive
+                let temp_reader_result = match self.reader.get_ref() {
+                    ArchiveReaderType::File(original_file) => {
+                        // If it's a file, re-open it to get an independent reader.
+                        // Requires `self.path` to be `Some`.
+                        if let Some(path_buf) = &self.path {
+                            std::fs::File::open(path_buf)
+                                .map(ArchiveReaderType::File)
+                                .map_err(|e| e.into())
+                        } else {
+                            Err(Error::Io(std::io::Error::new(
+                         std::io::ErrorKind::Other,
+                        "Cannot reopen file for temp_archive: original archive path is missing",
+                            )))
+                        }
+                    },
+                    ArchiveReaderType::Buffer(original_cursor) => {
+                        // If it's a buffer, clone the underlying Vec<u8> to get a truly independent copy.
+                        // Then create a new Cursor from the cloned Vec.
+                        Ok(ArchiveReaderType::Buffer(Cursor::new(
+                            original_cursor.get_ref().clone(),
+                        )))
                     }
+                };
+
+                 let temp_reader_enum = match temp_reader_result {
+                    Ok(reader_type) => reader_type,
+                    Err(e) => {
+                        log::error!("Error creating temp reader: {:?}", e);
+                        return None;
+                    }
+                };
+
+                // Make a copy of the reader to avoid interfering with the main archive
+                let mut temp_archive = Self {
+                    path: self.path.clone(),
+                    reader: BufReader::new(temp_reader_enum),
+                    archive_offset: self.archive_offset,
+                    user_data: self.user_data.clone(),
+                    header: self.header.clone(),
+                    hash_table: None,
+                    block_table: None,
+                    hi_block_table: None,
+                    het_table: None,
+                    bet_table: None,
+                    attributes: None,
+                };
+
+                if let Ok(size) = temp_archive.read_het_table_size(pos) {
+                    compressed_size = Some(size);
                 }
             }
 
@@ -1087,13 +1195,45 @@ impl Archive {
             // For v3 without v4 data, try to determine the size
             if compressed_size.is_none() && self.header.format_version == header::FormatVersion::V3
             {
+
+                 // Make a copy of the reader to avoid interfering with the main archive
+                let temp_reader_result = match self.reader.get_ref() {
+                    ArchiveReaderType::File(original_file) => {
+                        // If it's a file, re-open it to get an independent reader.
+                        // Requires `self.path` to be `Some`.
+                        if let Some(path_buf) = &self.path {
+                            std::fs::File::open(path_buf)
+                                .map(ArchiveReaderType::File)
+                                .map_err(|e| e.into())
+                        } else {
+                            Err(Error::Io(std::io::Error::new(
+                         std::io::ErrorKind::Other,
+                        "Cannot reopen file for temp_archive: original archive path is missing",
+                            )))
+                        }
+                    },
+                    ArchiveReaderType::Buffer(original_cursor) => {
+                        // If it's a buffer, clone the underlying Vec<u8> to get a truly independent copy.
+                        // Then create a new Cursor from the cloned Vec.
+                        Ok(ArchiveReaderType::Buffer(Cursor::new(
+                            original_cursor.get_ref().clone(),
+                        )))
+                    }
+                };
+
+
+                let temp_reader_enum = match temp_reader_result {
+                    Ok(reader_type) => reader_type,
+                    Err(e) => {
+                        log::error!("Error creating temp reader: {:?}", e);
+                        return None;
+                    }
+                };
+
                 // Make a copy of the reader to avoid interfering with the main archive
-                if let Ok(temp_reader) =
-                    std::fs::File::open(&self.path).map(std::io::BufReader::new)
-                {
-                    let mut temp_archive = Self {
+                let mut temp_archive = Self {
                         path: self.path.clone(),
-                        reader: temp_reader,
+                        reader: BufReader::new(temp_reader_enum),
                         archive_offset: self.archive_offset,
                         user_data: self.user_data.clone(),
                         header: self.header.clone(),
@@ -1109,7 +1249,7 @@ impl Archive {
                         compressed_size = Some(size);
                     }
                 }
-            }
+            
 
             Some(TableInfo {
                 size: self.bet_table.as_ref().map(|bet| bet.header.file_count),
@@ -2106,6 +2246,8 @@ impl Archive {
                 sector_buffer.resize(sector_size_compressed, 0);
             }
 
+            panic!();
+
             // Read sector data into the reusable buffer
             let sector_data = &mut sector_buffer[..sector_size_compressed];
             self.reader.read_exact(sector_data)?;
@@ -2433,7 +2575,7 @@ impl Archive {
         };
 
         // Get total file size
-        let file_size = self.reader.get_ref().metadata()?.len();
+        let file_size = self.get_archive_size()?;
 
         // Calculate expected archive end position
         let archive_end = self.archive_offset + self.header.get_archive_size();
