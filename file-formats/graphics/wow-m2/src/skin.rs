@@ -10,6 +10,25 @@ use crate::version::M2Version;
 /// Magic signature for Skin files ("SKIN")
 pub const SKIN_MAGIC: [u8; 4] = *b"SKIN";
 
+pub trait SkinHeaderT: Sized {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self>;
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
+    fn calculate_size(&self) -> usize;
+    fn set_array_fields(
+        &mut self,
+        indices: M2Array<u16>,
+        triangles: M2Array<u16>,
+        bone_indices: M2Array<u8>,
+        submeshes: M2Array<SkinSubmesh>,
+        material_lookup: M2Array<u16>,
+    );
+    fn indices(&self) -> &M2Array<u16>;
+    fn triangles(&self) -> &M2Array<u16>;
+    fn bone_indices(&self) -> &M2Array<u8>;
+    fn submeshes(&self) -> &M2Array<SkinSubmesh>;
+    fn material_lookup(&self) -> &M2Array<u16>;
+}
+
 /// Skin file header
 #[derive(Debug, Clone)]
 pub struct SkinHeader {
@@ -37,9 +56,9 @@ pub struct SkinHeader {
     pub center_bounds: Option<f32>,
 }
 
-impl SkinHeader {
+impl SkinHeaderT for SkinHeader {
     /// Parse a Skin header from a reader
-    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         // Read and check magic
         let mut magic = [0u8; 4];
         reader.read_exact(&mut magic)?;
@@ -117,7 +136,7 @@ impl SkinHeader {
     }
 
     /// Write a Skin header to a writer
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
         // Write magic and version
         writer.write_all(&self.magic)?;
         writer.write_u32_le(self.version)?;
@@ -151,6 +170,65 @@ impl SkinHeader {
         Ok(())
     }
 
+    /// Calculate the size of the header for this skin version
+    fn calculate_size(&self) -> usize {
+        let mut size = 4 + 4; // Magic + version
+
+        // Name
+        size += 2 * 4;
+
+        // Vertex count
+        size += 4;
+
+        // Array references
+        size += 5 * (2 * 4); // 5 arrays, each with count and offset (8 bytes)
+
+        // BfA and later have additional fields
+        if self.center_position.is_some() {
+            size += 3 * 4; // Center position (3 floats)
+            size += 4; // Center bounds (1 float)
+        }
+
+        size
+    }
+
+    fn set_array_fields(
+        &mut self,
+        indices: M2Array<u16>,
+        triangles: M2Array<u16>,
+        bone_indices: M2Array<u8>,
+        submeshes: M2Array<SkinSubmesh>,
+        material_lookup: M2Array<u16>,
+    ) {
+        self.indices = indices;
+        self.triangles = triangles;
+        self.bone_indices = bone_indices;
+        self.submeshes = submeshes;
+        self.material_lookup = material_lookup;
+    }
+
+    fn indices(&self) -> &M2Array<u16> {
+        &self.indices
+    }
+
+    fn triangles(&self) -> &M2Array<u16> {
+        &self.triangles
+    }
+
+    fn bone_indices(&self) -> &M2Array<u8> {
+        &self.bone_indices
+    }
+
+    fn submeshes(&self) -> &M2Array<SkinSubmesh> {
+        &self.submeshes
+    }
+
+    fn material_lookup(&self) -> &M2Array<u16> {
+        &self.material_lookup
+    }
+}
+
+impl SkinHeader {
     /// Get the M2 version for this skin
     pub fn get_m2_version(&self) -> Option<M2Version> {
         match self.version {
@@ -208,6 +286,129 @@ impl SkinHeader {
             material_lookup: M2Array::new(0, 0),
             center_position,
             center_bounds,
+        }
+    }
+}
+
+/// OldSkin file header
+#[derive(Debug, Clone)]
+pub struct OldSkinHeader {
+    /// Magic signature ("SKIN")
+    pub magic: [u8; 4],
+    /// Indices
+    pub indices: M2Array<u16>,
+    /// Triangles
+    pub triangles: M2Array<u16>,
+    /// Bone indices
+    pub bone_indices: M2Array<u8>,
+    /// Submeshes
+    pub submeshes: M2Array<SkinSubmesh>,
+    /// Material lookup table
+    pub material_lookup: M2Array<u16>,
+}
+
+impl SkinHeaderT for OldSkinHeader {
+    /// Parse a Skin header from a reader
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        // Read and check magic
+        let mut magic = [0u8; 4];
+        reader.read_exact(&mut magic)?;
+
+        if magic != SKIN_MAGIC {
+            return Err(M2Error::InvalidMagic {
+                expected: String::from_utf8_lossy(&SKIN_MAGIC).to_string(),
+                actual: String::from_utf8_lossy(&magic).to_string(),
+            });
+        }
+
+        // Read array references
+        let indices = M2Array::parse(reader)?;
+        let triangles = M2Array::parse(reader)?;
+        let bone_indices = M2Array::parse(reader)?;
+        let submeshes = M2Array::parse(reader)?;
+        let material_lookup = M2Array::parse(reader)?;
+
+        Ok(Self {
+            magic,
+            indices,
+            triangles,
+            bone_indices,
+            submeshes,
+            material_lookup,
+        })
+    }
+
+    /// Write a Skin header to a writer
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        // Write magic and version
+        writer.write_all(&self.magic)?;
+
+        // Write array references
+        self.indices.write(writer)?;
+        self.triangles.write(writer)?;
+        self.bone_indices.write(writer)?;
+        self.submeshes.write(writer)?;
+        self.material_lookup.write(writer)?;
+
+        Ok(())
+    }
+
+    /// Calculate the size of the header for this skin version
+    fn calculate_size(&self) -> usize {
+        let mut size = 4 + 4; // Magic + version
+
+        // Array references
+        size += 5 * (2 * 4); // 5 arrays, each with count and offset (8 bytes)
+
+        size
+    }
+
+    fn set_array_fields(
+        &mut self,
+        indices: M2Array<u16>,
+        triangles: M2Array<u16>,
+        bone_indices: M2Array<u8>,
+        submeshes: M2Array<SkinSubmesh>,
+        material_lookup: M2Array<u16>,
+    ) {
+        self.indices = indices;
+        self.triangles = triangles;
+        self.bone_indices = bone_indices;
+        self.submeshes = submeshes;
+        self.material_lookup = material_lookup;
+    }
+
+    fn indices(&self) -> &M2Array<u16> {
+        &self.indices
+    }
+
+    fn triangles(&self) -> &M2Array<u16> {
+        &self.triangles
+    }
+
+    fn bone_indices(&self) -> &M2Array<u8> {
+        &self.bone_indices
+    }
+
+    fn submeshes(&self) -> &M2Array<SkinSubmesh> {
+        &self.submeshes
+    }
+
+    fn material_lookup(&self) -> &M2Array<u16> {
+        &self.material_lookup
+    }
+}
+
+impl OldSkinHeader {
+    /// Create a new Skin header for a specific version
+    pub fn new() -> Self {
+        Self {
+            magic: SKIN_MAGIC,
+            indices: M2Array::new(0, 0),
+            triangles: M2Array::new(0, 0),
+            bone_indices: M2Array::new(0, 0),
+            submeshes: M2Array::new(0, 0),
+            material_lookup: M2Array::new(0, 0),
         }
     }
 }
@@ -317,9 +518,12 @@ impl SkinSubmesh {
 
 /// Main Skin structure
 #[derive(Debug, Clone)]
-pub struct Skin {
+pub struct SkinG<H>
+where
+    H: SkinHeaderT,
+{
     /// Skin header
-    pub header: SkinHeader,
+    pub header: H,
     /// Indices
     pub indices: Vec<u16>,
     /// Triangles (each is 3 indices)
@@ -332,44 +536,52 @@ pub struct Skin {
     pub material_lookup: Vec<u16>,
 }
 
-impl Skin {
+impl<H> SkinG<H>
+where
+    H: SkinHeaderT + Clone,
+{
     /// Parse a Skin from a reader
     pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         // Parse the header
-        let header = SkinHeader::parse(reader)?;
+        let header = H::parse(reader)?;
 
         // Parse indices
-        reader.seek(SeekFrom::Start(header.indices.offset as u64))?;
-        let mut indices = Vec::with_capacity(header.indices.count as usize);
-        for _ in 0..header.indices.count {
+        let header_indices = header.indices();
+        reader.seek(SeekFrom::Start(header_indices.offset as u64))?;
+        let mut indices = Vec::with_capacity(header_indices.count as usize);
+        for _ in 0..header_indices.count {
             indices.push(reader.read_u16_le()?);
         }
 
         // Parse triangles
-        reader.seek(SeekFrom::Start(header.triangles.offset as u64))?;
-        let mut triangles = Vec::with_capacity(header.triangles.count as usize);
-        for _ in 0..header.triangles.count {
+        let header_triangles = header.triangles();
+        reader.seek(SeekFrom::Start(header_triangles.offset as u64))?;
+        let mut triangles = Vec::with_capacity(header_triangles.count as usize);
+        for _ in 0..header_triangles.count {
             triangles.push(reader.read_u16_le()?);
         }
 
         // Parse bone indices
-        reader.seek(SeekFrom::Start(header.bone_indices.offset as u64))?;
-        let mut bone_indices = Vec::with_capacity(header.bone_indices.count as usize);
-        for _ in 0..header.bone_indices.count {
+        let header_bone_indices = header.bone_indices();
+        reader.seek(SeekFrom::Start(header_bone_indices.offset as u64))?;
+        let mut bone_indices = Vec::with_capacity(header_bone_indices.count as usize);
+        for _ in 0..header_bone_indices.count {
             bone_indices.push(reader.read_u8()?);
         }
 
         // Parse submeshes
-        reader.seek(SeekFrom::Start(header.submeshes.offset as u64))?;
-        let mut submeshes = Vec::with_capacity(header.submeshes.count as usize);
-        for _ in 0..header.submeshes.count {
+        let header_submeshes = header.submeshes();
+        reader.seek(SeekFrom::Start(header_submeshes.offset as u64))?;
+        let mut submeshes = Vec::with_capacity(header_submeshes.count as usize);
+        for _ in 0..header_submeshes.count {
             submeshes.push(SkinSubmesh::parse(reader)?);
         }
 
         // Parse material lookup
-        reader.seek(SeekFrom::Start(header.material_lookup.offset as u64))?;
-        let mut material_lookup = Vec::with_capacity(header.material_lookup.count as usize);
-        for _ in 0..header.material_lookup.count {
+        let header_material_lookup = header.material_lookup();
+        reader.seek(SeekFrom::Start(header_material_lookup.offset as u64))?;
+        let mut material_lookup = Vec::with_capacity(header_material_lookup.count as usize);
+        for _ in 0..header_material_lookup.count {
             material_lookup.push(reader.read_u16_le()?);
         }
 
@@ -402,51 +614,56 @@ impl Skin {
         let mut header = self.header.clone();
 
         // Start with header size (will be written last)
-        let header_size = Self::calculate_header_size(&header);
+        let header_size = header.calculate_size();
         let mut current_offset = header_size as u32;
 
         // Write indices
-        if !self.indices.is_empty() {
-            header.indices = M2Array::new(self.indices.len() as u32, current_offset);
+        let indices = if !self.indices.is_empty() {
+            let indices = M2Array::new(self.indices.len() as u32, current_offset);
 
             for &index in &self.indices {
                 data_section.extend_from_slice(&index.to_le_bytes());
             }
 
             current_offset += (self.indices.len() * std::mem::size_of::<u16>()) as u32;
+            indices
         } else {
-            header.indices = M2Array::new(0, 0);
-        }
+            M2Array::new(0, 0)
+        };
 
         // Write triangles
-        if !self.triangles.is_empty() {
-            header.triangles = M2Array::new(self.triangles.len() as u32, current_offset);
+        let triangles = if !self.triangles.is_empty() {
+            let triangles = M2Array::new(self.triangles.len() as u32, current_offset);
 
             for &triangle in &self.triangles {
                 data_section.extend_from_slice(&triangle.to_le_bytes());
             }
 
             current_offset += (self.triangles.len() * std::mem::size_of::<u16>()) as u32;
+
+            triangles
         } else {
-            header.triangles = M2Array::new(0, 0);
-        }
+            M2Array::new(0, 0)
+        };
 
         // Write bone indices
-        if !self.bone_indices.is_empty() {
-            header.bone_indices = M2Array::new(self.bone_indices.len() as u32, current_offset);
+        let bone_indices = if !self.bone_indices.is_empty() {
+            let bone_indices = M2Array::new(self.bone_indices.len() as u32, current_offset);
 
             for &bone_index in &self.bone_indices {
                 data_section.push(bone_index);
             }
 
             current_offset += self.bone_indices.len() as u32;
+
+            bone_indices
         } else {
-            header.bone_indices = M2Array::new(0, 0);
-        }
+            M2Array::new(0, 0)
+        };
 
         // Write submeshes
-        if !self.submeshes.is_empty() {
-            header.submeshes = M2Array::new(self.submeshes.len() as u32, current_offset);
+        let submeshes = if !self.submeshes.is_empty() {
+            let submeshes = M2Array::new(self.submeshes.len() as u32, current_offset);
 
             for submesh in &self.submeshes {
                 let mut submesh_data = Vec::new();
@@ -455,23 +672,26 @@ impl Skin {
             }
 
             current_offset += (self.submeshes.len() * 40) as u32; // Each submesh is 40 bytes
+            submeshes
         } else {
-            header.submeshes = M2Array::new(0, 0);
-        }
+            M2Array::new(0, 0)
+        };
 
         // Write material lookup
-        if !self.material_lookup.is_empty() {
-            header.material_lookup =
-                M2Array::new(self.material_lookup.len() as u32, current_offset);
+        let material_lookup = if !self.material_lookup.is_empty() {
+            let material_lookup = M2Array::new(self.material_lookup.len() as u32, current_offset);
 
             for &material in &self.material_lookup {
                 data_section.extend_from_slice(&material.to_le_bytes());
             }
 
             // current_offset += (self.material_lookup.len() * std::mem::size_of::<u16>()) as u32;
+            material_lookup
         } else {
-            header.material_lookup = M2Array::new(0, 0);
-        }
+            M2Array::new(0, 0)
+        };
+
+        header.set_array_fields(indices, triangles, bone_indices, submeshes, material_lookup);
 
         // Finally, write the header followed by the data section
         header.write(writer)?;
@@ -479,29 +699,9 @@ impl Skin {
 
         Ok(())
     }
+}
 
-    /// Calculate the size of the header for this skin version
-    fn calculate_header_size(header: &SkinHeader) -> usize {
-        let mut size = 4 + 4; // Magic + version
-
-        // Name
-        size += 2 * 4;
-
-        // Vertex count
-        size += 4;
-
-        // Array references
-        size += 5 * (2 * 4); // 5 arrays, each with count and offset (8 bytes)
-
-        // BfA and later have additional fields
-        if header.center_position.is_some() {
-            size += 3 * 4; // Center position (3 floats)
-            size += 4; // Center bounds (1 float)
-        }
-
-        size
-    }
-
+impl SkinG<SkinHeader> {
     /// Convert this skin to a different version
     pub fn convert(&self, target_version: M2Version) -> Result<Self> {
         let source_version = self
@@ -565,6 +765,9 @@ impl Skin {
         Ok(new_skin)
     }
 }
+
+pub type Skin = SkinG<SkinHeader>;
+pub type OldSkin = SkinG<OldSkinHeader>;
 
 #[cfg(test)]
 mod tests {
