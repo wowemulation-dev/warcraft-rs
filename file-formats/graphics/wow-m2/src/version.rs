@@ -101,7 +101,8 @@ impl M2Version {
     pub fn from_header_version(version: u32) -> Option<Self> {
         match version {
             // Classic through WotLK use versions 256-264
-            256..=264 => Some(Self::Classic), // Covers all pre-Cata versions
+            256..=263 => Some(Self::Classic), // Covers all pre-WotLK versions
+            264 => Some(Self::WotLK),
 
             // Cataclysm uses 272 (actual files), but internally referenced as 4
             272 | 4 => Some(Self::Cataclysm),
@@ -123,8 +124,9 @@ impl M2Version {
     pub fn to_header_version(&self) -> u32 {
         match self {
             // For compatibility, we use the newer simplified version numbers
-            Self::Classic | Self::TBC | Self::WotLK => 264, // Use the highest pre-Cata version
-            Self::Cataclysm => 272,                         // Use the actual file version, not 4
+            Self::Classic | Self::TBC => 263, // Use the highest pre-WotLK version
+            Self::WotLK => 264,
+            Self::Cataclysm => 272, // Use the actual file version, not 4
             Self::MoP => 8,
             Self::WoD => 10,
             Self::Legion => 11,
@@ -247,9 +249,10 @@ mod tests {
             Some(M2Version::Classic)
         );
         assert_eq!(
-            M2Version::from_header_version(264),
+            M2Version::from_header_version(263),
             Some(M2Version::Classic)
         );
+        assert_eq!(M2Version::from_header_version(264), Some(M2Version::WotLK));
 
         // Cataclysm
         assert_eq!(

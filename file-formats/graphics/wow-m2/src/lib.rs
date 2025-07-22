@@ -44,7 +44,7 @@ pub use blp::BlpTexture;
 pub use converter::M2Converter;
 pub use error::{M2Error, Result};
 pub use model::M2Model;
-pub use skin::Skin;
+pub use skin::{OldSkin, Skin};
 pub use version::M2Version;
 
 /// Library version
