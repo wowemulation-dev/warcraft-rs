@@ -1,6 +1,6 @@
 use std::{cmp, fmt, sync};
 
-const FIRST_N_ELEMENTS: usize = 3;
+const FIRST_N_ELEMENTS: usize = 7;
 
 pub trait HasLength {
     type Item: fmt::Debug;
