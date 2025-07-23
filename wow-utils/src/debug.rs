@@ -55,10 +55,35 @@ pub fn trimmed_collection_fmt<T: HasLength + fmt::Debug>(
         write!(f, "{:#?} + {} elements", first_three, num_elements)
     }
 }
-
 #[cfg(feature = "debug-print-all")]
 pub fn trimmed_collection_fmt<T: HasLength + fmt::Debug>(
     n: &T,
+    f: &mut fmt::Formatter,
+) -> fmt::Result {
+    write!(f, "{:#?}", n)
+}
+
+#[cfg(not(feature = "debug-print-all"))]
+pub fn option_trimmed_collection_fmt<T: HasLength + fmt::Debug>(
+    n: &Option<T>,
+    f: &mut fmt::Formatter,
+) -> fmt::Result {
+    if let Some(val) = n.as_ref() {
+        let first_three = val.get_first_n(FIRST_N_ELEMENTS);
+        let num_elements = cmp::max(0, val.len2() - first_three.len());
+
+        if num_elements == 0 {
+            write!(f, "Some({:#?})", n)
+        } else {
+            write!(f, "Some({:#?} + {} elements)", first_three, num_elements)
+        }
+    } else {
+        write!(f, "{:#?}", n)
+    }
+}
+#[cfg(feature = "debug-print-all")]
+pub fn option_trimmed_collection_fmt<T: HasLength + fmt::Debug>(
+    n: &Option<T>,
     f: &mut fmt::Formatter,
 ) -> fmt::Result {
     write!(f, "{:#?}", n)

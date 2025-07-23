@@ -1,3 +1,6 @@
+use custom_debug::Debug;
+use wow_utils::debug;
+
 use crate::io_ext::{ReadExt, WriteExt};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -193,6 +196,7 @@ impl BlpHeader {
 #[derive(Debug, Clone)]
 pub struct BlpMipmap {
     /// Mipmap data
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub data: Vec<u8>,
     /// Width of the mipmap
     pub width: u32,
@@ -208,6 +212,7 @@ pub struct BlpTexture {
     /// Mipmap data
     pub mipmaps: Vec<BlpMipmap>,
     /// Color palette (for paletted formats)
+    #[debug(with = debug::option_trimmed_collection_fmt)]
     pub palette: Option<Vec<u32>>,
 }
 
