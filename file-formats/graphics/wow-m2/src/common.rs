@@ -1,6 +1,6 @@
 use crate::error::{M2Error, Result};
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Seek, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 /// A reference to an array in the M2 file format
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -160,14 +160,18 @@ impl C2Vector {
 }
 
 /// A fixed-width string with a specified maximum length
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct FixedString {
     pub data: Vec<u8>,
 }
 
 impl FixedString {
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
     /// Parse a fixed-width string from a reader
-    pub fn parse<R: Read>(reader: &mut R, len: usize) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, len: usize) -> Result<Self> {
         let mut data = vec![0u8; len];
         reader.read_exact(&mut data)?;
 
@@ -190,6 +194,35 @@ impl FixedString {
     /// Convert to a string, lossy UTF-8 conversion
     pub fn to_string_lossy(&self) -> String {
         String::from_utf8_lossy(&self.data).to_string()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct M2ArrayString {
+    pub string: FixedString,
+    pub array: M2Array<u8>,
+}
+
+impl M2ArrayString {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        let array = M2Array::<u8>::parse(reader)?;
+        let current_pos = reader.stream_position()?;
+        reader.seek(SeekFrom::Start(array.offset as u64))?;
+        let string = FixedString::parse(reader, array.count as usize)?;
+        reader.seek(SeekFrom::Start(current_pos))?;
+        Ok(Self { string, array })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.array.is_empty()
+    }
+
+    /// Write a reference to our array to a writer
+    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u32_le(self.array.count)?;
+        writer.write_u32_le(self.array.offset)?;
+
+        Ok(())
     }
 }
 
