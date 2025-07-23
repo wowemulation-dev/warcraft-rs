@@ -1,7 +1,7 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
-use crate::common::M2Array;
+use crate::common::M2ArrayString;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -77,18 +77,18 @@ pub struct M2Texture {
     /// Flags for this texture
     pub flags: M2TextureFlags,
     /// Filename of the texture
-    pub filename: M2Array<u8>,
+    pub filename: M2ArrayString,
 }
 
 impl M2Texture {
     /// Parse a texture from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, _version: u32) -> Result<Self> {
         let texture_type_raw = reader.read_u32_le()?;
         let texture_type =
             M2TextureType::from_u32(texture_type_raw).unwrap_or(M2TextureType::Hardcoded);
 
         let flags = M2TextureFlags::from_bits_retain(reader.read_u32_le()?);
-        let filename = M2Array::parse(reader)?;
+        let filename = M2ArrayString::parse(reader)?;
 
         Ok(Self {
             texture_type,
@@ -111,24 +111,32 @@ impl M2Texture {
         self.clone()
     }
 
-    /// Create a new texture with the given type and filename offset
-    pub fn new(texture_type: M2TextureType, filename_offset: u32, filename_len: u32) -> Self {
+    /// Create a new texture with the given type and filename
+    pub fn new(texture_type: M2TextureType, filename: M2ArrayString) -> Self {
         Self {
             texture_type,
             flags: M2TextureFlags::empty(),
-            filename: M2Array::new(filename_len, filename_offset),
+            filename,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::common::{FixedString, M2Array};
+
     use super::*;
-    use std::io::Cursor;
+    use std::io::{Cursor, SeekFrom};
 
     #[test]
     fn test_texture_parse() {
         let mut data = Vec::new();
+
+        let dummy = [0, 0, 0];
+        data.extend_from_slice(&dummy);
+
+        let filename_str = "test\0";
+        data.extend_from_slice(filename_str.as_bytes());
 
         // Texture type (Body)
         data.extend_from_slice(&1u32.to_le_bytes());
@@ -136,11 +144,13 @@ mod tests {
         // Flags (WRAP_X | WRAP_Y)
         data.extend_from_slice(&3u32.to_le_bytes());
 
-        // Filename
-        data.extend_from_slice(&10u32.to_le_bytes()); // count = 10
-        data.extend_from_slice(&0x100u32.to_le_bytes()); // offset = 0x100
+        data.extend_from_slice(&(filename_str.len() as u32).to_le_bytes());
+        data.extend_from_slice(&(dummy.len() as u32).to_le_bytes());
 
         let mut cursor = Cursor::new(data);
+        cursor
+            .seek(SeekFrom::Start((filename_str.len() + dummy.len()) as u64))
+            .unwrap();
         let texture =
             M2Texture::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
 
@@ -149,8 +159,8 @@ mod tests {
             texture.flags,
             M2TextureFlags::WRAP_X | M2TextureFlags::WRAP_Y
         );
-        assert_eq!(texture.filename.count, 10);
-        assert_eq!(texture.filename.offset, 0x100);
+        assert_eq!(texture.filename.array.count, 5);
+        assert_eq!(texture.filename.array.offset, 3);
     }
 
     #[test]
@@ -158,7 +168,10 @@ mod tests {
         let texture = M2Texture {
             texture_type: M2TextureType::Body,
             flags: M2TextureFlags::WRAP_X | M2TextureFlags::WRAP_Y,
-            filename: M2Array::new(10, 0x100),
+            filename: M2ArrayString {
+                string: FixedString { data: Vec::new() },
+                array: M2Array::new(10, 0x100),
+            },
         };
 
         let mut data = Vec::new();
@@ -181,7 +194,10 @@ mod tests {
         let texture = M2Texture {
             texture_type: M2TextureType::Body,
             flags: M2TextureFlags::WRAP_X | M2TextureFlags::WRAP_Y,
-            filename: M2Array::new(10, 0x100),
+            filename: M2ArrayString {
+                string: FixedString { data: Vec::new() },
+                array: M2Array::new(10, 0x100),
+            },
         };
 
         // Convert to Cataclysm (should be identical since there are no version differences)
@@ -189,7 +205,10 @@ mod tests {
 
         assert_eq!(converted.texture_type, texture.texture_type);
         assert_eq!(converted.flags, texture.flags);
-        assert_eq!(converted.filename.count, texture.filename.count);
-        assert_eq!(converted.filename.offset, texture.filename.offset);
+        assert_eq!(converted.filename.array.count, texture.filename.array.count);
+        assert_eq!(
+            converted.filename.array.offset,
+            texture.filename.array.offset
+        );
     }
 }
