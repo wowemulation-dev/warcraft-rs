@@ -1,3 +1,6 @@
+use custom_debug::Debug;
+use wow_utils::debug;
+
 use crate::error::{M2Error, Result};
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -162,6 +165,7 @@ impl C2Vector {
 /// A fixed-width string with a specified maximum length
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FixedString {
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub data: Vec<u8>,
 }
 
