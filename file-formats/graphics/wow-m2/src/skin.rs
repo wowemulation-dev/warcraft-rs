@@ -1,3 +1,6 @@
+use custom_debug::Debug;
+use wow_utils::debug;
+
 use crate::io_ext::{ReadExt, WriteExt};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -525,14 +528,19 @@ where
     /// Skin header
     pub header: H,
     /// Indices
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub indices: Vec<u16>,
     /// Triangles (each is 3 indices)
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub triangles: Vec<u16>,
     /// Bone indices
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub bone_indices: Vec<u8>,
     /// Submeshes
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub submeshes: Vec<SkinSubmesh>,
     /// Material lookup table
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub material_lookup: Vec<u16>,
 }
 

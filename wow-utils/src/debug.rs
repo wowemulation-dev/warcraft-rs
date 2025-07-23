@@ -42,14 +42,18 @@ impl<T: ?Sized + HasLength> HasLength for sync::Arc<T> {
 }
 
 #[cfg(not(feature = "debug-print-all"))]
-pub fn trimmed_collection_fmt<T: HasLength>(n: &T, f: &mut fmt::Formatter) -> fmt::Result {
+pub fn trimmed_collection_fmt<T: HasLength + fmt::Debug>(
+    n: &T,
+    f: &mut fmt::Formatter,
+) -> fmt::Result {
     let first_three = n.get_first_n(FIRST_N_ELEMENTS);
-    write!(
-        f,
-        "{:#?} + {} elements",
-        first_three,
-        cmp::max(0, n.len2() - first_three.len())
-    )
+    let num_elements = cmp::max(0, n.len2() - first_three.len());
+
+    if num_elements == 0 {
+        write!(f, "{:#?}", n)
+    } else {
+        write!(f, "{:#?} + {} elements", first_three, num_elements)
+    }
 }
 
 #[cfg(feature = "debug-print-all")]

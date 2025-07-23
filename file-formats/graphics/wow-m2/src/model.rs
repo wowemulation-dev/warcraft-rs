@@ -1,6 +1,9 @@
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 
+use custom_debug::Debug;
+use wow_utils::debug;
+
 use crate::io_ext::ReadExt;
 use std::path::Path;
 
@@ -23,18 +26,25 @@ pub struct M2Model {
     /// Global sequences
     pub global_sequences: Vec<u32>,
     /// Animations
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub animations: Vec<M2Animation>,
     /// Animation lookups
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub animation_lookup: Vec<u16>,
     /// Bones
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub bones: Vec<M2Bone>,
     /// Key bone lookups
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub key_bone_lookup: Vec<u16>,
     /// Vertices
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub vertices: Vec<M2Vertex>,
     /// Textures
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub textures: Vec<M2Texture>,
     /// Materials (render flags)
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub materials: Vec<M2Material>,
     /// Raw data for other sections
     /// This is used to preserve data that we don't fully parse yet
