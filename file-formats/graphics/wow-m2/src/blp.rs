@@ -105,9 +105,9 @@ pub struct BlpHeader {
     /// Alpha channel bits (0, 1, 4, or 8)
     pub alpha_bits: u8,
     /// Width of the texture
-    pub width: u16,
+    pub width: u32,
     /// Height of the texture
-    pub height: u16,
+    pub height: u32,
     /// Pixel format
     pub pixel_format: BlpPixelFormat,
     /// Mipmap levels
@@ -128,6 +128,10 @@ impl BlpHeader {
             });
         }
 
+        if reader.read_u32_le()? != 1 {
+            return Err(M2Error::ParseError(String::from("Invalid version")));
+        }
+
         // Read type
         let compression_type_raw = reader.read_u8()?;
         let compression_type =
@@ -140,10 +144,6 @@ impl BlpHeader {
         // Read alpha bits
         let alpha_bits = reader.read_u8()?;
 
-        // Read dimensions
-        let width = reader.read_u16_le()?;
-        let height = reader.read_u16_le()?;
-
         // Read pixel format
         let pixel_format_raw = reader.read_u8()?;
         let pixel_format = BlpPixelFormat::from_u8(pixel_format_raw).ok_or_else(|| {
@@ -152,6 +152,10 @@ impl BlpHeader {
 
         // Read mipmap levels
         let mipmap_levels = reader.read_u8()?;
+
+        // Read dimensions
+        let width = reader.read_u32_le()?;
+        let height = reader.read_u32_le()?;
 
         Ok(Self {
             magic,
@@ -169,21 +173,24 @@ impl BlpHeader {
         // Write magic
         writer.write_all(&self.magic)?;
 
+        // write version
+        writer.write_u32_le(0x1)?;
+
         // Write compression type
         writer.write_u8(self.compression_type as u8)?;
 
         // Write alpha bits
         writer.write_u8(self.alpha_bits)?;
 
-        // Write dimensions
-        writer.write_u16_le(self.width)?;
-        writer.write_u16_le(self.height)?;
-
         // Write pixel format
         writer.write_u8(self.pixel_format as u8)?;
 
         // Write mipmap levels
         writer.write_u8(self.mipmap_levels)?;
+
+        // Write dimensions
+        writer.write_u32_le(self.width)?;
+        writer.write_u32_le(self.height)?;
 
         Ok(())
     }
@@ -200,6 +207,12 @@ pub struct BlpMipmap {
     pub height: u32,
 }
 
+#[derive(Debug, Clone)]
+pub struct JpegInfo {
+    pub header_size: u32,
+    pub header_data: Vec<u8>,
+}
+
 /// Represents a BLP texture file
 #[derive(Debug, Clone)]
 pub struct BlpTexture {
@@ -209,6 +222,7 @@ pub struct BlpTexture {
     pub mipmaps: Vec<BlpMipmap>,
     /// Color palette (for paletted formats)
     pub palette: Option<Vec<u32>>,
+    pub jpeg_info: Option<JpegInfo>,
 }
 
 impl BlpTexture {
@@ -218,32 +232,34 @@ impl BlpTexture {
         let header = BlpHeader::parse(reader)?;
 
         // Read mipmap offsets and sizes
-        let mut mipmap_offsets = Vec::with_capacity(header.mipmap_levels as usize);
-        let mut mipmap_sizes = Vec::with_capacity(header.mipmap_levels as usize);
+        let mut mipmap_offsets = [0u32; 16];
+        let mut mipmap_sizes = [0u32; 16];
 
-        for _ in 0..header.mipmap_levels {
-            mipmap_offsets.push(reader.read_u32_le()?);
+        for i in 0..16 {
+            mipmap_offsets[i] = reader.read_u32_le()?;
         }
 
-        // Skip 4 unused offsets
-        reader.seek(SeekFrom::Current(4 * 4))?;
-
-        for _ in 0..header.mipmap_levels {
-            mipmap_sizes.push(reader.read_u32_le()?);
+        for i in 0..16 {
+            mipmap_sizes[i] = reader.read_u32_le()?;
         }
 
-        // Skip 4 unused sizes
-        reader.seek(SeekFrom::Current(4 * 4))?;
-
-        // Read palette for paletted formats
-        let palette = if header.compression_type == BlpCompressionType::Uncompressed {
+        let (palette, jpeg_info) = if header.compression_type == BlpCompressionType::Uncompressed {
             let mut palette_data = Vec::with_capacity(256);
             for _ in 0..256 {
                 palette_data.push(reader.read_u32_le()?);
             }
-            Some(palette_data)
+            (Some(palette_data), None)
         } else {
-            None
+            let header_size = reader.read_u32_le()?;
+            let mut header_data = [0u8; 1020];
+            reader.read_exact(&mut header_data)?;
+            (
+                None,
+                Some(JpegInfo {
+                    header_size,
+                    header_data: header_data.to_vec(),
+                }),
+            )
         };
 
         // Read mipmaps
@@ -276,6 +292,7 @@ impl BlpTexture {
             header,
             mipmaps,
             palette,
+            jpeg_info,
         })
     }
 
@@ -345,7 +362,7 @@ impl BlpTexture {
     }
 
     /// Create a new BLP texture with default values
-    pub fn new(width: u16, height: u16, pixel_format: BlpPixelFormat) -> Self {
+    pub fn new(width: u32, height: u32, pixel_format: BlpPixelFormat) -> Self {
         let header = BlpHeader {
             magic: BLP2_MAGIC,
             compression_type: match pixel_format {
@@ -380,6 +397,7 @@ impl BlpTexture {
             } else {
                 None
             },
+            jpeg_info: None,
         }
     }
 
