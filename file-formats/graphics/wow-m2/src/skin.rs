@@ -16,7 +16,7 @@ use crate::version::M2Version;
 pub const SKIN_MAGIC: [u8; 4] = *b"SKIN";
 
 pub trait SkinHeaderT: Sized {
-    type ExtraArray: fmt::Debug;
+    type ExtraElement: fmt::Debug;
 
     fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self>;
     fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
@@ -27,19 +27,17 @@ pub trait SkinHeaderT: Sized {
         triangles: M2Array<u16>,
         bone_indices: M2Array<u8>,
         submeshes: M2Array<SkinSubmesh>,
-        extra_array: M2Array<Self::ExtraArray>,
+        extra_array: M2Array<Self::ExtraElement>,
     );
     fn indices(&self) -> &M2Array<u16>;
     fn triangles(&self) -> &M2Array<u16>;
     fn bone_indices(&self) -> &M2Array<u8>;
     fn submeshes(&self) -> &M2Array<SkinSubmesh>;
-    fn extra_array(&self) -> &M2Array<Self::ExtraArray>;
-    fn parse_extra_array<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Self::ExtraArray>>;
+    fn extra_array(&self) -> &M2Array<Self::ExtraElement>;
+    fn parse_extra_array<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Self::ExtraElement>>;
 
-    fn write_extra_array_element(
-        data_section: &mut Vec<u8>,
-        element: &Self::ExtraArray,
-    ) -> Result<u32>;
+    fn write_extra_element(data_section: &mut Vec<u8>, element: &Self::ExtraElement)
+    -> Result<u32>;
 }
 
 /// Skin file header
@@ -70,7 +68,7 @@ pub struct SkinHeader {
 }
 
 impl SkinHeaderT for SkinHeader {
-    type ExtraArray = u16;
+    type ExtraElement = u16;
 
     /// Parse a Skin header from a reader
     fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
@@ -213,7 +211,7 @@ impl SkinHeaderT for SkinHeader {
         triangles: M2Array<u16>,
         bone_indices: M2Array<u8>,
         submeshes: M2Array<SkinSubmesh>,
-        extra_array: M2Array<Self::ExtraArray>,
+        extra_array: M2Array<Self::ExtraElement>,
     ) {
         self.indices = indices;
         self.triangles = triangles;
@@ -238,11 +236,11 @@ impl SkinHeaderT for SkinHeader {
         &self.submeshes
     }
 
-    fn extra_array(&self) -> &M2Array<Self::ExtraArray> {
+    fn extra_array(&self) -> &M2Array<Self::ExtraElement> {
         &self.material_lookup
     }
 
-    fn parse_extra_array<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Self::ExtraArray>> {
+    fn parse_extra_array<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Self::ExtraElement>> {
         reader.seek(SeekFrom::Start(self.material_lookup.offset as u64))?;
         let mut material_lookup = Vec::with_capacity(self.material_lookup.count as usize);
         for _ in 0..self.material_lookup.count {
@@ -251,9 +249,9 @@ impl SkinHeaderT for SkinHeader {
         Ok(material_lookup)
     }
 
-    fn write_extra_array_element(
+    fn write_extra_element(
         data_section: &mut Vec<u8>,
-        element: &Self::ExtraArray,
+        element: &Self::ExtraElement,
     ) -> Result<u32> {
         let res = element.to_le_bytes();
         data_section.extend_from_slice(&res);
@@ -425,7 +423,7 @@ pub struct OldSkinHeader {
 }
 
 impl SkinHeaderT for OldSkinHeader {
-    type ExtraArray = M2Batch;
+    type ExtraElement = M2Batch;
 
     /// Parse a Skin header from a reader
     fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
@@ -491,7 +489,7 @@ impl SkinHeaderT for OldSkinHeader {
         triangles: M2Array<u16>,
         bone_indices: M2Array<u8>,
         submeshes: M2Array<SkinSubmesh>,
-        extra_array: M2Array<Self::ExtraArray>,
+        extra_array: M2Array<Self::ExtraElement>,
     ) {
         self.indices = indices;
         self.triangles = triangles;
@@ -516,11 +514,11 @@ impl SkinHeaderT for OldSkinHeader {
         &self.submeshes
     }
 
-    fn extra_array(&self) -> &M2Array<Self::ExtraArray> {
+    fn extra_array(&self) -> &M2Array<Self::ExtraElement> {
         &self.texture_units
     }
 
-    fn parse_extra_array<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Self::ExtraArray>> {
+    fn parse_extra_array<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Self::ExtraElement>> {
         reader.seek(SeekFrom::Start(self.texture_units.offset as u64))?;
         let mut texture_units = Vec::with_capacity(self.texture_units.count as usize);
         for _ in 0..self.texture_units.count {
@@ -529,9 +527,9 @@ impl SkinHeaderT for OldSkinHeader {
         Ok(texture_units)
     }
 
-    fn write_extra_array_element(
+    fn write_extra_element(
         data_section: &mut Vec<u8>,
-        element: &Self::ExtraArray,
+        element: &Self::ExtraElement,
     ) -> Result<u32> {
         let mut res = Vec::new();
         let mut writer = Cursor::new(&mut res);
@@ -680,7 +678,7 @@ where
     #[debug(with = debug::trimmed_collection_fmt)]
     pub submeshes: Vec<SkinSubmesh>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub extra_array: Vec<H::ExtraArray>,
+    pub extra_array: Vec<H::ExtraElement>,
 }
 
 impl<H> SkinG<H>
@@ -816,7 +814,7 @@ where
             let extra_array = M2Array::new(self.extra_array.len() as u32, current_offset);
 
             for element in &self.extra_array {
-                current_offset += H::write_extra_array_element(&mut data_section, &element)?;
+                current_offset += H::write_extra_element(&mut data_section, &element)?;
             }
 
             extra_array
