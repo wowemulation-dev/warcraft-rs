@@ -5,6 +5,26 @@ All notable changes to wow-mpq will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- New methods in `MutableArchive`: `read_file()`, `list()`, `find_file()`, `verify_signature()`, `load_attributes()`
+- Complete implementation of `compact()` method for archive defragmentation
+- Improved attributes file parsing to handle both cases where attributes include/exclude themselves
+
+### Changed
+
+- Enhanced attributes file block count detection with automatic fallback logic
+- `MutableArchive` now provides convenience methods for common read operations
+
+### Fixed
+
+- Fixed Huffman decompression algorithm to match StormLib's linked list approach, resolving ADPCM audio decompression failures and file count discrepancies in Warcraft 3 MPQ archives
+- Fixed IMPLODE compression handling for Warcraft III MPQ archives - IMPLODE-compressed files no longer incorrectly skip the first byte as a compression type prefix
+- Fixed attributes file parsing to correctly handle varying block counts across different MPQ implementations
+- Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test failures
+
 ## [0.2.0] - 2025-06-28
 
 ### Added
