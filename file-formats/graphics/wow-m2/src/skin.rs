@@ -413,6 +413,12 @@ impl OldSkinHeader {
     }
 }
 
+impl Default for OldSkinHeader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Submesh structure
 #[derive(Debug, Clone)]
 pub struct SkinSubmesh {

@@ -170,6 +170,11 @@ impl FixedString {
         self.data.len()
     }
 
+    /// Check if the string is empty
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
     /// Parse a fixed-width string from a reader
     pub fn parse<R: Read + Seek>(reader: &mut R, len: usize) -> Result<Self> {
         let mut data = vec![0u8; len];
