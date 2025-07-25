@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use custom_debug::Debug;
 use wow_utils::debug;
 
@@ -322,9 +323,23 @@ impl SkinHeader {
     }
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    /// Usually 0x10(BATCH_SUPPORT) for static textures, and 0 for animated textures
+    pub struct M2BatchFlags: u8 {
+        const MATERIAL_INVERT = 0x01;
+        const TRANSFORM = 0x02;
+        const PROJECTED = 0x04;
+        const BATCH_SUPPORT = 0x10;
+        const PROJECTED_2 = 0x20;
+        const TRANSPARENCY_SOMETHING = 0x40;
+        const UNKNOWN_0x80 = 0x80;
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct M2Batch {
-    pub flags: u8,
+    pub flags: M2BatchFlags,
     pub priority_plane: i8,
     pub shader_id: u16,
     pub skin_section_index: u16,
@@ -341,7 +356,7 @@ pub struct M2Batch {
 
 impl M2Batch {
     fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        let flags = reader.read_u8()?;
+        let flags = M2BatchFlags::from_bits_retain(reader.read_u8()?);
         let priority_plane = reader.read_i8()?;
         let shader_id = reader.read_u16_le()?;
         let skin_section_index = reader.read_u16_le()?;
@@ -373,7 +388,7 @@ impl M2Batch {
     }
 
     pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_u8(self.flags)?;
+        writer.write_u8(self.flags.bits())?;
         writer.write_i8(self.priority_plane)?;
         writer.write_u16_le(self.shader_id)?;
         writer.write_u16_le(self.skin_section_index)?;
