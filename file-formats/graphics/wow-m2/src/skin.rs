@@ -687,12 +687,9 @@ impl<H> SkinG<H>
 where
     H: SkinHeaderT + Clone,
 {
-    /// Parse a Skin from a reader
     pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        // Parse the header
         let header = H::parse(reader)?;
 
-        // Parse indices
         let header_indices = header.indices();
         reader.seek(SeekFrom::Start(header_indices.offset as u64))?;
         let mut indices = Vec::with_capacity(header_indices.count as usize);
@@ -700,7 +697,6 @@ where
             indices.push(reader.read_u16_le()?);
         }
 
-        // Parse triangles
         let header_triangles = header.triangles();
         reader.seek(SeekFrom::Start(header_triangles.offset as u64))?;
         let mut triangles = Vec::with_capacity(header_triangles.count as usize);
@@ -708,7 +704,6 @@ where
             triangles.push(reader.read_u16_le()?);
         }
 
-        // Parse bone indices
         let header_bone_indices = header.bone_indices();
         reader.seek(SeekFrom::Start(header_bone_indices.offset as u64))?;
         let mut bone_indices = Vec::with_capacity(header_bone_indices.count as usize);
@@ -716,7 +711,6 @@ where
             bone_indices.push(reader.read_u8()?);
         }
 
-        // Parse submeshes
         let header_submeshes = header.submeshes();
         reader.seek(SeekFrom::Start(header_submeshes.offset as u64))?;
         let mut submeshes = Vec::with_capacity(header_submeshes.count as usize);
@@ -725,6 +719,7 @@ where
         }
 
         let extra_array = header.parse_extra_array(reader)?;
+
         Ok(Self {
             header,
             indices,
