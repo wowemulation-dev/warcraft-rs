@@ -7,15 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **storm-ffi**: Complete archive modification support through C FFI including add/remove/rename file operations
+- **storm-ffi**: New test suite for archive modification and FFI integration
+- **storm-ffi**: File finding functionality with `SFileFindFirstFile`/`SFileFindNextFile`/`SFileFindClose`
+- **storm-ffi**: Archive creation functionality with `SFileCreateArchive` and `SFileCreateArchive2`
+- **storm-ffi**: Archive modification operations: `SFileAddFile`, `SFileAddFileEx`, `SFileRemoveFile`, `SFileRenameFile`
+- **storm-ffi**: Archive maintenance operations: `SFileFlushArchive`, `SFileCompactArchive`, `SFileSetMaxFileCount`
+- **storm-ffi**: File attributes API: `SFileGetFileAttributes`, `SFileSetFileAttributes`, `SFileUpdateFileAttributes`
+- **storm-ffi**: Archive attributes API: `SFileGetAttributes`, `SFileSetAttributes`, `SFileFlushAttributes`
+- **storm-ffi**: Support for both read-only and mutable archive handles
+- **wow-mpq**: New methods in `MutableArchive`: `read_file()`, `list()`, `find_file()`, `verify_signature()`, `load_attributes()`
+- **wow-mpq**: Complete implementation of `compact()` method for archive defragmentation
+- **wow-mpq**: Improved attributes file parsing to handle both cases where attributes include/exclude themselves
+
 ### Changed
 
-- **storm FFI**: Renamed crate from `storm` to `storm-ffi` while retaining library name as `libstorm`
+- **storm-ffi**: Renamed crate from `storm` to `storm-ffi` while retaining library name as `libstorm`
+- **storm-ffi**: Archive handles now support both read-only and mutable operations with internal enum-based dispatch
+- **wow-mpq**: Enhanced attributes file block count detection with automatic fallback logic
+- **wow-mpq**: `MutableArchive` now provides convenience methods for common read operations
 
 ### Fixed
 
 - **wow-mpq**: Fixed Huffman decompression algorithm to match StormLib's linked list approach, resolving ADPCM audio decompression failures and file count discrepancies in Warcraft 3 MPQ archives (GitHub issue #4)
 - **wow-mpq**: Fixed IMPLODE compression handling for Warcraft III MPQ archives - IMPLODE-compressed files no longer incorrectly skip the first byte as a compression type prefix
 - **wow-mpq**: Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test failures
+- **wow-mpq**: Fixed attributes file parsing to correctly handle varying block counts across different MPQ implementations
 - **GitHub Actions**: Release-plz workflow now supports optional PAT token for PR creation permissions
 
 ## [0.2.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.2.0) - 2025-06-28

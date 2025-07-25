@@ -629,7 +629,7 @@ fn encrypt_example(data: &mut [u8], key: u32) {
 ## Usage Example
 
 ```rust
-use wow_mpq::{Archive, ArchiveBuilder, FormatVersion};
+use wow_mpq::{Archive, ArchiveBuilder, FormatVersion, MutableArchive};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open an existing MPQ archive
@@ -664,6 +664,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_file_data(b"Hello, MPQ!".to_vec(), "readme.txt")
         .add_file("path/to/file.dat", "data/file.dat")
         .build("new_archive.mpq")?;
+
+    Ok(())
+}
+```
+
+### Archive Modification
+
+The `MutableArchive` type allows modifying existing MPQ archives:
+
+```rust
+use wow_mpq::{MutableArchive, AddFileOptions, compression::CompressionMethod};
+
+fn modify_archive_example() -> Result<(), Box<dyn std::error::Error>> {
+    // Open an archive for modification
+    let mut archive = MutableArchive::open("my_archive.mpq")?;
+
+    // Add a file with default options (zlib compression)
+    archive.add_file("new_file.txt", "data/new_file.txt", AddFileOptions::new())?;
+
+    // Add a file with custom compression
+    let options = AddFileOptions::new()
+        .compression(CompressionMethod::BZip2)
+        .encrypt()
+        .replace_existing(true);
+    archive.add_file("source.dat", "encrypted.dat", options)?;
+
+    // Remove a file
+    archive.remove_file("old_file.txt")?;
+
+    // Rename a file
+    archive.rename_file("readme.txt", "README.TXT")?;
+
+    // Read files from a mutable archive
+    let data = archive.read_file("some_file.txt")?;
+    
+    // List files (convenience method)
+    let files = archive.list()?;
+    for entry in files {
+        println!("{}: {} bytes", entry.name, entry.size);
+    }
+
+    // Flush changes to disk
+    archive.flush()?;
+
+    // Compact the archive to remove deleted files and reclaim space
+    archive.compact()?;
 
     Ok(())
 }
