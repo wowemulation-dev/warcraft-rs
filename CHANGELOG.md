@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-mpq**: New methods in `MutableArchive`: `read_file()`, `list()`, `find_file()`, `verify_signature()`, `load_attributes()`
 - **wow-mpq**: Complete implementation of `compact()` method for archive defragmentation
 - **wow-mpq**: Improved attributes file parsing to handle both cases where attributes include/exclude themselves
+- **wow-m2**: Added support for WotLK (Wrath of the Lich King) M2 model and skin formats
+- **wow-m2**: Added texture filename parsing functionality
+- **wow-m2**: Added support for old skin format in the skin-info command
+- **warcraft-rs**: Added `cargo-deny` configuration for dependency security scanning and duplicate management
 
 ### Changed
 
@@ -36,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-mpq**: Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test failures
 - **wow-mpq**: Fixed attributes file parsing to correctly handle varying block counts across different MPQ implementations
 - **GitHub Actions**: Release-plz workflow now supports optional PAT token for PR creation permissions
+- **wow-m2**: Fixed BLP texture parsing in M2 models - corrected header field order, width/height types (u16 to u32), and added version field reading
+- **wow-m2**: Fixed BLP texture parsing to properly handle JPEG header information and palette data
+- **wow-mpq**: Applied rustfmt formatting fixes and resolved clippy warnings for cleaner code
 
 ## [0.2.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.2.0) - 2025-06-28
 

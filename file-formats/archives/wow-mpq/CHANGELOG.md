@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed IMPLODE compression handling for Warcraft III MPQ archives - IMPLODE-compressed files no longer incorrectly skip the first byte as a compression type prefix
 - Fixed attributes file parsing to correctly handle varying block counts across different MPQ implementations
 - Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test failures
+- Applied rustfmt formatting fixes to improve code consistency
+- Fixed clippy warnings by using inline format arguments in log statements
 
 ## [0.2.0] - 2025-06-28
 
