@@ -2203,7 +2203,7 @@ impl Archive {
                         "No block/BET table available for attributes",
                     ));
                 };
-                
+
                 // Determine the actual block count by checking the attributes file structure
                 // We'll try the full count first, then fall back to count-1 if that fails
                 let block_count = {
@@ -2213,33 +2213,55 @@ impl Archive {
                     } else {
                         0
                     };
-                    
+
                     let mut expected_size_full = 8; // header
-                    if flags_from_data & 0x01 != 0 { expected_size_full += total_files * 4; } // CRC32
-                    if flags_from_data & 0x02 != 0 { expected_size_full += total_files * 8; } // FILETIME  
-                    if flags_from_data & 0x04 != 0 { expected_size_full += total_files * 16; } // MD5
-                    if flags_from_data & 0x08 != 0 { expected_size_full += total_files.div_ceil(8); } // PATCH_BIT
-                    
+                    if flags_from_data & 0x01 != 0 {
+                        expected_size_full += total_files * 4;
+                    } // CRC32
+                    if flags_from_data & 0x02 != 0 {
+                        expected_size_full += total_files * 8;
+                    } // FILETIME  
+                    if flags_from_data & 0x04 != 0 {
+                        expected_size_full += total_files * 16;
+                    } // MD5
+                    if flags_from_data & 0x08 != 0 {
+                        expected_size_full += total_files.div_ceil(8);
+                    } // PATCH_BIT
+
                     if data.len() == expected_size_full {
                         // Perfect match with full file count - attributes includes itself
-                        log::debug!("Attributes file contains entries for all {} files (including itself)", total_files);
+                        log::debug!(
+                            "Attributes file contains entries for all {total_files} files (including itself)"
+                        );
                         total_files
                     } else {
                         // Try with count-1 (traditional behavior)
                         let count_minus_1 = total_files.saturating_sub(1);
                         let mut expected_size_minus1 = 8; // header
-                        if flags_from_data & 0x01 != 0 { expected_size_minus1 += count_minus_1 * 4; }
-                        if flags_from_data & 0x02 != 0 { expected_size_minus1 += count_minus_1 * 8; }
-                        if flags_from_data & 0x04 != 0 { expected_size_minus1 += count_minus_1 * 16; }
-                        if flags_from_data & 0x08 != 0 { expected_size_minus1 += count_minus_1.div_ceil(8); }
-                        
+                        if flags_from_data & 0x01 != 0 {
+                            expected_size_minus1 += count_minus_1 * 4;
+                        }
+                        if flags_from_data & 0x02 != 0 {
+                            expected_size_minus1 += count_minus_1 * 8;
+                        }
+                        if flags_from_data & 0x04 != 0 {
+                            expected_size_minus1 += count_minus_1 * 16;
+                        }
+                        if flags_from_data & 0x08 != 0 {
+                            expected_size_minus1 += count_minus_1.div_ceil(8);
+                        }
+
                         if data.len() == expected_size_minus1 {
-                            log::debug!("Attributes file contains entries for {} files (excluding itself)", count_minus_1);
+                            log::debug!(
+                                "Attributes file contains entries for {count_minus_1} files (excluding itself)"
+                            );
                             count_minus_1
                         } else {
                             // Neither exact match - use full count and let the parser handle the discrepancy
-                            log::debug!("Attributes file size doesn't match expected patterns, using full count {} (actual: {}, expected_full: {}, expected_minus1: {})", 
-                                       total_files, data.len(), expected_size_full, expected_size_minus1);
+                            log::debug!(
+                                "Attributes file size doesn't match expected patterns, using full count {total_files} (actual: {}, expected_full: {expected_size_full}, expected_minus1: {expected_size_minus1})",
+                                data.len()
+                            );
                             total_files
                         }
                     }
