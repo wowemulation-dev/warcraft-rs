@@ -282,6 +282,111 @@ fn create_advanced_archive() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### 5a. Modifying Existing Archives
+
+The `MutableArchive` type allows you to modify existing MPQ archives:
+
+```rust
+use wow_mpq::{MutableArchive, AddFileOptions, compression::CompressionMethod};
+
+fn modify_archive_example() -> Result<(), Box<dyn std::error::Error>> {
+    // Open an archive for modification
+    let mut archive = MutableArchive::open("my_archive.mpq")?;
+
+    // Add a file from disk with default options (zlib compression)
+    archive.add_file("new_file.txt", "data/new_file.txt", AddFileOptions::new())?;
+
+    // Add file data directly with custom compression
+    let options = AddFileOptions::new()
+        .compression(CompressionMethod::BZip2)
+        .encrypt()
+        .replace_existing(true);
+    archive.add_file_data(
+        b"Secret content".to_vec(),
+        "encrypted.dat",
+        options
+    )?;
+
+    // Remove a file
+    archive.remove_file("old_file.txt")?;
+
+    // Rename a file
+    archive.rename_file("readme.txt", "README.TXT")?;
+
+    // Read files from a mutable archive (convenience method)
+    let data = archive.read_file("some_file.txt")?;
+    println!("File content: {} bytes", data.len());
+    
+    // List files (convenience method)
+    let files = archive.list()?;
+    for entry in files {
+        println!("{}: {} bytes", entry.name, entry.size);
+    }
+
+    // Verify signature (if present)
+    match archive.verify_signature() {
+        Ok(status) => println!("Signature status: {:?}", status),
+        Err(_) => println!("No signature found"),
+    }
+
+    // Flush changes to disk
+    archive.flush()?;
+
+    // Compact the archive to remove deleted files and reclaim space
+    // This creates a new archive without gaps from deleted files
+    archive.compact()?;
+
+    Ok(())
+}
+
+fn batch_modifications() -> Result<(), Box<dyn std::error::Error>> {
+    let mut archive = MutableArchive::open("patch.mpq")?;
+
+    // Add multiple files with different settings
+    let files_to_add = vec![
+        ("assets/icon1.blp", "Interface/Icons/Icon1.blp", CompressionMethod::Zlib),
+        ("assets/icon2.blp", "Interface/Icons/Icon2.blp", CompressionMethod::BZip2),
+        ("assets/model.m2", "Models/Creature/Model.m2", CompressionMethod::None),
+    ];
+
+    for (source, archived_name, compression) in files_to_add {
+        let options = AddFileOptions::new()
+            .compression(compression)
+            .replace_existing(true);
+        archive.add_file(source, archived_name, options)?;
+    }
+
+    // Remove old versions
+    let files_to_remove = vec![
+        "Interface/Icons/OldIcon.blp",
+        "Models/Deprecated/OldModel.m2",
+    ];
+
+    for filename in files_to_remove {
+        if let Err(_) = archive.remove_file(filename) {
+            println!("File {} not found, skipping", filename);
+        }
+    }
+
+    // Batch rename for consistency
+    let renames = vec![
+        ("interface/icons/spell_fire_01.blp", "Interface/Icons/Spell_Fire_01.blp"),
+        ("interface/icons/spell_frost_01.blp", "Interface/Icons/Spell_Frost_01.blp"),
+    ];
+
+    for (old_name, new_name) in renames {
+        if let Err(_) = archive.rename_file(old_name, new_name) {
+            println!("Could not rename {} to {}", old_name, new_name);
+        }
+    }
+
+    // Save all changes
+    archive.flush()?;
+
+    Ok(())
+}
+```
+
 ### 6. Rebuilding and Comparing Archives
 
 The `warcraft-rs` CLI provides tools for rebuilding MPQ archives and

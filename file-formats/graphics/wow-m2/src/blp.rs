@@ -242,12 +242,12 @@ impl BlpTexture {
         let mut mipmap_offsets = [0u32; 16];
         let mut mipmap_sizes = [0u32; 16];
 
-        for i in 0..16 {
-            mipmap_offsets[i] = reader.read_u32_le()?;
+        for offset in &mut mipmap_offsets {
+            *offset = reader.read_u32_le()?;
         }
 
-        for i in 0..16 {
-            mipmap_sizes[i] = reader.read_u32_le()?;
+        for size in &mut mipmap_sizes {
+            *size = reader.read_u32_le()?;
         }
 
         let (palette, jpeg_info) = if header.compression_type == BlpCompressionType::Uncompressed {
@@ -271,8 +271,8 @@ impl BlpTexture {
 
         // Read mipmaps
         let mut mipmaps = Vec::with_capacity(header.mipmap_levels as usize);
-        let width = header.width as u32;
-        let height = header.height as u32;
+        let width = header.width;
+        let height = header.height;
 
         for i in 0..header.mipmap_levels as usize {
             let offset = mipmap_offsets[i];

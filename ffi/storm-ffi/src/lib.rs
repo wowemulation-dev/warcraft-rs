@@ -9,7 +9,10 @@ use std::path::Path;
 use std::ptr;
 use std::sync::{LazyLock, Mutex};
 
-use wow_mpq::{Archive, ArchiveBuilder, FormatVersion, ListfileOption};
+use wow_mpq::{
+    AddFileOptions, Archive, ArchiveBuilder, AttributesOption, FileEntry, FormatVersion,
+    ListfileOption, MutableArchive,
+};
 
 /// Archive handle type
 pub type HANDLE = *mut c_void;
@@ -23,6 +26,8 @@ static ARCHIVES: LazyLock<Mutex<HashMap<usize, ArchiveHandle>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 static FILES: LazyLock<Mutex<HashMap<usize, FileHandle>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+static FIND_HANDLES: LazyLock<Mutex<HashMap<usize, FindHandle>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 // Thread-local error storage
 thread_local! {
@@ -31,9 +36,16 @@ thread_local! {
 }
 
 // Internal handle structures
-struct ArchiveHandle {
-    archive: Archive,
-    path: String,
+#[allow(clippy::large_enum_variant)]
+enum ArchiveHandle {
+    ReadOnly {
+        archive: Archive,
+        path: String,
+    },
+    Mutable {
+        archive: MutableArchive,
+        path: String,
+    },
 }
 
 struct FileHandle {
@@ -42,6 +54,32 @@ struct FileHandle {
     data: Vec<u8>,
     position: usize,
     size: u64,
+}
+
+impl ArchiveHandle {
+    /// Get read-only access to the archive
+    fn archive(&self) -> &Archive {
+        match self {
+            ArchiveHandle::ReadOnly { archive, .. } => archive,
+            ArchiveHandle::Mutable { archive, .. } => archive.archive(),
+        }
+    }
+
+    /// Get mutable access to the archive (if it's mutable)
+    fn mutable_archive(&mut self) -> Option<&mut MutableArchive> {
+        match self {
+            ArchiveHandle::ReadOnly { .. } => None,
+            ArchiveHandle::Mutable { archive, .. } => Some(archive),
+        }
+    }
+
+    /// Get the path
+    fn path(&self) -> &str {
+        match self {
+            ArchiveHandle::ReadOnly { path, .. } => path,
+            ArchiveHandle::Mutable { path, .. } => path,
+        }
+    }
 }
 
 // Error codes (matching Windows/StormLib error codes)
@@ -159,7 +197,7 @@ pub unsafe extern "C" fn SFileOpenArchive(
             drop(next_id);
 
             // Store archive
-            let archive_handle = ArchiveHandle {
+            let archive_handle = ArchiveHandle::ReadOnly {
                 archive,
                 path: filename_str.to_string(),
             };
@@ -351,48 +389,65 @@ pub unsafe extern "C" fn SFileOpenFileEx(
     };
 
     // Try to find and read the file
-    match archive_handle.archive.find_file(filename_str) {
-        Ok(Some(file_info)) => {
-            // Read the file data
-            match archive_handle.archive.read_file(filename_str) {
-                Ok(data) => {
-                    // Generate file handle
-                    let mut next_id = NEXT_HANDLE.lock().unwrap();
-                    let file_id = *next_id;
-                    *next_id += 1;
-                    drop(next_id);
+    let (file_info_opt, read_result) = match archive_handle {
+        ArchiveHandle::ReadOnly { archive, .. } => match archive.find_file(filename_str) {
+            Ok(Some(file_info)) => {
+                let read_result = archive.read_file(filename_str);
+                (Some(file_info), read_result)
+            }
+            Ok(None) => (
+                None,
+                Err(wow_mpq::Error::FileNotFound(filename_str.to_string())),
+            ),
+            Err(e) => (None, Err(e)),
+        },
+        ArchiveHandle::Mutable { archive, .. } => match archive.find_file(filename_str) {
+            Ok(Some(file_info)) => {
+                let read_result = archive.read_file(filename_str);
+                (Some(file_info), read_result)
+            }
+            Ok(None) => (
+                None,
+                Err(wow_mpq::Error::FileNotFound(filename_str.to_string())),
+            ),
+            Err(e) => (None, Err(e)),
+        },
+    };
 
-                    // Create file handle
-                    let file = FileHandle {
-                        archive_handle: archive_id,
-                        filename: filename_str.to_string(),
-                        data,
-                        position: 0,
-                        size: file_info.file_size,
-                    };
+    if let Some(file_info) = file_info_opt {
+        match read_result {
+            Ok(data) => {
+                // Generate file handle
+                let mut next_id = NEXT_HANDLE.lock().unwrap();
+                let file_id = *next_id;
+                *next_id += 1;
+                drop(next_id);
 
-                    // Store file handle
-                    FILES.lock().unwrap().insert(file_id, file);
+                // Create file handle
+                let file = FileHandle {
+                    archive_handle: archive_id,
+                    filename: filename_str.to_string(),
+                    data,
+                    position: 0,
+                    size: file_info.file_size,
+                };
 
-                    // Return handle
-                    *file_handle = id_to_handle(file_id);
-                    set_last_error(ERROR_SUCCESS);
-                    true
-                }
-                Err(_) => {
-                    set_last_error(ERROR_FILE_CORRUPT);
-                    false
-                }
+                // Store file handle
+                FILES.lock().unwrap().insert(file_id, file);
+
+                // Return handle
+                *file_handle = id_to_handle(file_id);
+                set_last_error(ERROR_SUCCESS);
+                true
+            }
+            Err(_) => {
+                set_last_error(ERROR_FILE_CORRUPT);
+                false
             }
         }
-        Ok(None) => {
-            set_last_error(ERROR_FILE_NOT_FOUND);
-            false
-        }
-        Err(_) => {
-            set_last_error(ERROR_FILE_CORRUPT);
-            false
-        }
+    } else {
+        set_last_error(ERROR_FILE_NOT_FOUND);
+        false
     }
 }
 
@@ -578,7 +633,10 @@ pub unsafe extern "C" fn SFileHasFile(archive: HANDLE, filename: *const c_char) 
 
     let archives = ARCHIVES.lock().unwrap();
     if let Some(archive_handle) = archives.get(&archive_id) {
-        matches!(archive_handle.archive.find_file(filename_str), Ok(Some(_)))
+        matches!(
+            archive_handle.archive().find_file(filename_str),
+            Ok(Some(_))
+        )
     } else {
         false
     }
@@ -678,7 +736,7 @@ unsafe fn get_archive_info(
     buffer_size: u32,
     size_needed: *mut u32,
 ) -> bool {
-    let header = archive_handle.archive.header();
+    let header = archive_handle.archive().header();
 
     match info_class {
         SFILE_INFO_ARCHIVE_SIZE => {
@@ -772,7 +830,7 @@ pub unsafe extern "C" fn SFileGetArchiveName(
     };
 
     // Convert path to C string
-    let c_path = match CString::new(archive_handle.path.as_str()) {
+    let c_path = match CString::new(archive_handle.path()) {
         Ok(s) => s,
         Err(_) => {
             set_last_error(ERROR_INVALID_PARAMETER);
@@ -839,7 +897,12 @@ pub unsafe extern "C" fn SFileEnumFiles(
     };
 
     // List files
-    match archive_handle.archive.list() {
+    let file_list = match archive_handle {
+        ArchiveHandle::ReadOnly { archive, .. } => archive.list(),
+        ArchiveHandle::Mutable { archive, .. } => archive.list(),
+    };
+
+    match file_list {
         Ok(entries) => {
             for entry in entries {
                 // Simple pattern matching (just * for now)
@@ -984,7 +1047,12 @@ pub unsafe extern "C" fn SFileExtractFile(
     };
 
     // Try to read the file from the archive
-    match archive_handle.archive.read_file(source_filename) {
+    let file_data = match archive_handle {
+        ArchiveHandle::ReadOnly { archive, .. } => archive.read_file(source_filename),
+        ArchiveHandle::Mutable { archive, .. } => archive.read_file(source_filename),
+    };
+
+    match file_data {
         Ok(data) => {
             // Create parent directories if they don't exist
             let dest_path = Path::new(dest_filename);
@@ -1060,7 +1128,7 @@ pub unsafe extern "C" fn SFileVerifyFile(
     };
 
     // Find the file first to get file info
-    let file_info = match archive_handle.archive.find_file(filename_str) {
+    let file_info = match archive_handle.archive().find_file(filename_str) {
         Ok(Some(info)) => info,
         Ok(None) => {
             set_last_error(ERROR_FILE_NOT_FOUND);
@@ -1078,7 +1146,11 @@ pub unsafe extern "C" fn SFileVerifyFile(
     // Verify sector CRC (if requested and available)
     if (verify_flags & SFILE_VERIFY_SECTOR_CRC) != 0 && file_info.has_sector_crc() {
         // Reading the file automatically validates sector CRCs
-        match archive_handle.archive.read_file(filename_str) {
+        let read_result = match archive_handle {
+            ArchiveHandle::ReadOnly { archive, .. } => archive.read_file(filename_str),
+            ArchiveHandle::Mutable { archive, .. } => archive.read_file(filename_str),
+        };
+        match read_result {
             Ok(_) => {
                 // File read successfully, CRCs validated automatically
             }
@@ -1096,15 +1168,27 @@ pub unsafe extern "C" fn SFileVerifyFile(
     // Verify file CRC32 from attributes (if requested and available)
     if (verify_flags & SFILE_VERIFY_FILE_CRC) != 0 {
         // Load attributes if not already loaded
-        let _ = archive_handle.archive.load_attributes();
+        // Load attributes if possible
+        match archive_handle {
+            ArchiveHandle::ReadOnly { archive, .. } => {
+                let _ = archive.load_attributes();
+            }
+            ArchiveHandle::Mutable { archive, .. } => {
+                let _ = archive.load_attributes();
+            }
+        }
 
         if let Some(attrs) = archive_handle
-            .archive
+            .archive()
             .get_file_attributes(file_info.block_index)
         {
             if let Some(expected_crc) = attrs.crc32 {
                 // Read file data to calculate CRC
-                match archive_handle.archive.read_file(filename_str) {
+                let read_result = match archive_handle {
+                    ArchiveHandle::ReadOnly { archive, .. } => archive.read_file(filename_str),
+                    ArchiveHandle::Mutable { archive, .. } => archive.read_file(filename_str),
+                };
+                match read_result {
                     Ok(data) => {
                         let actual_crc = crc32fast::hash(&data);
                         if actual_crc != expected_crc {
@@ -1124,15 +1208,27 @@ pub unsafe extern "C" fn SFileVerifyFile(
     // Verify file MD5 from attributes (if requested and available)
     if (verify_flags & SFILE_VERIFY_FILE_MD5) != 0 {
         // Load attributes if not already loaded
-        let _ = archive_handle.archive.load_attributes();
+        // Load attributes if possible
+        match archive_handle {
+            ArchiveHandle::ReadOnly { archive, .. } => {
+                let _ = archive.load_attributes();
+            }
+            ArchiveHandle::Mutable { archive, .. } => {
+                let _ = archive.load_attributes();
+            }
+        }
 
         if let Some(attrs) = archive_handle
-            .archive
+            .archive()
             .get_file_attributes(file_info.block_index)
         {
             if let Some(expected_md5) = attrs.md5 {
                 // Read file data to calculate MD5
-                match archive_handle.archive.read_file(filename_str) {
+                let read_result = match archive_handle {
+                    ArchiveHandle::ReadOnly { archive, .. } => archive.read_file(filename_str),
+                    ArchiveHandle::Mutable { archive, .. } => archive.read_file(filename_str),
+                };
+                match read_result {
                     Ok(data) => {
                         use md5::{Digest, Md5};
                         let mut hasher = Md5::new();
@@ -1187,7 +1283,13 @@ pub unsafe extern "C" fn SFileVerifyArchive(archive: HANDLE, flags: u32) -> bool
 
     // Verify digital signature (if requested)
     if (verify_flags & SFILE_VERIFY_SIGNATURE) != 0 {
-        match archive_handle.archive.verify_signature() {
+        // Verify signature
+        let signature_result = match archive_handle {
+            ArchiveHandle::ReadOnly { archive, .. } => archive.verify_signature(),
+            ArchiveHandle::Mutable { archive, .. } => archive.verify_signature(),
+        };
+
+        match signature_result {
             Ok(wow_mpq::SignatureStatus::WeakValid) | Ok(wow_mpq::SignatureStatus::StrongValid) => {
                 // Valid signature found
             }
@@ -1212,19 +1314,11 @@ pub unsafe extern "C" fn SFileVerifyArchive(archive: HANDLE, flags: u32) -> bool
     // Verify all files in the archive (if requested)
     if (verify_flags & SFILE_VERIFY_ALL_FILES) != 0 {
         // Get list of all files in the archive
-        let file_list = match archive_handle.archive.list() {
-            Ok(list) => list,
-            Err(_) => {
-                // If we can't get the file list, try to enumerate from tables
-                match archive_handle.archive.list_all() {
-                    Ok(list) => list,
-                    Err(_) => {
-                        set_last_error(ERROR_FILE_CORRUPT);
-                        return false;
-                    }
-                }
-            }
+        let file_list = match archive_handle {
+            ArchiveHandle::ReadOnly { archive, .. } => archive.list(),
+            ArchiveHandle::Mutable { archive, .. } => archive.list(),
         };
+        let file_list = file_list.unwrap_or_default();
 
         // Verify each file individually
         for file_entry in file_list {
@@ -1254,7 +1348,11 @@ pub unsafe extern "C" fn SFileVerifyArchive(archive: HANDLE, flags: u32) -> bool
                     Err(_) => continue, // Skip files with invalid names
                 };
 
-                if !SFileVerifyFile(archive, filename_cstr.as_ptr(), all_verify_flags) {
+                if !SFileVerifyFile(
+                    id_to_handle(archive_id),
+                    filename_cstr.as_ptr(),
+                    all_verify_flags,
+                ) {
                     let last_error = SFileGetLastError();
                     // Only fail on corruption, not missing attributes
                     if last_error == ERROR_FILE_CORRUPT {
@@ -1267,6 +1365,943 @@ pub unsafe extern "C" fn SFileVerifyArchive(archive: HANDLE, flags: u32) -> bool
 
     set_last_error(ERROR_SUCCESS);
     true
+}
+
+/// Add a file to an archive from disk with extended options
+///
+/// # Safety
+///
+/// - `archive` must be a valid archive handle
+/// - `filename` and `archived_name` must be valid null-terminated C strings
+#[no_mangle]
+pub unsafe extern "C" fn SFileAddFileEx(
+    archive: HANDLE,
+    filename: *const c_char,
+    archived_name: *const c_char,
+    flags: u32,
+    compression: u32,
+    _compression_next: u32,
+) -> bool {
+    // Validate parameters
+    if archive.is_null() || filename.is_null() || archived_name.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Convert handle
+    let archive_id = match handle_to_id(archive) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    // Convert strings
+    let filename_str = match CStr::from_ptr(filename).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            set_last_error(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+    };
+
+    let archived_name_str = match CStr::from_ptr(archived_name).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            set_last_error(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+    };
+
+    // Get mutable archive handle
+    let mut archives = ARCHIVES.lock().unwrap();
+    let archive_handle = match archives.get_mut(&archive_id) {
+        Some(handle) => handle,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    let mutable_archive = match archive_handle.mutable_archive() {
+        Some(archive) => archive,
+        None => {
+            set_last_error(ERROR_ACCESS_DENIED);
+            return false;
+        }
+    };
+
+    // Configure options based on flags and compression
+    let mut options = AddFileOptions::new();
+
+    // Set compression method
+    use wow_mpq::compression::CompressionMethod;
+    let compression_method = match compression {
+        0 => CompressionMethod::None,
+        0x02 => CompressionMethod::Zlib,
+        0x08 => CompressionMethod::PKWare,
+        0x10 => CompressionMethod::BZip2,
+        0x20 => CompressionMethod::Sparse,
+        0x40 => CompressionMethod::AdpcmMono,
+        0x80 => CompressionMethod::AdpcmStereo,
+        0x12 => CompressionMethod::Lzma,
+        _ => CompressionMethod::Zlib, // Default fallback
+    };
+    options = options.compression(compression_method);
+
+    // Handle flags
+    const MPQ_FILE_ENCRYPTED: u32 = 0x00010000;
+    const MPQ_FILE_FIX_KEY: u32 = 0x00020000;
+    const MPQ_FILE_REPLACEEXISTING: u32 = 0x80000000;
+
+    if (flags & MPQ_FILE_ENCRYPTED) != 0 {
+        options = options.encrypt();
+    }
+    if (flags & MPQ_FILE_FIX_KEY) != 0 {
+        options = options.fix_key();
+    }
+    if (flags & MPQ_FILE_REPLACEEXISTING) != 0 {
+        options = options.replace_existing(true);
+    }
+
+    // Add the file
+    match mutable_archive.add_file(filename_str, archived_name_str, options) {
+        Ok(()) => {
+            set_last_error(ERROR_SUCCESS);
+            true
+        }
+        Err(e) => {
+            let error_code = match e {
+                wow_mpq::Error::FileNotFound(_) => ERROR_FILE_NOT_FOUND,
+                wow_mpq::Error::FileExists(_) => ERROR_ALREADY_EXISTS,
+                wow_mpq::Error::Io(_) => ERROR_ACCESS_DENIED,
+                _ => ERROR_ACCESS_DENIED,
+            };
+            set_last_error(error_code);
+            false
+        }
+    }
+}
+
+/// Add a file to an archive from disk
+///
+/// # Safety
+///
+/// - `archive` must be a valid archive handle
+/// - `filename` and `archived_name` must be valid null-terminated C strings
+#[no_mangle]
+pub unsafe extern "C" fn SFileAddFile(
+    archive: HANDLE,
+    filename: *const c_char,
+    archived_name: *const c_char,
+    flags: u32,
+) -> bool {
+    SFileAddFileEx(archive, filename, archived_name, flags, 0x02, 0) // Use ZLIB compression by default
+}
+
+/// Remove a file from an archive
+///
+/// # Safety
+///
+/// - `archive` must be a valid archive handle
+/// - `filename` must be a valid null-terminated C string
+#[no_mangle]
+pub unsafe extern "C" fn SFileRemoveFile(
+    archive: HANDLE,
+    filename: *const c_char,
+    _search_scope: u32,
+) -> bool {
+    // Validate parameters
+    if archive.is_null() || filename.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Convert handle
+    let archive_id = match handle_to_id(archive) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    // Convert filename
+    let filename_str = match CStr::from_ptr(filename).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            set_last_error(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+    };
+
+    // Get mutable archive handle
+    let mut archives = ARCHIVES.lock().unwrap();
+    let archive_handle = match archives.get_mut(&archive_id) {
+        Some(handle) => handle,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    let mutable_archive = match archive_handle.mutable_archive() {
+        Some(archive) => archive,
+        None => {
+            set_last_error(ERROR_ACCESS_DENIED);
+            return false;
+        }
+    };
+
+    // Remove the file
+    match mutable_archive.remove_file(filename_str) {
+        Ok(()) => {
+            set_last_error(ERROR_SUCCESS);
+            true
+        }
+        Err(e) => {
+            let error_code = match e {
+                wow_mpq::Error::FileNotFound(_) => ERROR_FILE_NOT_FOUND,
+                _ => ERROR_ACCESS_DENIED,
+            };
+            set_last_error(error_code);
+            false
+        }
+    }
+}
+
+/// Rename a file in an archive
+///
+/// # Safety
+///
+/// - `archive` must be a valid archive handle
+/// - `old_filename` and `new_filename` must be valid null-terminated C strings
+#[no_mangle]
+pub unsafe extern "C" fn SFileRenameFile(
+    archive: HANDLE,
+    old_filename: *const c_char,
+    new_filename: *const c_char,
+) -> bool {
+    // Validate parameters
+    if archive.is_null() || old_filename.is_null() || new_filename.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Convert handle
+    let archive_id = match handle_to_id(archive) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    // Convert filenames
+    let old_filename_str = match CStr::from_ptr(old_filename).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            set_last_error(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+    };
+
+    let new_filename_str = match CStr::from_ptr(new_filename).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            set_last_error(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+    };
+
+    // Get mutable archive handle
+    let mut archives = ARCHIVES.lock().unwrap();
+    let archive_handle = match archives.get_mut(&archive_id) {
+        Some(handle) => handle,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    let mutable_archive = match archive_handle.mutable_archive() {
+        Some(archive) => archive,
+        None => {
+            set_last_error(ERROR_ACCESS_DENIED);
+            return false;
+        }
+    };
+
+    // Rename the file
+    match mutable_archive.rename_file(old_filename_str, new_filename_str) {
+        Ok(()) => {
+            set_last_error(ERROR_SUCCESS);
+            true
+        }
+        Err(e) => {
+            let error_code = match e {
+                wow_mpq::Error::FileNotFound(_) => ERROR_FILE_NOT_FOUND,
+                wow_mpq::Error::FileExists(_) => ERROR_ALREADY_EXISTS,
+                _ => ERROR_ACCESS_DENIED,
+            };
+            set_last_error(error_code);
+            false
+        }
+    }
+}
+
+/// Flush pending changes to an archive
+///
+/// # Safety
+///
+/// - `archive` must be a valid archive handle
+#[no_mangle]
+pub unsafe extern "C" fn SFileFlushArchive(archive: HANDLE) -> bool {
+    // Validate parameters
+    if archive.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Convert handle
+    let archive_id = match handle_to_id(archive) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    // Get mutable archive handle
+    let mut archives = ARCHIVES.lock().unwrap();
+    let archive_handle = match archives.get_mut(&archive_id) {
+        Some(handle) => handle,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    let mutable_archive = match archive_handle.mutable_archive() {
+        Some(archive) => archive,
+        None => {
+            set_last_error(ERROR_SUCCESS); // Read-only archives don't need flushing
+            return true;
+        }
+    };
+
+    // Flush the archive
+    match mutable_archive.flush() {
+        Ok(()) => {
+            set_last_error(ERROR_SUCCESS);
+            true
+        }
+        Err(_) => {
+            set_last_error(ERROR_ACCESS_DENIED);
+            false
+        }
+    }
+}
+
+/// Compact an archive to remove deleted files
+///
+/// # Safety
+///
+/// - `archive` must be a valid archive handle  
+/// - `listfile` can be null
+#[no_mangle]
+pub unsafe extern "C" fn SFileCompactArchive(
+    archive: HANDLE,
+    _listfile: *const c_char,
+    _reserved: bool,
+) -> bool {
+    // Validate parameters
+    if archive.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Convert handle
+    let archive_id = match handle_to_id(archive) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    // Get mutable archive handle
+    let mut archives = ARCHIVES.lock().unwrap();
+    let archive_handle = match archives.get_mut(&archive_id) {
+        Some(handle) => handle,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    let mutable_archive = match archive_handle.mutable_archive() {
+        Some(archive) => archive,
+        None => {
+            set_last_error(ERROR_ACCESS_DENIED);
+            return false;
+        }
+    };
+
+    // Compact the archive
+    match mutable_archive.compact() {
+        Ok(()) => {
+            set_last_error(ERROR_SUCCESS);
+            true
+        }
+        Err(_) => {
+            set_last_error(ERROR_NOT_SUPPORTED); // compact() currently returns NotImplemented
+            false
+        }
+    }
+}
+
+/// Extended MPQ creation info structure for SFileCreateArchive2
+#[repr(C)]
+pub struct SFILE_CREATE_MPQ {
+    /// Size of this structure, in bytes
+    pub cb_size: u32,
+    /// Version of the MPQ to be created (1-4)
+    pub mpq_version: u32,
+    /// Reserved, must be NULL
+    pub user_data: *mut c_void,
+    /// Reserved, must be 0
+    pub cb_user_data: u32,
+    /// Stream flags for creating the MPQ
+    pub stream_flags: u32,
+    /// File flags for (listfile). Use MPQ_FILE_DEFAULT_INTERNAL to set default flags
+    pub file_flags_1: u32,
+    /// File flags for (attributes). Use MPQ_FILE_DEFAULT_INTERNAL to set default flags
+    pub file_flags_2: u32,
+    /// File flags for (signature). Use MPQ_FILE_DEFAULT_INTERNAL to set default flags
+    pub file_flags_3: u32,
+    /// Flags for the (attributes) file. If 0, no attributes will be created
+    pub attr_flags: u32,
+    /// Sector size (expressed as power of two). If 0, default sector size is 4096 bytes
+    pub sector_size: u32,
+    /// Size of raw data chunk for MD5
+    pub raw_chunk_size: u32,
+    /// File limit for the MPQ
+    pub max_file_count: u32,
+}
+
+// Default internal file flags
+const _MPQ_FILE_DEFAULT_INTERNAL: u32 = 0xFFFFFFFF;
+
+// Attribute flags for (attributes) file
+const MPQ_ATTRIBUTE_CRC32: u32 = 0x00000001;
+const _MPQ_ATTRIBUTE_FILETIME: u32 = 0x00000002;
+const MPQ_ATTRIBUTE_MD5: u32 = 0x00000004;
+const _MPQ_ATTRIBUTE_PATCH_BIT: u32 = 0x00000008;
+const _MPQ_ATTRIBUTE_ALL: u32 = 0x0000000F;
+
+// File find data structure
+#[repr(C)]
+pub struct SFILE_FIND_DATA {
+    /// Full name of the found file
+    pub c_file_name: [c_char; 260], // MAX_PATH = 260
+    /// Plain name of the found file (pointer into cFileName)
+    pub sz_plain_name: *mut c_char,
+    /// Hash index of the file
+    pub hash_index: u32,
+    /// Block table index of the file
+    pub block_index: u32,
+    /// File size in bytes
+    pub file_size: u32,
+    /// File flags from block table
+    pub file_flags: u32,
+    /// Compressed file size
+    pub comp_size: u32,
+    /// Low 32-bits of the file time
+    pub file_time_lo: u32,
+    /// High 32-bits of the file time (0 if not present)
+    pub file_time_hi: u32,
+    /// Compound of file locale (16 bits) and platform (8 bits)
+    pub lc_locale: u32, // LCID type
+}
+
+// Find handle structure
+struct FindHandle {
+    archive_handle: usize,
+    file_list: Vec<FileEntry>,
+    current_index: usize,
+    search_mask: String,
+}
+
+impl FindHandle {
+    fn matches_mask(&self, filename: &str) -> bool {
+        // Simple wildcard matching supporting * and ?
+        let mask = &self.search_mask;
+
+        // Handle simple cases first
+        if mask == "*" || mask == "*.*" {
+            return true;
+        }
+
+        // Simple wildcard matching without regex
+        wildcard_match(&mask.to_lowercase(), &filename.to_lowercase())
+    }
+}
+
+// Simple wildcard pattern matching
+fn wildcard_match(pattern: &str, text: &str) -> bool {
+    let mut pattern_chars = pattern.chars().peekable();
+    let mut text_chars = text.chars().peekable();
+
+    while let Some(p) = pattern_chars.peek().copied() {
+        match p {
+            '*' => {
+                pattern_chars.next();
+                // If * is at the end, match everything
+                if pattern_chars.peek().is_none() {
+                    return true;
+                }
+                // Try matching rest of pattern at each position
+                let remaining_pattern: String = pattern_chars.collect();
+                let mut remaining_text = text_chars.clone();
+                loop {
+                    let remaining_text_str: String = remaining_text.clone().collect();
+                    if wildcard_match(&remaining_pattern, &remaining_text_str) {
+                        return true;
+                    }
+                    if remaining_text.next().is_none() {
+                        return false;
+                    }
+                }
+            }
+            '?' => {
+                pattern_chars.next();
+                if text_chars.next().is_none() {
+                    return false;
+                }
+            }
+            _ => {
+                pattern_chars.next();
+                match text_chars.next() {
+                    Some(t) if t == p => continue,
+                    _ => return false,
+                }
+            }
+        }
+    }
+
+    // Pattern consumed, text should be too
+    text_chars.next().is_none()
+}
+
+/// File finding functions with wildcard support
+///
+/// # Safety
+///
+/// - `h_mpq` must be a valid MPQ archive handle
+/// - `sz_mask` must be a valid null-terminated C string (can be NULL for "*")
+/// - `lp_find_file_data` must be a valid pointer to SFILE_FIND_DATA
+/// - `sz_list_file` can be NULL
+#[no_mangle]
+pub unsafe extern "C" fn SFileFindFirstFile(
+    h_mpq: HANDLE,
+    sz_mask: *const c_char,
+    lp_find_file_data: *mut SFILE_FIND_DATA,
+    _sz_list_file: *const c_char, // Ignored - we use internal listfile
+) -> HANDLE {
+    // Validate parameters
+    if lp_find_file_data.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    let archive_id = match handle_to_id(h_mpq) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return INVALID_HANDLE_VALUE;
+        }
+    };
+
+    // Get search mask
+    let search_mask = if sz_mask.is_null() {
+        "*".to_string()
+    } else {
+        match CStr::from_ptr(sz_mask).to_str() {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                set_last_error(ERROR_INVALID_PARAMETER);
+                return INVALID_HANDLE_VALUE;
+            }
+        }
+    };
+
+    // Get file list from archive
+    let file_list = {
+        let mut archives = ARCHIVES.lock().unwrap();
+        match archives.get_mut(&archive_id) {
+            Some(archive_handle) => {
+                match archive_handle {
+                    ArchiveHandle::ReadOnly { archive, .. } => {
+                        match archive.list() {
+                            Ok(list) => list,
+                            Err(_) => {
+                                // Try list_all if no listfile
+                                match archive.list_all() {
+                                    Ok(list) => list,
+                                    Err(_) => {
+                                        set_last_error(ERROR_FILE_NOT_FOUND);
+                                        return INVALID_HANDLE_VALUE;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ArchiveHandle::Mutable { archive, .. } => match archive.list() {
+                        Ok(list) => list,
+                        Err(_) => {
+                            set_last_error(ERROR_FILE_NOT_FOUND);
+                            return INVALID_HANDLE_VALUE;
+                        }
+                    },
+                }
+            }
+            None => {
+                set_last_error(ERROR_INVALID_HANDLE);
+                return INVALID_HANDLE_VALUE;
+            }
+        }
+    };
+
+    // Create find handle
+    let mut find_handle = FindHandle {
+        archive_handle: archive_id,
+        file_list,
+        current_index: 0,
+        search_mask,
+    };
+
+    // Find first matching file
+    let found_file = loop {
+        if find_handle.current_index >= find_handle.file_list.len() {
+            set_last_error(ERROR_FILE_NOT_FOUND);
+            return INVALID_HANDLE_VALUE;
+        }
+
+        let file = &find_handle.file_list[find_handle.current_index];
+        if find_handle.matches_mask(&file.name) {
+            break Some(file);
+        }
+
+        find_handle.current_index += 1;
+    };
+
+    if let Some(file) = found_file {
+        // Fill find data
+        fill_find_data(lp_find_file_data, file, archive_id);
+
+        // Store find handle
+        let mut next_id = NEXT_HANDLE.lock().unwrap();
+        let handle_id = *next_id;
+        *next_id += 1;
+        drop(next_id);
+
+        find_handle.current_index += 1; // Move to next for SFileFindNextFile
+        FIND_HANDLES.lock().unwrap().insert(handle_id, find_handle);
+
+        set_last_error(ERROR_SUCCESS);
+        id_to_handle(handle_id)
+    } else {
+        set_last_error(ERROR_FILE_NOT_FOUND);
+        INVALID_HANDLE_VALUE
+    }
+}
+
+/// Find the next file matching the search criteria
+///
+/// # Safety
+///
+/// - `h_find` must be a valid find handle from SFileFindFirstFile
+/// - `lp_find_file_data` must be a valid pointer to SFILE_FIND_DATA
+#[no_mangle]
+pub unsafe extern "C" fn SFileFindNextFile(
+    h_find: HANDLE,
+    lp_find_file_data: *mut SFILE_FIND_DATA,
+) -> bool {
+    if lp_find_file_data.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    let handle_id = match handle_to_id(h_find) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    let mut find_handles = FIND_HANDLES.lock().unwrap();
+    let find_handle = match find_handles.get_mut(&handle_id) {
+        Some(handle) => handle,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    // Find next matching file
+    let found_file = loop {
+        if find_handle.current_index >= find_handle.file_list.len() {
+            set_last_error(ERROR_NO_MORE_FILES);
+            return false;
+        }
+
+        let file = &find_handle.file_list[find_handle.current_index];
+        find_handle.current_index += 1;
+
+        if find_handle.matches_mask(&file.name) {
+            break Some(file);
+        }
+    };
+
+    if let Some(file) = found_file {
+        fill_find_data(lp_find_file_data, file, find_handle.archive_handle);
+        set_last_error(ERROR_SUCCESS);
+        true
+    } else {
+        set_last_error(ERROR_NO_MORE_FILES);
+        false
+    }
+}
+
+/// Close a find handle
+///
+/// # Safety
+///
+/// - `h_find` must be a valid find handle from SFileFindFirstFile
+#[no_mangle]
+pub unsafe extern "C" fn SFileFindClose(h_find: HANDLE) -> bool {
+    let handle_id = match handle_to_id(h_find) {
+        Some(id) => id,
+        None => {
+            set_last_error(ERROR_INVALID_HANDLE);
+            return false;
+        }
+    };
+
+    if FIND_HANDLES.lock().unwrap().remove(&handle_id).is_some() {
+        set_last_error(ERROR_SUCCESS);
+        true
+    } else {
+        set_last_error(ERROR_INVALID_HANDLE);
+        false
+    }
+}
+
+// Helper function to fill SFILE_FIND_DATA
+unsafe fn fill_find_data(
+    find_data: *mut SFILE_FIND_DATA,
+    file_entry: &FileEntry,
+    archive_id: usize,
+) {
+    let find_data = &mut *find_data;
+
+    // Copy filename
+    let name_bytes = file_entry.name.as_bytes();
+    let copy_len = name_bytes.len().min(259); // Leave room for null terminator
+
+    // Zero the entire buffer first
+    find_data.c_file_name.fill(0);
+
+    // Copy the filename
+    for (i, &byte) in name_bytes.iter().take(copy_len).enumerate() {
+        find_data.c_file_name[i] = byte as c_char;
+    }
+
+    // Set plain name pointer (points to last component after backslash)
+    let plain_name_offset = file_entry.name.rfind('\\').map(|pos| pos + 1).unwrap_or(0);
+    find_data.sz_plain_name = find_data.c_file_name.as_mut_ptr().add(plain_name_offset);
+
+    // Set file information
+    find_data.hash_index = if let Some((hash_idx, _)) = file_entry.table_indices {
+        hash_idx as u32
+    } else {
+        0xFFFFFFFF
+    };
+    find_data.block_index = if let Some((_, Some(block_idx))) = file_entry.table_indices {
+        block_idx as u32
+    } else {
+        0xFFFFFFFF
+    };
+    find_data.file_size = file_entry.size as u32;
+    find_data.file_flags = file_entry.flags;
+    find_data.comp_size = file_entry.compressed_size as u32;
+    find_data.file_time_lo = 0; // Timestamp not available in basic FileEntry
+    find_data.file_time_hi = 0;
+    find_data.lc_locale = 0; // Locale not directly available in FileEntry
+
+    // Try to get additional info from archive if available
+    let mut archives = ARCHIVES.lock().unwrap();
+    if let Some(archive_handle) = archives.get_mut(&archive_id) {
+        match archive_handle {
+            ArchiveHandle::ReadOnly { archive, .. } => {
+                // Try to get file attributes for timestamp
+                if let Some((_, Some(block_idx))) = file_entry.table_indices {
+                    if let Some(attrs) = archive.get_file_attributes(block_idx) {
+                        if let Some(filetime) = attrs.filetime {
+                            find_data.file_time_lo = (filetime & 0xFFFFFFFF) as u32;
+                            find_data.file_time_hi = (filetime >> 32) as u32;
+                        }
+                    }
+                }
+            }
+            ArchiveHandle::Mutable { archive, .. } => {
+                // Try to get file attributes for timestamp
+                if let Some((_, Some(block_idx))) = file_entry.table_indices {
+                    if let Some(attrs) = archive.archive().get_file_attributes(block_idx) {
+                        if let Some(filetime) = attrs.filetime {
+                            find_data.file_time_lo = (filetime & 0xFFFFFFFF) as u32;
+                            find_data.file_time_hi = (filetime >> 32) as u32;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Error code for no more files
+const ERROR_NO_MORE_FILES: u32 = 18;
+
+/// Create an MPQ archive with extended options
+///
+/// # Safety
+///
+/// - `filename` must be a valid null-terminated C string
+/// - `create_info` must point to a valid SFILE_CREATE_MPQ structure
+/// - `handle` must be a valid pointer to write the output handle
+#[no_mangle]
+pub unsafe extern "C" fn SFileCreateArchive2(
+    filename: *const c_char,
+    create_info: *const SFILE_CREATE_MPQ,
+    handle: *mut HANDLE,
+) -> bool {
+    // Validate parameters
+    if filename.is_null() || create_info.is_null() || handle.is_null() {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Validate structure size
+    let info = &*create_info;
+    if info.cb_size != std::mem::size_of::<SFILE_CREATE_MPQ>() as u32 {
+        set_last_error(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Convert filename from C string
+    let filename_str = match CStr::from_ptr(filename).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            set_last_error(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+    };
+
+    // Determine MPQ format version
+    let version = match info.mpq_version {
+        1 => FormatVersion::V1,
+        2 => FormatVersion::V2,
+        3 => FormatVersion::V3,
+        4 => FormatVersion::V4,
+        _ => {
+            set_last_error(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+    };
+
+    // Calculate hash table size from max file count
+    let _hash_table_size = if info.max_file_count > 0 {
+        // Round up to next power of 2, minimum 4
+        info.max_file_count.max(4).next_power_of_two()
+    } else {
+        // Default size
+        16
+    };
+
+    // Calculate sector size
+    let sector_size = if info.sector_size > 0 && info.sector_size <= 23 {
+        info.sector_size as u16
+    } else {
+        3 // Default to 4KB sectors (512 << 3)
+    };
+
+    // Create the archive using ArchiveBuilder
+    let mut builder = ArchiveBuilder::new()
+        .version(version)
+        .block_size(sector_size);
+
+    // Configure listfile based on file_flags_1
+    if info.file_flags_1 != 0 {
+        builder = builder.listfile_option(ListfileOption::Generate);
+    } else {
+        builder = builder.listfile_option(ListfileOption::None);
+    }
+
+    // Configure attributes based on attr_flags
+    if info.attr_flags != 0 {
+        if (info.attr_flags & MPQ_ATTRIBUTE_MD5) != 0 {
+            builder = builder.attributes_option(AttributesOption::GenerateFull);
+        } else if (info.attr_flags & MPQ_ATTRIBUTE_CRC32) != 0 {
+            builder = builder.attributes_option(AttributesOption::GenerateCrc32);
+        }
+    }
+
+    // Build the archive
+    match builder.build(filename_str) {
+        Ok(_) => {
+            // Open the created archive for use
+            // Try as mutable first
+            match MutableArchive::open(filename_str) {
+                Ok(mut_archive) => {
+                    // Generate new handle ID
+                    let mut next_id = NEXT_HANDLE.lock().unwrap();
+                    let handle_id = *next_id;
+                    *next_id += 1;
+                    drop(next_id);
+
+                    // Store archive as mutable
+                    let archive_handle = ArchiveHandle::Mutable {
+                        archive: mut_archive,
+                        path: filename_str.to_string(),
+                    };
+                    ARCHIVES.lock().unwrap().insert(handle_id, archive_handle);
+
+                    // Return handle
+                    *handle = id_to_handle(handle_id);
+                    set_last_error(ERROR_SUCCESS);
+                    true
+                }
+                Err(_) => {
+                    // Fall back to read-only open
+                    SFileOpenArchive(filename, 0, 0, handle)
+                }
+            }
+        }
+        Err(e) => {
+            // Map creation errors to Windows error codes
+            let error_code = match e {
+                wow_mpq::Error::FileNotFound(_) => ERROR_FILE_NOT_FOUND,
+                wow_mpq::Error::InvalidFormat(_) => ERROR_INVALID_PARAMETER,
+                wow_mpq::Error::Io(_) => ERROR_ACCESS_DENIED,
+                _ => ERROR_ACCESS_DENIED,
+            };
+            set_last_error(error_code);
+            false
+        }
+    }
 }
 
 #[cfg(test)]

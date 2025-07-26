@@ -361,6 +361,65 @@ let archive = match Archive::open("archive.mpq") {
 | Caching | Configurable LRU | Basic |
 | Startup time | Slower (more checks) | Faster |
 
+## FFI Compatibility Layer
+
+### Storm-FFI: StormLib API in Rust
+
+The `storm-ffi` crate provides a complete StormLib-compatible C API, allowing C/C++ applications to use wow-mpq as a drop-in replacement for StormLib:
+
+```c
+// Existing StormLib code works unchanged
+HANDLE hMpq;
+if (SFileOpenArchive("archive.mpq", 0, MPQ_OPEN_READ_WRITE, &hMpq)) {
+    // Add, remove, rename files
+    SFileAddFile(hMpq, "new.txt", "data/new.txt", MPQ_FILE_COMPRESS);
+    SFileRemoveFile(hMpq, "old.txt", 0);
+    SFileRenameFile(hMpq, "file.txt", "renamed.txt");
+    
+    // Compact archive
+    SFileCompactArchive(hMpq, NULL, false);
+    
+    SFileCloseArchive(hMpq);
+}
+```
+
+### Supported StormLib Functions
+
+**Archive Operations:**
+- ✅ `SFileOpenArchive` / `SFileCloseArchive`
+- ✅ `SFileCreateArchive` / `SFileCreateArchive2`
+- ✅ `SFileFlushArchive` / `SFileCompactArchive`
+- ✅ `SFileGetArchiveName` / `SFileGetFileInfo`
+
+**File Operations:**
+- ✅ `SFileOpenFileEx` / `SFileCloseFile`
+- ✅ `SFileReadFile` / `SFileGetFileSize`
+- ✅ `SFileAddFile` / `SFileAddFileEx`
+- ✅ `SFileRemoveFile` / `SFileRenameFile`
+- ✅ `SFileCreateFile` / `SFileWriteFile` / `SFileFinishFile`
+
+**Search Operations:**
+- ✅ `SFileFindFirstFile` / `SFileFindNextFile` / `SFileFindClose`
+- ✅ `SFileEnumFiles` (callback-based enumeration)
+- ✅ `SFileHasFile` (check file existence)
+
+**Verification:**
+- ✅ `SFileVerifyFile` / `SFileVerifyArchive`
+- ✅ `SFileExtractFile` (extract to disk)
+
+**Attributes:**
+- ✅ `SFileGetFileAttributes` / `SFileSetFileAttributes`
+- ✅ `SFileUpdateFileAttributes` / `SFileFlushAttributes`
+
+### Implementation Differences
+
+While the API is identical, there are some implementation differences:
+
+1. **Thread Safety**: Built-in thread safety without manual synchronization
+2. **Error Handling**: Thread-local error storage instead of global state
+3. **Memory Management**: Automatic memory management internally
+4. **Performance**: Generally faster due to Rust optimizations
+
 ## Recommendations
 
 ### Use StormLib when
@@ -378,6 +437,13 @@ let archive = match Archive::open("archive.mpq") {
 - Work with standard MPQ files
 - Value API design
 - Need async support (future)
+
+### Use storm-ffi when
+
+- Migrating existing C/C++ code from StormLib
+- Need drop-in StormLib replacement
+- Want Rust's safety with C compatibility
+- Require specific StormLib API functions
 
 ## Blizzard Archive Compatibility
 
