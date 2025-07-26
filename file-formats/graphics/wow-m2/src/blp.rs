@@ -236,7 +236,6 @@ impl BlpTexture {
     pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         // Parse header
         let header = BlpHeader::parse(reader)?;
-        dbg!(&header);
 
         // Read mipmap offsets and sizes
         let mut mipmap_offsets = [0u32; 16];
