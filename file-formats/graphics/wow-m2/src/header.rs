@@ -271,8 +271,8 @@ impl M2Header {
 
         let texture_animations = M2Array::parse(reader)?;
 
-        let color_replacements = M2Array::parse(reader)?;
         let render_flags = M2Array::parse(reader)?;
+        let color_replacements = M2Array::parse(reader)?;
         let bone_lookup_table = M2Array::parse(reader)?;
         let texture_lookup_table = M2Array::parse(reader)?;
         let texture_units = M2Array::parse(reader)?;
