@@ -17,7 +17,7 @@ A Rust library for parsing, validating, and converting World of Warcraft M2 mode
 - **M2 Models** (`.m2`/`.mdx`) - 3D character, creature, and object models
 - **Skin Files** (`.skin`) - Level-of-detail and submesh information
 - **Animation Files** (`.anim`) - External animation sequences
-- **BLP Textures** (`.blp`) - Texture files used by models
+- **BLP Texture References** - Re-exports BLP support from the [wow-blp](https://crates.io/crates/wow-blp) crate
 
 ## Features
 

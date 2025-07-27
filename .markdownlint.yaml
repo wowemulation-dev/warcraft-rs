@@ -32,7 +32,6 @@ MD040:
     [
       'bash',
       'c',
-      'cpp',
       'cmake',
       'diff',
       'dockerfile',

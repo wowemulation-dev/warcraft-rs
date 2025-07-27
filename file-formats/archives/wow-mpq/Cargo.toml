@@ -43,6 +43,12 @@ tempfile = { workspace = true }
 # Parallel processing
 rayon = "1.10"
 
+# Database support
+rusqlite = { version = "0.32", features = ["bundled"] }
+directories = "5.0"
+chrono = "0.4"
+glob = "0.3"
+
 
 [dev-dependencies]
 criterion = { workspace = true }

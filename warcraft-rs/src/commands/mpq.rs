@@ -83,6 +83,14 @@ pub enum MpqCommands {
         /// Filter files by pattern (supports wildcards)
         #[arg(short, long)]
         filter: Option<String>,
+
+        /// Use hash database for name resolution
+        #[arg(long)]
+        use_db: bool,
+
+        /// Automatically record found filenames to database
+        #[arg(long)]
+        record_to_db: bool,
     },
 
     /// Extract files from an MPQ archive
@@ -273,6 +281,85 @@ pub enum MpqCommands {
         #[arg(long)]
         all: bool,
     },
+
+    /// Database operations for MPQ hash resolution
+    #[command(subcommand)]
+    Db(DbCommands),
+}
+
+#[derive(Subcommand)]
+pub enum DbCommands {
+    /// Initialize or show status of the hash database
+    Status {
+        /// Show detailed statistics
+        #[arg(long)]
+        detailed: bool,
+    },
+
+    /// Import filenames from various sources
+    Import {
+        /// Path to import from (listfile, MPQ archive, or directory)
+        path: String,
+
+        /// Source type
+        #[arg(value_enum)]
+        source_type: ImportSourceArg,
+
+        /// Show progress
+        #[arg(long)]
+        show_progress: bool,
+    },
+
+    /// Analyze an MPQ archive and record its filenames
+    Analyze {
+        /// Path to the MPQ archive
+        archive: String,
+
+        /// Also record anonymous files with generated names
+        #[arg(long)]
+        include_anonymous: bool,
+    },
+
+    /// Look up a filename's hash values
+    Lookup {
+        /// Filename to look up
+        filename: String,
+    },
+
+    /// Export database to listfile format
+    Export {
+        /// Output file path
+        output: String,
+
+        /// Filter by source
+        #[arg(long)]
+        source: Option<String>,
+    },
+
+    /// List entries in the database
+    List {
+        /// Filter entries by pattern (supports wildcards)
+        #[arg(short, long)]
+        filter: Option<String>,
+
+        /// Show detailed information
+        #[arg(short, long)]
+        long: bool,
+
+        /// Limit number of results
+        #[arg(short = 'n', long, default_value = "100")]
+        limit: usize,
+    },
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub enum ImportSourceArg {
+    /// Import from a listfile
+    Listfile,
+    /// Import from an MPQ archive's internal listfile
+    Archive,
+    /// Scan a directory for WoW file patterns
+    Directory,
 }
 
 pub fn execute(command: MpqCommands) -> Result<()> {
@@ -281,7 +368,9 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             archive,
             long,
             filter,
-        } => list_archive(&archive, long, filter),
+            use_db,
+            record_to_db,
+        } => list_archive(&archive, long, filter, use_db, record_to_db),
         MpqCommands::Extract {
             archive,
             output,
@@ -393,15 +482,55 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             find_file: find,
             raw_dump: raw,
         }),
+        MpqCommands::Db(db_command) => execute_db_command(db_command),
     }
 }
 
-fn list_archive(path: &str, long: bool, filter: Option<String>) -> Result<()> {
+fn list_archive(
+    path: &str,
+    long: bool,
+    filter: Option<String>,
+    use_db: bool,
+    record_to_db: bool,
+) -> Result<()> {
+    use wow_mpq::database::Database;
+
     let spinner = create_spinner("Opening archive...");
     let mut archive = Archive::open(path).context("Failed to open archive")?;
     spinner.finish_and_clear();
 
-    let files: Vec<String> = archive.list()?.into_iter().map(|e| e.name).collect();
+    // Open database if needed
+    let db = if use_db || record_to_db {
+        Some(Database::open_default().context("Failed to open database")?)
+    } else {
+        None
+    };
+
+    // Record filenames to database if requested
+    if record_to_db {
+        if let Some(ref db) = db {
+            let count = archive.record_listfile_to_db(db)?;
+            if count > 0 {
+                println!("Recorded {count} filenames to database");
+            }
+        }
+    }
+
+    // Get file list
+    let files: Vec<String> = if use_db {
+        if let Some(ref db) = db {
+            archive
+                .list_with_db(db)?
+                .into_iter()
+                .map(|e| e.name)
+                .collect()
+        } else {
+            archive.list()?.into_iter().map(|e| e.name).collect()
+        }
+    } else {
+        archive.list()?.into_iter().map(|e| e.name).collect()
+    };
+
     let pattern = filter.as_deref().unwrap_or("*");
 
     let mut filtered_files: Vec<_> = files
@@ -1674,4 +1803,270 @@ fn show_entry_at_index(archive: &mut Archive, index: usize, _raw_dump: bool) -> 
     }
 
     Ok(())
+}
+
+// Database command implementation
+fn execute_db_command(command: DbCommands) -> Result<()> {
+    use std::io::Write;
+    use wow_mpq::database::{Database, HashLookup, ImportSource, Importer};
+    use wow_mpq::database::{calculate_het_hashes, calculate_mpq_hashes};
+
+    match command {
+        DbCommands::Status { detailed } => {
+            let db = Database::open_default().context("Failed to open database")?;
+            let conn = db.connection();
+
+            // Get basic statistics
+            let filename_count: i64 =
+                conn.query_row("SELECT COUNT(*) FROM filenames", [], |row| row.get(0))?;
+
+            println!("MPQ Hash Database Status");
+            println!("========================");
+            println!("Database location: {}", db.path().display());
+            println!("Total filenames: {filename_count}");
+
+            if detailed {
+                println!("\nDetailed Statistics:");
+
+                // Count by source
+                let mut stmt = conn.prepare(
+                    "SELECT source, COUNT(*) FROM filenames GROUP BY source ORDER BY COUNT(*) DESC",
+                )?;
+                let sources = stmt.query_map([], |row| {
+                    Ok((row.get::<_, Option<String>>(0)?, row.get::<_, i64>(1)?))
+                })?;
+
+                println!("\nFilenames by source:");
+                for source in sources {
+                    let (src, count) = source?;
+                    println!(
+                        "  {}: {}",
+                        src.unwrap_or_else(|| "unknown".to_string()),
+                        count
+                    );
+                }
+
+                // Recent additions
+                let mut stmt = conn.prepare(
+                    "SELECT filename, created_at FROM filenames ORDER BY created_at DESC LIMIT 10",
+                )?;
+                let recent = stmt.query_map([], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })?;
+
+                println!("\nMost recent additions:");
+                for entry in recent {
+                    let (filename, created_at) = entry?;
+                    println!("  {filename} - {created_at}");
+                }
+            }
+
+            Ok(())
+        }
+
+        DbCommands::Import {
+            path,
+            source_type,
+            show_progress,
+        } => {
+            let db = Database::open_default().context("Failed to open database")?;
+            let importer = Importer::new(&db);
+
+            let import_source = match source_type {
+                ImportSourceArg::Listfile => ImportSource::Listfile,
+                ImportSourceArg::Archive => ImportSource::Archive,
+                ImportSourceArg::Directory => ImportSource::Directory,
+            };
+
+            let spinner = if show_progress {
+                Some(create_spinner(&format!("Importing from {path}...")))
+            } else {
+                None
+            };
+
+            let stats = importer
+                .import(Path::new(&path), import_source)
+                .context("Import failed")?;
+
+            if let Some(s) = spinner {
+                s.finish_and_clear();
+            }
+
+            println!("Import completed:");
+            println!("  Files processed: {}", stats.files_processed);
+            println!("  New entries added: {}", stats.new_entries);
+            println!("  Existing entries updated: {}", stats.updated_entries);
+            if stats.errors > 0 {
+                println!("  Errors: {}", stats.errors);
+            }
+
+            Ok(())
+        }
+
+        DbCommands::Analyze {
+            archive,
+            include_anonymous,
+        } => {
+            let db = Database::open_default().context("Failed to open database")?;
+            let mut mpq = Archive::open(&archive).context("Failed to open archive")?;
+
+            let spinner = create_spinner("Analyzing archive...");
+
+            // Record listfile entries
+            let count = mpq.record_listfile_to_db(&db)?;
+
+            spinner.finish_with_message(format!("Recorded {count} filenames from listfile"));
+
+            if include_anonymous {
+                // TODO: Could also record anonymous entries with generated names
+                println!("Note: Recording anonymous entries not yet implemented");
+            }
+
+            Ok(())
+        }
+
+        DbCommands::Lookup { filename } => {
+            let db = Database::open_default().context("Failed to open database")?;
+
+            // Calculate and display hashes
+            let (hash_a, hash_b, hash_offset) = calculate_mpq_hashes(&filename);
+            let het_40 = calculate_het_hashes(&filename, 40);
+            let het_48 = calculate_het_hashes(&filename, 48);
+            let het_56 = calculate_het_hashes(&filename, 56);
+            let het_64 = calculate_het_hashes(&filename, 64);
+
+            println!("Filename: {filename}");
+            println!("\nTraditional MPQ hashes:");
+            println!("  Hash A (Name1):  0x{hash_a:08X}");
+            println!("  Hash B (Name2):  0x{hash_b:08X}");
+            println!("  Table Offset:    0x{hash_offset:08X}");
+
+            println!("\nHET hashes:");
+            println!(
+                "  40-bit: file=0x{:010X}, name=0x{:010X}",
+                het_40.0, het_40.1
+            );
+            println!(
+                "  48-bit: file=0x{:012X}, name=0x{:012X}",
+                het_48.0, het_48.1
+            );
+            println!(
+                "  56-bit: file=0x{:014X}, name=0x{:014X}",
+                het_56.0, het_56.1
+            );
+            println!(
+                "  64-bit: file=0x{:016X}, name=0x{:016X}",
+                het_64.0, het_64.1
+            );
+
+            // Check if it exists in database
+            if db.filename_exists(&filename)? {
+                println!("\n✓ Filename exists in database");
+            } else {
+                println!("\n✗ Filename not found in database");
+            }
+
+            Ok(())
+        }
+
+        DbCommands::Export { output, source } => {
+            let db = Database::open_default().context("Failed to open database")?;
+            let conn = db.connection();
+
+            let mut query = "SELECT DISTINCT filename FROM filenames".to_string();
+            let mut params: Vec<String> = Vec::new();
+
+            if let Some(src) = source {
+                query.push_str(" WHERE source = ?1");
+                params.push(src);
+            }
+
+            query.push_str(" ORDER BY filename");
+
+            let mut stmt = conn.prepare(&query)?;
+            let filenames: Vec<String> = if params.is_empty() {
+                stmt.query_map([], |row| row.get::<_, String>(0))?
+                    .collect::<std::result::Result<Vec<_>, _>>()?
+            } else {
+                stmt.query_map([&params[0]], |row| row.get::<_, String>(0))?
+                    .collect::<std::result::Result<Vec<_>, _>>()?
+            };
+
+            let mut file = fs::File::create(&output).context("Failed to create output file")?;
+            let mut count = 0;
+
+            for filename in filenames {
+                writeln!(file, "{filename}")?;
+                count += 1;
+            }
+
+            println!("Exported {count} filenames to {output}");
+
+            Ok(())
+        }
+
+        DbCommands::List {
+            filter,
+            long,
+            limit,
+        } => {
+            let db = Database::open_default().context("Failed to open database")?;
+            let conn = db.connection();
+
+            let mut query = "SELECT filename, hash_a, hash_b, source FROM filenames".to_string();
+            let mut params: Vec<String> = Vec::new();
+
+            if let Some(pattern) = filter {
+                query.push_str(" WHERE filename LIKE ?1");
+                params.push(pattern.replace('*', "%"));
+            }
+
+            query.push_str(&format!(" ORDER BY filename LIMIT {limit}"));
+
+            let mut stmt = conn.prepare(&query)?;
+            let rows: Vec<(String, u32, u32, Option<String>)> = if params.is_empty() {
+                stmt.query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, u32>(1)?,
+                        row.get::<_, u32>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            } else {
+                stmt.query_map([&params[0]], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, u32>(1)?,
+                        row.get::<_, u32>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            };
+
+            if long {
+                let mut table = create_table(vec!["Filename", "Hash A", "Hash B", "Source"]);
+                for (filename, hash_a, hash_b, source) in rows {
+                    add_table_row(
+                        &mut table,
+                        vec![
+                            filename,
+                            format!("0x{:08X}", hash_a),
+                            format!("0x{:08X}", hash_b),
+                            source.unwrap_or_else(|| "unknown".to_string()),
+                        ],
+                    );
+                }
+                println!("{table}");
+            } else {
+                for (filename, _, _, _) in rows {
+                    println!("{filename}");
+                }
+            }
+
+            Ok(())
+        }
+    }
 }

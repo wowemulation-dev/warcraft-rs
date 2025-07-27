@@ -1567,6 +1567,59 @@ impl Archive {
         Ok(entries)
     }
 
+    /// List files in the archive with database lookup for names
+    pub fn list_with_db(&mut self, db: &crate::database::Database) -> Result<Vec<FileEntry>> {
+        use crate::database::HashLookup;
+
+        // Get all entries with hashes
+        let mut entries = self.list_all_with_hashes()?;
+
+        // Look up names in database
+        for entry in &mut entries {
+            if let Some((hash_a, hash_b)) = entry.hashes {
+                if let Ok(Some(filename)) = db.lookup_filename(hash_a, hash_b) {
+                    entry.name = filename;
+                }
+            }
+        }
+
+        Ok(entries)
+    }
+
+    /// Record all filenames from the archive's listfile to the database
+    pub fn record_listfile_to_db(&mut self, db: &crate::database::Database) -> Result<usize> {
+        use crate::database::HashLookup;
+
+        // Try to find and read (listfile)
+        if let Some(_listfile_info) = self.find_file("(listfile)")? {
+            if let Ok(listfile_data) = self.read_file("(listfile)") {
+                if let Ok(filenames) = special_files::parse_listfile(&listfile_data) {
+                    // Record all filenames from listfile to database
+                    let source = format!("archive:{}", self.path.display());
+                    let filenames_with_source: Vec<(&str, Option<&str>)> = filenames
+                        .iter()
+                        .map(|f| (f.as_str(), Some(source.as_str())))
+                        .collect();
+
+                    match db.store_filenames(&filenames_with_source) {
+                        Ok((new_count, updated_count)) => {
+                            log::info!(
+                                "Recorded {new_count} new and {updated_count} updated filenames from listfile to database"
+                            );
+                            return Ok(new_count + updated_count);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to store filenames in database: {e}");
+                            return Err(Error::Crypto(format!("Database error: {e}")));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(0)
+    }
+
     /// List all files in the archive by enumerating tables with hash information
     pub fn list_all_with_hashes(&mut self) -> Result<Vec<FileEntry>> {
         let mut entries = Vec::new();
