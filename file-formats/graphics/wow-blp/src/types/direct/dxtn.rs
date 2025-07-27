@@ -2,6 +2,8 @@ use super::super::{
     header::{BlpHeader, BlpVersion},
     locator::MipmapLocator,
 };
+use custom_debug::Debug;
+use wow_utils::debug;
 
 /// Which compression algorithm is used to compress the image
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -41,6 +43,7 @@ pub struct BlpDxtn {
     /// DXT compression format used
     pub format: DxtnFormat,
     /// Color map (palette) for DXT1 format
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub cmap: Vec<u32>,
     /// Mipmap levels
     pub images: Vec<DxtnImage>,
@@ -66,6 +69,7 @@ impl BlpDxtn {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DxtnImage {
     /// Raw DXT-compressed data
+    #[debug(with = debug::trimmed_collection_fmt)]
     pub content: Vec<u8>,
 }
 

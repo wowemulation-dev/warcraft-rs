@@ -115,7 +115,7 @@ impl BlpHeader {
         4 // magic
         + 4 // content
         + 4 // flags or alpha_bits
-        + 4 // width 
+        + 4 // width
         + 4 // height
         + if version < BlpVersion::Blp2 {8} else {0} // extra and has_mipmaps
         + if version > BlpVersion::Blp0 {16*4*2} else {0} // mipmap locator

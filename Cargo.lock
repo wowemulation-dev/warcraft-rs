@@ -3235,6 +3235,7 @@ dependencies = [
  "bytes",
  "color_quant",
  "criterion",
+ "custom_debug",
  "env_logger",
  "image",
  "log",
@@ -3243,6 +3244,7 @@ dependencies = [
  "test-log",
  "texpresso",
  "thiserror 2.0.12",
+ "wow-utils",
 ]
 
 [[package]]
@@ -3284,8 +3286,8 @@ dependencies = [
  "tempfile",
  "test-case",
  "thiserror 2.0.12",
- "wow-utils",
  "wow-blp",
+ "wow-utils",
 ]
 
 [[package]]
