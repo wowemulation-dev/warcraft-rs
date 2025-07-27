@@ -89,7 +89,7 @@ impl<'a> Importer<'a> {
                             match self.process_batch(&mut batch, &mut stats) {
                                 Ok(_) => {}
                                 Err(e) => {
-                                    log::error!("Error processing batch: {}", e);
+                                    log::error!("Error processing batch: {e}");
                                     stats.errors += batch.len();
                                 }
                             }
@@ -97,7 +97,7 @@ impl<'a> Importer<'a> {
                     }
                 }
                 Err(e) => {
-                    log::error!("Error reading line: {}", e);
+                    log::error!("Error reading line: {e}");
                     stats.errors += 1;
                 }
             }
@@ -220,7 +220,7 @@ impl<'a> Importer<'a> {
                 stats.updated_entries += updated_count;
             }
             Err(e) => {
-                log::error!("Error storing batch: {}", e);
+                log::error!("Error storing batch: {e}");
                 stats.errors += batch.len();
                 return Err(e.into());
             }

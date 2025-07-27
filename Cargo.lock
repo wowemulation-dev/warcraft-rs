@@ -3209,6 +3209,7 @@ dependencies = [
  "tempfile",
  "test-case",
  "thiserror 2.0.12",
+ "wow-blp",
 ]
 
 [[package]]

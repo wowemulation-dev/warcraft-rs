@@ -12,13 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for WotLK (Wrath of the Lich King) M2 model and skin formats
 - Texture filename parsing functionality
 - Support for old skin format in the skin-info command
-- JPEG header information support for BLP textures embedded in M2 files
+
+### Changed
+
+- Replaced custom BLP texture implementation with dependency on `wow-blp` crate
+- `BlpTexture` is now a re-export of `wow_blp::BlpImage` for backwards compatibility
 
 ### Fixed
 
-- Fixed BLP texture parsing in M2 models - corrected header field order, width/height types (u16 to u32), and added version field reading
-- Fixed BLP texture parsing to properly handle JPEG header information and palette data for uncompressed formats
 - Fixed mipmap offset and size arrays to use fixed-size arrays ([u32; 16]) instead of dynamic vectors
+
+### Removed
+
+- Custom BLP parsing implementation (moved to using `wow-blp` crate instead)
 
 ## [0.2.0] - 2025-06-28
 

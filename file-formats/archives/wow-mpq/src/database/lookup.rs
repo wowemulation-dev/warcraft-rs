@@ -229,8 +229,7 @@ impl HetHashLookup for Database {
         };
 
         let query = format!(
-            "SELECT filename FROM filenames WHERE {} = ?1 AND {} = ?2 LIMIT 1",
-            column_file, column_name
+            "SELECT filename FROM filenames WHERE {column_file} = ?1 AND {column_name} = ?2 LIMIT 1"
         );
 
         let mut stmt = self.connection().prepare(&query)?;
@@ -271,8 +270,7 @@ impl HetHashLookup for Database {
         let conn = self.connection();
 
         let query = format!(
-            "SELECT filename FROM filenames WHERE {} = ?1 AND {} = ?2 LIMIT 1",
-            column_file, column_name
+            "SELECT filename FROM filenames WHERE {column_file} = ?1 AND {column_name} = ?2 LIMIT 1"
         );
         let mut stmt = conn.prepare(&query)?;
 

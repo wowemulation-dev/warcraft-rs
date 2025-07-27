@@ -1604,15 +1604,13 @@ impl Archive {
                     match db.store_filenames(&filenames_with_source) {
                         Ok((new_count, updated_count)) => {
                             log::info!(
-                                "Recorded {} new and {} updated filenames from listfile to database",
-                                new_count,
-                                updated_count
+                                "Recorded {new_count} new and {updated_count} updated filenames from listfile to database"
                             );
                             return Ok(new_count + updated_count);
                         }
                         Err(e) => {
-                            log::error!("Failed to store filenames in database: {}", e);
-                            return Err(Error::Crypto(format!("Database error: {}", e)));
+                            log::error!("Failed to store filenames in database: {e}");
+                            return Err(Error::Crypto(format!("Database error: {e}")));
                         }
                     }
                 }

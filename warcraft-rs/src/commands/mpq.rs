@@ -511,7 +511,7 @@ fn list_archive(
         if let Some(ref db) = db {
             let count = archive.record_listfile_to_db(db)?;
             if count > 0 {
-                println!("Recorded {} filenames to database", count);
+                println!("Recorded {count} filenames to database");
             }
         }
     }
@@ -1823,7 +1823,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             println!("MPQ Hash Database Status");
             println!("========================");
             println!("Database location: {}", db.path().display());
-            println!("Total filenames: {}", filename_count);
+            println!("Total filenames: {filename_count}");
 
             if detailed {
                 println!("\nDetailed Statistics:");
@@ -1857,7 +1857,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
                 println!("\nMost recent additions:");
                 for entry in recent {
                     let (filename, created_at) = entry?;
-                    println!("  {} - {}", filename, created_at);
+                    println!("  {filename} - {created_at}");
                 }
             }
 
@@ -1879,7 +1879,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             };
 
             let spinner = if show_progress {
-                Some(create_spinner(&format!("Importing from {}...", path)))
+                Some(create_spinner(&format!("Importing from {path}...")))
             } else {
                 None
             };
@@ -1915,7 +1915,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             // Record listfile entries
             let count = mpq.record_listfile_to_db(&db)?;
 
-            spinner.finish_with_message(format!("Recorded {} filenames from listfile", count));
+            spinner.finish_with_message(format!("Recorded {count} filenames from listfile"));
 
             if include_anonymous {
                 // TODO: Could also record anonymous entries with generated names
@@ -1935,11 +1935,11 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             let het_56 = calculate_het_hashes(&filename, 56);
             let het_64 = calculate_het_hashes(&filename, 64);
 
-            println!("Filename: {}", filename);
+            println!("Filename: {filename}");
             println!("\nTraditional MPQ hashes:");
-            println!("  Hash A (Name1):  0x{:08X}", hash_a);
-            println!("  Hash B (Name2):  0x{:08X}", hash_b);
-            println!("  Table Offset:    0x{:08X}", hash_offset);
+            println!("  Hash A (Name1):  0x{hash_a:08X}");
+            println!("  Hash B (Name2):  0x{hash_b:08X}");
+            println!("  Table Offset:    0x{hash_offset:08X}");
 
             println!("\nHET hashes:");
             println!(
@@ -1996,11 +1996,11 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             let mut count = 0;
 
             for filename in filenames {
-                writeln!(file, "{}", filename)?;
+                writeln!(file, "{filename}")?;
                 count += 1;
             }
 
-            println!("Exported {} filenames to {}", count, output);
+            println!("Exported {count} filenames to {output}");
 
             Ok(())
         }
@@ -2021,7 +2021,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
                 params.push(pattern.replace('*', "%"));
             }
 
-            query.push_str(&format!(" ORDER BY filename LIMIT {}", limit));
+            query.push_str(&format!(" ORDER BY filename LIMIT {limit}"));
 
             let mut stmt = conn.prepare(&query)?;
             let rows: Vec<(String, u32, u32, Option<String>)> = if params.is_empty() {
@@ -2059,10 +2059,10 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
                         ],
                     );
                 }
-                println!("{}", table);
+                println!("{table}");
             } else {
                 for (filename, _, _, _) in rows {
-                    println!("{}", filename);
+                    println!("{filename}");
                 }
             }
 

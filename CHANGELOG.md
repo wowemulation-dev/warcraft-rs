@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **storm-ffi**: Archive handles now support both read-only and mutable operations with internal enum-based dispatch
 - **wow-mpq**: Enhanced attributes file block count detection with automatic fallback logic
 - **wow-mpq**: `MutableArchive` now provides convenience methods for common read operations
+- **wow-m2**: Replaced custom BLP texture implementation with dependency on `wow-blp` crate
+- **wow-m2**: `BlpTexture` is now a re-export of `wow_blp::BlpImage` for backwards compatibility
 
 ### Fixed
 
@@ -52,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-m2**: Fixed BLP texture parsing in M2 models - corrected header field order, width/height types (u16 to u32), and added version field reading
 - **wow-m2**: Fixed BLP texture parsing to properly handle JPEG header information and palette data
 - **wow-mpq**: Applied rustfmt formatting fixes and resolved clippy warnings for cleaner code
+
+### Removed
+
+- **wow-m2**: Custom BLP parsing implementation (moved to using `wow-blp` crate instead)
 
 ## [0.2.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.2.0) - 2025-06-28
 
