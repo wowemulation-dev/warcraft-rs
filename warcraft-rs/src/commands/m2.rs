@@ -4,8 +4,9 @@ use anyhow::{Context, Result};
 use clap::Subcommand;
 use std::path::PathBuf;
 
+use wow_blp::parser::load_blp;
 use wow_m2::{
-    AnimFile, BlpTexture, M2Converter, M2Model, M2Version, Skin,
+    AnimFile, M2Converter, M2Model, M2Version, Skin,
     skin::{OldSkinHeader, SkinG, SkinHeader, SkinHeaderT},
 };
 
@@ -334,7 +335,7 @@ fn handle_anim_convert(input: PathBuf, output: PathBuf, version_str: String) -> 
 fn handle_blp_info(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading BLP texture: {}", path.display());
 
-    let _blp = BlpTexture::load(&path)
+    let _blp = load_blp(&path)
         .with_context(|| format!("Failed to load BLP texture from {}", path.display()))?;
 
     println!("\n=== BLP Texture Information ===");

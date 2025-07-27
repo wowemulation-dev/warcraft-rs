@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-m2**: Added texture filename parsing functionality
 - **wow-m2**: Added support for old skin format in the skin-info command
 - **warcraft-rs**: Added `cargo-deny` configuration for dependency security scanning and duplicate management
+- **wow-mpq**: SQLite database support for persistent MPQ filename hash storage and resolution
+- **wow-mpq**: Support for both traditional MPQ hashes (hash_a, hash_b) and HET hashes (40/48/56/64 bit)
+- **wow-mpq**: Database import functionality supporting listfiles, MPQ archives, and directory scanning
+- **wow-mpq**: Automatic filename resolution through database lookup during archive listing operations
+- **wow-mpq**: Database connection management with automatic schema initialization
+- **wow-mpq**: Batch processing for efficient bulk filename imports
+- **warcraft-rs CLI**: New `mpq db` subcommand with status, import, analyze, lookup, export, and list operations
+- **warcraft-rs CLI**: `--use-db` flag for `mpq list` to enable database lookups for unknown filenames
+- **warcraft-rs CLI**: `--record-to-db` flag for `mpq list` to store discovered filenames in database
 
 ### Changed
 
@@ -32,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **storm-ffi**: Archive handles now support both read-only and mutable operations with internal enum-based dispatch
 - **wow-mpq**: Enhanced attributes file block count detection with automatic fallback logic
 - **wow-mpq**: `MutableArchive` now provides convenience methods for common read operations
+- **wow-m2**: Replaced custom BLP texture implementation with dependency on `wow-blp` crate
+- **wow-m2**: `BlpTexture` is now a re-export of `wow_blp::BlpImage` for backwards compatibility
 
 ### Fixed
 
@@ -43,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-m2**: Fixed BLP texture parsing in M2 models - corrected header field order, width/height types (u16 to u32), and added version field reading
 - **wow-m2**: Fixed BLP texture parsing to properly handle JPEG header information and palette data
 - **wow-mpq**: Applied rustfmt formatting fixes and resolved clippy warnings for cleaner code
+
+### Removed
+
+- **wow-m2**: Custom BLP parsing implementation (moved to using `wow-blp` crate instead)
 
 ## [0.2.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.2.0) - 2025-06-28
 
