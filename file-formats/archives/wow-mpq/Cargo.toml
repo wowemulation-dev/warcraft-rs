@@ -37,14 +37,16 @@ implode = "0.1.1"
 
 # Data structures and utilities
 bytes = "1.10"
-# rand = { workspace = true }
+rand = "0.9"
 tempfile = { workspace = true }
 
 # Parallel processing
 rayon = "1.10"
+cargo-deny = "0.18.3"
 
-[target.'cfg(feature = "target_not_wasm32")'.build-dependencies]
-rand = { workspace = true }
+[target.'cfg(feature = "target_wasm32")'.build-dependencies]
+# remove os_rng feature for wasm32-unknown-unknown
+rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "small_rng", "thread_rng"] }
 
 [dev-dependencies]
 criterion = { workspace = true }

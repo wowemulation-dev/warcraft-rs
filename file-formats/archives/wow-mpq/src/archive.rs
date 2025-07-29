@@ -267,7 +267,9 @@ impl Default for OpenOptions {
 /// This allows `Archive` to hold either a `File` or a `Cursor<Vec<u8>>`.
 #[derive(Debug)] // Derive Debug for the enum itself
 pub enum ArchiveReaderType {
+    /// Original File format read off the filesystem
     File(File),
+    /// Buffer provided during runtime. Mostly used with Wasm32 due to lacking filesystem.
     Buffer(Cursor<Vec<u8>>),
 }
 
@@ -390,12 +392,13 @@ impl Archive {
         Ok(archive)
     }
 
+    /// Utility function to get the archive size. Facilitates both File and Buffers.
     pub fn get_archive_size(&self) -> Result<u64> {
         match self.reader.get_ref() {
             // Get an immutable reference to the inner ArchiveReaderType enum
             ArchiveReaderType::File(f) => {
                 // We know it's a File, so we can call File-specific methods like metadata()
-                Ok(f.metadata()?.len() as u64)
+                Ok(f.metadata()?.len())
             }
             ArchiveReaderType::Buffer(c) => {
                 // We know it's a Cursor<Vec<u8>>, so we can call Cursor/Vec-specific methods
@@ -1125,7 +1128,7 @@ impl Archive {
             {
                   // Make a copy of the reader to avoid interfering with the main archive
                 let temp_reader_result = match self.reader.get_ref() {
-                    ArchiveReaderType::File(original_file) => {
+                    ArchiveReaderType::File(_) => {
                         // If it's a file, re-open it to get an independent reader.
                         // Requires `self.path` to be `Some`.
                         if let Some(path_buf) = &self.path {
@@ -1133,9 +1136,7 @@ impl Archive {
                                 .map(ArchiveReaderType::File)
                                 .map_err(|e| e.into())
                         } else {
-                            Err(Error::Io(std::io::Error::new(
-                         std::io::ErrorKind::Other,
-                        "Cannot reopen file for temp_archive: original archive path is missing",
+                            Err(Error::Io(std::io::Error::other("Cannot reopen file for temp_archive: original archive path is missing",
                             )))
                         }
                     },
@@ -1151,7 +1152,7 @@ impl Archive {
                  let temp_reader_enum = match temp_reader_result {
                     Ok(reader_type) => reader_type,
                     Err(e) => {
-                        log::error!("Error creating temp reader: {:?}", e);
+                        log::error!("Error creating temp reader: {e:?}");
                         return None;
                     }
                 };
@@ -1198,7 +1199,7 @@ impl Archive {
 
                  // Make a copy of the reader to avoid interfering with the main archive
                 let temp_reader_result = match self.reader.get_ref() {
-                    ArchiveReaderType::File(original_file) => {
+                    ArchiveReaderType::File(_) => {
                         // If it's a file, re-open it to get an independent reader.
                         // Requires `self.path` to be `Some`.
                         if let Some(path_buf) = &self.path {
@@ -1206,9 +1207,8 @@ impl Archive {
                                 .map(ArchiveReaderType::File)
                                 .map_err(|e| e.into())
                         } else {
-                            Err(Error::Io(std::io::Error::new(
-                         std::io::ErrorKind::Other,
-                        "Cannot reopen file for temp_archive: original archive path is missing",
+                            Err(Error::Io(std::io::Error::other(
+                         "Cannot reopen file for temp_archive: original archive path is missing",
                             )))
                         }
                     },
@@ -1225,7 +1225,7 @@ impl Archive {
                 let temp_reader_enum = match temp_reader_result {
                     Ok(reader_type) => reader_type,
                     Err(e) => {
-                        log::error!("Error creating temp reader: {:?}", e);
+                        log::error!("Error creating temp reader: {e:?}");
                         return None;
                     }
                 };
@@ -1249,7 +1249,7 @@ impl Archive {
                         compressed_size = Some(size);
                     }
                 }
-            
+
 
             Some(TableInfo {
                 size: self.bet_table.as_ref().map(|bet| bet.header.file_count),
@@ -2245,8 +2245,6 @@ impl Archive {
             if sector_size_compressed > sector_buffer.len() {
                 sector_buffer.resize(sector_size_compressed, 0);
             }
-
-            panic!();
 
             // Read sector data into the reusable buffer
             let sector_data = &mut sector_buffer[..sector_size_compressed];

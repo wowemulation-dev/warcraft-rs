@@ -19,14 +19,12 @@
 //! The [`wow_data`] module provides utilities for locating World of Warcraft
 //! game data directories across different versions and platforms, making
 //! examples portable and independent of hardcoded paths.
-#[cfg(not(target_arch = "wasm32-unknown-unknown"))]
 pub mod data_generator;
-#[cfg(not(target_arch = "wasm32-unknown-unknown"))]
 pub mod mpq_builder;
 pub mod wow_data;
 
-pub use data_generator::{TestDataConfig, generate_test_data};
-pub use mpq_builder::{TestArchiveConfig, create_test_archive};
+pub use data_generator::{generate_test_data, TestDataConfig};
+pub use mpq_builder::{create_test_archive, TestArchiveConfig};
 pub use wow_data::{
-    WowVersion, find_any_wow_data, find_wow_data, get_mpq_path, print_setup_instructions,
+    find_any_wow_data, find_wow_data, get_mpq_path, print_setup_instructions, WowVersion,
 };
