@@ -4,7 +4,11 @@ use anyhow::{Context, Result};
 use clap::Subcommand;
 use std::path::PathBuf;
 
-use wow_m2::{AnimFile, BlpTexture, M2Converter, M2Model, M2Version, Skin};
+use wow_blp::parser::load_blp;
+use wow_m2::{
+    AnimFile, M2Converter, M2Model, M2Version, Skin,
+    skin::{OldSkinHeader, SkinG, SkinHeader, SkinHeaderT},
+};
 
 use crate::utils::{NodeType, TreeNode, TreeOptions, render_tree};
 
@@ -69,6 +73,10 @@ pub enum M2Commands {
         /// Show detailed information
         #[arg(short, long)]
         detailed: bool,
+
+        /// Parse old format
+        #[arg(short, long)]
+        old_format: bool,
     },
 
     /// Convert a Skin file to a different version
@@ -133,7 +141,17 @@ pub fn execute(cmd: M2Commands) -> Result<()> {
             size,
             refs,
         } => handle_tree(file, depth, size, refs),
-        M2Commands::SkinInfo { file, detailed } => handle_skin_info(file, detailed),
+        M2Commands::SkinInfo {
+            file,
+            detailed,
+            old_format,
+        } => {
+            if old_format {
+                handle_skin_info::<OldSkinHeader>(file, detailed)
+            } else {
+                handle_skin_info::<SkinHeader>(file, detailed)
+            }
+        }
         M2Commands::SkinConvert {
             input,
             output,
@@ -242,10 +260,10 @@ fn handle_tree(path: PathBuf, max_depth: usize, _show_size: bool, _show_refs: bo
     Ok(())
 }
 
-fn handle_skin_info(path: PathBuf, detailed: bool) -> Result<()> {
+fn handle_skin_info<H: SkinHeaderT + Clone>(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading Skin file: {}", path.display());
 
-    let _skin = Skin::load(&path)
+    let _skin = SkinG::<H>::load(&path)
         .with_context(|| format!("Failed to load Skin file from {}", path.display()))?;
 
     println!("\n=== Skin Information ===");
@@ -317,7 +335,7 @@ fn handle_anim_convert(input: PathBuf, output: PathBuf, version_str: String) -> 
 fn handle_blp_info(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading BLP texture: {}", path.display());
 
-    let _blp = BlpTexture::load(&path)
+    let _blp = load_blp(&path)
         .with_context(|| format!("Failed to load BLP texture from {}", path.display()))?;
 
     println!("\n=== BLP Texture Information ===");

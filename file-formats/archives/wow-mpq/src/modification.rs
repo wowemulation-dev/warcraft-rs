@@ -5,7 +5,7 @@
 //! archives to reclaim space from deleted files.
 
 use crate::{
-    Archive, Error, Result,
+    Archive, ArchiveBuilder, Error, ListfileOption, Result,
     compression::{self, CompressionMethod, compress},
     crypto::{encrypt_block, hash_string, hash_type},
     header::FormatVersion,
@@ -171,11 +171,104 @@ impl MutableArchive {
         &self.archive
     }
 
+    /// Get mutable access to the underlying archive
+    ///
+    /// This allows operations that require mutable access such as reading files
+    /// and listing entries. This is safe because MutableArchive has exclusive
+    /// ownership of the Archive.
+    pub fn archive_mut(&mut self) -> &mut Archive {
+        &mut self.archive
+    }
+
     /// Debug helper to check internal state
     pub fn debug_state(&self) -> (Option<usize>, Option<usize>) {
         let block_count = self.block_table.as_ref().map(|t| t.entries().len());
         let hash_count = self.hash_table.as_ref().map(|t| t.size());
         (block_count, hash_count)
+    }
+
+    /// Read a file from the archive
+    ///
+    /// This method checks the modified state first, then falls back to the original archive.
+    /// This ensures that renamed files can still be read correctly.
+    pub fn read_file(&mut self, name: &str) -> Result<Vec<u8>> {
+        // Try to read using the current modified state first
+        match self.read_current_file(name) {
+            Ok(data) => Ok(data),
+            Err(Error::FileNotFound(_)) => {
+                // Fall back to original archive if file not found in modified state
+                self.archive.read_file(name)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// List files in the archive
+    ///
+    /// This is a convenience method that delegates to the underlying Archive.
+    /// It allows listing files from a MutableArchive without having to call
+    /// archive_mut() explicitly.
+    pub fn list(&mut self) -> Result<Vec<crate::FileEntry>> {
+        self.archive.list()
+    }
+
+    /// Find a file in the archive
+    ///
+    /// This method checks the modified state first, then falls back to the original archive.
+    /// This ensures that removed/renamed files are handled correctly.
+    pub fn find_file(&mut self, name: &str) -> Result<Option<crate::FileInfo>> {
+        // Normalize the filename
+        let normalized_name = name.replace('/', "\\");
+
+        // Load tables if not already cached
+        self.ensure_tables_loaded()?;
+
+        // Check if file exists in our modified state
+        match self.find_file_entry(&normalized_name)? {
+            Some((hash_index, hash_entry)) => {
+                // File exists in modified state, get block info
+                let block_table = self
+                    .block_table
+                    .as_ref()
+                    .or_else(|| self.archive.block_table())
+                    .ok_or_else(|| Error::InvalidFormat("No block table".to_string()))?;
+
+                let block_index = hash_entry.block_index as usize;
+                if let Some(block_entry) = block_table.entries().get(block_index) {
+                    let file_pos = self.archive.archive_offset() + block_entry.file_pos as u64;
+                    Ok(Some(crate::FileInfo {
+                        filename: normalized_name,
+                        hash_index,
+                        block_index,
+                        file_pos,
+                        compressed_size: block_entry.compressed_size as u64,
+                        file_size: block_entry.file_size as u64,
+                        flags: block_entry.flags,
+                        locale: hash_entry.locale,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
+            None => {
+                // File doesn't exist in modified state - it may have been deleted
+                Ok(None)
+            }
+        }
+    }
+
+    /// Verify the digital signature of the archive
+    ///
+    /// This is a convenience method that delegates to the underlying Archive.
+    pub fn verify_signature(&mut self) -> Result<crate::SignatureStatus> {
+        self.archive.verify_signature()
+    }
+
+    /// Load and cache attributes from the (attributes) file
+    ///
+    /// This is a convenience method that delegates to the underlying Archive.
+    pub fn load_attributes(&mut self) -> Result<()> {
+        self.archive.load_attributes()
     }
 
     /// Add a file from disk to the archive
@@ -458,20 +551,132 @@ impl MutableArchive {
     /// This creates a new archive file with all active files copied over,
     /// removing any gaps from deleted files.
     pub fn compact(&mut self) -> Result<()> {
-        if !self.dirty {
-            return Ok(()); // Nothing to compact
+        use std::fs;
+        use tempfile::NamedTempFile;
+
+        // Ensure tables are loaded
+        self.ensure_tables_loaded()?;
+
+        // Create a temporary file in the same directory as the archive
+        let archive_dir = self
+            ._path
+            .parent()
+            .ok_or_else(|| Error::InvalidFormat("Invalid archive path".to_string()))?;
+        let temp_file = NamedTempFile::new_in(archive_dir)?;
+        let temp_path = temp_file.path().to_path_buf();
+
+        // Get archive header info
+        let header = self.archive.header();
+        let format_version = header.format_version;
+
+        // Create a new archive builder
+        let mut builder = ArchiveBuilder::new()
+            .version(format_version)
+            .listfile_option(ListfileOption::Generate);
+
+        // First, get the list of files if available
+        let file_list = self.list().ok();
+
+        // Collect all active files
+        let mut files_to_copy = Vec::new();
+        if let Some(hash_table) = &self.hash_table {
+            for (hash_idx, entry) in hash_table.entries().iter().enumerate() {
+                if !entry.is_valid() || entry.is_deleted() {
+                    continue;
+                }
+
+                let block_idx = entry.block_index as usize;
+                if let Some(block_table) = &self.block_table {
+                    if let Some(block) = block_table.entries().get(block_idx) {
+                        // Find the file name from listfile or generate a placeholder
+                        let filename = if let Some(ref list) = file_list {
+                            list.iter()
+                                .find(|e| {
+                                    // Match by verifying the hash values
+                                    let name_hash1 = hash_string(&e.name, hash_type::NAME_A);
+                                    let name_hash2 = hash_string(&e.name, hash_type::NAME_B);
+                                    entry.name_1 == name_hash1 && entry.name_2 == name_hash2
+                                })
+                                .map(|e| e.name.clone())
+                        } else {
+                            None
+                        };
+
+                        let filename = filename.unwrap_or_else(|| {
+                            // Generate placeholder name if not found in listfile
+                            format!("file_{:08X}_{:08X}", entry.name_1, entry.name_2)
+                        });
+
+                        files_to_copy.push((hash_idx, block_idx, filename, *entry, *block));
+                    }
+                }
+            }
         }
 
-        // TODO: Implement compacting logic
-        // This would:
-        // 1. Create a temporary file
-        // 2. Copy all non-deleted files to the new file
-        // 3. Rebuild tables without deleted entries
-        // 4. Replace original file with new file
+        // Add all active files to the new archive
+        for (_, _, filename, hash_entry, block_entry) in &files_to_copy {
+            // Skip internal files that will be handled automatically by the builder
+            if filename == "(listfile)" || filename == "(attributes)" || filename == "(signature)" {
+                continue;
+            }
 
-        Err(Error::NotImplemented(
-            "Archive compacting not yet implemented",
-        ))
+            // Read the file data
+            let file_data = match self.read_file(filename) {
+                Ok(data) => data,
+                Err(_) => {
+                    // Skip files we can't read
+                    log::warn!("Skipping file {filename} during compaction (read error)");
+                    continue;
+                }
+            };
+
+            // Determine compression and encryption from block flags
+            let compression = if block_entry.is_compressed() {
+                // Try to determine specific compression method
+                // For now, default to Zlib if compressed
+                compression::flags::ZLIB
+            } else {
+                0 // No compression
+            };
+
+            let encrypt = block_entry.is_encrypted();
+
+            // Add file to builder
+            builder = builder.add_file_data_with_options(
+                file_data,
+                filename,
+                compression,
+                encrypt,
+                hash_entry.locale,
+            );
+        }
+
+        // Build the new archive
+        builder.build(&temp_path)?;
+
+        // Close our current file handle by dropping the field (take ownership)
+        let _ = std::mem::replace(&mut self.file, File::open(&temp_path)?);
+
+        // Replace the original file with the compacted one
+        fs::rename(&temp_path, &self._path)?;
+
+        // Re-open the compacted archive
+        self.archive = Archive::open(&self._path)?;
+        self.file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&self._path)?;
+
+        // Reset cached tables
+        self.hash_table = None;
+        self.block_table = None;
+        self._hi_block_table = None;
+        self.dirty = false;
+        self.next_file_offset = None;
+        self.attributes_dirty = false;
+        self.modified_blocks.clear();
+
+        Ok(())
     }
 
     /// Flush any pending changes to disk

@@ -1707,6 +1707,59 @@ impl Archive {
         Ok(entries)
     }
 
+    /// List files in the archive with database lookup for names
+    pub fn list_with_db(&mut self, db: &crate::database::Database) -> Result<Vec<FileEntry>> {
+        use crate::database::HashLookup;
+
+        // Get all entries with hashes
+        let mut entries = self.list_all_with_hashes()?;
+
+        // Look up names in database
+        for entry in &mut entries {
+            if let Some((hash_a, hash_b)) = entry.hashes {
+                if let Ok(Some(filename)) = db.lookup_filename(hash_a, hash_b) {
+                    entry.name = filename;
+                }
+            }
+        }
+
+        Ok(entries)
+    }
+
+    /// Record all filenames from the archive's listfile to the database
+    pub fn record_listfile_to_db(&mut self, db: &crate::database::Database) -> Result<usize> {
+        use crate::database::HashLookup;
+
+        // Try to find and read (listfile)
+        if let Some(_listfile_info) = self.find_file("(listfile)")? {
+            if let Ok(listfile_data) = self.read_file("(listfile)") {
+                if let Ok(filenames) = special_files::parse_listfile(&listfile_data) {
+                    // Record all filenames from listfile to database
+                    let source = format!("archive:{}", self.path.display());
+                    let filenames_with_source: Vec<(&str, Option<&str>)> = filenames
+                        .iter()
+                        .map(|f| (f.as_str(), Some(source.as_str())))
+                        .collect();
+
+                    match db.store_filenames(&filenames_with_source) {
+                        Ok((new_count, updated_count)) => {
+                            log::info!(
+                                "Recorded {new_count} new and {updated_count} updated filenames from listfile to database"
+                            );
+                            return Ok(new_count + updated_count);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to store filenames in database: {e}");
+                            return Err(Error::Crypto(format!("Database error: {e}")));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(0)
+    }
+
     /// List all files in the archive by enumerating tables with hash information
     pub fn list_all_with_hashes(&mut self) -> Result<Vec<FileEntry>> {
         let mut entries = Vec::new();
@@ -2332,18 +2385,79 @@ impl Archive {
         match self.read_file("(attributes)") {
             Ok(mut data) => {
                 // Get block count for parsing
-                // Note: The attributes file doesn't contain attributes for itself,
-                // so we need to subtract 1 from the total block count
-                let block_count = if let Some(ref block_table) = self.block_table {
-                    // Count files that have attributes (exclude the attributes file itself)
-                    block_table.entries().len().saturating_sub(1)
+                // The attributes file should contain entries for all files in the archive,
+                // including potentially itself (varies by MPQ implementation)
+                let total_files = if let Some(ref block_table) = self.block_table {
+                    block_table.entries().len()
                 } else if let Some(ref bet_table) = self.bet_table {
-                    // BET table file count might also include attributes, so subtract 1
-                    (bet_table.header.file_count as usize).saturating_sub(1)
+                    bet_table.header.file_count as usize
                 } else {
                     return Err(Error::invalid_format(
                         "No block/BET table available for attributes",
                     ));
+                };
+
+                // Determine the actual block count by checking the attributes file structure
+                // We'll try the full count first, then fall back to count-1 if that fails
+                let block_count = {
+                    // Calculate expected size with full file count
+                    let flags_from_data = if data.len() >= 8 {
+                        u32::from_le_bytes([data[4], data[5], data[6], data[7]])
+                    } else {
+                        0
+                    };
+
+                    let mut expected_size_full = 8; // header
+                    if flags_from_data & 0x01 != 0 {
+                        expected_size_full += total_files * 4;
+                    } // CRC32
+                    if flags_from_data & 0x02 != 0 {
+                        expected_size_full += total_files * 8;
+                    } // FILETIME  
+                    if flags_from_data & 0x04 != 0 {
+                        expected_size_full += total_files * 16;
+                    } // MD5
+                    if flags_from_data & 0x08 != 0 {
+                        expected_size_full += total_files.div_ceil(8);
+                    } // PATCH_BIT
+
+                    if data.len() == expected_size_full {
+                        // Perfect match with full file count - attributes includes itself
+                        log::debug!(
+                            "Attributes file contains entries for all {total_files} files (including itself)"
+                        );
+                        total_files
+                    } else {
+                        // Try with count-1 (traditional behavior)
+                        let count_minus_1 = total_files.saturating_sub(1);
+                        let mut expected_size_minus1 = 8; // header
+                        if flags_from_data & 0x01 != 0 {
+                            expected_size_minus1 += count_minus_1 * 4;
+                        }
+                        if flags_from_data & 0x02 != 0 {
+                            expected_size_minus1 += count_minus_1 * 8;
+                        }
+                        if flags_from_data & 0x04 != 0 {
+                            expected_size_minus1 += count_minus_1 * 16;
+                        }
+                        if flags_from_data & 0x08 != 0 {
+                            expected_size_minus1 += count_minus_1.div_ceil(8);
+                        }
+
+                        if data.len() == expected_size_minus1 {
+                            log::debug!(
+                                "Attributes file contains entries for {count_minus_1} files (excluding itself)"
+                            );
+                            count_minus_1
+                        } else {
+                            // Neither exact match - use full count and let the parser handle the discrepancy
+                            log::debug!(
+                                "Attributes file size doesn't match expected patterns, using full count {total_files} (actual: {}, expected_full: {expected_size_full}, expected_minus1: {expected_size_minus1})",
+                                data.len()
+                            );
+                            total_files
+                        }
+                    }
                 };
 
                 // Check if attributes data needs additional decompression

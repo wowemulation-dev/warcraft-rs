@@ -75,7 +75,7 @@ impl M2Vertex {
 
         // Secondary texture coordinates (added in Cataclysm)
         let tex_coords2 = if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version >= M2Version::Cataclysm {
+            if m2_version >= M2Version::WotLK {
                 Some(C2Vector::parse(reader)?)
             } else {
                 None

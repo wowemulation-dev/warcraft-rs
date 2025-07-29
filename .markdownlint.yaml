@@ -15,6 +15,8 @@ MD013:
   heading_line_length: 80
   # Number of characters for code blocks
   code_block_line_length: 120
+  # Number of characters for tables
+  tables: false
   # Strict length checking
   strict: false
 
@@ -30,7 +32,6 @@ MD040:
     [
       'bash',
       'c',
-      'cpp',
       'cmake',
       'diff',
       'dockerfile',
@@ -47,6 +48,7 @@ MD040:
       'sql',
       'text',
       'toml',
+      'typescript',
       'wgsl',
       'xml',
       'yaml',

@@ -417,9 +417,8 @@ impl M2Model {
             // For each texture, update the offset in the definition and write the filename
             for (i, texture) in self.textures.iter().enumerate() {
                 // Get the filename
-                let filename_offset = texture.filename.offset as usize;
-                let filename_len = texture.filename.count as usize;
-
+                let filename_offset = texture.filename.array.offset as usize;
+                let filename_len = texture.filename.array.count as usize;
                 // Not every texture has a filename (some are hardcoded)
                 if filename_offset == 0 || filename_len == 0 {
                     continue;
@@ -438,16 +437,11 @@ impl M2Model {
                 data_section[def_offset_in_data + 4..def_offset_in_data + 8]
                     .copy_from_slice(&current_offset.to_le_bytes());
 
-                // TODO: Actually retrieve the filename from somewhere
-                // For now, we'll just use a placeholder
-                let filename = format!("texture{i}.blp");
-                let filename_bytes = filename.as_bytes();
-
                 // Write the filename
-                data_section.extend_from_slice(filename_bytes);
+                data_section.extend_from_slice(&texture.filename.string.data);
                 data_section.push(0); // Null terminator
 
-                current_offset += (filename_bytes.len() + 1) as u32;
+                current_offset += filename_len as u32;
             }
         } else {
             header.textures = M2Array::new(0, 0);
@@ -713,7 +707,7 @@ impl M2Model {
         // Validate textures
         for (i, texture) in self.textures.iter().enumerate() {
             // Check if the texture has a valid filename
-            if texture.filename.count > 0 && texture.filename.offset == 0 {
+            if texture.filename.array.count > 0 && texture.filename.array.offset == 0 {
                 return Err(M2Error::ValidationError(format!(
                     "Texture {i} has invalid filename offset"
                 )));

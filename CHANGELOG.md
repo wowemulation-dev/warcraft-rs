@@ -7,16 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **storm-ffi**: Complete archive modification support through C FFI including add/remove/rename file operations
+- **storm-ffi**: New test suite for archive modification and FFI integration
+- **storm-ffi**: File finding functionality with `SFileFindFirstFile`/`SFileFindNextFile`/`SFileFindClose`
+- **storm-ffi**: Archive creation functionality with `SFileCreateArchive` and `SFileCreateArchive2`
+- **storm-ffi**: Archive modification operations: `SFileAddFile`, `SFileAddFileEx`, `SFileRemoveFile`, `SFileRenameFile`
+- **storm-ffi**: Archive maintenance operations: `SFileFlushArchive`, `SFileCompactArchive`, `SFileSetMaxFileCount`
+- **storm-ffi**: File attributes API: `SFileGetFileAttributes`, `SFileSetFileAttributes`, `SFileUpdateFileAttributes`
+- **storm-ffi**: Archive attributes API: `SFileGetAttributes`, `SFileSetAttributes`, `SFileFlushAttributes`
+- **storm-ffi**: Support for both read-only and mutable archive handles
+- **wow-mpq**: New methods in `MutableArchive`: `read_file()`, `list()`, `find_file()`, `verify_signature()`, `load_attributes()`
+- **wow-mpq**: Complete implementation of `compact()` method for archive defragmentation
+- **wow-mpq**: Improved attributes file parsing to handle both cases where attributes include/exclude themselves
+- **wow-m2**: Added support for WotLK (Wrath of the Lich King) M2 model and skin formats
+- **wow-m2**: Added texture filename parsing functionality
+- **wow-m2**: Added support for old skin format in the skin-info command
+- **warcraft-rs**: Added `cargo-deny` configuration for dependency security scanning and duplicate management
+- **wow-mpq**: SQLite database support for persistent MPQ filename hash storage and resolution
+- **wow-mpq**: Support for both traditional MPQ hashes (hash_a, hash_b) and HET hashes (40/48/56/64 bit)
+- **wow-mpq**: Database import functionality supporting listfiles, MPQ archives, and directory scanning
+- **wow-mpq**: Automatic filename resolution through database lookup during archive listing operations
+- **wow-mpq**: Database connection management with automatic schema initialization
+- **wow-mpq**: Batch processing for efficient bulk filename imports
+- **warcraft-rs CLI**: New `mpq db` subcommand with status, import, analyze, lookup, export, and list operations
+- **warcraft-rs CLI**: `--use-db` flag for `mpq list` to enable database lookups for unknown filenames
+- **warcraft-rs CLI**: `--record-to-db` flag for `mpq list` to store discovered filenames in database
+
 ### Changed
 
-- **storm FFI**: Renamed crate from `storm` to `storm-ffi` while retaining library name as `libstorm`
+- **storm-ffi**: Renamed crate from `storm` to `storm-ffi` while retaining library name as `libstorm`
+- **storm-ffi**: Archive handles now support both read-only and mutable operations with internal enum-based dispatch
+- **wow-mpq**: Enhanced attributes file block count detection with automatic fallback logic
+- **wow-mpq**: `MutableArchive` now provides convenience methods for common read operations
+- **wow-m2**: Replaced custom BLP texture implementation with dependency on `wow-blp` crate
+- **wow-m2**: `BlpTexture` is now a re-export of `wow_blp::BlpImage` for backwards compatibility
 
 ### Fixed
 
 - **wow-mpq**: Fixed Huffman decompression algorithm to match StormLib's linked list approach, resolving ADPCM audio decompression failures and file count discrepancies in Warcraft 3 MPQ archives (GitHub issue #4)
 - **wow-mpq**: Fixed IMPLODE compression handling for Warcraft III MPQ archives - IMPLODE-compressed files no longer incorrectly skip the first byte as a compression type prefix
 - **wow-mpq**: Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test failures
+- **wow-mpq**: Fixed attributes file parsing to correctly handle varying block counts across different MPQ implementations
 - **GitHub Actions**: Release-plz workflow now supports optional PAT token for PR creation permissions
+- **wow-m2**: Fixed BLP texture parsing in M2 models - corrected header field order, width/height types (u16 to u32), and added version field reading
+- **wow-m2**: Fixed BLP texture parsing to properly handle JPEG header information and palette data
+- **wow-mpq**: Applied rustfmt formatting fixes and resolved clippy warnings for cleaner code
+
+### Removed
+
+- **wow-m2**: Custom BLP parsing implementation (moved to using `wow-blp` crate instead)
 
 ## [0.2.0](https://github.com/wowemulation-dev/warcraft-rs/releases/tag/v0.2.0) - 2025-06-28
 

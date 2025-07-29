@@ -27,7 +27,6 @@
 
 // Re-export main components
 pub mod anim;
-pub mod blp;
 pub mod chunks;
 pub mod common;
 pub mod converter;
@@ -40,12 +39,14 @@ pub mod version;
 
 // Re-export common types
 pub use anim::AnimFile;
-pub use blp::BlpTexture;
 pub use converter::M2Converter;
 pub use error::{M2Error, Result};
 pub use model::M2Model;
-pub use skin::Skin;
+pub use skin::{OldSkin, Skin};
 pub use version::M2Version;
+
+// Re-export BLP types from wow-blp crate for backwards compatibility
+pub use wow_blp::BlpImage as BlpTexture;
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
