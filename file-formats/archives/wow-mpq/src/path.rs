@@ -65,7 +65,7 @@ pub fn normalize_mpq_path(path: &str) -> String {
 /// assert_eq!(mpq_path_to_system("dir\\file.txt"), "dir\\file.txt");
 /// ```
 pub fn mpq_path_to_system(path: &str) -> String {
-    #[cfg(unix)]
+    #[cfg(any(unix, target_arch = "wasm32"))]
     {
         path.replace('\\', "/")
     }
