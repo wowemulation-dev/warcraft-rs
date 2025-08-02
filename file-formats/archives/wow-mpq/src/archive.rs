@@ -1735,7 +1735,9 @@ impl Archive {
             if let Ok(listfile_data) = self.read_file("(listfile)") {
                 if let Ok(filenames) = special_files::parse_listfile(&listfile_data) {
                     // Record all filenames from listfile to database
-                    let source = format!("archive:{}", self.path.display());
+                    let source: String =
+                        format!("archive:{}", self.path.as_ref().unwrap().display());
+
                     let filenames_with_source: Vec<(&str, Option<&str>)> = filenames
                         .iter()
                         .map(|f| (f.as_str(), Some(source.as_str())))
@@ -2413,7 +2415,7 @@ impl Archive {
                     } // CRC32
                     if flags_from_data & 0x02 != 0 {
                         expected_size_full += total_files * 8;
-                    } // FILETIME  
+                    } // FILETIME
                     if flags_from_data & 0x04 != 0 {
                         expected_size_full += total_files * 16;
                     } // MD5
