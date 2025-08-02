@@ -23,8 +23,8 @@ pub mod data_generator;
 pub mod mpq_builder;
 pub mod wow_data;
 
-pub use data_generator::{generate_test_data, TestDataConfig};
-pub use mpq_builder::{create_test_archive, TestArchiveConfig};
+pub use data_generator::{TestDataConfig, generate_test_data};
+pub use mpq_builder::{TestArchiveConfig, create_test_archive};
 pub use wow_data::{
-    find_any_wow_data, find_wow_data, get_mpq_path, print_setup_instructions, WowVersion,
+    WowVersion, find_any_wow_data, find_wow_data, get_mpq_path, print_setup_instructions,
 };
