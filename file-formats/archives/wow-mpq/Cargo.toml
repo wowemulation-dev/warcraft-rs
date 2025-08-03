@@ -42,7 +42,6 @@ tempfile = { workspace = true }
 
 # Parallel processing
 rayon = "1.10"
-cargo-deny = "0.18.3"
 
 # Database support
 rusqlite = { version = "0.32", features = ["bundled"] }

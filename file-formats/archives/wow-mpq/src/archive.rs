@@ -360,7 +360,7 @@ impl Archive {
         Ok(archive)
     }
 
-    /// Open an archive from a Vec<u8> buffer with specific options.
+    /// Open an archive from a `Vec<u8>` buffer with specific options.
     pub fn load_from_buffer_with_options(buffer: Vec<u8>, options: OpenOptions) -> Result<Self> {
         let cursor = Cursor::new(buffer);
 
