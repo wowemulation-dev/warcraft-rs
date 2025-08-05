@@ -134,14 +134,14 @@ pub struct M2Header {
     pub texture_animations: M2Array<u32>,
 
     // Material data
-    /// Color replacements
-    pub color_replacements: M2Array<u32>,
     /// Render flags
     pub render_flags: M2Array<u32>,
     /// Bone lookup table
     pub bone_lookup_table: M2Array<u16>,
     /// Texture lookup table
     pub texture_lookup_table: M2Array<u16>,
+    /// Texture mapping lookup table
+    pub texture_mapping_lookup_table: M2Array<u16>,
     /// Texture units
     pub texture_units: M2Array<u16>,
     /// Transparency lookup table
@@ -256,11 +256,10 @@ impl M2Header {
             (M2Array::new(0, 0), Some(count))
         };
 
-        let color_animations = M2Array::parse(reader)?;
+        let color_animations = M2Array::parse(reader)?; // colors
 
-        let textures = M2Array::parse(reader)?;
-        let transparency_lookup = M2Array::parse(reader)?;
-        let transparency_animations = M2Array::parse(reader)?;
+        let textures = M2Array::parse(reader)?; // textures
+        let transparency_lookup = M2Array::parse(reader)?; // texture_weights
 
         // Texture flipbooks only exist in BC and earlier
         let texture_flipbooks = if version <= 263 {
@@ -269,22 +268,24 @@ impl M2Header {
             None
         };
 
-        let texture_animations = M2Array::parse(reader)?;
+        let transparency_animations = M2Array::parse(reader)?; // texture_transforms
 
-        let render_flags = M2Array::parse(reader)?;
-        let color_replacements = M2Array::parse(reader)?;
-        let bone_lookup_table = M2Array::parse(reader)?;
-        let texture_lookup_table = M2Array::parse(reader)?;
-        let texture_units = M2Array::parse(reader)?;
-        let transparency_lookup_table = M2Array::parse(reader)?;
-        let mut texture_animation_lookup = M2Array::parse(reader)?;
+        let texture_animations = M2Array::parse(reader)?; // texture_indices_by_id
 
-        // Workaround: Some M2 files have corrupted texture_animation_lookup fields
-        // This may be due to field alignment differences across versions or file corruption
-        // If the count is extremely large, treat as empty to prevent crashes
-        if texture_animation_lookup.count > 1_000_000 {
-            texture_animation_lookup = M2Array::new(0, 0);
-        }
+        let render_flags = M2Array::parse(reader)?; // materials
+        let bone_lookup_table = M2Array::parse(reader)?; // bone_combos
+        let texture_lookup_table = M2Array::parse(reader)?; // texture_combos
+        let texture_mapping_lookup_table = M2Array::parse(reader)?; // texture_coord_combos
+        let texture_units = M2Array::parse(reader)?; // texture weight combos
+        let transparency_lookup_table = M2Array::parse(reader)?; // texture transform combos
+        // let mut texture_animation_lookup = M2Array::parse(reader)?;
+        //
+        // // Workaround: Some M2 files have corrupted texture_animation_lookup fields
+        // // This may be due to field alignment differences across versions or file corruption
+        // // If the count is extremely large, treat as empty to prevent crashes
+        // if texture_animation_lookup.count > 1_000_000 {
+        let texture_animation_lookup = M2Array::new(0, 0);
+        // }
 
         // Read bounding box
         let mut bounding_box_min = [0.0; 3];
@@ -371,10 +372,10 @@ impl M2Header {
             transparency_animations,
             texture_flipbooks,
             texture_animations,
-            color_replacements,
             render_flags,
             bone_lookup_table,
             texture_lookup_table,
+            texture_mapping_lookup_table,
             texture_units,
             transparency_lookup_table,
             texture_animation_lookup,
@@ -452,10 +453,10 @@ impl M2Header {
 
         self.texture_animations.write(writer)?;
 
-        self.color_replacements.write(writer)?;
         self.render_flags.write(writer)?;
         self.bone_lookup_table.write(writer)?;
         self.texture_lookup_table.write(writer)?;
+        self.texture_mapping_lookup_table.write(writer)?;
         self.texture_units.write(writer)?;
         self.transparency_lookup_table.write(writer)?;
         self.texture_animation_lookup.write(writer)?;
@@ -568,10 +569,10 @@ impl M2Header {
             transparency_animations: M2Array::new(0, 0),
             texture_flipbooks,
             texture_animations: M2Array::new(0, 0),
-            color_replacements: M2Array::new(0, 0),
             render_flags: M2Array::new(0, 0),
             bone_lookup_table: M2Array::new(0, 0),
             texture_lookup_table: M2Array::new(0, 0),
+            texture_mapping_lookup_table: M2Array::new(0, 0),
             texture_units: M2Array::new(0, 0),
             transparency_lookup_table: M2Array::new(0, 0),
             texture_animation_lookup: M2Array::new(0, 0),

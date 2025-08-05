@@ -66,6 +66,8 @@ pub struct M2RawData {
     pub bone_lookup_table: Vec<u16>,
     /// Texture lookup table
     pub texture_lookup_table: Vec<u16>,
+    /// Texture mapping lookup table
+    pub texture_mapping_lookup_table: Vec<u16>,
     /// Texture units
     pub texture_units: Vec<u16>,
     /// Transparency lookup table
@@ -228,6 +230,12 @@ impl M2Model {
         raw_data.texture_lookup_table = read_array(reader, &header.texture_lookup_table, |r| {
             Ok(r.read_u16_le()?)
         })?;
+
+        // Read texture mapping lookup table
+        raw_data.texture_mapping_lookup_table =
+            read_array(reader, &header.texture_mapping_lookup_table, |r| {
+                Ok(r.read_u16_le()?)
+            })?;
 
         // Read texture units
         raw_data.texture_units =
@@ -494,20 +502,20 @@ impl M2Model {
         }
 
         // Write texture lookup table
-        if !self.raw_data.texture_lookup_table.is_empty() {
-            header.texture_lookup_table = M2Array::new(
-                self.raw_data.texture_lookup_table.len() as u32,
+        if !self.raw_data.texture_mapping_lookup_table.is_empty() {
+            header.texture_mapping_lookup_table = M2Array::new(
+                self.raw_data.texture_mapping_lookup_table.len() as u32,
                 current_offset,
             );
 
-            for &lookup in &self.raw_data.texture_lookup_table {
+            for &lookup in &self.raw_data.texture_mapping_lookup_table {
                 data_section.extend_from_slice(&lookup.to_le_bytes());
             }
 
-            current_offset +=
-                (self.raw_data.texture_lookup_table.len() * std::mem::size_of::<u16>()) as u32;
+            current_offset += (self.raw_data.texture_mapping_lookup_table.len()
+                * std::mem::size_of::<u16>()) as u32;
         } else {
-            header.texture_lookup_table = M2Array::new(0, 0);
+            header.texture_mapping_lookup_table = M2Array::new(0, 0);
         }
 
         // Write texture units
@@ -647,10 +655,10 @@ impl M2Model {
         size += 2 * 4; // transparency_animations
         size += 2 * 4; // texture_animations
 
-        size += 2 * 4; // color_replacements
         size += 2 * 4; // render_flags
         size += 2 * 4; // bone_lookup_table
         size += 2 * 4; // texture_lookup_table
+        size += 2 * 4; // texture_mapping_lookup_table
         size += 2 * 4; // texture_units
         size += 2 * 4; // transparency_lookup_table
         size += 2 * 4; // texture_animation_lookup
