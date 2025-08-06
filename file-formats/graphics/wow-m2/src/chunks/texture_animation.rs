@@ -1,7 +1,7 @@
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Write};
 
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
+use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -102,11 +102,11 @@ impl M2TextureAnimation {
     pub fn new(animation_type: M2TextureAnimationType) -> Self {
         Self {
             animation_type,
-            translation_u: M2AnimationBlock::new(M2AnimationTrack::new()),
-            translation_v: M2AnimationBlock::new(M2AnimationTrack::new()),
-            rotation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            scale_u: M2AnimationBlock::new(M2AnimationTrack::new()),
-            scale_v: M2AnimationBlock::new(M2AnimationTrack::new()),
+            translation_u: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            translation_v: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            rotation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            scale_u: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            scale_v: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
         }
     }
 }

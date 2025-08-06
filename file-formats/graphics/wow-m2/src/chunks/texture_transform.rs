@@ -1,7 +1,7 @@
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Write};
 
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
+use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
 use crate::common::C3Vector;
 use crate::error::Result;
 use crate::version::M2Version;
@@ -133,9 +133,9 @@ impl M2TextureTransform {
         Self {
             id,
             transform_type,
-            translation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            rotation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            scaling: M2AnimationBlock::new(M2AnimationTrack::new()),
+            translation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            rotation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            scaling: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
         }
     }
 }

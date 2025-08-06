@@ -196,7 +196,7 @@ impl M2RibbonEmitter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chunks::animation::M2AnimationTrack;
+    use crate::chunks::animation::M2AnimationTrackHeader;
     use std::io::Cursor;
 
     #[test]
@@ -210,10 +210,10 @@ mod tests {
             },
             texture_indices: M2Array::new(1, 0x100),
             material_indices: M2Array::new(1, 0x200),
-            color_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            alpha_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            height_above_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            height_below_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            color_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            alpha_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            height_above_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            height_below_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
             edges_per_second: 30.0,
             edge_lifetime: 1.0,
             gravity: 9.8,
@@ -266,10 +266,10 @@ mod tests {
             },
             texture_indices: M2Array::new(1, 0x100),
             material_indices: M2Array::new(1, 0x200),
-            color_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            alpha_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            height_above_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            height_below_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            color_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            alpha_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            height_above_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            height_below_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
             edges_per_second: 30.0,
             edge_lifetime: 1.0,
             gravity: 9.8,
@@ -323,10 +323,10 @@ mod tests {
             },
             texture_indices: M2Array::new(1, 0x100),
             material_indices: M2Array::new(1, 0x200),
-            color_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            alpha_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            height_above_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            height_below_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            color_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            alpha_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            height_above_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            height_below_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
             edges_per_second: 30.0,
             edge_lifetime: 1.0,
             gravity: 9.8,

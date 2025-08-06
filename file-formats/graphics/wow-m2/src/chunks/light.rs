@@ -1,7 +1,7 @@
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Write};
 
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
+use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
 use crate::chunks::color_animation::M2Color;
 use crate::common::C3Vector;
 use crate::error::Result;
@@ -144,11 +144,11 @@ impl M2Light {
                 y: 0.0,
                 z: 0.0,
             },
-            ambient_color_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            diffuse_color_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            attenuation_start_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            attenuation_end_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            visibility_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            ambient_color_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            diffuse_color_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            attenuation_start_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            attenuation_end_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            visibility_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
             id,
             flags: match light_type {
                 M2LightType::Directional => M2LightFlags::DIRECTIONAL,

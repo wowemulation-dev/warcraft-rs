@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
+use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -34,7 +34,7 @@ impl M2TransparencyAnimation {
     /// Create a new transparency animation with default values
     pub fn new() -> Self {
         Self {
-            alpha: M2AnimationBlock::new(M2AnimationTrack::new()),
+            alpha: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
         }
     }
 }

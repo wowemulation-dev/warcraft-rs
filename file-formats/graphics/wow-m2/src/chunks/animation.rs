@@ -100,7 +100,7 @@ impl<T> TrackArray<T> {
 
 /// An animation track header
 #[derive(Debug, Clone)]
-pub struct M2AnimationTrack<T> {
+pub struct M2AnimationTrackHeader<T> {
     pub version: u32,
     /// Interpolation type
     pub interpolation_type: M2InterpolationType,
@@ -113,7 +113,7 @@ pub struct M2AnimationTrack<T> {
     pub values: TrackArray<T>,
 }
 
-impl<T> M2AnimationTrack<T> {
+impl<T> M2AnimationTrackHeader<T> {
     /// Parse an animation track from a reader
     pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
         let interpolation_type_raw = reader.read_u16_le()?;
@@ -176,14 +176,14 @@ impl<T> M2AnimationTrack<T> {
 #[derive(Debug, Clone)]
 pub struct M2AnimationBlock<T> {
     /// Animation track
-    pub track: M2AnimationTrack<T>,
+    pub track: M2AnimationTrackHeader<T>,
     /// Data type (phantom data)
     _phantom: std::marker::PhantomData<T>,
 }
 
 impl<T> M2AnimationBlock<T> {
     /// Create a new animation block from a track
-    pub fn new(track: M2AnimationTrack<T>) -> Self {
+    pub fn new(track: M2AnimationTrackHeader<T>) -> Self {
         Self {
             track,
             _phantom: std::marker::PhantomData,
@@ -192,7 +192,7 @@ impl<T> M2AnimationBlock<T> {
 
     /// Parse an animation block from a reader
     pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
-        let track = M2AnimationTrack::parse(reader, version)?;
+        let track = M2AnimationTrackHeader::parse(reader, version)?;
 
         Ok(Self {
             track,

@@ -1,7 +1,7 @@
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Write};
 
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
+use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
 use crate::common::C3Vector;
 use crate::error::Result;
 use crate::version::M2Version;
@@ -105,9 +105,9 @@ impl M2Camera {
             fov: 0.8726646, // 50 degrees in radians
             far_clip: 100.0,
             near_clip: 0.1,
-            position_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            target_position_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
-            roll_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            position_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            target_position_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
+            roll_animation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
             id,
             flags: M2CameraFlags::empty(),
         }
