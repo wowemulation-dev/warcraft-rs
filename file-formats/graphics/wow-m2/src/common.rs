@@ -291,6 +291,22 @@ impl Quaternion {
     }
 }
 
+#[inline]
+pub fn i16_to_f32(value: i16) -> f32 {
+    (value as f32 / i16::MAX as f32) - 1.0
+}
+
+impl From<Quaternion16> for Quaternion {
+    fn from(value: Quaternion16) -> Self {
+        Self {
+            x: i16_to_f32(value.x),
+            y: i16_to_f32(value.y),
+            z: i16_to_f32(value.z),
+            w: i16_to_f32(value.w),
+        }
+    }
+}
+
 impl ItemParser<Quaternion> for Quaternion {
     fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Self::parse(reader)
