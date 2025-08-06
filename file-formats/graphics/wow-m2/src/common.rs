@@ -129,6 +129,14 @@ impl C3Vector {
             z: v.z,
         }
     }
+
+    pub fn origin() -> Self {
+        Self {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        }
+    }
 }
 
 impl ItemParser<C3Vector> for C3Vector {
@@ -169,6 +177,41 @@ impl C2Vector {
     /// Create from a glam vector
     pub fn from_glam(v: glam::Vec2) -> Self {
         Self { x: v.x, y: v.y }
+    }
+}
+
+/// Bounding box used in WoW files
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoundingBox {
+    /// Minimum corner of the bounding box
+    pub min: C3Vector,
+    /// Maximum corner of the bounding box
+    pub max: C3Vector,
+}
+
+impl BoundingBox {
+    /// Creates a new bounding box
+    pub fn new(min: C3Vector, max: C3Vector) -> Self {
+        Self { min, max }
+    }
+
+    /// Creates a default bounding box at origin with no size
+    pub fn zero() -> Self {
+        Self::new(C3Vector::origin(), C3Vector::origin())
+    }
+
+    /// Reads a BoundingBox from a reader
+    pub fn read<R: Read>(reader: &mut R) -> Result<Self> {
+        let min = C3Vector::parse(reader)?;
+        let max = C3Vector::parse(reader)?;
+        Ok(Self::new(min, max))
+    }
+
+    /// Writes a BoundingBox to a writer
+    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.min.write(writer)?;
+        self.max.write(writer)?;
+        Ok(())
     }
 }
 

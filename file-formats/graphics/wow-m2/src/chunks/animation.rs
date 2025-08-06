@@ -6,7 +6,7 @@ use crate::M2Error;
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::common::{ItemParser, M2Array, read_array};
+use crate::common::{BoundingBox, ItemParser, M2Array, read_array};
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -39,7 +39,7 @@ impl M2InterpolationType {
 bitflags::bitflags! {
     /// Animation flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct M2AnimationFlags: u16 {
+    pub struct M2AnimationFlags: u32 {
         /// Animation has translation keyframes
         const HAS_TRANSLATION = 0x1;
         /// Animation has rotation keyframes
@@ -50,6 +50,12 @@ bitflags::bitflags! {
         const WORLD_SPACE = 0x8;
         /// Animation has billboarded rotation keyframes
         const BILLBOARD_ROTATION = 0x10;
+        const PRIMARY_BONE_SEQUENCE = 0x20;
+        const IS_ALIAS = 0x40;
+        const BLENDED_ANIMATION = 0x80;
+        /// sequence stored in model?
+        const UNKNOWN_0x100 = 0x100;
+        const BLEND_TIME_IN_OUT = 0x200;
     }
 }
 
@@ -106,7 +112,7 @@ impl<T> TrackArray<T> {
 /// An animation track header
 #[derive(Debug, Clone)]
 pub struct M2AnimationTrackHeader<T> {
-    pub version: u32,
+    pub version: M2Version,
     /// Interpolation type
     pub interpolation_type: M2InterpolationType,
     /// Global sequence ID or -1
@@ -121,25 +127,28 @@ pub struct M2AnimationTrackHeader<T> {
 impl<T> M2AnimationTrackHeader<T> {
     /// Parse an animation track from a reader
     pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+        let version = M2Version::from_header_version(version)
+            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
+
         let interpolation_type_raw = reader.read_u16_le()?;
         let interpolation_type = M2InterpolationType::from_u16(interpolation_type_raw)
             .unwrap_or(M2InterpolationType::None);
 
         let global_sequence = reader.read_i16_le()?;
 
-        let interpolation_ranges = if version < 264 {
+        let interpolation_ranges = if version <= M2Version::TBC {
             Some(M2Array::parse(reader)?)
         } else {
             None
         };
 
-        let timestamps = if version < 264 {
+        let timestamps = if version <= M2Version::TBC {
             TrackArray::parse_single(reader)?
         } else {
             TrackArray::parse_multiple(reader)?
         };
 
-        let values = if version < 264 {
+        let values = if version <= M2Version::TBC {
             TrackArray::parse_single(reader)?
         } else {
             TrackArray::parse_multiple(reader)?
@@ -167,7 +176,7 @@ impl<T> M2AnimationTrackHeader<T> {
 
     pub fn new() -> Self {
         Self {
-            version: 264,
+            version: M2Version::WotLK,
             interpolation_type: crate::chunks::animation::M2InterpolationType::None,
             global_sequence: -1,
             interpolation_ranges: None,
@@ -341,161 +350,130 @@ impl<T> M2AnimationBlock<T> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum M2AnimationBlending {
+    Time(u32),
+    InOut(u16, u16),
+}
+
+impl M2AnimationBlending {
+    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self {
+            Self::Time(val) => {
+                writer.write_u32_le(*val)?;
+            }
+            Self::InOut(val_in, val_out) => {
+                writer.write_u16_le(*val_in)?;
+                writer.write_u16_le(*val_out)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 /// Animation data for a model
 #[derive(Debug, Clone)]
 pub struct M2Animation {
+    pub version: M2Version,
     /// Animation ID
     pub animation_id: u16,
     /// Sub-animation ID (variation index)
     pub sub_animation_id: u16,
-    /// Start timestamp (Classic) or Duration (BC+) in milliseconds
+    /// Start timestamp (up to BC) or Duration (LK+) in milliseconds
     pub start_timestamp: u32,
     /// End timestamp (Classic only)
     pub end_timestamp: Option<u32>,
     /// Movement speed
     pub movement_speed: f32,
     /// Flags
-    pub flags: u32,
+    pub flags: M2AnimationFlags,
     /// Frequency/Probability (renamed in later versions)
     pub frequency: i16,
     /// Padding/Realignment
     pub padding: u16,
-    /// Replay range (Classic only)
-    pub replay: Option<M2Range>,
-    /// Minimum extent (BC+ only)
-    pub minimum_extent: Option<[f32; 3]>,
-    /// Maximum extent (BC+ only)
-    pub maximum_extent: Option<[f32; 3]>,
-    /// Extent radius (BC+ only)
-    pub extent_radius: Option<f32>,
-    /// Next animation ID (BC+ only)
-    pub next_animation: Option<i16>,
-    /// Aliasing (BC+ only)
-    pub aliasing: Option<u16>,
+    /// Replay range
+    pub replay: M2Range,
+    pub blending: M2AnimationBlending,
+    pub bounding_box: BoundingBox,
+    pub bounding_radius: f32,
+    pub next_animation: i16,
+    pub next_alias: u16,
 }
 
 impl M2Animation {
     /// Parse an animation from a reader based on the M2 version
     pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+        let version = M2Version::from_header_version(version)
+            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
+
         let animation_id = reader.read_u16_le()?;
         let sub_animation_id = reader.read_u16_le()?;
-
-        // Version differences: Classic (256) vs BC+ (260+)
-        if version <= 256 {
-            // Classic format
-            let start_timestamp = reader.read_u32_le()?;
-            let end_timestamp = reader.read_u32_le()?;
-            let movement_speed = reader.read_f32_le()?;
-            let flags = reader.read_u32_le()?;
-            let frequency = reader.read_i16_le()?;
-            let padding = reader.read_u16_le()?;
-            let replay = M2Range::parse(reader)?;
-
-            Ok(Self {
-                animation_id,
-                sub_animation_id,
-                start_timestamp,
-                end_timestamp: Some(end_timestamp),
-                movement_speed,
-                flags,
-                frequency,
-                padding,
-                replay: Some(replay),
-                minimum_extent: None,
-                maximum_extent: None,
-                extent_radius: None,
-                next_animation: None,
-                aliasing: None,
-            })
+        let start_timestamp = reader.read_u32_le()?;
+        let end_timestamp = if version <= M2Version::TBC {
+            Some(reader.read_u32_le()?)
         } else {
-            // BC+ format
-            let duration = reader.read_u32_le()?;
-            let movement_speed = reader.read_f32_le()?;
-            let flags = reader.read_u32_le()?;
-            let frequency = reader.read_i16_le()?;
-            let padding = reader.read_u16_le()?;
+            None
+        };
 
-            let mut minimum_extent = [0.0; 3];
-            let mut maximum_extent = [0.0; 3];
+        let movement_speed = reader.read_f32_le()?;
+        let flags = M2AnimationFlags::from_bits_retain(reader.read_u32_le()?);
+        let frequency = reader.read_i16_le()?;
+        let padding = reader.read_u16_le()?;
+        let replay = M2Range::parse(reader)?;
+        let blending = if version <= M2Version::MoP {
+            M2AnimationBlending::Time(reader.read_u32_le()?)
+        } else {
+            M2AnimationBlending::InOut(reader.read_u16_le()?, reader.read_u16_le()?)
+        };
 
-            for item in &mut minimum_extent {
-                *item = reader.read_f32_le()?;
-            }
+        let bounding_box = BoundingBox::read(reader)?;
+        let bounding_radius = reader.read_f32_le()?;
+        let next_animation = reader.read_i16_le()?;
+        let next_alias = reader.read_u16_le()?;
 
-            for item in &mut maximum_extent {
-                *item = reader.read_f32_le()?;
-            }
-
-            let extent_radius = reader.read_f32_le()?;
-            let next_animation = reader.read_i16_le()?;
-            let aliasing = reader.read_u16_le()?;
-
-            Ok(Self {
-                animation_id,
-                sub_animation_id,
-                start_timestamp: duration, // In BC+, this field is duration
-                end_timestamp: None,
-                movement_speed,
-                flags,
-                frequency,
-                padding,
-                replay: None,
-                minimum_extent: Some(minimum_extent),
-                maximum_extent: Some(maximum_extent),
-                extent_radius: Some(extent_radius),
-                next_animation: Some(next_animation),
-                aliasing: Some(aliasing),
-            })
-        }
+        Ok(Self {
+            version,
+            animation_id,
+            sub_animation_id,
+            start_timestamp,
+            end_timestamp,
+            movement_speed,
+            flags,
+            frequency,
+            padding,
+            replay,
+            blending,
+            bounding_box,
+            bounding_radius,
+            next_animation,
+            next_alias,
+        })
     }
 
     /// Write an animation to a writer
     pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
+        let version = M2Version::from_header_version(version)
+            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
+
         writer.write_u16_le(self.animation_id)?;
         writer.write_u16_le(self.sub_animation_id)?;
+        writer.write_u32_le(self.start_timestamp)?;
 
-        if version <= 256 {
-            // Classic format
-            writer.write_u32_le(self.start_timestamp)?;
+        if version <= M2Version::TBC {
             writer.write_u32_le(self.end_timestamp.unwrap_or(self.start_timestamp + 1000))?;
-            writer.write_f32_le(self.movement_speed)?;
-            writer.write_u32_le(self.flags)?;
-            writer.write_i16_le(self.frequency)?;
-            writer.write_u16_le(self.padding)?;
-
-            if let Some(replay) = &self.replay {
-                replay.write(writer)?;
-            } else {
-                // Default replay range
-                M2Range {
-                    minimum: 0.0,
-                    maximum: 1.0,
-                }
-                .write(writer)?;
-            }
-        } else {
-            // BC+ format
-            writer.write_u32_le(self.start_timestamp)?; // This is duration in BC+
-            writer.write_f32_le(self.movement_speed)?;
-            writer.write_u32_le(self.flags)?;
-            writer.write_i16_le(self.frequency)?;
-            writer.write_u16_le(self.padding)?;
-
-            let minimum_extent = self.minimum_extent.unwrap_or([0.0, 0.0, 0.0]);
-            let maximum_extent = self.maximum_extent.unwrap_or([0.0, 0.0, 0.0]);
-
-            for &value in &minimum_extent {
-                writer.write_f32_le(value)?;
-            }
-
-            for &value in &maximum_extent {
-                writer.write_f32_le(value)?;
-            }
-
-            writer.write_f32_le(self.extent_radius.unwrap_or(0.0))?;
-            writer.write_i16_le(self.next_animation.unwrap_or(-1))?;
-            writer.write_u16_le(self.aliasing.unwrap_or(0))?;
         }
+
+        writer.write_f32_le(self.movement_speed)?;
+        writer.write_u32_le(self.flags.bits())?;
+        writer.write_i16_le(self.frequency)?;
+        writer.write_u16_le(self.padding)?;
+        self.replay.write(writer)?;
+        self.blending.write(writer)?;
+        self.bounding_box.write(writer)?;
+        writer.write_f32_le(self.bounding_radius)?;
+        writer.write_i16_le(self.next_animation)?;
+        writer.write_u16_le(self.next_alias)?;
 
         Ok(())
     }

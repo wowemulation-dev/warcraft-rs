@@ -16,6 +16,10 @@ pub enum M2Error {
     #[error("Unsupported version: {0}")]
     UnsupportedVersion(String),
 
+    /// Unsupported numeric file version
+    #[error("Unsupported numeric version: {0}")]
+    UnsupportedNumericVersion(u32),
+
     /// Error during parsing
     #[error("Parse error: {0}")]
     ParseError(String),
