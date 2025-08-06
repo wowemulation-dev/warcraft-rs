@@ -281,6 +281,36 @@ impl Quaternion {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Quaternion16 {
+    pub x: i16,
+    pub y: i16,
+    pub z: i16,
+    pub w: i16,
+}
+
+impl Quaternion16 {
+    /// Parse a quaternion from a reader
+    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+        let x = reader.read_i16_le()?;
+        let y = reader.read_i16_le()?;
+        let z = reader.read_i16_le()?;
+        let w = reader.read_i16_le()?;
+
+        Ok(Self { x, y, z, w })
+    }
+
+    /// Write a quaternion to a writer
+    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_i16_le(self.x)?;
+        writer.write_i16_le(self.y)?;
+        writer.write_i16_le(self.z)?;
+        writer.write_i16_le(self.w)?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

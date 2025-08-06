@@ -2,7 +2,6 @@ use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::M2Array;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -54,7 +53,7 @@ pub struct M2TextureAnimation {
 
 impl M2TextureAnimation {
     /// Parse a texture animation from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
         let type_raw = reader.read_u16_le()?;
         let animation_type =
             M2TextureAnimationType::from_u16(type_raw).unwrap_or(M2TextureAnimationType::None);
@@ -62,11 +61,11 @@ impl M2TextureAnimation {
         // Skip 2 bytes of padding
         reader.read_u16_le()?;
 
-        let translation_u = M2AnimationBlock::parse(reader)?;
-        let translation_v = M2AnimationBlock::parse(reader)?;
-        let rotation = M2AnimationBlock::parse(reader)?;
-        let scale_u = M2AnimationBlock::parse(reader)?;
-        let scale_v = M2AnimationBlock::parse(reader)?;
+        let translation_u = M2AnimationBlock::parse(reader, version)?;
+        let translation_v = M2AnimationBlock::parse(reader, version)?;
+        let rotation = M2AnimationBlock::parse(reader, version)?;
+        let scale_u = M2AnimationBlock::parse(reader, version)?;
+        let scale_v = M2AnimationBlock::parse(reader, version)?;
 
         Ok(Self {
             animation_type,
@@ -103,36 +102,11 @@ impl M2TextureAnimation {
     pub fn new(animation_type: M2TextureAnimationType) -> Self {
         Self {
             animation_type,
-            translation_u: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            translation_v: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            rotation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            scale_u: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            scale_v: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            translation_u: M2AnimationBlock::new(M2AnimationTrack::new()),
+            translation_v: M2AnimationBlock::new(M2AnimationTrack::new()),
+            rotation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            scale_u: M2AnimationBlock::new(M2AnimationTrack::new()),
+            scale_v: M2AnimationBlock::new(M2AnimationTrack::new()),
         }
     }
 }
@@ -193,7 +167,7 @@ mod tests {
         data.extend_from_slice(&0u32.to_le_bytes()); // Values offset
 
         let mut cursor = Cursor::new(data);
-        let tex_anim = M2TextureAnimation::parse(&mut cursor).unwrap();
+        let tex_anim = M2TextureAnimation::parse(&mut cursor, 264).unwrap();
 
         assert_eq!(tex_anim.animation_type, M2TextureAnimationType::Scroll);
 

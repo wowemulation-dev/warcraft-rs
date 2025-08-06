@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
 use crate::chunks::color_animation::M2Color;
-use crate::common::{C3Vector, M2Array};
+use crate::common::C3Vector;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -71,7 +71,7 @@ pub struct M2Light {
 
 impl M2Light {
     /// Parse a light from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
+    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
         let light_type_raw = reader.read_u8()?;
         let light_type = M2LightType::from_u8(light_type_raw).unwrap_or(M2LightType::Point);
 
@@ -80,11 +80,11 @@ impl M2Light {
 
         let position = C3Vector::parse(reader)?;
 
-        let ambient_color_animation = M2AnimationBlock::parse(reader)?;
-        let diffuse_color_animation = M2AnimationBlock::parse(reader)?;
-        let attenuation_start_animation = M2AnimationBlock::parse(reader)?;
-        let attenuation_end_animation = M2AnimationBlock::parse(reader)?;
-        let visibility_animation = M2AnimationBlock::parse(reader)?;
+        let ambient_color_animation = M2AnimationBlock::parse(reader, version)?;
+        let diffuse_color_animation = M2AnimationBlock::parse(reader, version)?;
+        let attenuation_start_animation = M2AnimationBlock::parse(reader, version)?;
+        let attenuation_end_animation = M2AnimationBlock::parse(reader, version)?;
+        let visibility_animation = M2AnimationBlock::parse(reader, version)?;
 
         let id = reader.read_u32_le()?;
 
@@ -144,36 +144,11 @@ impl M2Light {
                 y: 0.0,
                 z: 0.0,
             },
-            ambient_color_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            diffuse_color_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            attenuation_start_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            attenuation_end_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            visibility_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            ambient_color_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            diffuse_color_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            attenuation_start_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            attenuation_end_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            visibility_animation: M2AnimationBlock::new(M2AnimationTrack::new()),
             id,
             flags: match light_type {
                 M2LightType::Directional => M2LightFlags::DIRECTIONAL,

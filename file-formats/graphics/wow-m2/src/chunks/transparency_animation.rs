@@ -1,7 +1,6 @@
 use std::io::{Read, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::M2Array;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -14,8 +13,8 @@ pub struct M2TransparencyAnimation {
 
 impl M2TransparencyAnimation {
     /// Parse a transparency animation from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
-        let alpha = M2AnimationBlock::parse(reader)?;
+    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+        let alpha = M2AnimationBlock::parse(reader, version)?;
 
         Ok(Self { alpha })
     }
@@ -35,12 +34,7 @@ impl M2TransparencyAnimation {
     /// Create a new transparency animation with default values
     pub fn new() -> Self {
         Self {
-            alpha: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            alpha: M2AnimationBlock::new(M2AnimationTrack::new()),
         }
     }
 }
@@ -63,7 +57,7 @@ mod tests {
         data.extend_from_slice(&0u32.to_le_bytes()); // Values offset
 
         let mut cursor = Cursor::new(data);
-        let trans_anim = M2TransparencyAnimation::parse(&mut cursor).unwrap();
+        let trans_anim = M2TransparencyAnimation::parse(&mut cursor, 264).unwrap();
 
         // Test write
         let mut output = Vec::new();

@@ -75,32 +75,75 @@ impl M2Range {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum TrackArray<T> {
+    Single(M2Array<T>),
+    Multiple(M2Array<M2Array<T>>),
+}
+
+impl<T> TrackArray<T> {
+    pub fn parse_single<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(Self::Single(M2Array::parse(reader)?))
+    }
+
+    pub fn parse_multiple<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(Self::Multiple(M2Array::parse(reader)?))
+    }
+
+    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self {
+            Self::Single(single) => single.write(writer),
+            Self::Multiple(_multiple) => todo!("not implemented"),
+        }
+    }
+}
+
 /// An animation track header
 #[derive(Debug, Clone)]
-pub struct M2AnimationTrack {
+pub struct M2AnimationTrack<T> {
+    pub version: u32,
     /// Interpolation type
     pub interpolation_type: M2InterpolationType,
     /// Global sequence ID or -1
     pub global_sequence: i16,
+    pub interpolation_ranges: Option<M2Array<(u32, u32)>>,
     /// Timestamps
-    pub timestamps: M2Array<u32>,
+    pub timestamps: TrackArray<u32>,
     /// Values
-    pub values: M2Array<f32>,
+    pub values: TrackArray<T>,
 }
 
-impl M2AnimationTrack {
+impl<T> M2AnimationTrack<T> {
     /// Parse an animation track from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
         let interpolation_type_raw = reader.read_u16_le()?;
         let interpolation_type = M2InterpolationType::from_u16(interpolation_type_raw)
             .unwrap_or(M2InterpolationType::None);
 
         let global_sequence = reader.read_i16_le()?;
-        let timestamps = M2Array::parse(reader)?;
-        let values = M2Array::parse(reader)?;
+
+        let interpolation_ranges = if version < 264 {
+            Some(M2Array::parse(reader)?)
+        } else {
+            None
+        };
+
+        let timestamps = if version < 264 {
+            TrackArray::parse_single(reader)?
+        } else {
+            TrackArray::parse_multiple(reader)?
+        };
+
+        let values = if version < 264 {
+            TrackArray::parse_single(reader)?
+        } else {
+            TrackArray::parse_multiple(reader)?
+        };
 
         Ok(Self {
+            version,
             interpolation_type,
+            interpolation_ranges,
             global_sequence,
             timestamps,
             values,
@@ -116,20 +159,31 @@ impl M2AnimationTrack {
 
         Ok(())
     }
+
+    pub fn new() -> Self {
+        Self {
+            version: 264,
+            interpolation_type: crate::chunks::animation::M2InterpolationType::None,
+            global_sequence: -1,
+            interpolation_ranges: None,
+            timestamps: TrackArray::Multiple(M2Array::new(0, 0)),
+            values: TrackArray::Multiple(M2Array::new(0, 0)),
+        }
+    }
 }
 
 /// Animation block for a specific animation type
 #[derive(Debug, Clone)]
 pub struct M2AnimationBlock<T> {
     /// Animation track
-    pub track: M2AnimationTrack,
+    pub track: M2AnimationTrack<T>,
     /// Data type (phantom data)
     _phantom: std::marker::PhantomData<T>,
 }
 
 impl<T> M2AnimationBlock<T> {
     /// Create a new animation block from a track
-    pub fn new(track: M2AnimationTrack) -> Self {
+    pub fn new(track: M2AnimationTrack<T>) -> Self {
         Self {
             track,
             _phantom: std::marker::PhantomData,
@@ -137,8 +191,8 @@ impl<T> M2AnimationBlock<T> {
     }
 
     /// Parse an animation block from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
-        let track = M2AnimationTrack::parse(reader)?;
+    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+        let track = M2AnimationTrack::parse(reader, version)?;
 
         Ok(Self {
             track,

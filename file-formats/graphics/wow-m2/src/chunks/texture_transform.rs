@@ -2,7 +2,7 @@ use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::{C3Vector, M2Array};
+use crate::common::C3Vector;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -84,7 +84,7 @@ impl C4Quaternion {
 
 impl M2TextureTransform {
     /// Parse a texture transform from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
         let id = reader.read_u32_le()?;
 
         let transform_type_raw = reader.read_u16_le()?;
@@ -94,9 +94,9 @@ impl M2TextureTransform {
         // Skip 2 bytes of padding
         reader.read_u16_le()?;
 
-        let translation = M2AnimationBlock::parse(reader)?;
-        let rotation = M2AnimationBlock::parse(reader)?;
-        let scaling = M2AnimationBlock::parse(reader)?;
+        let translation = M2AnimationBlock::parse(reader, version)?;
+        let rotation = M2AnimationBlock::parse(reader, version)?;
+        let scaling = M2AnimationBlock::parse(reader, version)?;
 
         Ok(Self {
             id,
@@ -133,24 +133,9 @@ impl M2TextureTransform {
         Self {
             id,
             transform_type,
-            translation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            rotation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            scaling: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            translation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            rotation: M2AnimationBlock::new(M2AnimationTrack::new()),
+            scaling: M2AnimationBlock::new(M2AnimationTrack::new()),
         }
     }
 }

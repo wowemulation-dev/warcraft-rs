@@ -71,9 +71,9 @@ pub struct M2ColorAnimation {
 
 impl M2ColorAnimation {
     /// Parse a color animation from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
-        let color = M2AnimationBlock::parse(reader)?;
-        let alpha = M2AnimationBlock::parse(reader)?;
+    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+        let color = M2AnimationBlock::parse(reader, version)?;
+        let alpha = M2AnimationBlock::parse(reader, version)?;
 
         Ok(Self { color, alpha })
     }
