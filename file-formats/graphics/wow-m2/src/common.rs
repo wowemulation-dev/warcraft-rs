@@ -5,6 +5,10 @@ use crate::error::{M2Error, Result};
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Seek, SeekFrom, Write};
 
+pub trait ItemParser<T> {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<T>;
+}
+
 /// A reference to an array in the M2 file format
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct M2Array<T> {
@@ -124,6 +128,12 @@ impl C3Vector {
             y: v.y,
             z: v.z,
         }
+    }
+}
+
+impl ItemParser<C3Vector> for C3Vector {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Self::parse(reader)
     }
 }
 
@@ -281,6 +291,12 @@ impl Quaternion {
     }
 }
 
+impl ItemParser<Quaternion> for Quaternion {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Self::parse(reader)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quaternion16 {
     pub x: i16,
@@ -308,6 +324,12 @@ impl Quaternion16 {
         writer.write_i16_le(self.w)?;
 
         Ok(())
+    }
+}
+
+impl ItemParser<Quaternion16> for Quaternion16 {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Self::parse(reader)
     }
 }
 

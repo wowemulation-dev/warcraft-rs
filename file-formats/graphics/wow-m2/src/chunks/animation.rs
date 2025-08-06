@@ -1,7 +1,12 @@
-use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use custom_debug::Debug;
+use std::{cmp, fmt};
+use wow_utils::debug;
 
-use crate::common::M2Array;
+use crate::M2Error;
+use crate::io_ext::{ReadExt, WriteExt};
+use std::io::{Read, Seek, SeekFrom, Write};
+
+use crate::common::{ItemParser, M2Array, read_array};
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -168,6 +173,134 @@ impl<T> M2AnimationTrackHeader<T> {
             interpolation_ranges: None,
             timestamps: TrackArray::Multiple(M2Array::new(0, 0)),
             values: TrackArray::Multiple(M2Array::new(0, 0)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum TrackVec<T> {
+    Single(Vec<T>),
+    Multiple(Vec<Vec<T>>),
+}
+
+impl<T> TrackVec<T> {
+    pub fn from_trackarray<R, F>(reader: &mut R, array: &TrackArray<T>, parse_fn: F) -> Result<Self>
+    where
+        R: Read + Seek,
+        F: Fn(&mut R) -> Result<T>,
+    {
+        Ok(match array {
+            TrackArray::Single(single) => {
+                Self::Single(read_array(reader, &single.convert(), &parse_fn)?)
+            }
+            TrackArray::Multiple(multiple) => {
+                reader
+                    .seek(SeekFrom::Start(multiple.offset as u64))
+                    .map_err(M2Error::Io)?;
+
+                let mut result = Vec::with_capacity(multiple.count as usize);
+                for _ in 0..multiple.count {
+                    let single: M2Array<T> = M2Array::parse(reader)?;
+                    let item_end_position = reader.stream_position()?;
+                    result.push(read_array(reader, &single.convert(), &parse_fn)?);
+                    reader.seek(SeekFrom::Start(item_end_position))?;
+                }
+
+                Self::Multiple(result)
+            }
+        })
+    }
+
+    pub fn write<W: Write>(&self, _writer: &mut W) -> Result<()> {
+        todo!("implement this")
+    }
+}
+
+#[cfg(not(feature = "debug-print-all"))]
+pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &TrackVec<T>, f: &mut fmt::Formatter) -> fmt::Result {
+    match n {
+        TrackVec::Single(single) => debug::trimmed_collection_fmt(single, f),
+        TrackVec::Multiple(multiple) => {
+            let end = cmp::min(debug::FIRST_N_ELEMENTS, multiple.len());
+            let first_three = &multiple[..end];
+            let num_elements = cmp::max(0, multiple.len() - first_three.len());
+
+            write!(f, "[")?;
+
+            let items_len = first_three.len();
+            for i in 0..items_len {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                let item = &first_three[i];
+                debug::trimmed_collection_fmt(item, f)?;
+            }
+
+            if num_elements == 0 {
+                write!(f, "]")
+            } else {
+                write!(f, "] + {} elements", num_elements)
+            }
+        }
+    }
+}
+#[cfg(feature = "debug-print-all")]
+pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{:#?}", n)
+}
+
+#[derive(Debug, Clone)]
+pub struct M2AnimationTrack<T: fmt::Debug> {
+    pub header: M2AnimationTrackHeader<T>,
+    pub interpolation_ranges: Option<Vec<(u32, u32)>>,
+    /// Timestamps
+    #[debug(with = trimmed_trackvec_fmt)]
+    pub timestamps: TrackVec<u32>,
+    /// Values
+    #[debug(with = trimmed_trackvec_fmt)]
+    pub values: TrackVec<T>,
+}
+
+impl<T: fmt::Debug + ItemParser<T>> M2AnimationTrack<T> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
+        let header = M2AnimationTrackHeader::parse(reader, version)?;
+
+        let header_end_position = reader.stream_position()?;
+
+        let interpolation_ranges = match &header.interpolation_ranges {
+            Some(interpolation_ranges) => {
+                Some(read_array(reader, &interpolation_ranges.convert(), |r| {
+                    Ok((r.read_u32_le()?, r.read_u32_le()?))
+                })?)
+            }
+            None => None,
+        };
+
+        let timestamps =
+            TrackVec::from_trackarray(reader, &header.timestamps, |r| Ok(r.read_u32_le()?))?;
+
+        let values = TrackVec::from_trackarray(reader, &header.values, T::parse)?;
+
+        reader.seek(SeekFrom::Start(header_end_position))?;
+
+        Ok(Self {
+            header,
+            interpolation_ranges,
+            timestamps,
+            values,
+        })
+    }
+
+    pub fn write<W: Write>(&self, _writer: &mut W) -> Result<()> {
+        todo!("implement this")
+    }
+
+    pub fn new() -> Self {
+        Self {
+            header: M2AnimationTrackHeader::new(),
+            interpolation_ranges: None,
+            timestamps: TrackVec::Multiple(vec![vec![]]),
+            values: TrackVec::Multiple(vec![vec![]]),
         }
     }
 }

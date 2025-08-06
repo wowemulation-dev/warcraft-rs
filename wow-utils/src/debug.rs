@@ -1,7 +1,7 @@
 use std::{cmp, fmt, sync};
 
 #[cfg(not(feature = "debug-print-all"))]
-const FIRST_N_ELEMENTS: usize = 7;
+pub const FIRST_N_ELEMENTS: usize = 7;
 
 pub trait HasLength {
     type Item: fmt::Debug;

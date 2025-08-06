@@ -1,11 +1,11 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::common::{C3Vector, Quaternion, Quaternion16};
 use crate::error::Result;
 use crate::version::M2Version;
 
-use super::animation::M2AnimationTrackHeader;
+use super::animation::M2AnimationTrack;
 
 bitflags::bitflags! {
     /// Bone flags as defined in the M2 format
@@ -38,16 +38,13 @@ bitflags::bitflags! {
 
 #[derive(Debug, Clone)]
 pub enum M2BoneRotation {
-    Classic(M2AnimationTrackHeader<Quaternion>),
-    Others(M2AnimationTrackHeader<Quaternion16>),
+    Classic(M2AnimationTrack<Quaternion>),
+    Others(M2AnimationTrack<Quaternion16>),
 }
 
 impl M2BoneRotation {
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        match self {
-            Self::Classic(classic) => classic.write(writer),
-            Self::Others(others) => others.write(writer),
-        }
+    pub fn write<W: Write>(&self, _writer: &mut W) -> Result<()> {
+        todo!("implement this")
     }
 }
 
@@ -65,18 +62,18 @@ pub struct M2Bone {
     /// Unknown values (may differ between versions)
     pub unknown: [u16; 2],
     /// Position
-    pub position: M2AnimationTrackHeader<C3Vector>,
+    pub position: M2AnimationTrack<C3Vector>,
     /// Rotation
     pub rotation: M2BoneRotation,
     /// Scaling
-    pub scaling: M2AnimationTrackHeader<C3Vector>,
+    pub scaling: M2AnimationTrack<C3Vector>,
     /// Pivot point
     pub pivot: C3Vector,
 }
 
 impl M2Bone {
     /// Parse a bone from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
         // Read header fields properly
         let bone_id = reader.read_i32_le()?;
         let flags = M2BoneFlags::from_bits_retain(reader.read_u32_le()?);
@@ -93,19 +90,19 @@ impl M2Bone {
             [reader.read_u16_le()?, reader.read_u16_le()?]
         };
 
-        let position = M2AnimationTrackHeader::parse(reader, version)?;
+        let position = M2AnimationTrack::parse(reader, version)?;
 
         let rotation = if version < 264 {
             if version < 260 {
-                M2BoneRotation::Classic(M2AnimationTrackHeader::parse(reader, version)?)
+                M2BoneRotation::Classic(M2AnimationTrack::parse(reader, version)?)
             } else {
-                M2BoneRotation::Others(M2AnimationTrackHeader::parse(reader, version)?)
+                M2BoneRotation::Others(M2AnimationTrack::parse(reader, version)?)
             }
         } else {
-            M2BoneRotation::Others(M2AnimationTrackHeader::parse(reader, version)?)
+            M2BoneRotation::Others(M2AnimationTrack::parse(reader, version)?)
         };
 
-        let scaling = M2AnimationTrackHeader::parse(reader, version)?;
+        let scaling = M2AnimationTrack::parse(reader, version)?;
 
         let pivot = C3Vector::parse(reader)?;
 
@@ -163,9 +160,9 @@ impl M2Bone {
             parent_bone,
             submesh_id: 0,
             unknown: [0, 0],
-            position: M2AnimationTrackHeader::new(),
-            rotation: M2BoneRotation::Others(M2AnimationTrackHeader::new()),
-            scaling: M2AnimationTrackHeader::new(),
+            position: M2AnimationTrack::new(),
+            rotation: M2BoneRotation::Others(M2AnimationTrack::new()),
+            scaling: M2AnimationTrack::new(),
             pivot: C3Vector {
                 x: 0.0,
                 y: 0.0,
@@ -267,9 +264,9 @@ mod tests {
             parent_bone: -1,
             submesh_id: 0,
             unknown: [0, 0],
-            position: M2AnimationTrackHeader::new(),
-            rotation: M2BoneRotation::Others(M2AnimationTrackHeader::new()),
-            scaling: M2AnimationTrackHeader::new(),
+            position: M2AnimationTrack::new(),
+            rotation: M2BoneRotation::Others(M2AnimationTrack::new()),
+            scaling: M2AnimationTrack::new(),
             pivot: C3Vector {
                 x: 0.0,
                 y: 0.0,
