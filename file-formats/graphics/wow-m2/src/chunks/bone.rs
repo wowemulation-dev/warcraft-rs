@@ -86,7 +86,7 @@ pub struct M2Bone {
 impl M2Bone {
     /// Parse a bone from a reader based on the M2 version
     pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
-        let version_e = M2Version::from_header_version(version)
+        let version_e = M2Version::try_from_header_version(version)
             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
 
         // Read header fields properly
@@ -129,7 +129,7 @@ impl M2Bone {
 
     /// Write a bone to a writer
     pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
-        let _version_e = M2Version::from_header_version(version)
+        let _version_e = M2Version::try_from_header_version(version)
             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
 
         writer.write_i32_le(self.bone_id)?;

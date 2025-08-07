@@ -126,7 +126,7 @@ pub struct M2AnimationTrackHeader<T> {
 impl<T> M2AnimationTrackHeader<T> {
     /// Parse an animation track from a reader
     pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
-        let version = M2Version::from_header_version(version)
+        let version = M2Version::try_from_header_version(version)
             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
 
         let interpolation_type_raw = reader.read_u16_le()?;
@@ -404,7 +404,7 @@ pub struct M2Animation {
 impl M2Animation {
     /// Parse an animation from a reader based on the M2 version
     pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
-        let version = M2Version::from_header_version(version)
+        let version = M2Version::try_from_header_version(version)
             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
 
         let animation_id = reader.read_u16_le()?;
@@ -451,7 +451,7 @@ impl M2Animation {
 
     /// Write an animation to a writer
     pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
-        let _version = M2Version::from_header_version(version)
+        let _version = M2Version::try_from_header_version(version)
             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
 
         writer.write_u16_le(self.animation_id)?;

@@ -68,7 +68,7 @@ impl M2RibbonEmitter {
 
         // Version-specific fields
         let (texture_slice, variation) =
-            if let Some(m2_version) = M2Version::from_header_version(version) {
+            if let Some(m2_version) = M2Version::try_from_header_version(version) {
                 if m2_version >= M2Version::MoP {
                     let slice = reader.read_u16_le()?;
                     let var = reader.read_u16_le()?;
@@ -124,7 +124,7 @@ impl M2RibbonEmitter {
         writer.write_u16_le(self.texture_cols)?;
 
         // Version-specific fields
-        if let Some(m2_version) = M2Version::from_header_version(version) {
+        if let Some(m2_version) = M2Version::try_from_header_version(version) {
             if m2_version >= M2Version::MoP {
                 writer.write_u16_le(self.texture_slice.unwrap_or(0))?;
                 writer.write_u16_le(self.variation.unwrap_or(0))?;

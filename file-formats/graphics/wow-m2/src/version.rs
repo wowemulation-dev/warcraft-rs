@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::{M2Error, error::Result};
 
 /// M2 format versions across WoW expansions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -97,8 +97,8 @@ impl M2Version {
         }
     }
 
-    /// Convert header version number to M2Version enum
-    pub fn from_header_version(version: u32) -> Option<Self> {
+    /// Try to convert header version number to M2Version enum
+    pub fn try_from_header_version(version: u32) -> Option<Self> {
         match version {
             // Classic through WotLK use versions 256-264
             256..=263 => Some(Self::Classic), // Covers all pre-WotLK versions
@@ -118,6 +118,11 @@ impl M2Version {
 
             _ => None,
         }
+    }
+
+    pub fn from_header_version(version: u32) -> Result<Self> {
+        Self::try_from_header_version(version)
+            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))
     }
 
     /// Convert M2Version enum to header version number
@@ -192,6 +197,12 @@ impl std::fmt::Display for M2Version {
     }
 }
 
+impl From<M2Version> for u32 {
+    fn from(value: M2Version) -> Self {
+        value.to_header_version()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,46 +256,52 @@ mod tests {
     fn test_header_version_conversion() {
         // Classic versions
         assert_eq!(
-            M2Version::from_header_version(256),
+            M2Version::try_from_header_version(256),
             Some(M2Version::Classic)
         );
         assert_eq!(
-            M2Version::from_header_version(263),
+            M2Version::try_from_header_version(263),
             Some(M2Version::Classic)
         );
-        assert_eq!(M2Version::from_header_version(264), Some(M2Version::WotLK));
+        assert_eq!(
+            M2Version::try_from_header_version(264),
+            Some(M2Version::WotLK)
+        );
 
         // Cataclysm
         assert_eq!(
-            M2Version::from_header_version(272),
+            M2Version::try_from_header_version(272),
             Some(M2Version::Cataclysm)
         );
         assert_eq!(
-            M2Version::from_header_version(4),
+            M2Version::try_from_header_version(4),
             Some(M2Version::Cataclysm)
         );
 
         // Later versions
-        assert_eq!(M2Version::from_header_version(8), Some(M2Version::MoP));
-        assert_eq!(M2Version::from_header_version(10), Some(M2Version::WoD));
-        assert_eq!(M2Version::from_header_version(11), Some(M2Version::Legion));
-        assert_eq!(M2Version::from_header_version(16), Some(M2Version::BfA));
+        assert_eq!(M2Version::try_from_header_version(8), Some(M2Version::MoP));
+        assert_eq!(M2Version::try_from_header_version(10), Some(M2Version::WoD));
         assert_eq!(
-            M2Version::from_header_version(17),
+            M2Version::try_from_header_version(11),
+            Some(M2Version::Legion)
+        );
+        assert_eq!(M2Version::try_from_header_version(16), Some(M2Version::BfA));
+        assert_eq!(
+            M2Version::try_from_header_version(17),
             Some(M2Version::Shadowlands)
         );
         assert_eq!(
-            M2Version::from_header_version(18),
+            M2Version::try_from_header_version(18),
             Some(M2Version::Dragonflight)
         );
         assert_eq!(
-            M2Version::from_header_version(19),
+            M2Version::try_from_header_version(19),
             Some(M2Version::TheWarWithin)
         );
 
         // Unknown versions
-        assert_eq!(M2Version::from_header_version(1), None);
-        assert_eq!(M2Version::from_header_version(5), None);
+        assert_eq!(M2Version::try_from_header_version(1), None);
+        assert_eq!(M2Version::try_from_header_version(5), None);
     }
 
     #[test]

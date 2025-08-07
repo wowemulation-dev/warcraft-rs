@@ -222,7 +222,7 @@ impl M2Header {
         let version = reader.read_u32_le()?;
 
         // Check if version is supported
-        if M2Version::from_header_version(version).is_none() {
+        if M2Version::try_from_header_version(version).is_none() {
             return Err(M2Error::UnsupportedVersion(version.to_string()));
         }
 
@@ -330,7 +330,7 @@ impl M2Header {
         let particle_emitters = M2Array::parse(reader)?;
 
         // Version-specific fields
-        let m2_version = M2Version::from_header_version(version).unwrap();
+        let m2_version = M2Version::try_from_header_version(version).unwrap();
 
         // Blend map overrides (BC+ with specific flag)
         let blend_map_overrides = if version >= 260 && (flags.bits() & 0x8000000 != 0) {
@@ -515,7 +515,7 @@ impl M2Header {
 
     /// Get the version of the M2 file
     pub fn version(&self) -> Option<M2Version> {
-        M2Version::from_header_version(self.version)
+        M2Version::try_from_header_version(self.version)
     }
 
     /// Create a new M2 header for a specific version

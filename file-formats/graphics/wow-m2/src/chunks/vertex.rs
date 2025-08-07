@@ -74,7 +74,7 @@ impl M2Vertex {
         let tex_coords = C2Vector::parse(reader)?;
 
         // Secondary texture coordinates (added in Cataclysm)
-        let tex_coords2 = if let Some(m2_version) = M2Version::from_header_version(version) {
+        let tex_coords2 = if let Some(m2_version) = M2Version::try_from_header_version(version) {
             if m2_version >= M2Version::WotLK {
                 Some(C2Vector::parse(reader)?)
             } else {
@@ -116,7 +116,7 @@ impl M2Vertex {
         self.tex_coords.write(writer)?;
 
         // Secondary texture coordinates (if version supports it)
-        if let Some(m2_version) = M2Version::from_header_version(version) {
+        if let Some(m2_version) = M2Version::try_from_header_version(version) {
             if m2_version >= M2Version::Cataclysm {
                 if let Some(tex_coords2) = self.tex_coords2 {
                     tex_coords2.write(writer)?;

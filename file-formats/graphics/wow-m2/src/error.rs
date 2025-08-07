@@ -1,6 +1,8 @@
 use std::io;
 use thiserror::Error;
 
+use crate::M2Version;
+
 /// Error types for M2 model parsing and processing
 #[derive(Error, Debug)]
 pub enum M2Error {
@@ -19,6 +21,10 @@ pub enum M2Error {
     /// Unsupported numeric file version
     #[error("Unsupported numeric version: {0}")]
     UnsupportedNumericVersion(u32),
+
+    /// Unsupported version conversion
+    #[error("Unsupported conversion to version: {0}")]
+    UnsupportedVersionWriting(M2Version),
 
     /// Error during parsing
     #[error("Parse error: {0}")]

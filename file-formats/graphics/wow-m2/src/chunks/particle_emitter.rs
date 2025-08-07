@@ -279,7 +279,7 @@ impl M2ParticleEmitter {
             enable_encryption,
             multi_texture_param0,
             multi_texture_param1,
-        ) = if let Some(m2_version) = M2Version::from_header_version(version) {
+        ) = if let Some(m2_version) = M2Version::try_from_header_version(version) {
             if m2_version >= M2Version::Legion {
                 // Legion and later have fallback model and texture file data IDs
                 let fallback = M2Array::parse(reader)?;
@@ -442,7 +442,7 @@ impl M2ParticleEmitter {
 
         // Additional fields for Legion and later
         let (particle_initial_state, particle_initial_state_variation, particle_convergence_time) =
-            if let Some(m2_version) = M2Version::from_header_version(version) {
+            if let Some(m2_version) = M2Version::try_from_header_version(version) {
                 if m2_version >= M2Version::Legion {
                     (
                         Some(reader.read_u32_le()?),
@@ -457,19 +457,20 @@ impl M2ParticleEmitter {
             };
 
         // Additional physics parameters for MoP+ with PHYSICS flag
-        let physics_parameters = if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version >= M2Version::MoP && flags.contains(M2ParticleFlags::PHYSICS) {
-                let mut params = [0.0; 5];
-                for item in &mut params {
-                    *item = reader.read_f32_le()?;
+        let physics_parameters =
+            if let Some(m2_version) = M2Version::try_from_header_version(version) {
+                if m2_version >= M2Version::MoP && flags.contains(M2ParticleFlags::PHYSICS) {
+                    let mut params = [0.0; 5];
+                    for item in &mut params {
+                        *item = reader.read_f32_le()?;
+                    }
+                    Some(params)
+                } else {
+                    None
                 }
-                Some(params)
             } else {
                 None
-            }
-        } else {
-            None
-        };
+            };
 
         Ok(Self {
             id,
@@ -571,7 +572,7 @@ impl M2ParticleEmitter {
         writer.write_u16_le(self.geometry_model_unknown)?;
 
         // Version-specific fields
-        if let Some(m2_version) = M2Version::from_header_version(version) {
+        if let Some(m2_version) = M2Version::try_from_header_version(version) {
             if m2_version >= M2Version::Legion {
                 // Legion and later have fallback model and texture file data IDs
                 if let Some(ref fallback) = self.fallback_model_filename {
@@ -722,7 +723,7 @@ impl M2ParticleEmitter {
         self.z_source_animation.write(writer)?;
 
         // Additional fields for Legion and later
-        if let Some(m2_version) = M2Version::from_header_version(version) {
+        if let Some(m2_version) = M2Version::try_from_header_version(version) {
             if m2_version >= M2Version::Legion {
                 writer.write_u32_le(self.particle_initial_state.unwrap_or(0))?;
                 writer.write_f32_le(self.particle_initial_state_variation.unwrap_or(0.0))?;
@@ -731,7 +732,7 @@ impl M2ParticleEmitter {
         }
 
         // Additional physics parameters for MoP+ with PHYSICS flag
-        if let Some(m2_version) = M2Version::from_header_version(version) {
+        if let Some(m2_version) = M2Version::try_from_header_version(version) {
             if m2_version >= M2Version::MoP && self.flags.contains(M2ParticleFlags::PHYSICS) {
                 if let Some(params) = self.physics_parameters {
                     for &val in &params {
