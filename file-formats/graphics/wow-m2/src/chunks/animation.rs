@@ -348,6 +348,12 @@ impl<T> M2AnimationBlock<T> {
 }
 
 #[derive(Debug, Clone)]
+pub enum M2AnimationTiming {
+    StartEnd(u32, u32),
+    Duration(u32),
+}
+
+#[derive(Debug, Clone)]
 pub enum M2AnimationBlending {
     Time(u32),
     InOut(u16, u16),
@@ -376,10 +382,8 @@ pub struct M2Animation {
     pub animation_id: u16,
     /// Sub-animation ID (variation index)
     pub sub_animation_id: u16,
-    /// Start timestamp (up to BC) or Duration (LK+) in milliseconds
-    pub start_timestamp: u32,
-    /// End timestamp (Classic only)
-    pub end_timestamp: Option<u32>,
+    /// Timing
+    pub timing: M2AnimationTiming,
     /// Movement speed
     pub movement_speed: f32,
     /// Flags
@@ -405,11 +409,11 @@ impl M2Animation {
 
         let animation_id = reader.read_u16_le()?;
         let sub_animation_id = reader.read_u16_le()?;
-        let start_timestamp = reader.read_u32_le()?;
-        let end_timestamp = if version <= M2Version::TBC {
-            Some(reader.read_u32_le()?)
+
+        let timing = if version <= M2Version::TBC {
+            M2AnimationTiming::StartEnd(reader.read_u32_le()?, reader.read_u32_le()?)
         } else {
-            None
+            M2AnimationTiming::Duration(reader.read_u32_le()?)
         };
 
         let movement_speed = reader.read_f32_le()?;
@@ -431,8 +435,7 @@ impl M2Animation {
         Ok(Self {
             animation_id,
             sub_animation_id,
-            start_timestamp,
-            end_timestamp,
+            timing,
             movement_speed,
             flags,
             frequency,
@@ -448,15 +451,20 @@ impl M2Animation {
 
     /// Write an animation to a writer
     pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
-        let version = M2Version::from_header_version(version)
+        let _version = M2Version::from_header_version(version)
             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
 
         writer.write_u16_le(self.animation_id)?;
         writer.write_u16_le(self.sub_animation_id)?;
-        writer.write_u32_le(self.start_timestamp)?;
 
-        if version <= M2Version::TBC {
-            writer.write_u32_le(self.end_timestamp.unwrap_or(self.start_timestamp + 1000))?;
+        match self.timing {
+            M2AnimationTiming::StartEnd(start, end) => {
+                writer.write_u32_le(start)?;
+                writer.write_u32_le(end)?;
+            }
+            M2AnimationTiming::Duration(duration) => {
+                writer.write_u32_le(duration)?;
+            }
         }
 
         writer.write_f32_le(self.movement_speed)?;
