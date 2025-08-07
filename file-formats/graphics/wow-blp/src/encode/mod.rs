@@ -79,7 +79,7 @@ fn encode_header(header: &BlpHeader, output: &mut Vec<u8>) -> Result<(), Error> 
         } => {
             output.push(compression.into());
             output.push(alpha_bits);
-            output.push(alpha_type);
+            output.push(alpha_type.into());
             output.push(has_mipmaps);
         }
     }

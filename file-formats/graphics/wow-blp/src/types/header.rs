@@ -102,6 +102,23 @@ impl BlpHeader {
         self.flags.alpha_bits()
     }
 
+    /// Get the alpha type for BLP2 format, if available
+    pub fn alpha_type(&self) -> Option<AlphaType> {
+        self.flags.alpha_type()
+    }
+
+    /// Validate the BLP header for compatibility with a specific WoW version
+    pub fn validate_for_wow_version(&self, wow_version: WowVersion) -> Result<(), String> {
+        if let Some(alpha_type) = self.alpha_type() {
+            if !alpha_type.is_supported_in_version(wow_version) {
+                return Err(format!(
+                    "Alpha type {alpha_type:?} not supported in WoW version {wow_version:?}"
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// Return offsets and sizes of internal mipmaps. For external returns [None]
     pub fn internal_mipmaps(&self) -> Option<([u32; 16], [u32; 16])> {
         match self.mipmap_locator {
@@ -133,6 +150,96 @@ impl Default for BlpHeader {
             mipmap_locator: Default::default(),
         }
     }
+}
+
+/// Alpha channel encoding type for BLP2 format
+/// Based on empirical analysis of WoW versions 1.12.1 through 5.4.8
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum AlphaType {
+    /// No alpha channel
+    None = 0,
+    /// 1-bit alpha (binary transparency)
+    OneBit = 1,
+    /// Enhanced alpha blending (introduced in TBC 2.4.3)
+    Enhanced = 7,
+    /// 8-bit alpha channel
+    EightBit = 8,
+}
+
+impl std::fmt::Display for AlphaType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AlphaType::None => write!(f, "None (0)"),
+            AlphaType::OneBit => write!(f, "1-bit (1)"),
+            AlphaType::Enhanced => write!(f, "Enhanced (7)"),
+            AlphaType::EightBit => write!(f, "8-bit (8)"),
+        }
+    }
+}
+
+impl AlphaType {
+    /// Returns true if this alpha type was available in the specified WoW version
+    pub fn is_supported_in_version(self, wow_version: WowVersion) -> bool {
+        match self {
+            AlphaType::None | AlphaType::OneBit | AlphaType::EightBit => true,
+            AlphaType::Enhanced => wow_version >= WowVersion::TBC,
+        }
+    }
+
+    /// Get the effective alpha bits for this alpha type
+    pub fn alpha_bits(self) -> u8 {
+        match self {
+            AlphaType::None => 0,
+            AlphaType::OneBit => 1,
+            AlphaType::Enhanced => 8, // Enhanced uses 8-bit precision
+            AlphaType::EightBit => 8,
+        }
+    }
+}
+
+/// Error type for unknown alpha type values
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct UnknownAlphaType(u8);
+
+impl fmt::Display for UnknownAlphaType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Unknown alpha_type field value: {}", self.0)
+    }
+}
+
+impl TryFrom<u8> for AlphaType {
+    type Error = UnknownAlphaType;
+
+    fn try_from(val: u8) -> Result<AlphaType, Self::Error> {
+        match val {
+            0 => Ok(AlphaType::None),
+            1 => Ok(AlphaType::OneBit),
+            7 => Ok(AlphaType::Enhanced),
+            8 => Ok(AlphaType::EightBit),
+            _ => Err(UnknownAlphaType(val)),
+        }
+    }
+}
+
+impl From<AlphaType> for u8 {
+    fn from(val: AlphaType) -> u8 {
+        val as u8
+    }
+}
+
+/// WoW version for format compatibility checking
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum WowVersion {
+    /// World of Warcraft 1.12.1 (Vanilla)
+    Vanilla,
+    /// The Burning Crusade 2.4.3
+    TBC,
+    /// Wrath of the Lich King 3.3.5a
+    WotLK,
+    /// Cataclysm 4.3.4
+    Cataclysm,
+    /// Mists of Pandaria 5.4.8
+    MoP,
 }
 
 /// Compression type for BLP2 format
@@ -191,9 +298,9 @@ pub enum BlpFlags {
         /// Compression method used
         compression: Compression,
         /// Alpha channel bit depth (0, 1, 4, or 8)
-        alpha_bits: u8, // 0, 1, 7, or 8
-        /// Alpha encoding type
-        alpha_type: u8, // 0, 1, 7, or 8
+        alpha_bits: u8,
+        /// Alpha encoding type (typed enum for better validation)
+        alpha_type: AlphaType,
         /// Whether the image has mipmaps
         has_mipmaps: u8,
     },
@@ -235,11 +342,49 @@ impl BlpFlags {
             BlpFlags::Old { alpha_bits, .. } => *alpha_bits,
         }
     }
+
+    /// Get the alpha type for BLP2 format, returns None for older formats
+    pub fn alpha_type(&self) -> Option<AlphaType> {
+        match self {
+            BlpFlags::Blp2 { alpha_type, .. } => Some(*alpha_type),
+            BlpFlags::Old { .. } => None,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_alpha_type_conversion() {
+        assert_eq!(AlphaType::None as u8, 0);
+        assert_eq!(AlphaType::OneBit as u8, 1);
+        assert_eq!(AlphaType::Enhanced as u8, 7);
+        assert_eq!(AlphaType::EightBit as u8, 8);
+
+        // Test TryFrom conversions
+        assert_eq!(AlphaType::try_from(0).unwrap(), AlphaType::None);
+        assert_eq!(AlphaType::try_from(1).unwrap(), AlphaType::OneBit);
+        assert_eq!(AlphaType::try_from(7).unwrap(), AlphaType::Enhanced);
+        assert_eq!(AlphaType::try_from(8).unwrap(), AlphaType::EightBit);
+
+        // Test invalid conversion
+        assert!(AlphaType::try_from(9).is_err());
+    }
+
+    #[test]
+    fn test_alpha_type_wow_version_support() {
+        // Vanilla supports all except Enhanced
+        assert!(AlphaType::None.is_supported_in_version(WowVersion::Vanilla));
+        assert!(AlphaType::OneBit.is_supported_in_version(WowVersion::Vanilla));
+        assert!(!AlphaType::Enhanced.is_supported_in_version(WowVersion::Vanilla));
+        assert!(AlphaType::EightBit.is_supported_in_version(WowVersion::Vanilla));
+
+        // TBC+ supports all
+        assert!(AlphaType::Enhanced.is_supported_in_version(WowVersion::TBC));
+        assert!(AlphaType::Enhanced.is_supported_in_version(WowVersion::Cataclysm));
+    }
 
     #[test]
     fn test_mipmap_count() {

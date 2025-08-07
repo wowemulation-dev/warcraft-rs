@@ -43,6 +43,9 @@ pub enum Error {
     /// Unsupported alpha channel type in BLP2 header
     #[error("Library doesn't support alpha type: {0}")]
     Blp2UnknownAlphaType(u8),
+    /// Unknown alpha type value during parsing
+    #[error("Unknown alpha type value: {0}")]
+    UnknownAlphaType(u8),
     /// Invalid combination of JPEG compression with direct content
     #[error("Impossible branch, JPEG compression but direct content type")]
     Blp2UnexpectedJpegCompression,
