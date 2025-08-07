@@ -112,7 +112,6 @@ impl<T> TrackArray<T> {
 /// An animation track header
 #[derive(Debug, Clone)]
 pub struct M2AnimationTrackHeader<T> {
-    pub version: M2Version,
     /// Interpolation type
     pub interpolation_type: M2InterpolationType,
     /// Global sequence ID or -1
@@ -155,7 +154,6 @@ impl<T> M2AnimationTrackHeader<T> {
         };
 
         Ok(Self {
-            version,
             interpolation_type,
             interpolation_ranges,
             global_sequence,
@@ -176,7 +174,6 @@ impl<T> M2AnimationTrackHeader<T> {
 
     pub fn new() -> Self {
         Self {
-            version: M2Version::WotLK,
             interpolation_type: crate::chunks::animation::M2InterpolationType::None,
             global_sequence: -1,
             interpolation_ranges: None,
@@ -375,7 +372,6 @@ impl M2AnimationBlending {
 /// Animation data for a model
 #[derive(Debug, Clone)]
 pub struct M2Animation {
-    pub version: M2Version,
     /// Animation ID
     pub animation_id: u16,
     /// Sub-animation ID (variation index)
@@ -433,7 +429,6 @@ impl M2Animation {
         let next_alias = reader.read_u16_le()?;
 
         Ok(Self {
-            version,
             animation_id,
             sub_animation_id,
             start_timestamp,

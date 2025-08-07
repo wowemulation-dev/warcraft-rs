@@ -1,3 +1,4 @@
+use crate::M2Error;
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Seek, Write};
 
@@ -48,6 +49,18 @@ impl M2BoneRotation {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum M2BoneCrc {
+    Classic(u16, u16),
+    Others(u32),
+}
+
+impl M2BoneCrc {
+    pub fn write<W: Write>(&self, _writer: &mut W) -> Result<()> {
+        todo!("implement this")
+    }
+}
+
 /// Represents a bone in an M2 model
 #[derive(Debug, Clone)]
 pub struct M2Bone {
@@ -59,8 +72,7 @@ pub struct M2Bone {
     pub parent_bone: i16,
     /// Submesh ID
     pub submesh_id: u16,
-    /// Unknown values (may differ between versions)
-    pub unknown: [u16; 2],
+    pub bone_crc: M2BoneCrc,
     /// Position
     pub position: M2AnimationTrack<C3Vector>,
     /// Rotation
@@ -74,32 +86,28 @@ pub struct M2Bone {
 impl M2Bone {
     /// Parse a bone from a reader based on the M2 version
     pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
+        let version_e = M2Version::from_header_version(version)
+            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
+
         // Read header fields properly
         let bone_id = reader.read_i32_le()?;
         let flags = M2BoneFlags::from_bits_retain(reader.read_u32_le()?);
         let parent_bone = reader.read_i16_le()?;
         let submesh_id = reader.read_u16_le()?;
 
-        // In BC+ (version >= 260), there's an extra int32 field
-        let unknown = if version >= 260 {
-            // Read the extra unknown int32 field for BC+
-            let _unknown_bc = reader.read_i32_le()?;
-            [0, 0] // We don't use the old unknown fields in BC+
+        let bone_crc = if version_e >= M2Version::TBC {
+            M2BoneCrc::Others(reader.read_u32_le()?)
         } else {
-            // Classic format with two uint16 unknown fields
-            [reader.read_u16_le()?, reader.read_u16_le()?]
+            M2BoneCrc::Classic(reader.read_u16_le()?, reader.read_u16_le()?)
         };
 
         let position = M2AnimationTrack::parse(reader, version)?;
 
-        let rotation = if version < 264 {
-            if version < 260 {
+        let rotation = match version_e {
+            M2Version::Classic => {
                 M2BoneRotation::Classic(M2AnimationTrack::parse(reader, version)?)
-            } else {
-                M2BoneRotation::Others(M2AnimationTrack::parse(reader, version)?)
             }
-        } else {
-            M2BoneRotation::Others(M2AnimationTrack::parse(reader, version)?)
+            _ => M2BoneRotation::Others(M2AnimationTrack::parse(reader, version)?),
         };
 
         let scaling = M2AnimationTrack::parse(reader, version)?;
@@ -111,7 +119,7 @@ impl M2Bone {
             flags,
             parent_bone,
             submesh_id,
-            unknown,
+            bone_crc,
             position,
             rotation,
             scaling,
@@ -121,20 +129,15 @@ impl M2Bone {
 
     /// Write a bone to a writer
     pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
+        let _version_e = M2Version::from_header_version(version)
+            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
+
         writer.write_i32_le(self.bone_id)?;
         writer.write_u32_le(self.flags.bits())?;
         writer.write_i16_le(self.parent_bone)?;
         writer.write_u16_le(self.submesh_id)?;
 
-        if version >= 260 {
-            // BC+ format: write an unknown int32
-            writer.write_i32_le(0)?; // Unknown field added in BC
-        } else {
-            // Classic format: write two uint16 unknown fields
-            for &value in &self.unknown {
-                writer.write_u16_le(value)?;
-            }
-        }
+        self.bone_crc.write(writer)?;
 
         self.position.write(writer)?;
 
@@ -159,7 +162,7 @@ impl M2Bone {
             flags: M2BoneFlags::empty(),
             parent_bone,
             submesh_id: 0,
-            unknown: [0, 0],
+            bone_crc: M2BoneCrc::Others(0),
             position: M2AnimationTrack::new(),
             rotation: M2BoneRotation::Others(M2AnimationTrack::new()),
             scaling: M2AnimationTrack::new(),
@@ -263,7 +266,7 @@ mod tests {
             flags: M2BoneFlags::TRANSFORMED,
             parent_bone: -1,
             submesh_id: 0,
-            unknown: [0, 0],
+            bone_crc: M2BoneCrc::Others(0),
             position: M2AnimationTrack::new(),
             rotation: M2BoneRotation::Others(M2AnimationTrack::new()),
             scaling: M2AnimationTrack::new(),
