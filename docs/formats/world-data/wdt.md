@@ -153,12 +153,12 @@ blender_z = wow_z;      // Up
 
 For main WDT files:
 
-1. **MVER** - Version information (always first)
+1. **MVER** - Version information (always first, version 18 across all tested versions)
 2. **MPHD** - Map header with flags and file references
 3. **MAIN** - Map tile presence information
 4. **MAID** - FileDataIDs for ADT files (post-8.1)
-5. **MWMO** - Global WMO filename (WMO-only maps, or empty in pre-4.x terrain maps)
-6. **MODF** - Global WMO placement (WMO-only maps)
+5. **MWMO** - Global WMO filename (WMO-only maps have data; pre-4.x terrain maps have empty chunk; 4.x+ terrain maps have NO chunk)
+6. **MODF** - Global WMO placement (WMO-only maps with HasTerrain flag)
 
 For auxiliary WDT files:
 
@@ -203,6 +203,10 @@ struct MPHD {
     pd4_file_data_id: u32,   // _pd4.wdt file
 }
 ```
+
+**Important**: The presence of specific chunks depends on the MPHD flags:
+- Maps with flag 0x0001 (HasTerrain/WdtUsesGlobalMapObj) will have MWMO and MODF chunks
+- Maps without this flag are terrain-based and may not have MWMO/MODF chunks
 
 #### MPHD Flags
 
@@ -286,12 +290,13 @@ struct MWMO {
 **Notes**:
 
 - In MOP, this chunk is limited to 0x100 bytes due to stack allocation
-- **Pre-4.x**: Terrain maps include empty MWMO chunks (0 bytes)
-- **4.x+**: Terrain maps have NO MWMO chunk at all
+- **Pre-4.x**: Both WMO-only and terrain maps have MWMO chunks (terrain maps have 0-byte data)
+- **4.x+ (Cataclysm onwards)**: Only WMO-only maps have MWMO chunks; terrain maps have NO MWMO chunk
+- Presence correlates with MPHD flag 0x0001 (HasTerrain/WdtUsesGlobalMapObj)
 
 ### MODF - Map Object Definition
 
-Placement information for the global WMO (if present).
+Placement information for the global WMO (if present). Only appears in WMO-only maps (MPHD flag 0x0001 set).
 
 ```rust
 struct MODF {
@@ -544,6 +549,27 @@ struct MANM {
 }
 ```
 
+## Chunk Evolution Timeline
+
+Based on analysis of WDT files from WoW versions 1.12.1 through 5.4.8:
+
+### Core Chunks (Present in all versions)
+- **MVER**: Always present, always version 18
+- **MPHD**: Always present, flags evolve across versions
+- **MAIN**: Always present, defines tile existence
+
+### Conditional Chunks
+- **MWMO**: 
+  - 1.12.1-3.3.5a: Present in ALL maps (empty for terrain maps)
+  - 4.x+: Only in WMO-only maps (flag 0x0001)
+- **MODF**: Only in WMO-only maps with objects (flag 0x0001)
+
+### Version-Specific Chunks
+- **MAID**: 8.1.0+ (BfA) - FileDataID system
+- **Light chunks** (_lgt.wdt): 7.0+ (Legion)
+- **Fog chunks** (_fogs.wdt): 7.0+ (functional in 8.0+)
+- **MANM**: 8.3.0 PTR only (removed before release)
+
 ## Evolution Across Versions
 
 ### Classic (1.x) - Foundation
@@ -570,13 +596,16 @@ struct MANM {
 
 ### Cataclysm (4.x) - BREAKING CHANGE
 
-- **Format Change**: Terrain maps NO LONGER have MWMO chunks
-- **Universal Flag**: 0x0040 in 100% of maps
+- **MAJOR FORMAT CHANGE**: Terrain maps NO LONGER have MWMO chunks (only WMO-only maps have them)
+- **Universal Flag**: 0x0040 in 100% of maps (purpose unknown, possibly related to new rendering)
 - **Near-Universal Features**:
   - 0x0008 (Sorted): 95% of maps
   - Improved terrain blending and sorting
 - **Phasing Technology**: 1-2 tile maps for seamless world updates
 - **Content**: 80% terrain maps
+- **Flag Pattern Changes**:
+  - Maps without HasTerrain flag (0x0001) no longer have MWMO/MODF chunks
+  - Clear distinction between WMO-only and terrain-based maps
 
 ### Mists of Pandaria (5.x) - Refinement
 

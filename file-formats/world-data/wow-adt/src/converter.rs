@@ -131,11 +131,10 @@ fn vanilla_to_tbc(source: &Adt) -> Result<Adt> {
 
     // Add TBC-specific chunks (empty ones)
 
-    // Add MFBO (empty flight boundaries)
+    // Add MFBO (default flight boundaries with 9 values per plane)
     result.mfbo = Some(MfboChunk {
-        max: [0, 0],
-        min: [0, 0],
-        additional_data: Vec::new(),
+        max: [0; 9], // 9 int16 values for max plane
+        min: [0; 9], // 9 int16 values for min plane
     });
 
     // Update MHDR to include TBC fields

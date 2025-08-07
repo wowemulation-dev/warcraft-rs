@@ -81,7 +81,7 @@ fn test_empty_adt_creation() {
     assert!(adt.is_err());
     // The error should be about the file being too small
     if let Err(e) = adt {
-        let error_msg = format!("{:?}", e);
+        let error_msg = format!("{e:?}");
         assert!(error_msg.contains("too small") || error_msg.contains("InvalidFileSize"));
     }
 }

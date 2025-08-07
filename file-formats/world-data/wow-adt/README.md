@@ -45,7 +45,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-adt = "0.2.1"
+wow-adt = "0.3.0"
 ```
 
 Or use cargo add:

@@ -7,17 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.1] - 2025-01-28
+## [0.3.0] - 2025-08-07
 
-### Changed
+### Breaking Changes
 
-- Version bump to 0.2.1 for coordinated release
-- Updated all workspace dependencies and documentation
-- Streamlined CI workflows and release processes
+- **MFBO chunk structure**: Fixed from incorrect 8 bytes to correct 36 bytes (2 planes × 9 int16 values)
+- **Version detection API**: Enhanced methods for comprehensive chunk-based detection
+- **WDT conditional chunks**: Fixed MWMO handling for Cataclysm+ compatibility
+- **API reorganization**: Some internal structures moved/renamed for consistency
+
+### Added
+
+- **Complete WoW version support**: Vanilla through Mists of Pandaria with automatic detection
+- **Split ADT file support**: Cataclysm+ `_tex0`, `_obj0`, `_obj1`, `_lod` file parsing
+- **TrinityCore compliance**: Validated against authoritative server implementation
+- **Enhanced chunk parsing**: MAMP, MTXP chunk parsers with proper structure validation
+- **Comprehensive test suite**: 30+ tests including TrinityCore compliance validation
+- **Version-specific features**: Chunk evolution tracking and progressive feature detection
 
 ### Fixed
 
-- Consistent versioning across all workspace crates
+- MFBO flight boundaries now use correct 36-byte structure matching TrinityCore
+- WDT terrain maps correctly handle missing MWMO chunks in Cataclysm+
+- Version detection based on chunk presence rather than unreliable MVER values
+- Documentation examples updated with correct API usage
+
+### Documentation
+
+- Complete API documentation with technical details and chunk evolution timeline
+- Migration guide for breaking changes with code examples
+- Split file architecture explanation and usage patterns
 
 ### Added
 

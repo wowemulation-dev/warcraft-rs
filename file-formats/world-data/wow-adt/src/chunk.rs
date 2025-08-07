@@ -1174,14 +1174,16 @@ impl McnkChunk {
 }
 
 /// MFBO chunk - flight boundaries (TBC+)
+///
+/// Contains two planes defining flight boundaries.
+/// Each plane has 9 int16 coordinates (18 bytes), totaling 36 bytes.
+/// Validated against TrinityCore 3.3.5a and Cataclysm 4.3.4 implementations.
 #[derive(Debug, Clone)]
 pub struct MfboChunk {
-    /// Maximum boundary (x, y)
-    pub max: [u16; 2],
-    /// Minimum boundary (x, y)
-    pub min: [u16; 2],
-    /// Additional data (Cataclysm+)
-    pub additional_data: Vec<u8>,
+    /// Maximum flight bounds plane (9 int16 values)
+    pub max: [i16; 9],
+    /// Minimum flight bounds plane (9 int16 values)
+    pub min: [i16; 9],
 }
 
 impl MfboChunk {
@@ -1193,39 +1195,28 @@ impl MfboChunk {
     ) -> Result<Self> {
         header.expect_magic(b"MFBO")?;
 
-        // Minimum expected size is 8 bytes (4 u16 values)
-        if header.size < 8 {
+        // MFBO is always exactly 36 bytes (2 planes × 9 int16 values)
+        if header.size != 36 {
             return Err(AdtError::InvalidChunkSize {
                 chunk: "MFBO".to_string(),
                 size: header.size,
-                expected: 8,
+                expected: 36,
             });
         }
 
-        // Read the core data (always present)
-        let mut max = [0; 2];
+        // Read maximum flight bounds plane (9 int16 values)
+        let mut max = [0i16; 9];
         for item in &mut max {
-            *item = context.reader.read_u16_le()?;
+            *item = context.reader.read_i16_le()?;
         }
 
-        let mut min = [0; 2];
+        // Read minimum flight bounds plane (9 int16 values)
+        let mut min = [0i16; 9];
         for item in &mut min {
-            *item = context.reader.read_u16_le()?;
+            *item = context.reader.read_i16_le()?;
         }
 
-        // Read any additional data (Cataclysm+ has extended MFBO format)
-        let mut additional_data = Vec::new();
-        let remaining_bytes = header.size as usize - 8;
-        if remaining_bytes > 0 {
-            additional_data.resize(remaining_bytes, 0);
-            context.reader.read_exact(&mut additional_data)?;
-        }
-
-        Ok(Self {
-            max,
-            min,
-            additional_data,
-        })
+        Ok(Self { max, min })
     }
 }
 
@@ -1366,6 +1357,88 @@ pub struct MtfxChunk {
 pub struct TextureEffect {
     /// Effect ID
     pub effect_id: u32,
+}
+
+/// MAMP chunk - texture amplifier (Cataclysm+)
+/// This chunk is exactly 4 bytes and contains a single u32 value
+#[derive(Debug, Clone, PartialEq)]
+pub struct MampChunk {
+    /// Texture size amplifier value (typically 0 or powers of 2)
+    /// Controls texture tiling/scaling for the terrain
+    pub value: u32,
+}
+
+/// MTXP chunk - texture parameters (MoP+)
+/// Variable size chunk containing texture transformation parameters
+#[derive(Debug, Clone, PartialEq)]
+pub struct MtxpChunk {
+    /// Texture parameter entries
+    pub entries: Vec<TextureParams>,
+}
+
+/// Texture transformation parameters
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextureParams {
+    /// Unknown texture parameter values (4 float values)
+    /// These control texture transformation/scaling properties
+    pub params: [f32; 4],
+}
+
+impl MampChunk {
+    /// Read a MAMP chunk with an existing header
+    pub(crate) fn read_with_header<R: Read + Seek>(
+        header: ChunkHeader,
+        context: &mut ParserContext<R>,
+    ) -> Result<Self> {
+        header.expect_magic(b"MAMP")?;
+
+        // MAMP is always exactly 4 bytes
+        if header.size != 4 {
+            return Err(AdtError::InvalidChunkSize {
+                chunk: "MAMP".to_string(),
+                size: header.size,
+                expected: 4,
+            });
+        }
+
+        // Read the single u32 value
+        let value = context.reader.read_u32_le()?;
+
+        Ok(Self { value })
+    }
+}
+
+impl MtxpChunk {
+    /// Read a MTXP chunk with an existing header
+    pub(crate) fn read_with_header<R: Read + Seek>(
+        header: ChunkHeader,
+        context: &mut ParserContext<R>,
+    ) -> Result<Self> {
+        header.expect_magic(b"MTXP")?;
+
+        // MTXP contains multiple entries of 16 bytes each (4 floats per entry)
+        if header.size % 16 != 0 {
+            return Err(AdtError::InvalidChunkSize {
+                chunk: "MTXP".to_string(),
+                size: header.size,
+                expected: 0, // Variable size but must be multiple of 16
+            });
+        }
+
+        let num_entries = (header.size / 16) as usize;
+        let mut entries = Vec::with_capacity(num_entries);
+
+        for _ in 0..num_entries {
+            let mut params = [0.0f32; 4];
+            for param in &mut params {
+                *param = context.reader.read_f32_le()?;
+            }
+
+            entries.push(TextureParams { params });
+        }
+
+        Ok(Self { entries })
+    }
 }
 
 impl MtfxChunk {

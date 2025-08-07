@@ -40,14 +40,14 @@ cargo install warcraft-rs
 
 ```toml
 [dependencies]
-wow-mpq = "0.2.1"    # MPQ archive support
-wow-blp = "0.2.1"    # BLP texture support
-wow-adt = "0.2.1"    # ADT terrain support
-wow-wdl = "0.2.1"    # WDL low-resolution terrain support
-wow-wdt = "0.2.1"    # WDT map definition support
-wow-wmo = "0.2.1"    # WMO world map object support
-wow-m2 = "0.2.1"     # M2 model support
-wow-cdbc = "0.2.1"   # DBC database support
+wow-mpq = "0.3.0"    # MPQ archive support
+wow-blp = "0.3.0"    # BLP texture support
+wow-adt = "0.3.0"    # ADT terrain support
+wow-wdl = "0.3.0"    # WDL low-resolution terrain support
+wow-wdt = "0.3.0"    # WDT map definition support
+wow-wmo = "0.3.0"    # WMO world map object support
+wow-m2 = "0.3.0"     # M2 model support
+wow-cdbc = "0.3.0"   # DBC database support
 ```
 
 Or use cargo add:
@@ -173,7 +173,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.2.1"
+wow-mpq = "0.3.0"
 ```
 
 Create `src/main.rs`:
@@ -206,7 +206,7 @@ cargo run
 #### Rust Version Error
 
 ```text
-error: package `warcraft-rs v0.2.1` cannot be built because it requires rustc 1.86 or newer
+error: package `warcraft-rs v0.3.0` cannot be built because it requires rustc 1.86 or newer
 ```
 
 **Solution**: Update Rust with `rustup update`

@@ -132,7 +132,7 @@ jobs:
       - name: Verify versions match
         run: |
           VERSION="${{ needs.determine-release-type.outputs.version }}"
-          for crate in wow-mpq wow-adt wow-wdl wow-wdt wow-blp wow-m2 wow-wmo wow-cdbc; do
+          for crate in wow-mpq wow-adt wow-wdl wow-wdt wow-blp wow-m2 wow-wmo wow-cdbc warcraft-rs; do
             CRATE_VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r ".packages[] | select(.name == \"$crate\") | .version")
             if [[ "$CRATE_VERSION" != "$VERSION" ]]; then
               echo "Version mismatch for $crate: expected $VERSION, found $CRATE_VERSION"
@@ -147,15 +147,10 @@ jobs:
       - name: Publish to crates.io (Dry Run)
         if: needs.determine-release-type.outputs.dry-run == 'true'
         run: |
-          echo "::warning::DRY RUN MODE - Would publish these packages in order:"
-          echo "1. wow-mpq (archives)"
-          echo "2. wow-blp (graphics - textures)"
-          echo "3. wow-m2 (graphics - models)"
-          echo "4. wow-wmo (graphics - world map objects)"
-          echo "5. wow-adt (world data - terrain)"
-          echo "6. wow-wdl (world data - low-resolution terrain)"
-          echo "7. wow-wdt (world data - maps)"
-          echo "8. wow-cdbc (database)"
+          echo "::warning::DRY RUN MODE - Would publish these packages in dependency order:"
+          echo "1. First batch (no workspace deps): wow-mpq, wow-blp, wow-cdbc, wow-wdl, wow-wdt, wow-adt, wow-wmo"
+          echo "2. Second batch (depends on wow-blp): wow-m2"
+          echo "3. CLI (depends on all others): warcraft-rs"
           echo "::notice::No actual publishing performed"
           
       - name: Publish to crates.io (Production)
@@ -164,21 +159,37 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
           echo "::notice::Publishing packages to crates.io in dependency order..."
-          # Publish in dependency order
-          cargo publish -p wow-mpq
-          sleep 30  # Wait for crates.io to index
           
-          cargo publish -p wow-blp
-          cargo publish -p wow-m2
-          cargo publish -p wow-wmo
-          sleep 30
+          # First batch: Independent crates (can be published in parallel)
+          echo "::group::Publishing independent crates"
+          cargo publish -p wow-mpq &
+          cargo publish -p wow-blp &
+          cargo publish -p wow-cdbc &
+          cargo publish -p wow-wdl &
+          cargo publish -p wow-wdt &
+          cargo publish -p wow-adt &
+          cargo publish -p wow-wmo &
+          wait  # Wait for all parallel publishes to complete
+          echo "::endgroup::"
           
-          cargo publish -p wow-adt
-          cargo publish -p wow-wdl
-          cargo publish -p wow-wdt
-          sleep 30
+          # Wait for crates.io to index the first batch
+          echo "::notice::Waiting for crates.io to index first batch..."
+          sleep 60
           
-          cargo publish -p wow-cdbc
+          # Second batch: Crates that depend on first batch
+          echo "::group::Publishing dependent crates"
+          cargo publish -p wow-m2  # Depends on wow-blp
+          echo "::endgroup::"
+          
+          # Wait for crates.io to index second batch
+          echo "::notice::Waiting for crates.io to index second batch..."
+          sleep 60
+          
+          # Third batch: CLI crate (depends on all others)
+          echo "::group::Publishing CLI crate"
+          cargo publish -p warcraft-rs  # Depends on all other workspace crates
+          echo "::endgroup::"
+          
           echo "::notice::All packages published successfully!"
 
       - name: Create library release
