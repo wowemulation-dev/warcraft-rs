@@ -18,12 +18,12 @@ pub trait M2DataRV<T> {
     fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<T>;
 }
 
-pub trait M2DataW<T> {
+pub trait M2DataW {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()>;
     fn m2_size(&self) -> usize;
 }
 
-pub trait M2DataConversible<T>: M2DataW<T> + Sized {
+pub trait M2DataConversible: M2DataW + Sized {
     fn m2_write_version<W: Write>(&self, writer: &mut W, version: M2Version) -> Result<()> {
         let converted = self.m2_convert(version)?;
         converted.m2_write(writer)
@@ -42,7 +42,7 @@ impl M2DataR<u32> for u32 {
         Ok(reader.read_u32_le()?)
     }
 }
-impl M2DataW<u32> for u32 {
+impl M2DataW for u32 {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_u32_le(*self)?;
         Ok(())
@@ -58,7 +58,7 @@ impl M2DataR<f32> for f32 {
         Ok(reader.read_f32_le()?)
     }
 }
-impl M2DataW<f32> for f32 {
+impl M2DataW for f32 {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_f32_le(*self)?;
         Ok(())
@@ -74,7 +74,7 @@ impl M2DataR<i16> for i16 {
         Ok(reader.read_i16_le()?)
     }
 }
-impl M2DataW<i16> for i16 {
+impl M2DataW for i16 {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_i16_le(*self)?;
         Ok(())
@@ -90,7 +90,7 @@ impl M2DataR<u16> for u16 {
         Ok(reader.read_u16_le()?)
     }
 }
-impl M2DataW<u16> for u16 {
+impl M2DataW for u16 {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_u16_le(*self)?;
         Ok(())
@@ -115,21 +115,21 @@ pub trait VersionedM2Reader<T: M2DataRV<T>>: Read + Seek + Sized {
 }
 impl<T: M2DataRV<T>, R: Read + Seek> VersionedM2Reader<T> for R {}
 
-pub trait M2Writer<T: M2DataW<T>>: Write + Sized {
+pub trait M2Writer<T: M2DataW>: Write + Sized {
     fn m2_write(&mut self, value: &T) -> Result<()> {
         value.m2_write(self)?;
         Ok(())
     }
 }
-impl<T: M2DataW<T>, W: Write> M2Writer<T> for W {}
+impl<T: M2DataW, W: Write> M2Writer<T> for W {}
 
-pub trait M2WriterV<T: M2DataConversible<T>>: Write + Sized {
+pub trait M2WriterV<T: M2DataConversible>: Write + Sized {
     fn m2_write_versioned(&mut self, value: &T, version: M2Version) -> Result<()> {
         value.m2_write_version(self, version)?;
         Ok(())
     }
 }
-impl<T: M2DataConversible<T>, W: Write> M2WriterV<T> for W {}
+impl<T: M2DataConversible, W: Write> M2WriterV<T> for W {}
 
 /// A reference to an array in the M2 file format
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -196,7 +196,7 @@ impl<T> M2DataR<M2Array<T>> for M2Array<T> {
         Ok(Self::new(reader.m2_read()?, reader.m2_read()?))
     }
 }
-impl<T> M2DataW<M2Array<T>> for M2Array<T> {
+impl<T> M2DataW for M2Array<T> {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.m2_write(&self.count)?;
         writer.m2_write(&self.offset)?;
@@ -232,12 +232,12 @@ impl<T: M2DataR<T>> M2Array<T> {
     }
 }
 
-pub trait M2Vec<T: M2DataW<T>> {
+pub trait M2Vec<T: M2DataW> {
     fn m2_write<W: Write + Seek>(&self, writer: &mut W) -> Result<M2Array<T>>;
     fn m2_size(&self) -> usize;
 }
 
-impl<T: M2DataW<T>> M2Vec<T> for Vec<T> {
+impl<T: M2DataW> M2Vec<T> for Vec<T> {
     fn m2_write<W: Write + Seek>(&self, writer: &mut W) -> Result<M2Array<T>> {
         let offset = writer.stream_position()?;
         for item in self {
@@ -348,7 +348,7 @@ impl M2DataR<C3Vector> for C3Vector {
         Ok(Self { x, y, z })
     }
 }
-impl M2DataW<C3Vector> for C3Vector {
+impl M2DataW for C3Vector {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.m2_write(&self.x)?;
         writer.m2_write(&self.y)?;
@@ -408,7 +408,7 @@ impl M2DataR<C2Vector> for C2Vector {
         Ok(Self { x, y })
     }
 }
-impl M2DataW<C2Vector> for C2Vector {
+impl M2DataW for C2Vector {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.m2_write(&self.x)?;
         writer.m2_write(&self.y)?;
@@ -463,7 +463,7 @@ impl M2DataR<BoundingBox> for BoundingBox {
         })
     }
 }
-impl M2DataW<BoundingBox> for BoundingBox {
+impl M2DataW for BoundingBox {
     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.m2_write(&self.min)?;
         writer.m2_write(&self.max)?;
@@ -821,7 +821,7 @@ mod tests {
         }
     }
 
-    impl M2DataW<ExampleVersioned> for ExampleVersioned {
+    impl M2DataW for ExampleVersioned {
         fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
             match self {
                 Self::UpToTBC(a, b) => {
@@ -876,7 +876,7 @@ mod tests {
         }
     }
 
-    impl M2DataW<ExampleHeader> for ExampleHeader {
+    impl M2DataW for ExampleHeader {
         fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
             writer.m2_write(&self.crc)?;
             writer.m2_write(&self.vectors)?;
@@ -1015,7 +1015,7 @@ mod tests {
         }
     }
 
-    impl M2DataW<ExampleDataNoHeader> for ExampleDataNoHeader {
+    impl M2DataW for ExampleDataNoHeader {
         fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
             let mut new_header = ExampleHeader {
                 _version: self._version,
@@ -1091,7 +1091,7 @@ mod tests {
         assert_eq!(*dec_writer.get_ref(), example_data_bin);
     }
 
-    impl M2DataConversible<ExampleDataNoHeader> for ExampleDataNoHeader {
+    impl M2DataConversible for ExampleDataNoHeader {
         fn m2_convert(&self, to_version: M2Version) -> Result<Self> {
             match to_version {
                 M2Version::Classic | M2Version::TBC => Ok(Self {
