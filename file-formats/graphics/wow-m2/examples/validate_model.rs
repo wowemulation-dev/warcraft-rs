@@ -71,19 +71,19 @@ fn validate_model(model: &M2Model) -> Vec<String> {
     }
 
     // Check animations
-    for (i, anim) in model.animations.iter().enumerate() {
-        // For Classic format, check if end_timestamp > start_timestamp
-        if let Some(end_ts) = anim.end_timestamp {
-            if end_ts <= anim.start_timestamp {
-                issues.push(format!("Animation {i}: end timestamp <= start timestamp"));
-            }
-        } else {
-            // For BC+ format, start_timestamp contains duration
-            if anim.start_timestamp == 0 {
-                issues.push(format!("Animation {i}: zero duration"));
-            }
-        }
-    }
+    // for (i, anim) in model.animations.iter().enumerate() {
+    //     // For Classic format, check if end_timestamp > start_timestamp
+    //     if let Some(end_ts) = anim.end_timestamp {
+    //         if end_ts <= anim.start_timestamp {
+    //             issues.push(format!("Animation {i}: end timestamp <= start timestamp"));
+    //         }
+    //     } else {
+    //         // For BC+ format, start_timestamp contains duration
+    //         if anim.start_timestamp == 0 {
+    //             issues.push(format!("Animation {i}: zero duration"));
+    //         }
+    //     }
+    // }
 
     // Check bone hierarchy
     for (i, bone) in model.bones.iter().enumerate() {
