@@ -10,12 +10,16 @@ pub trait ItemParser<T> {
     fn parse<R: Read + Seek>(reader: &mut R) -> Result<T>;
 }
 
-pub trait M2DataR<T> {
-    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<T>;
+pub trait M2DataR {
+    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self>
+    where
+        Self: Sized;
 }
 
-pub trait M2DataRV<T> {
-    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<T>;
+pub trait M2DataRV {
+    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self>
+    where
+        Self: Sized;
 }
 
 pub trait M2DataW {
@@ -31,13 +35,13 @@ pub trait M2DataConversible: M2DataW + Sized {
     fn m2_convert(&self, to_version: M2Version) -> Result<Self>;
 }
 
-impl M2DataR<M2Version> for M2Version {
+impl M2DataR for M2Version {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         M2Version::from_header_version(reader.read_u32_le()?)
     }
 }
 
-impl M2DataR<u32> for u32 {
+impl M2DataR for u32 {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_u32_le()?)
     }
@@ -53,7 +57,7 @@ impl M2DataW for u32 {
     }
 }
 
-impl M2DataR<f32> for f32 {
+impl M2DataR for f32 {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_f32_le()?)
     }
@@ -69,7 +73,7 @@ impl M2DataW for f32 {
     }
 }
 
-impl M2DataR<i16> for i16 {
+impl M2DataR for i16 {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_i16_le()?)
     }
@@ -85,7 +89,7 @@ impl M2DataW for i16 {
     }
 }
 
-impl M2DataR<u16> for u16 {
+impl M2DataR for u16 {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_u16_le()?)
     }
@@ -101,19 +105,19 @@ impl M2DataW for u16 {
     }
 }
 
-pub trait M2Reader<T: M2DataR<T>>: Read + Seek + Sized {
+pub trait M2Reader<T: M2DataR>: Read + Seek + Sized {
     fn m2_read(&mut self) -> Result<T> {
         Ok(T::m2_read(self)?)
     }
 }
-impl<T: M2DataR<T>, R: Read + Seek> M2Reader<T> for R {}
+impl<T: M2DataR, R: Read + Seek> M2Reader<T> for R {}
 
-pub trait VersionedM2Reader<T: M2DataRV<T>>: Read + Seek + Sized {
+pub trait VersionedM2Reader<T: M2DataRV>: Read + Seek + Sized {
     fn m2_read_versioned(&mut self, version: M2Version) -> Result<T> {
         Ok(T::m2_read(self, version)?)
     }
 }
-impl<T: M2DataRV<T>, R: Read + Seek> VersionedM2Reader<T> for R {}
+impl<T: M2DataRV, R: Read + Seek> VersionedM2Reader<T> for R {}
 
 pub trait M2Writer<T: M2DataW>: Write + Sized {
     fn m2_write(&mut self, value: &T) -> Result<()> {
@@ -191,7 +195,7 @@ impl<T> M2Array<T> {
     }
 }
 
-impl<T> M2DataR<M2Array<T>> for M2Array<T> {
+impl<T> M2DataR for M2Array<T> {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(Self::new(reader.m2_read()?, reader.m2_read()?))
     }
@@ -208,7 +212,7 @@ impl<T> M2DataW for M2Array<T> {
     }
 }
 
-impl<T: M2DataR<T>> M2Array<T> {
+impl<T: M2DataR> M2Array<T> {
     pub fn m2_read_to_vec<R>(&self, reader: &mut R) -> Result<Vec<T>>
     where
         R: Read + Seek,
@@ -339,7 +343,7 @@ impl ItemParser<C3Vector> for C3Vector {
     }
 }
 
-impl M2DataR<C3Vector> for C3Vector {
+impl M2DataR for C3Vector {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let x = reader.m2_read()?;
         let y = reader.m2_read()?;
@@ -400,7 +404,7 @@ impl C2Vector {
     }
 }
 
-impl M2DataR<C2Vector> for C2Vector {
+impl M2DataR for C2Vector {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let x = reader.m2_read()?;
         let y = reader.m2_read()?;
@@ -455,7 +459,7 @@ impl BoundingBox {
     }
 }
 
-impl M2DataR<BoundingBox> for BoundingBox {
+impl M2DataR for BoundingBox {
     fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(Self {
             min: reader.m2_read()?,
@@ -811,7 +815,7 @@ mod tests {
         Others(u16),
     }
 
-    impl M2DataRV<ExampleVersioned> for ExampleVersioned {
+    impl M2DataRV for ExampleVersioned {
         fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
             Ok(if version <= M2Version::TBC {
                 Self::UpToTBC(reader.m2_read()?, reader.m2_read()?)
@@ -854,7 +858,7 @@ mod tests {
         after_mop: Option<f32>,
     }
 
-    impl M2DataRV<ExampleHeader> for ExampleHeader {
+    impl M2DataRV for ExampleHeader {
         fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
             Ok(Self {
                 _version: version,
