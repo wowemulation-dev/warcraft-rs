@@ -8,7 +8,7 @@ repository.workspace = true
 rust-version.workspace = true
 homepage.workspace = true
 readme = "README.md"
-description = "Parser for World of Warcraft MPQ archive files (1.12-5.4)"
+description = "High-performance parser for World of Warcraft MPQ archives with parallel processing support"
 categories = ["game-development", "parser-implementations"]
 keywords = ["wow", "warcraft", "mpq", "archive", "gamedev"]
 

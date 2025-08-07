@@ -8,7 +8,7 @@ repository.workspace = true
 rust-version.workspace = true
 homepage.workspace = true
 readme = "README.md"
-description = "Parser for World of Warcraft WMO (World Model Object) files (1.12-11.0)"
+description = "Parser, editor, and converter for World of Warcraft WMO (World Model Object) files"
 categories = ["game-development", "parser-implementations"]
 keywords = ["wow", "warcraft", "wmo", "parser", "gamedev"]
 

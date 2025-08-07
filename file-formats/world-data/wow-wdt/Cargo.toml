@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
-description = "A library for parsing, validating, and converting World of Warcraft WDT files - tested on 100+ real WDT files"
+description = "Parser, validator, and converter for World of Warcraft WDT (World Data Table) files"
 keywords = ["wow", "wdt", "world-of-warcraft", "game", "parser"]
 categories = ["game-development", "parser-implementations"]
 

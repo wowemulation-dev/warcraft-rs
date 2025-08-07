@@ -1,5 +1,5 @@
 ---
-name: Release CLI
+name: Release CLI (Ephemeral)
 
 on:
   workflow_call:
@@ -32,43 +32,51 @@ env:
   RUSTFLAGS: -D warnings
   CARGO_INCREMENTAL: 0
 
+# Prevent concurrent CLI releases
+concurrency:
+  group: release-cli-${{ github.repository }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   packages: write
 
 jobs:
-  generate-keypair:
-    name: Generate Signing Keypair
+  generate-ephemeral-keys:
+    name: Generate Ephemeral Signing Keys
     runs-on: ubuntu-latest
     outputs:
-      public-key: ${{ steps.generate.outputs.public-key }}
+      key-id: ${{ steps.generate.outputs.key-id }}
     steps:
-      - name: Install minisign for binary signing
-        run: cargo install minisign
-
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
       - name: Generate ephemeral keypair
         id: generate
+        env:
+          AGE_KEY_PUBLIC: ${{ vars.AGE_KEY_PUBLIC }}
         run: |
-          # Generate keypair
-          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -G -p minisign.pub -s minisign.key -W
-
-          # Output public key
-          echo "public-key<<EOF" >> $GITHUB_OUTPUT
-          cat minisign.pub >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - uses: actions/upload-artifact@v4
-        name: Upload keypair artifact
+          ./ephemeral-gen.sh
+          
+          # Extract key ID for output
+          KEY_ID=$(head -1 minisign.pub | sed 's/.*: //')
+          echo "key-id=${KEY_ID}" >> $GITHUB_OUTPUT
+      
+      - name: Upload ephemeral keys
+        uses: actions/upload-artifact@v4
         with:
-          name: minisign-keypair
+          name: ephemeral-keys
           path: |
             minisign.pub
-            minisign.key
+            minisign.key.age
           retention-days: 1
 
   build-binaries:
     name: Build ${{ matrix.target }}
-    needs: [generate-keypair]
+    needs: generate-ephemeral-keys
     strategy:
       fail-fast: false
       matrix:
@@ -77,162 +85,221 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             use_cross: true
+            archive: tar.gz
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             use_cross: true
+            archive: tar.gz
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             use_cross: true
+            archive: tar.gz
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
             use_cross: true
-          - target: armv7-unknown-linux-gnueabihf
-            os: ubuntu-latest
-            use_cross: true
+            archive: tar.gz
           - target: armv7-unknown-linux-musleabihf
             os: ubuntu-latest
             use_cross: true
+            archive: tar.gz
 
           # Windows
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             use_cross: false
+            archive: zip
           - target: aarch64-pc-windows-msvc
             os: windows-latest
             use_cross: false
-          - target: x86_64-pc-windows-gnu
-            os: ubuntu-latest
-            use_cross: true
+            archive: zip
 
           # macOS
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            use_cross: false
           - target: x86_64-apple-darwin
             os: macos-latest
             use_cross: false
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            use_cross: false
+            archive: tar.gz
 
     runs-on: ${{ matrix.os }}
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Rust toolchain for ${{ matrix.target }}
+      
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
-
-      - name: Cache build dependencies for CLI release
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: 'release-cli-${{ matrix.target }}'
-
-      - name: Install cross-compilation toolchain
+      
+      - name: Install cross for cross-compilation
         if: matrix.use_cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
-      - uses: actions/download-artifact@v4
-        name: Download signing keypair
+        uses: taiki-e/install-action@v2
         with:
-          name: minisign-keypair
-
-      - name: Install minisign for signing binaries
-        run: cargo install minisign
-
-      - name: Build release binary for ${{ matrix.target }}
+          tool: cross
+      
+      - name: Download ephemeral keys
+        uses: actions/download-artifact@v4
+        with:
+          name: ephemeral-keys
+      
+      - name: Setup signing tools
         run: |
-          if [[ "${{ matrix.use_cross }}" == "true" ]]; then
-            cross build --release --target ${{ matrix.target }} --bin warcraft-rs
+          cargo install rsign2
+          cargo install rage
+      
+      - name: Build binary
+        shell: bash
+        run: |
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --package warcraft-rs --bin warcraft-rs --target ${{ matrix.target }}
           else
-            cargo build --release --target ${{ matrix.target }} --bin warcraft-rs
+            cargo build --release --package warcraft-rs --bin warcraft-rs --target ${{ matrix.target }}
           fi
-        shell: bash
-
-      - name: Package and cryptographically sign binary
-        shell: bash
+      
+      - name: Package binary (Unix)
+        if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-
-          # Determine binary name
-          BINARY="warcraft-rs"
-          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            BINARY="warcraft-rs.exe"
-          fi
-
-          # Create archive
-          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            7z a ../../../warcraft-rs-${{ matrix.target }}.zip "$BINARY"
-            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.zip"
-          else
-            tar czf ../../../warcraft-rs-${{ matrix.target }}.tar.gz "$BINARY"
-            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.tar.gz"
-          fi
-
+          tar czf ../../../warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.tar.gz warcraft-rs
           cd ../../../
-
-          # Sign archive
-          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -S -s minisign.key -m warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
-
-      - uses: actions/upload-artifact@v4
-        name: Upload artifacts
+      
+      - name: Package binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd target/${{ matrix.target }}/release
+          Compress-Archive -Path warcraft-rs.exe -DestinationPath ../../../warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.zip
+          cd ../../../
+      
+      - name: Sign packages
+        env:
+          AGE_KEY_SECRET: ${{ secrets.AGE_KEY_SECRET }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            bash ./ephemeral-sign.sh warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.zip
+          else
+            ./ephemeral-sign.sh warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
+          fi
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.target }}
+          name: binaries-${{ matrix.target }}
           path: |
-            warcraft-rs-${{ matrix.target }}.*
+            warcraft-rs-*.tar.gz
+            warcraft-rs-*.tar.gz.sig
+            warcraft-rs-*.zip
+            warcraft-rs-*.zip.sig
             minisign.pub
 
   create-release:
     name: Create Release
-    needs: [build-binaries]
-    if: ${{ !inputs.dry-run }}
+    needs: [generate-ephemeral-keys, build-binaries]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Download all build artifacts
+      
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Prepare release assets
+      
+      - name: Prepare release files
         run: |
-          mkdir release
-          cp artifacts/binary-*/warcraft-rs-* release/
-          cp artifacts/binary-*/minisign.pub release/
+          mkdir -p release
+          
+          # Move all binaries and signatures
+          find artifacts -name "warcraft-rs-*" -type f -exec mv {} release/ \;
+          
+          # Copy public key from any artifact (they're all the same)
+          cp artifacts/binaries-*/minisign.pub release/ 2>/dev/null || cp artifacts/ephemeral-keys/minisign.pub release/
+          
+          # Create checksums
+          cd release
+          sha256sum warcraft-rs-*.{tar.gz,zip} > SHA256SUMS 2>/dev/null || true
+          cd ..
+          
+          # List release contents
           ls -la release/
-
-      - uses: softprops/action-gh-release@v2
-        name: Create GitHub Release
-        with:
-          tag_name: v${{ inputs.version }}
-          name: warcraft-rs v${{ inputs.version }}
-          draft: false
-          prerelease: false
-          files: release/*
-
-      - uses: geekyeggo/delete-artifact@v5
-        name: Cleanup signing key
-        with:
-          name: minisign-keypair
-
-  publish-crate:
-    name: Publish to crates.io
-    needs: [create-release]
-    if: ${{ !inputs.dry-run }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust stable toolchain for publishing
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Publish warcraft-rs CLI
+      
+      - name: Create release notes
         run: |
-          cargo publish -p warcraft-rs --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+          cat > release/RELEASE_NOTES.md << 'EOF'
+          ## warcraft-rs v${{ inputs.version }}
+          
+          ### Verification
+          
+          This release uses ephemeral signing keys. To verify:
+          
+          1. Download the binary, signature (`.sig`), and public key (`minisign.pub`)
+          2. Verify using minisign or rsign:
+          
+          ```bash
+          # Using minisign
+          minisign -V -p minisign.pub -m warcraft-rs-${{ inputs.version }}-<target>.tar.gz
+          
+          # Using rsign
+          rsign verify -p minisign.pub warcraft-rs-${{ inputs.version }}-<target>.tar.gz
+          ```
+          
+          ### Ephemeral Key ID
+          
+          This release was signed with ephemeral key: `${{ needs.generate-ephemeral-keys.outputs.key-id }}`
+          
+          ### Installation
+          
+          #### Unix-like systems
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.sh | bash
+          ```
+          
+          #### Windows PowerShell
+          ```powershell
+          irm https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.ps1 | iex
+          ```
+          
+          ### Supported Platforms
+          
+          - Linux: x86_64, aarch64, armv7 (GNU and musl)
+          - Windows: x86_64, aarch64 (MSVC)
+          - macOS: x86_64, aarch64
+          
+          ### Checksums
+          
+          SHA256 checksums are available in the `SHA256SUMS` file.
+          EOF
+      
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry-run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: warcraft-rs-v${{ inputs.version }}
+          name: warcraft-rs v${{ inputs.version }}
+          body_path: release/RELEASE_NOTES.md
+          files: |
+            release/warcraft-rs-*.tar.gz
+            release/warcraft-rs-*.tar.gz.sig
+            release/warcraft-rs-*.zip
+            release/warcraft-rs-*.zip.sig
+            release/minisign.pub
+            release/SHA256SUMS
+      
+      - name: Dry run summary
+        if: ${{ inputs.dry-run }}
+        run: |
+          echo "=== DRY RUN SUMMARY ==="
+          echo "Would have created release: warcraft-rs v${{ inputs.version }}"
+          echo ""
+          echo "Files that would be uploaded:"
+          ls -la release/
+          echo ""
+          echo "Release notes:"
+          cat release/RELEASE_NOTES.md

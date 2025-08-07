@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
-description = "Command-line tools for World of Warcraft file formats"
+description = "Unified CLI for World of Warcraft file format parsing, conversion, and validation"
 keywords = ["wow", "warcraft", "mpq", "blp", "dbc"]
 categories = ["command-line-utilities", "game-development"]
 

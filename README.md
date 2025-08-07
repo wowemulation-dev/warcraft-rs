@@ -98,13 +98,25 @@ wow-adt = "0.2.0"
 
 ## Installation
 
-### Install from crates.io
+### Binary Releases
+
+Pre-built binaries are available for Linux, macOS, and Windows:
+
+```bash
+# Unix/Linux/macOS
+curl -fsSL https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.sh | bash
+
+# Windows PowerShell
+irm https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.ps1 | iex
+```
+
+### From crates.io
 
 ```bash
 # Install the CLI tool
 cargo install warcraft-rs
 
-# Install specific crates as dependencies
+# Add specific crates as dependencies
 cargo add wow-mpq wow-blp wow-adt
 ```
 
@@ -113,7 +125,7 @@ cargo add wow-mpq wow-blp wow-adt
 ```bash
 git clone https://github.com/wowemulation-dev/warcraft-rs
 cd warcraft-rs
-cargo install --path .
+cargo install --path warcraft-rs
 ```
 
 ## Documentation

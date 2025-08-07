@@ -48,8 +48,16 @@ jobs:
           files: |
             Cargo.toml
             Cargo.lock
-            file-formats/**
+            file-formats/archives/wow-mpq/**
+            file-formats/world-data/wow-adt/**
+            file-formats/world-data/wow-wdl/**
+            file-formats/world-data/wow-wdt/**
+            file-formats/graphics/wow-blp/**
+            file-formats/graphics/wow-m2/**
+            file-formats/graphics/wow-wmo/**
+            file-formats/database/wow-cdbc/**
             warcraft-rs/**
+            ffi/**
           files_ignore: |
             **/*.md
             **/*.txt
@@ -83,8 +91,8 @@ jobs:
           fi
           
           # Check individual crate changes
-          for crate in wow-mpq wow-blp wow-m2 wow-wmo wow-adt wow-wdl wow-wdt wow-cdbc warcraft-rs; do
-            if echo "$ALL_CHANGED_FILES" | grep -E "(file-formats|warcraft-rs).*$crate"; then
+          for crate in wow-mpq wow-adt wow-wdl wow-wdt wow-blp wow-m2 wow-wmo wow-cdbc warcraft-rs; do
+            if echo "$ALL_CHANGED_FILES" | grep -E "$crate/"; then
               crates_changed="$crates_changed $crate"
             fi
           done
