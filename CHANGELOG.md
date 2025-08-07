@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-01-28
+
+### Changed
+
+- Version bump to 0.2.1 for coordinated release
+- Updated all workspace dependencies and documentation
+- Streamlined CI workflows and release processes
+
+### Fixed
+
+- Consistent versioning across all workspace crates
+
 ### Added
 
 - **storm-ffi**: Complete archive modification support through C FFI including add/remove/rename file operations

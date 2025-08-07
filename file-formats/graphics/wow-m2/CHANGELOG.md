@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-01-28
+
+### Changed
+
+- Version bump to 0.2.1 for coordinated workspace release
+- Updated dependencies and documentation
+
 ### Added
 
 - Support for WotLK (Wrath of the Lich King) M2 model and skin formats

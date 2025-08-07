@@ -27,7 +27,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-cdbc = "0.2.0"
+wow-cdbc = "0.2.1"
 ```
 
 Or use cargo add:
