@@ -516,55 +516,44 @@ mod tests {
         }
     }
 
-    #[derive(super::Debug, Clone)]
+    #[derive(super::Debug, Clone, Copy, WowDataRV, WowDataW)]
+    #[wow_data(version = M2Version)]
     enum ExampleVersioned {
+        #[wow_data(read_if = version <= M2Version::TBC)]
         UpToTBC(i16, f32),
         Others(u16),
     }
 
-    impl WowDataRV<M2Version> for ExampleVersioned {
-        fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
-            Ok(if version <= M2Version::TBC {
-                Self::UpToTBC(reader.wow_read()?, reader.wow_read()?)
-            } else {
-                Self::Others(reader.wow_read()?)
-            })
-        }
+    #[derive(super::Debug, Clone, Copy, WowDataRV, WowDataW)]
+    #[wow_data(version = M2Version)]
+    enum OptionUpToMoP<T: WowDataR + WowDataW> {
+        #[wow_data(read_if = version <= M2Version::MoP)]
+        Some(T),
+        None,
     }
 
-    impl WowDataW for ExampleVersioned {
-        fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-            match self {
-                Self::UpToTBC(a, b) => {
-                    writer.wow_write(a)?;
-                    writer.wow_write(b)?;
-                }
-                Self::Others(a) => {
-                    writer.wow_write(a)?;
-                }
-            }
-            Ok(())
-        }
-
-        fn wow_size(&self) -> usize {
-            match self {
-                Self::UpToTBC(a, b) => a.wow_size() + b.wow_size(),
-                Self::Others(a) => a.wow_size(),
-            }
-        }
+    #[derive(super::Debug, Clone, Copy, WowDataRV, WowDataW)]
+    #[wow_data(version = M2Version)]
+    enum OptionAfterMoP<T: WowDataR + WowDataW> {
+        #[wow_data(read_if = version > M2Version::MoP)]
+        Some(T),
+        None,
     }
 
     #[derive(super::Debug, Clone, WowDataRV, WowDataW)]
     #[wow_data(version = M2Version)]
     struct ExampleHeader {
+        #[wow_data(skip = M2Version::Classic)]
         _version: M2Version,
         crc: u32,
         vectors: WowArray<C2Vector>,
         #[wow_data(versioned)]
         versioned_data: ExampleVersioned,
         bounding_box: BoundingBox,
-        // up_to_mop: Option<i16>,
-        // after_mop: Option<f32>,
+        #[wow_data(versioned)]
+        up_to_mop: OptionUpToMoP<i16>,
+        #[wow_data(versioned)]
+        after_mop: OptionAfterMoP<f32>,
     }
 
     struct ExampleData {
@@ -601,7 +590,7 @@ mod tests {
     }
 
     #[test]
-    fn test_m2_eample_struct_read_write() {
+    fn test_simple_struct_read_write() {
         let example_data_bin = [
             // header
             0x16, 0x00, 0x00, 0x00, // crc
@@ -632,8 +621,8 @@ mod tests {
                     C3Vector::new(1., 2., 3.),
                     C3Vector::new(3., 2., 1.),
                 ),
-                // up_to_mop: Some(0x123),
-                // after_mop: None,
+                up_to_mop: OptionUpToMoP::Some(0x123),
+                after_mop: OptionAfterMoP::None,
             },
             vectors: vec![C2Vector::new(1., 2.), C2Vector::new(2., 1.)],
         };
@@ -657,8 +646,8 @@ mod tests {
         vectors: Vec<C2Vector>,
         versioned_data: ExampleVersioned,
         bounding_box: BoundingBox,
-        // up_to_mop: Option<i16>,
-        // after_mop: Option<f32>,
+        up_to_mop: OptionUpToMoP<i16>,
+        after_mop: OptionAfterMoP<f32>,
     }
 
     impl ExampleDataNoHeader {
@@ -673,8 +662,8 @@ mod tests {
                 vectors,
                 versioned_data: header.versioned_data,
                 bounding_box: header.bounding_box,
-                // up_to_mop: header.up_to_mop,
-                // after_mop: header.after_mop,
+                up_to_mop: header.up_to_mop,
+                after_mop: header.after_mop,
             })
         }
     }
@@ -687,8 +676,8 @@ mod tests {
                 vectors: WowArray::default(),
                 versioned_data: self.versioned_data.clone(),
                 bounding_box: self.bounding_box.clone(),
-                // up_to_mop: self.up_to_mop,
-                // after_mop: self.after_mop,
+                up_to_mop: self.up_to_mop,
+                after_mop: self.after_mop,
             };
 
             let header_size = new_header.wow_size();
@@ -711,7 +700,7 @@ mod tests {
     }
 
     #[test]
-    fn test_m2_eample_struct_no_header_read_write() {
+    fn test_simple_struct_no_header_read_write() {
         let example_data_bin = [
             // header
             0x16, 0x00, 0x00, 0x00, // crc
@@ -737,8 +726,8 @@ mod tests {
             crc: 22,
             versioned_data: ExampleVersioned::Others(66),
             bounding_box: BoundingBox::new(C3Vector::new(1., 2., 3.), C3Vector::new(3., 2., 1.)),
-            // up_to_mop: None,
-            // after_mop: Some(1.0),
+            up_to_mop: OptionUpToMoP::None,
+            after_mop: OptionAfterMoP::Some(1.0),
             vectors: vec![C2Vector::new(1., 2.), C2Vector::new(2., 1.)],
         };
 
@@ -767,12 +756,12 @@ mod tests {
                         ExampleVersioned::UpToTBC(0, 2.0)
                     },
                     bounding_box: self.bounding_box.clone(),
-                    // up_to_mop: if self._version <= M2Version::MoP {
-                    //     self.up_to_mop
-                    // } else {
-                    //     Some(0)
-                    // },
-                    // after_mop: None,
+                    up_to_mop: if self._version <= M2Version::MoP {
+                        self.up_to_mop
+                    } else {
+                        OptionUpToMoP::Some(0)
+                    },
+                    after_mop: OptionAfterMoP::None,
                     vectors: self.vectors.clone(),
                 }),
                 _ => {
@@ -786,24 +775,24 @@ mod tests {
                                 self.versioned_data.clone()
                             },
                             bounding_box: self.bounding_box.clone(),
-                            // up_to_mop: if to_version > M2Version::MoP {
-                            //     None
-                            // } else {
-                            //     if self._version <= M2Version::MoP {
-                            //         self.up_to_mop
-                            //     } else {
-                            //         Some(0)
-                            //     }
-                            // },
-                            // after_mop: if to_version > M2Version::MoP {
-                            //     if self._version > M2Version::MoP {
-                            //         self.after_mop
-                            //     } else {
-                            //         Some(0.0)
-                            //     }
-                            // } else {
-                            //     None
-                            // },
+                            up_to_mop: if to_version > M2Version::MoP {
+                                OptionUpToMoP::None
+                            } else {
+                                if self._version <= M2Version::MoP {
+                                    self.up_to_mop
+                                } else {
+                                    OptionUpToMoP::Some(0)
+                                }
+                            },
+                            after_mop: if to_version > M2Version::MoP {
+                                if self._version > M2Version::MoP {
+                                    self.after_mop
+                                } else {
+                                    OptionAfterMoP::Some(0.0)
+                                }
+                            } else {
+                                OptionAfterMoP::None
+                            },
                             vectors: self.vectors.clone(),
                         })
                     } else {
@@ -819,7 +808,7 @@ mod tests {
     }
 
     #[test]
-    fn test_m2_eample_conversion() {
+    fn test_simple_conversion() {
         let example_data_bin = [
             // header
             0x16, 0x00, 0x00, 0x00, // crc

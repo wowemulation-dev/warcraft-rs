@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Expr, Fields, Type, parse::Parse, parse_macro_input};
 
 #[proc_macro_derive(WowDataRV, attributes(wow_data))]
@@ -11,26 +11,46 @@ pub fn wow_data_rv_derive(input: TokenStream) -> TokenStream {
         Err(e) => return e.to_compile_error().into(),
     };
 
-    // Ensure we are deriving for a struct with named fields.
-    let fields = if let Data::Struct(s) = &input.data {
-        if let Fields::Named(f) = &s.fields {
-            &f.named
-        } else {
-            return syn::Error::new_spanned(
-                &s.fields,
-                "WowDataRV can only be derived for structs with named fields.",
-            )
-            .to_compile_error()
-            .into();
+    let struct_name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let reader_body = match &input.data {
+        Data::Struct(s) => generate_struct_reader_body(&s.fields),
+        Data::Enum(e) => generate_enum_reader_body(e),
+        Data::Union(_) => {
+            return syn::Error::new_spanned(&input, "WowDataRV cannot be derived for unions.")
+                .to_compile_error()
+                .into();
         }
-    } else {
-        return syn::Error::new_spanned(&input, "WowDataRV can only be derived for structs.")
-            .to_compile_error()
-            .into();
     };
 
-    // Generate the field initializers for the `wow_read` method body.
-    let initializers = fields.iter().map(|field| {
+    let reader_body = match reader_body {
+        Ok(body) => body,
+        Err(e) => return e.to_compile_error().into(),
+    };
+
+    let expanded = quote! {
+        impl #impl_generics WowDataRV<#version_ty> for #struct_name #ty_generics #where_clause {
+            fn wow_read<R: ::std::io::Read + ::std::io::Seek>(reader: &mut R, version: #version_ty) -> Result<Self> {
+                Ok(#reader_body)
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+fn generate_struct_reader_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
+    let named_fields = if let Fields::Named(f) = fields {
+        &f.named
+    } else {
+        return Err(syn::Error::new_spanned(
+            fields,
+            "WowDataRV on structs only supports named fields.",
+        ));
+    };
+
+    let initializers = named_fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
 
         // Check for the `#[wow_data(versioned)]` attribute on the field.
@@ -59,21 +79,69 @@ pub fn wow_data_rv_derive(input: TokenStream) -> TokenStream {
         }
     });
 
-    // Assemble the final `impl` block.
-    let struct_name = &input.ident;
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    Ok(quote! {
+        Self {
+            #(#initializers),*
+        }
+    })
+}
 
-    let expanded = quote! {
-        impl #impl_generics WowDataRV<#version_ty> for #struct_name #ty_generics #where_clause {
-            fn wow_read<R: ::std::io::Read + ::std::io::Seek>(reader: &mut R, version: #version_ty) -> Result<Self> {
-                Ok(Self {
-                    #(#initializers),*
-                })
+fn generate_enum_reader_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::TokenStream> {
+    let mut conditional_arms = Vec::new();
+    let mut default_arm = None;
+
+    for variant in &data.variants {
+        let variant_ident = &variant.ident;
+
+        let constructor = match &variant.fields {
+            syn::Fields::Unit => {
+                quote! { Self::#variant_ident }
             }
+            syn::Fields::Unnamed(fields) => {
+                let read_fields = fields.unnamed.iter().map(|_| {
+                    quote! { reader.wow_read()? }
+                });
+                quote! { Self::#variant_ident(#(#read_fields),*) }
+            }
+            syn::Fields::Named(fields) => {
+                let field_bindings = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
+                let read_fields =
+                    field_bindings.map(|binding| quote! { #binding: reader.wow_read()? });
+                quote! { Self::#variant_ident{#(#read_fields),*} }
+            }
+        };
+
+        match get_value_from_attrs::<Expr>(&variant.attrs, "wow_data", "read_if") {
+            Ok(cond_expr) => {
+                conditional_arms.push(quote! { if #cond_expr { #constructor } });
+            }
+            Err(_) => {
+                if default_arm.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        variant,
+                        "Only one enum variant can be the default (lacking a `read_if` attribute).",
+                    ));
+                }
+                default_arm = Some(constructor);
+            }
+        }
+    }
+
+    let default_arm = default_arm.ok_or_else(|| {
+        syn::Error::new_spanned(
+            &data.variants,
+            "An enum must have one default variant (lacking a `read_if` attribute).",
+        )
+    })?;
+
+    let full_body = quote! {
+        #(#conditional_arms)else*
+        else {
+            #default_arm
         }
     };
 
-    TokenStream::from(expanded)
+    Ok(full_body)
 }
 
 fn get_value_from_attrs<T: Parse>(
@@ -157,26 +225,57 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
 pub fn wow_data_w_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let struct_name = &input.ident;
+    let ident = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let fields = if let Data::Struct(s) = &input.data {
-        if let Fields::Named(f) = &s.fields {
-            &f.named
-        } else {
-            return syn::Error::new_spanned(
-                &s.fields,
-                "WowDataW can only be derived for structs with named fields.",
-            )
-            .to_compile_error()
-            .into();
+    let (writer_body, sizer_body) = match &input.data {
+        Data::Struct(s) => (
+            generate_struct_writer_body(&s.fields),
+            generate_struct_size_body(&s.fields),
+        ),
+        Data::Enum(e) => (generate_enum_writer_body(e), generate_enum_size_body(e)),
+        Data::Union(_) => {
+            return syn::Error::new_spanned(&input, "WowDataW cannot be derived for unions.")
+                .to_compile_error()
+                .into();
         }
-    } else {
-        return syn::Error::new_spanned(&input, "WowDataW can only be derived for structs.")
-            .to_compile_error()
-            .into();
     };
 
-    let write_statements = fields.iter().map(|field| {
+    // Check if body generation failed
+    let writer_body = match writer_body {
+        Ok(body) => body,
+        Err(e) => return e.to_compile_error().into(),
+    };
+    let sizer_body = match sizer_body {
+        Ok(body) => body,
+        Err(e) => return e.to_compile_error().into(),
+    };
+
+    let expanded = quote! {
+        impl #impl_generics WowDataW for #ident #ty_generics #where_clause {
+            fn wow_write<W: ::std::io::Write>(&self, writer: &mut W) -> Result<()> {
+                #writer_body
+            }
+
+            fn wow_size(&self) -> usize {
+                #sizer_body
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+fn generate_struct_writer_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
+    let named_fields = if let Fields::Named(f) = fields {
+        &f.named
+    } else {
+        return Err(syn::Error::new_spanned(
+            fields,
+            "WowDataW on structs only supports named fields.",
+        ));
+    };
+    let write_statements = named_fields.iter().map(|field| {
         match get_value_from_attrs::<Expr>(&field.attrs, "wow_data", "skip") {
             Ok(_) => quote! {},
             Err(_) => {
@@ -188,7 +287,22 @@ pub fn wow_data_w_derive(input: TokenStream) -> TokenStream {
         }
     });
 
-    let size_expressions = fields.iter().map(|field| {
+    Ok(quote! {
+        #(#write_statements)*
+        Ok(())
+    })
+}
+
+fn generate_struct_size_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
+    let named_fields = if let Fields::Named(f) = fields {
+        &f.named
+    } else {
+        return Err(syn::Error::new_spanned(
+            fields,
+            "WowDataW on structs only supports named fields.",
+        ));
+    };
+    let size_expressions = named_fields.iter().map(|field| {
         match get_value_from_attrs::<Expr>(&field.attrs, "wow_data", "skip") {
             Ok(_) => quote! {0},
             Err(_) => {
@@ -200,20 +314,108 @@ pub fn wow_data_w_derive(input: TokenStream) -> TokenStream {
         }
     });
 
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    Ok(quote! {
+        0 #(+ #size_expressions)*
+    })
+}
 
-    let expanded = quote! {
-        impl #impl_generics WowDataW for #struct_name #ty_generics #where_clause {
-            fn wow_write<W: ::std::io::Write>(&self, writer: &mut W) -> Result<()> {
-                #(#write_statements)*
-                Ok(())
+fn generate_enum_writer_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::TokenStream> {
+    let arms = data.variants.iter().map(|variant| {
+        let variant_ident = &variant.ident;
+
+        match &variant.fields {
+            syn::Fields::Unit => {
+                quote! {
+                    Self::#variant_ident => {}
+                }
             }
 
-            fn wow_size(&self) -> usize {
-                0 #(+ #size_expressions)*
+            syn::Fields::Unnamed(fields) => {
+                let field_bindings = fields
+                    .unnamed
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| format_ident!("v{}", i));
+                let field_bindings_clone = field_bindings.clone();
+
+                let write_calls =
+                    field_bindings.map(|binding| quote! { writer.wow_write(#binding)?; });
+
+                quote! {
+                    Self::#variant_ident(#(#field_bindings_clone),*) => {
+                        #(#write_calls)*
+                    }
+                }
+            }
+
+            syn::Fields::Named(fields) => {
+                let field_bindings = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
+                let field_bindings_clone = field_bindings.clone();
+
+                let write_calls =
+                    field_bindings.map(|binding| quote! { writer.wow_write(#binding)?; });
+
+                quote! {
+                    Self::#variant_ident { #(#field_bindings_clone),* } => {
+                         #(#write_calls)*
+                    }
+                }
             }
         }
-    };
+    });
 
-    TokenStream::from(expanded)
+    Ok(quote! {
+        match self {
+            #(#arms),*
+        }
+        Ok(())
+    })
+}
+
+fn generate_enum_size_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::TokenStream> {
+    let arms = data.variants.iter().map(|variant| {
+        let variant_ident = &variant.ident;
+
+        match &variant.fields {
+            syn::Fields::Unit => {
+                quote! {
+                    Self::#variant_ident => 0
+                }
+            }
+            syn::Fields::Unnamed(fields) => {
+                let field_bindings = fields
+                    .unnamed
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| format_ident!("v{}", i));
+                let field_bindings_clone = field_bindings.clone();
+
+                let size_calls = field_bindings.map(|binding| quote! { #binding.wow_size() });
+
+                quote! {
+                    Self::#variant_ident(#(#field_bindings_clone),*) => {
+                        0 #(+ #size_calls)*
+                    }
+                }
+            }
+            syn::Fields::Named(fields) => {
+                let field_bindings = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
+                let field_bindings_clone = field_bindings.clone();
+
+                let size_calls = field_bindings.map(|binding| quote! { #binding.wow_size() });
+
+                quote! {
+                    Self::#variant_ident { #(#field_bindings_clone),* } => {
+                        0 #(+ #size_calls)*
+                    }
+                }
+            }
+        }
+    });
+
+    Ok(quote! {
+        match self {
+            #(#arms),*
+        }
+    })
 }
