@@ -199,7 +199,10 @@ fn test_texture_layer_limits_trinitycore_compliance() {
     // Our implementation should respect TrinityCore's limits
     // This ensures compatibility with server-side map rendering
     // Verify the constant is set to the expected value
-    assert_eq!(MAX_TEXTURE_LAYERS_TRINITYCORE, 4, "TrinityCore supports exactly 4 texture layers per MCNK");
+    assert_eq!(
+        MAX_TEXTURE_LAYERS_TRINITYCORE, 4,
+        "TrinityCore supports exactly 4 texture layers per MCNK"
+    );
 
     // Verify this matches common ADT file structure
     // Most MCNK chunks use 1-4 texture layers for blending
