@@ -139,7 +139,7 @@ impl M2RibbonEmitter {
         // Handle version-specific conversions
         // Version 272 (Cataclysm/MoP) introduced texture_slice and variation
         let target_version_num = target_version.to_header_version();
-        
+
         if target_version_num >= 272 && self.texture_slice.is_none() {
             // When upgrading to v272+, add texture slice and variation if missing
             new_emitter.texture_slice = Some(0);

@@ -341,10 +341,10 @@ pub struct WmoDoodadSet {
 pub struct WmoConvexVolumePlane {
     /// Plane normal vector
     pub normal: Vec3,
-    
+
     /// Distance from origin along the normal
     pub distance: f32,
-    
+
     /// Plane flags (usage unknown)
     pub flags: u32,
 }

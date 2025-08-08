@@ -129,8 +129,8 @@ pub use version::{WmoFeature, WmoVersion};
 pub use visualizer::WmoVisualizer;
 // Re-export all types from wmo_types
 pub use wmo_types::{
-    WmoConvexVolumePlane, WmoConvexVolumePlanes, WmoDoodadDef, WmoDoodadSet, WmoFlags, 
-    WmoGroupInfo, WmoHeader, WmoLight, WmoLightProperties, WmoLightType, WmoMaterial, 
+    WmoConvexVolumePlane, WmoConvexVolumePlanes, WmoDoodadDef, WmoDoodadSet, WmoFlags,
+    WmoGroupInfo, WmoHeader, WmoLight, WmoLightProperties, WmoLightType, WmoMaterial,
     WmoMaterialFlags, WmoPortal, WmoPortalReference, WmoRoot,
 };
 

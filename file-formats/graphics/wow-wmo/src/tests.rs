@@ -71,7 +71,7 @@ fn test_version_from_raw() {
     // Based on empirical analysis: version 17 maps to Classic by default
     // but could be any expansion from Classic through MoP
     assert_eq!(WmoVersion::from_raw(17), Some(WmoVersion::Classic));
-    
+
     // Post-MoP theoretical versions
     assert_eq!(WmoVersion::from_raw(18), Some(WmoVersion::Wod));
     assert_eq!(WmoVersion::from_raw(19), Some(WmoVersion::Legion));
@@ -85,12 +85,30 @@ fn test_version_from_raw() {
 #[test]
 fn test_version_from_raw_with_expansion() {
     // Test expansion-aware parsing for version 17
-    assert_eq!(WmoVersion::from_raw_with_expansion(17, "vanilla"), Some(WmoVersion::Classic));
-    assert_eq!(WmoVersion::from_raw_with_expansion(17, "tbc"), Some(WmoVersion::Tbc));
-    assert_eq!(WmoVersion::from_raw_with_expansion(17, "wotlk"), Some(WmoVersion::Wotlk));
-    assert_eq!(WmoVersion::from_raw_with_expansion(17, "cataclysm"), Some(WmoVersion::Cataclysm));
-    assert_eq!(WmoVersion::from_raw_with_expansion(17, "mop"), Some(WmoVersion::Mop));
-    assert_eq!(WmoVersion::from_raw_with_expansion(17, "unknown"), Some(WmoVersion::Classic));
+    assert_eq!(
+        WmoVersion::from_raw_with_expansion(17, "vanilla"),
+        Some(WmoVersion::Classic)
+    );
+    assert_eq!(
+        WmoVersion::from_raw_with_expansion(17, "tbc"),
+        Some(WmoVersion::Tbc)
+    );
+    assert_eq!(
+        WmoVersion::from_raw_with_expansion(17, "wotlk"),
+        Some(WmoVersion::Wotlk)
+    );
+    assert_eq!(
+        WmoVersion::from_raw_with_expansion(17, "cataclysm"),
+        Some(WmoVersion::Cataclysm)
+    );
+    assert_eq!(
+        WmoVersion::from_raw_with_expansion(17, "mop"),
+        Some(WmoVersion::Mop)
+    );
+    assert_eq!(
+        WmoVersion::from_raw_with_expansion(17, "unknown"),
+        Some(WmoVersion::Classic)
+    );
 }
 
 #[test]
@@ -101,7 +119,7 @@ fn test_version_to_raw() {
     assert_eq!(WmoVersion::Wotlk.to_raw(), 17);
     assert_eq!(WmoVersion::Cataclysm.to_raw(), 17);
     assert_eq!(WmoVersion::Mop.to_raw(), 17);
-    
+
     // Test theoretical post-MoP versions
     assert_eq!(WmoVersion::Wod.to_raw(), 18);
     assert_eq!(WmoVersion::Legion.to_raw(), 19);
@@ -464,7 +482,7 @@ fn test_wmo_full_conversion() {
     // Note: Both Classic and TBC use version 17, so parsing will return Classic
     // Feature differentiation is done through chunk presence, not version numbers
     assert_eq!(out_wmo.version, WmoVersion::Classic); // Expected: parses as Classic due to version 17
-    
+
     // The actual conversion logic should be tested through feature availability
     // rather than version number comparison
 }

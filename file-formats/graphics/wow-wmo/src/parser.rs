@@ -938,21 +938,24 @@ impl WmoParser {
         };
 
         let mcvp_data = mcvp_chunk.read_data(reader)?;
-        
+
         // Each convex volume plane is 20 bytes: Vec3 normal (12) + f32 distance (4) + u32 flags (4)
         const PLANE_SIZE: usize = 20;
-        
+
         if mcvp_data.len() % PLANE_SIZE != 0 {
-            warn!("MCVP chunk size {} is not a multiple of plane size {}", 
-                  mcvp_data.len(), PLANE_SIZE);
+            warn!(
+                "MCVP chunk size {} is not a multiple of plane size {}",
+                mcvp_data.len(),
+                PLANE_SIZE
+            );
             return Ok(None);
         }
 
         let plane_count = mcvp_data.len() / PLANE_SIZE;
         let mut planes = Vec::with_capacity(plane_count);
-        
+
         let mut cursor = std::io::Cursor::new(&mcvp_data);
-        
+
         for _ in 0..plane_count {
             let normal = Vec3 {
                 x: cursor.read_f32_le()?,
@@ -961,7 +964,7 @@ impl WmoParser {
             };
             let distance = cursor.read_f32_le()?;
             let flags = cursor.read_u32_le()?;
-            
+
             planes.push(WmoConvexVolumePlane {
                 normal,
                 distance,

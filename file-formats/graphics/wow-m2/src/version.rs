@@ -102,10 +102,10 @@ impl M2Version {
     pub fn from_header_version(version: u32) -> Option<Self> {
         match version {
             // Empirically verified exact versions from format analysis
-            256 => Some(Self::Classic),       // Vanilla 1.12.1
-            260 => Some(Self::TBC),           // The Burning Crusade 2.4.3
-            264 => Some(Self::WotLK),         // Wrath of the Lich King 3.3.5a
-            272 => Some(Self::Cataclysm),     // Cataclysm 4.3.4 and MoP 5.4.8
+            256 => Some(Self::Classic),   // Vanilla 1.12.1
+            260 => Some(Self::TBC),       // The Burning Crusade 2.4.3
+            264 => Some(Self::WotLK),     // Wrath of the Lich King 3.3.5a
+            272 => Some(Self::Cataclysm), // Cataclysm 4.3.4 and MoP 5.4.8
 
             // Legacy support for version ranges (avoiding overlaps)
             257..=259 => Some(Self::Classic),
@@ -131,12 +131,12 @@ impl M2Version {
     pub fn to_header_version(&self) -> u32 {
         match self {
             // Empirically verified versions from format analysis
-            Self::Classic => 256,     // Vanilla 1.12.1
-            Self::TBC => 260,         // The Burning Crusade 2.4.3
-            Self::WotLK => 264,       // Wrath of the Lich King 3.3.5a
-            Self::Cataclysm => 272,   // Cataclysm 4.3.4
-            Self::MoP => 272,         // MoP 5.4.8 (same as Cataclysm)
-            
+            Self::Classic => 256,   // Vanilla 1.12.1
+            Self::TBC => 260,       // The Burning Crusade 2.4.3
+            Self::WotLK => 264,     // Wrath of the Lich King 3.3.5a
+            Self::Cataclysm => 272, // Cataclysm 4.3.4
+            Self::MoP => 272,       // MoP 5.4.8 (same as Cataclysm)
+
             // Post-MoP versions (theoretical, not empirically verified)
             Self::WoD => 10,
             Self::Legion => 11,
@@ -301,10 +301,7 @@ mod tests {
             M2Version::from_header_version(256),
             Some(M2Version::Classic)
         );
-        assert_eq!(
-            M2Version::from_header_version(260),
-            Some(M2Version::TBC)
-        );
+        assert_eq!(M2Version::from_header_version(260), Some(M2Version::TBC));
         assert_eq!(M2Version::from_header_version(264), Some(M2Version::WotLK));
         assert_eq!(
             M2Version::from_header_version(272),
@@ -316,14 +313,8 @@ mod tests {
             M2Version::from_header_version(257),
             Some(M2Version::Classic)
         );
-        assert_eq!(
-            M2Version::from_header_version(261),
-            Some(M2Version::TBC)
-        );
-        assert_eq!(
-            M2Version::from_header_version(265),
-            Some(M2Version::WotLK)
-        );
+        assert_eq!(M2Version::from_header_version(261), Some(M2Version::TBC));
+        assert_eq!(M2Version::from_header_version(265), Some(M2Version::WotLK));
 
         // Later versions
         assert_eq!(M2Version::from_header_version(8), Some(M2Version::MoP));
@@ -389,7 +380,7 @@ mod tests {
         assert_eq!(M2Version::WotLK.empirical_version_number(), Some(264));
         assert_eq!(M2Version::Cataclysm.empirical_version_number(), Some(272));
         assert_eq!(M2Version::MoP.empirical_version_number(), Some(272));
-        
+
         // Post-MoP versions not empirically verified
         assert_eq!(M2Version::WoD.empirical_version_number(), None);
         assert_eq!(M2Version::Legion.empirical_version_number(), None);

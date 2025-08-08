@@ -64,7 +64,7 @@ impl WmoVersion {
             (17, exp) if exp.contains("cata") || exp.contains("cataclysm") => Some(Self::Cataclysm),
             (17, exp) if exp.contains("mop") || exp.contains("pandaria") => Some(Self::Mop),
             (17, _) => Some(Self::Classic), // Default to Classic for unknown v17
-            _ => Self::from_raw(raw), // Delegate to standard method for other versions
+            _ => Self::from_raw(raw),       // Delegate to standard method for other versions
         }
     }
 
