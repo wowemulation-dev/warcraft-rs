@@ -6,7 +6,10 @@ use crate::M2Error;
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::common::{BoundingBox, ItemParser, M2Array, read_array};
+use crate::common::{
+    BoundingBox, ItemParser, M2Array, M2DataR, M2DataRV, M2DataW, M2Reader, M2ReaderV, M2Writer,
+    read_array,
+};
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -59,6 +62,21 @@ bitflags::bitflags! {
     }
 }
 
+impl M2DataR for M2AnimationFlags {
+    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(M2AnimationFlags::from_bits_retain(reader.m2_read()?))
+    }
+}
+impl M2DataW for M2AnimationFlags {
+    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.m2_write(&self.bits())?;
+        Ok(())
+    }
+    fn m2_size(&self) -> usize {
+        4
+    }
+}
+
 /// Animation value ranges
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct M2Range {
@@ -66,6 +84,26 @@ pub struct M2Range {
     pub minimum: f32,
     /// Maximum value
     pub maximum: f32,
+}
+
+impl M2DataR for M2Range {
+    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(Self {
+            minimum: reader.m2_read()?,
+            maximum: reader.m2_read()?,
+        })
+    }
+}
+impl M2DataW for M2Range {
+    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.m2_write(&self.minimum)?;
+        writer.m2_write(&self.maximum)?;
+        Ok(())
+    }
+
+    fn m2_size(&self) -> usize {
+        self.minimum.m2_size() + self.maximum.m2_size()
+    }
 }
 
 impl M2Range {
@@ -353,13 +391,78 @@ pub enum M2AnimationTiming {
     Duration(u32),
 }
 
+impl M2DataRV for M2AnimationTiming {
+    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
+        Ok(if version <= M2Version::TBC {
+            Self::StartEnd(reader.m2_read()?, reader.m2_read()?)
+        } else {
+            Self::Duration(reader.m2_read()?)
+        })
+    }
+}
+
+impl M2DataW for M2AnimationTiming {
+    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self {
+            Self::StartEnd(a, b) => {
+                writer.m2_write(a)?;
+                writer.m2_write(b)?;
+            }
+            Self::Duration(a) => {
+                writer.m2_write(a)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn m2_size(&self) -> usize {
+        match self {
+            Self::StartEnd(a, b) => a.m2_size() + b.m2_size(),
+            Self::Duration(a) => a.m2_size(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum M2AnimationBlending {
     Time(u32),
     InOut(u16, u16),
 }
 
+impl M2DataRV for M2AnimationBlending {
+    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
+        Ok(if version <= M2Version::MoP {
+            Self::Time(reader.m2_read()?)
+        } else {
+            Self::InOut(reader.m2_read()?, reader.m2_read()?)
+        })
+    }
+}
+
+impl M2DataW for M2AnimationBlending {
+    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self {
+            Self::Time(a) => {
+                writer.m2_write(a)?;
+            }
+            Self::InOut(a, b) => {
+                writer.m2_write(a)?;
+                writer.m2_write(b)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn m2_size(&self) -> usize {
+        match self {
+            Self::Time(a) => a.m2_size(),
+            Self::InOut(a, b) => a.m2_size() + b.m2_size(),
+        }
+    }
+}
+
 impl M2AnimationBlending {
+    // TODO: Remove
     pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
             Self::Time(val) => {
@@ -400,6 +503,53 @@ pub struct M2Animation {
     pub next_animation: i16,
     pub next_alias: u16,
 }
+
+impl M2DataRV for M2Animation {
+    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
+        Ok(Self {
+            animation_id: reader.m2_read()?,
+            sub_animation_id: reader.m2_read()?,
+            timing: reader.m2_read_versioned(version)?,
+            movement_speed: reader.m2_read()?,
+            flags: reader.m2_read()?,
+            frequency: reader.m2_read()?,
+            padding: reader.m2_read()?,
+            replay: reader.m2_read()?,
+            blending: reader.m2_read_versioned(version)?,
+            bounding_box: reader.m2_read()?,
+            bounding_radius: reader.m2_read()?,
+            next_animation: reader.m2_read()?,
+            next_alias: reader.m2_read()?,
+        })
+    }
+}
+
+// impl M2DataW for M2Animation {
+//     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+//         writer.m2_write(&self.crc)?;
+//         writer.m2_write(&self.vectors)?;
+//         writer.m2_write(&self.versioned_data)?;
+//         writer.m2_write(&self.bounding_box)?;
+//         if self._version <= M2Version::MoP {
+//             writer.m2_write(self.up_to_mop.as_ref().unwrap())?
+//         } else {
+//             writer.m2_write(self.after_mop.as_ref().unwrap())?
+//         }
+//         Ok(())
+//     }
+//
+//     fn m2_size(&self) -> usize {
+//         self.crc.m2_size()
+//             + self.versioned_data.m2_size()
+//             + self.vectors.m2_size()
+//             + self.bounding_box.m2_size()
+//             + if self._version <= M2Version::MoP {
+//                 self.up_to_mop.as_ref().unwrap().m2_size()
+//             } else {
+//                 self.after_mop.as_ref().unwrap().m2_size()
+//             }
+//     }
+// }
 
 impl M2Animation {
     /// Parse an animation from a reader based on the M2 version

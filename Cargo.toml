@@ -1,5 +1,8 @@
 [workspace]
 members = [
+  # Utils
+  "file-formats/wow-data", "file-formats/wow-data-derive",
+
   # Archives
   "file-formats/archives/wow-mpq",
 

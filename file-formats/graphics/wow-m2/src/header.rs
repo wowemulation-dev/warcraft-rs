@@ -1,3 +1,7 @@
+use crate::chunks::animation::M2Animation;
+use crate::chunks::bone::M2Bone;
+use crate::chunks::material::M2Material;
+use crate::chunks::{M2Texture, M2Vertex};
 use crate::io_ext::{ReadExt, WriteExt};
 use bitflags::bitflags;
 use std::io::{Read, Seek, Write};
@@ -97,7 +101,7 @@ pub struct M2Header {
     /// Global sequences
     pub global_sequences: M2Array<u32>,
     /// Animations
-    pub animations: M2Array<u32>,
+    pub animations: M2Array<M2Animation>,
     /// Animation lookups (C in Classic)
     pub animation_lookup: M2Array<u16>,
     /// Playable animation lookup - only present in versions <= 263
@@ -105,13 +109,13 @@ pub struct M2Header {
 
     // Bone-related fields
     /// Bones
-    pub bones: M2Array<u32>,
+    pub bones: M2Array<M2Bone>,
     /// Key bone lookup
     pub key_bone_lookup: M2Array<u16>,
 
     // Geometry data
     /// Vertices
-    pub vertices: M2Array<u32>,
+    pub vertices: M2Array<M2Vertex>,
     /// Views (LOD levels) - M2Array for BC and earlier, count for later versions
     pub views: M2Array<u32>,
     /// Number of skin profiles for WotLK+ (when views becomes a count)
@@ -119,11 +123,11 @@ pub struct M2Header {
 
     // Color data
     /// Color animations
-    pub color_animations: M2Array<u32>,
+    pub color_animations: M2Array<u8>,
 
     // Texture-related fields
     /// Textures
-    pub textures: M2Array<u32>,
+    pub textures: M2Array<M2Texture>,
     /// Transparency lookups
     pub transparency_lookup: M2Array<u16>,
     /// Transparency animations
@@ -131,11 +135,10 @@ pub struct M2Header {
     /// Texture flipbooks - only present in BC and earlier
     pub texture_flipbooks: Option<M2Array<u32>>,
     /// Texture animations
-    pub texture_animations: M2Array<u32>,
+    pub texture_animations: M2Array<u8>,
 
     // Material data
-    /// Render flags
-    pub render_flags: M2Array<u32>,
+    pub materials: M2Array<M2Material>,
     /// Bone lookup table
     pub bone_lookup_table: M2Array<u16>,
     /// Texture lookup table
@@ -372,7 +375,7 @@ impl M2Header {
             transparency_animations,
             texture_flipbooks,
             texture_animations,
-            render_flags,
+            materials: render_flags,
             bone_lookup_table,
             texture_lookup_table,
             texture_mapping_lookup_table,
@@ -453,7 +456,7 @@ impl M2Header {
 
         self.texture_animations.write(writer)?;
 
-        self.render_flags.write(writer)?;
+        self.materials.write(writer)?;
         self.bone_lookup_table.write(writer)?;
         self.texture_lookup_table.write(writer)?;
         self.texture_mapping_lookup_table.write(writer)?;
@@ -569,7 +572,7 @@ impl M2Header {
             transparency_animations: M2Array::new(0, 0),
             texture_flipbooks,
             texture_animations: M2Array::new(0, 0),
-            render_flags: M2Array::new(0, 0),
+            materials: M2Array::new(0, 0),
             bone_lookup_table: M2Array::new(0, 0),
             texture_lookup_table: M2Array::new(0, 0),
             texture_mapping_lookup_table: M2Array::new(0, 0),

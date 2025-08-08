@@ -10,16 +10,12 @@ pub trait ItemParser<T> {
     fn parse<R: Read + Seek>(reader: &mut R) -> Result<T>;
 }
 
-pub trait M2DataR {
-    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self>
-    where
-        Self: Sized;
+pub trait M2DataR: Sized {
+    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self>;
 }
 
-pub trait M2DataRV {
-    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self>
-    where
-        Self: Sized;
+pub trait M2DataRV: Sized {
+    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self>;
 }
 
 pub trait M2DataW {
@@ -112,12 +108,12 @@ pub trait M2Reader<T: M2DataR>: Read + Seek + Sized {
 }
 impl<T: M2DataR, R: Read + Seek> M2Reader<T> for R {}
 
-pub trait VersionedM2Reader<T: M2DataRV>: Read + Seek + Sized {
+pub trait M2ReaderV<T: M2DataRV>: Read + Seek + Sized {
     fn m2_read_versioned(&mut self, version: M2Version) -> Result<T> {
         Ok(T::m2_read(self, version)?)
     }
 }
-impl<T: M2DataRV, R: Read + Seek> VersionedM2Reader<T> for R {}
+impl<T: M2DataRV, R: Read + Seek> M2ReaderV<T> for R {}
 
 pub trait M2Writer<T: M2DataW>: Write + Sized {
     fn m2_write(&mut self, value: &T) -> Result<()> {
@@ -213,10 +209,7 @@ impl<T> M2DataW for M2Array<T> {
 }
 
 impl<T: M2DataR> M2Array<T> {
-    pub fn m2_read_to_vec<R>(&self, reader: &mut R) -> Result<Vec<T>>
-    where
-        R: Read + Seek,
-    {
+    pub fn m2_read_to_vec<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<T>> {
         if self.is_empty() {
             return Ok(Vec::new());
         }

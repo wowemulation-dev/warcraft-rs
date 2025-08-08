@@ -188,7 +188,7 @@ impl M2Model {
         })?;
 
         // Parse materials (render flags)
-        let materials = read_array(reader, &header.render_flags.convert(), |r| {
+        let materials = read_array(reader, &header.materials.convert(), |r| {
             M2Material::parse(r, header.version)
         })?;
 
@@ -467,7 +467,7 @@ impl M2Model {
 
         // Write materials (render flags)
         if !self.materials.is_empty() {
-            header.render_flags = M2Array::new(self.materials.len() as u32, current_offset);
+            header.materials = M2Array::new(self.materials.len() as u32, current_offset);
 
             for material in &self.materials {
                 let mut material_data = Vec::new();
@@ -483,7 +483,7 @@ impl M2Model {
 
             current_offset += (self.materials.len() * material_size) as u32;
         } else {
-            header.render_flags = M2Array::new(0, 0);
+            header.materials = M2Array::new(0, 0);
         }
 
         // Write bone lookup table

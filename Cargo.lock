@@ -3269,6 +3269,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "wow-data"
+version = "0.2.0"
+dependencies = [
+ "custom_debug",
+ "glam",
+ "thiserror 2.0.12",
+ "wow-data-derive",
+]
+
+[[package]]
+name = "wow-data-derive"
+version = "0.2.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "wow-m2"
 version = "0.2.0"
 dependencies = [
