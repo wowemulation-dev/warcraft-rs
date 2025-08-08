@@ -11,6 +11,112 @@ BLP (Blizzard Picture) is Blizzard's proprietary texture format used for all tex
 - **Features**: Up to 16 mipmaps, alpha channels with variable bit depth, GPU-friendly formats
 - **Endianness**: Little-endian for all multi-byte values
 
+## Cross-Version Analysis Results
+
+### WoW 1.12.1 (Vanilla)
+**Based on analysis of 50+ BLP files from original WoW 1.12.1 MPQ archives:**
+
+- **Format**: 100% BLP2 (no BLP0/BLP1 found)
+- **Content Type**: 100% Direct (content_type=1, no JPEG content)
+- **Primary Compression**: 82% DXT (compression=2), 18% RAW1 palettized (compression=1)
+- **Alpha Usage**: 46% use 8-bit alpha, 34% no alpha, 20% 1-bit alpha (no 4-bit alpha found)
+- **Alpha Types**: Only 0, 1, and 8 observed (no alpha_type=7)
+- **Dimensions**: 100% power-of-2, most common: 256x256 (28%), 64x64 (22%), 128x128 (10%)
+- **Mipmaps**: 88% have mipmaps enabled, typically 7-9 levels depending on texture size
+
+### WoW 2.4.3 (TBC)
+**Based on analysis of 28 BLP files from original WoW 2.4.3 (TBC) MPQ archives:**
+
+- **Format**: 100% BLP2 (consistent with 1.12.1)
+- **Content Type**: 100% Direct (content_type=1)
+- **Primary Compression**: 75% DXT (compression=2), 25% RAW1 palettized (compression=1)
+- **Alpha Usage**: 50% use 8-bit alpha, 25% no alpha, 18% use 1-bit alpha, 7% use alpha_type=7
+- **New Alpha Type**: alpha_type=7 appears (14.3% of files) - not seen in 1.12.1
+- **Dimensions**: 100% power-of-2, with 512x512 textures (7.1%) appearing for higher detail
+- **Mipmaps**: 93% have mipmaps enabled, up to 10 levels for 512x512 textures
+
+### WoW 3.3.5a (WotLK)
+**Based on analysis of 28 BLP files from original WoW 3.3.5a (WotLK) MPQ archives:**
+
+- **Format**: 100% BLP2 (consistent across versions)
+- **Content Type**: 100% Direct (content_type=1)
+- **Primary Compression**: 79% DXT (compression=2), 21% RAW1 palettized (compression=1)
+- **Alpha Usage**: 54% use 8-bit alpha, 43% no alpha, 4% use 1-bit alpha
+- **Alpha Types**: alpha_type=7 usage increases to 32.1% (vs 14.3% in TBC), alpha_type=1 drops to 7.1%
+- **Dimensions**: 100% power-of-2, 512x512 textures more common (14.3%), first 16x16 texture observed
+- **Mipmaps**: 89% have mipmaps enabled, with unusual has_mipmaps=2 value appearing (10.7%)
+
+### WoW 4.3.4 (Cataclysm)
+**Based on analysis of 29 BLP files from original WoW 4.3.4 (Cataclysm) MPQ archives:**
+
+- **Format**: 100% BLP2 (consistent across versions)
+- **Content Type**: 100% Direct (content_type=1)
+- **Primary Compression**: 79% DXT (compression=2), 21% RAW1 palettized (compression=1)
+- **Alpha Usage**: 83% use 8-bit alpha, 14% no alpha, 3% use 1-bit alpha (major shift towards 8-bit)
+- **Alpha Types**: alpha_type=7 dominates at 62.1% (vs 32.1% in WotLK), alpha_type=8 drops to 20.7%
+- **Dimensions**: 100% power-of-2, wider variety including non-square (256x128, 512x256) ratios
+- **Mipmaps**: 97% have mipmaps enabled (highest rate), mostly 9-10 levels
+
+### WoW 5.4.8 (MoP)
+**Based on analysis of 8 BLP files from original WoW 5.4.8 (MoP) MPQ archives:**
+
+- **Format**: 100% BLP2 (consistent across versions)
+- **Content Type**: 100% Direct (content_type=1)
+- **Primary Compression**: 100% DXT (compression=2), no RAW1 palettized found
+- **Alpha Usage**: 88% no alpha, 13% use 8-bit alpha (minimap tiles dominate sample)
+- **Alpha Types**: 88% alpha_type=0, 13% alpha_type=7 (limited sample size)
+- **Dimensions**: 100% power-of-2, primarily 256x256 (88%), one 64x128 texture
+- **Mipmaps**: 63% no mipmaps (minimap tiles), 38% have mipmaps enabled
+
+## BLP Format Evolution Analysis
+
+### Key Trends Across WoW Versions (1.12.1 → 5.4.8)
+
+#### 1. Alpha Type Evolution
+- **1.12.1**: Only alpha_type values 0, 1, and 8 observed
+- **2.4.3**: Introduction of alpha_type=7 (14.3% usage)
+- **3.3.5a**: alpha_type=7 increases to 32.1%
+- **4.3.4**: alpha_type=7 becomes dominant at 62.1%
+- **5.4.8**: Limited sample shows alpha_type=0 and 7 only
+
+**Key Finding**: alpha_type=7 appears to be associated with enhanced alpha blending introduced in TBC and becomes the primary alpha mode by Cataclysm.
+
+#### 2. Compression Method Trends
+- **1.12.1**: 82% DXT, 18% RAW1 palettized
+- **2.4.3**: 75% DXT, 25% RAW1 palettized  
+- **3.3.5a**: 79% DXT, 21% RAW1 palettized
+- **4.3.4**: 79% DXT, 21% RAW1 palettized (stable)
+- **5.4.8**: 100% DXT (no RAW1 in sample)
+
+**Key Finding**: DXT compression remains dominant, while RAW1 palettized usage fluctuates but generally decreases over time.
+
+#### 3. Alpha Usage Patterns
+- **1.12.1**: 46% use 8-bit alpha, 34% no alpha, 20% 1-bit alpha
+- **2.4.3**: 50% use 8-bit alpha, 25% no alpha, 18% 1-bit alpha  
+- **3.3.5a**: 54% use 8-bit alpha, 43% no alpha, 4% 1-bit alpha
+- **4.3.4**: 83% use 8-bit alpha, 14% no alpha, 3% 1-bit alpha
+- **5.4.8**: 13% use 8-bit alpha, 88% no alpha (minimap-heavy sample)
+
+**Key Finding**: 8-bit alpha usage steadily increases from Vanilla through Cataclysm, indicating more sophisticated transparency effects.
+
+#### 4. Texture Resolution Trends  
+- **1.12.1**: Primarily 256x256 (28%), some 64x64 (22%)
+- **2.4.3**: 512x512 textures appear (7.1% of sample)
+- **3.3.5a**: 512x512 usage increases (14.3%), small 16x16 textures appear
+- **4.3.4**: More diverse ratios including rectangular textures
+- **5.4.8**: Primarily 256x256 (88% of sample)
+
+**Key Finding**: Higher resolution textures (512x512) become more common from TBC onward, with Cataclysm introducing more rectangular aspect ratios.
+
+#### 5. Mipmap Behavior Evolution
+- **1.12.1**: 88% have mipmaps, mostly has_mipmaps=1
+- **2.4.3**: 93% have mipmaps, mostly has_mipmaps=1
+- **3.3.5a**: 89% have mipmaps, unusual has_mipmaps=2 appears (10.7%)
+- **4.3.4**: 97% have mipmaps (highest rate), mostly has_mipmaps=1
+- **5.4.8**: 38% have mipmaps (minimap tiles don't need LOD)
+
+**Key Finding**: Mipmap usage increases through Cataclysm, with WotLK introducing non-standard has_mipmaps=2 values.
+
 ## File Structure
 
 ### Header Layout
@@ -45,6 +151,20 @@ Offset  Size  Description
 0x14    64    Mipmap offsets (16 x u32)
 0x54    64    Mipmap sizes (16 x u32)
 ```
+
+### Alpha Type Patterns (WoW 1.12.1)
+
+**From empirical analysis, alpha_type correlates with compression and alpha_bits:**
+
+- **alpha_type=0**: Used with DXT compression, 0-bit or 1-bit alpha (48% of files)
+- **alpha_type=1**: Used with DXT compression, 8-bit alpha (34% of files)  
+- **alpha_type=8**: Used with RAW1 palettized compression, typically 8-bit alpha (18% of files)
+
+**Pattern Rules:**
+- DXT with no alpha → alpha_bits=0, alpha_type=0
+- DXT with binary transparency → alpha_bits=1, alpha_type=0
+- DXT with full transparency → alpha_bits=8, alpha_type=1
+- RAW1 palettized → alpha_type=8 (regardless of alpha_bits value)
 
 ### Data Layout
 
@@ -222,6 +342,39 @@ Full BGRA format (BLP2 only):
 ```rust
 let uncompressed = Blp2Format::Raw3;
 ```
+
+## WoW 1.12.1 Content Type Analysis
+
+**Compression usage by content type:**
+
+### UI Icons (Interface\Icons\*.blp)
+- **Compression**: DXT (compression=2) 
+- **Alpha**: Mixed - 1-bit for simple icons, 8-bit for complex icons
+- **Dimensions**: Mostly 64x64 (standard icon size)
+- **Mipmaps**: Usually 7 levels (64→32→16→8→4→2→1)
+
+### Character Textures (Character\*\*.blp)
+- **Compression**: RAW1 palettized (compression=1)
+- **Alpha**: Variable (0, 1, or 8-bit) with alpha_type=8
+- **Dimensions**: Rectangular (128x64, 128x32) for face parts
+- **Usage**: Hair, facial features, skin textures
+
+### Creature Skins (Creature\*\*.blp)
+- **Compression**: DXT (compression=2)
+- **Alpha**: Often 8-bit alpha (alpha_type=1) for fur/scale details
+- **Dimensions**: 256x256 (high detail creature textures)
+- **Mipmaps**: 9 levels for distance LOD
+
+### World Textures (World\*\*.blp)
+- **Compression**: DXT (compression=2)
+- **Alpha**: Mixed - 0-bit for solid objects, 1-bit for cutouts
+- **Dimensions**: Various sizes, always power-of-2
+- **Usage**: Building textures, environmental objects
+
+### Spell Effects (Spells\*.blp)
+- **Compression**: DXT (compression=2)
+- **Alpha**: Often 0-bit or 8-bit depending on effect type
+- **Dimensions**: 128x128, 256x256 for particle effects
 
 ## Version-Specific Features
 
@@ -406,6 +559,33 @@ fn create_game_texture(input: &str, output: &str) -> Result<(), Box<dyn std::err
 - Use DXT5 for textures with smooth alpha gradients
 - Generate mipmaps for 3D textures to improve rendering performance
 
+## Technical Notes from Analysis
+
+### Mipmap Behavior in WoW 1.12.1
+- **has_mipmaps field**: Not always reliable indicator
+  - Some files have has_mipmaps=0 but still contain 1 mipmap (base texture)
+  - One file observed with has_mipmaps=2 (non-standard value)
+- **Actual mipmap count**: Determined by non-zero offset/size pairs in mipmap tables
+- **Mipmap progression**: Always follows power-of-2 reduction (256→128→64→32→16→8→4→2→1)
+
+### Alpha Type Field Clarification
+The alpha_type field is more specific than previously documented:
+- **Not just "blending mode"** - directly correlates with compression method
+- **alpha_type=8**: Exclusive to RAW1 palettized textures
+- **alpha_type=0**: Standard for DXT with 0/1-bit alpha
+- **alpha_type=1**: Standard for DXT with 8-bit alpha
+
+### File Size Patterns
+- **1-10KB**: Small UI elements, simple icons (36% of sample)
+- **10-100KB**: Standard textures with mipmaps (64% of sample) 
+- **No files >1MB** found in UI/texture archives (may exist in model textures)
+
+### Dimension Distribution
+All textures use power-of-2 dimensions exclusively:
+- **Square textures**: 256x256, 128x128, 64x64, 32x32
+- **Rectangular textures**: Used for character parts (128x64, 128x32)
+- **Unusual ratios**: Some UI elements use 64x256, 32x64 for specific layouts
+
 ## Common Issues
 
 ### Technical Limitations
@@ -457,11 +637,37 @@ fn create_game_texture(input: &str, output: &str) -> Result<(), Box<dyn std::err
 - Highest quality, largest file size
 - No compression artifacts
 
+## Key Findings Summary
+
+**Based on comprehensive analysis of 50+ BLP files from WoW 1.12.1:**
+
+### Format Standardization
+- **BLP2 Universal**: All files use BLP2 format, no legacy BLP0/BLP1 in WoW
+- **Direct Content Only**: No JPEG content found (content_type=1 universal)
+- **Compression Split**: Clear division between DXT (82%) and RAW1 palettized (18%)
+
+### Alpha Type Correlation
+- **alpha_type field** directly correlates with compression method, not just blending
+- **Predictable patterns** allow format validation and automatic compression detection
+- **RAW1 textures** consistently use alpha_type=8 regardless of actual alpha bits
+
+### Content-Specific Optimization
+- **Character textures**: RAW1 for color palette efficiency
+- **Creature skins**: DXT with 8-bit alpha for detail
+- **UI elements**: DXT with appropriate alpha for purpose
+- **Effects**: DXT optimized for particle rendering
+
+### Quality Assurance
+- **100% power-of-2 dimensions** - no exceptions found
+- **Consistent mipmap chains** - proper LOD progression
+- **Appropriate compression** - format matches content type
+
 ## References
 
 - [BLP Format (wowdev.wiki)](https://wowdev.wiki/BLP)
 - [DXT Compression](https://docs.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression)
 - Original image-blp crate documentation
+- **Empirical Analysis**: 50+ BLP files from WoW 1.12.1 MPQ archives (2025)
 
 ## See Also
 

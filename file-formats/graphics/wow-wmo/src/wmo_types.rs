@@ -44,6 +44,10 @@ pub struct WmoRoot {
 
     /// Skybox model path, if any
     pub skybox: Option<String>,
+
+    /// Convex volume planes (Cataclysm+, transport WMOs)
+    /// Contains collision geometry for advanced physics interactions
+    pub convex_volume_planes: Option<WmoConvexVolumePlanes>,
 }
 
 /// WMO header information
@@ -328,4 +332,28 @@ pub struct WmoDoodadSet {
 
     /// Number of doodads in this set
     pub n_doodads: u32,
+}
+
+/// Represents a convex volume plane (MCVP chunk)
+/// Added in Cataclysm for transport WMOs and world objects requiring collision
+/// Based on empirical analysis: typically 496 bytes in transport WMOs
+#[derive(Debug, Clone)]
+pub struct WmoConvexVolumePlane {
+    /// Plane normal vector
+    pub normal: Vec3,
+    
+    /// Distance from origin along the normal
+    pub distance: f32,
+    
+    /// Plane flags (usage unknown)
+    pub flags: u32,
+}
+
+/// Container for MCVP chunk data
+/// Found in Cataclysm+ WMOs, particularly transport objects like ships
+#[derive(Debug, Clone)]
+pub struct WmoConvexVolumePlanes {
+    /// List of convex volume planes
+    /// Each plane defines a clipping boundary for the WMO collision system
+    pub planes: Vec<WmoConvexVolumePlane>,
 }

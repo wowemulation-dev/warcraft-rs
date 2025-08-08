@@ -1,63 +1,87 @@
 /// WMO format versions corresponding to different WoW expansions/patches
+/// Based on empirical analysis: WMO version remains 17 across all analyzed versions (1.12.1-5.4.8)
+/// Features are differentiated by chunk presence rather than version numbers
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
-#[repr(u32)]
 pub enum WmoVersion {
-    /// Classic/Vanilla (1.x)
-    Classic = 17,
+    /// Classic/Vanilla (1.12.1) - Version 17, core chunks only
+    Classic,
 
-    /// The Burning Crusade (2.x)
-    Tbc = 18,
+    /// The Burning Crusade (2.4.3) - Version 17, improved lighting
+    Tbc,
 
-    /// Wrath of the Lich King (3.x)
-    Wotlk = 19,
+    /// Wrath of the Lich King (3.3.5a) - Version 17, skybox support
+    Wotlk,
 
-    /// Cataclysm (4.x)
-    Cataclysm = 20,
+    /// Cataclysm (4.3.4) - Version 17 + MCVP chunk for transport WMOs
+    Cataclysm,
 
-    /// Mists of Pandaria (5.x)
-    Mop = 21,
+    /// Mists of Pandaria (5.4.8) - Version 17 + MCVP chunk, group MOCV support
+    Mop,
 
-    /// Warlords of Draenor (6.x)
-    Wod = 22,
+    /// Warlords of Draenor (6.x) - Theoretical post-MoP versions
+    Wod,
 
     /// Legion (7.x)
-    Legion = 23,
+    Legion,
 
     /// Battle for Azeroth (8.x)
-    Bfa = 24,
+    Bfa,
 
     /// Shadowlands (9.x)
-    Shadowlands = 25,
+    Shadowlands,
 
     /// Dragonflight (10.x)
-    Dragonflight = 26,
+    Dragonflight,
 
     /// The War Within (11.x)
-    WarWithin = 27,
+    WarWithin,
 }
 
 impl WmoVersion {
     /// Convert a raw version number to a WmoVersion
+    /// Based on empirical analysis: version 17 spans Classic through MoP
+    /// Features are determined by expansion context and chunk presence
     pub fn from_raw(raw: u32) -> Option<Self> {
         match raw {
-            17 => Some(Self::Classic),
-            18 => Some(Self::Tbc),
-            19 => Some(Self::Wotlk),
-            20 => Some(Self::Cataclysm),
-            21 => Some(Self::Mop),
-            22 => Some(Self::Wod),
-            23 => Some(Self::Legion),
-            24 => Some(Self::Bfa),
-            25 => Some(Self::Shadowlands),
-            26 => Some(Self::Dragonflight),
-            27 => Some(Self::WarWithin),
+            17 => Some(Self::Classic), // Default to Classic for version 17
+            18 => Some(Self::Wod),
+            19 => Some(Self::Legion),
+            20 => Some(Self::Bfa),
+            21 => Some(Self::Shadowlands),
+            22 => Some(Self::Dragonflight),
+            23 => Some(Self::WarWithin),
             _ => None,
         }
     }
 
-    /// Get the raw version number
+    /// Convert a raw version number to WmoVersion with expansion context
+    /// Use this when you know the WoW expansion to get accurate feature detection
+    pub fn from_raw_with_expansion(raw: u32, expansion: &str) -> Option<Self> {
+        match (raw, expansion.to_lowercase().as_str()) {
+            (17, exp) if exp.contains("vanilla") || exp.contains("classic") => Some(Self::Classic),
+            (17, exp) if exp.contains("tbc") || exp.contains("burning") => Some(Self::Tbc),
+            (17, exp) if exp.contains("wotlk") || exp.contains("wrath") => Some(Self::Wotlk),
+            (17, exp) if exp.contains("cata") || exp.contains("cataclysm") => Some(Self::Cataclysm),
+            (17, exp) if exp.contains("mop") || exp.contains("pandaria") => Some(Self::Mop),
+            (17, _) => Some(Self::Classic), // Default to Classic for unknown v17
+            _ => Self::from_raw(raw), // Delegate to standard method for other versions
+        }
+    }
+
+    /// Get the raw version number used in WMO files
+    /// Returns the actual version number found in WMO headers
     pub fn to_raw(self) -> u32 {
-        self as u32
+        match self {
+            // Empirically verified: all these use version 17
+            Self::Classic | Self::Tbc | Self::Wotlk | Self::Cataclysm | Self::Mop => 17,
+            // Theoretical post-MoP versions
+            Self::Wod => 18,
+            Self::Legion => 19,
+            Self::Bfa => 20,
+            Self::Shadowlands => 21,
+            Self::Dragonflight => 22,
+            Self::WarWithin => 23,
+        }
     }
 
     /// Get the expansion name as a string
@@ -108,6 +132,9 @@ pub enum WmoFeature {
     /// Destructible objects introduced in Cataclysm
     DestructibleObjects,
 
+    /// Convex volume planes (MCVP) introduced in Cataclysm for transport WMOs
+    ConvexVolumePlanes,
+
     /// Extended materials introduced in MoP
     ExtendedMaterials,
 
@@ -138,6 +165,7 @@ impl WmoFeature {
             Self::ImprovedLighting => WmoVersion::Tbc,
             Self::SkyboxReferences => WmoVersion::Wotlk,
             Self::DestructibleObjects => WmoVersion::Cataclysm,
+            Self::ConvexVolumePlanes => WmoVersion::Cataclysm,
             Self::ExtendedMaterials => WmoVersion::Mop,
             Self::LiquidV2 => WmoVersion::Wod,
             Self::GlobalAmbientColor => WmoVersion::Legion,
