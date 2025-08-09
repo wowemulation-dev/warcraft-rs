@@ -1,10 +1,10 @@
 use wow_data::prelude::*;
-use wow_data_derive::{WowHeaderRV, WowHeaderW};
+use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
 use crate::chunks::animation::M2AnimationBlock;
 use crate::version::M2Version;
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2TransparencyAnimation {
     #[wow_data(versioned)]

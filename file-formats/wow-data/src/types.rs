@@ -15,7 +15,7 @@ pub trait WowHeaderR: Sized {
 
 pub trait DataVersion: Copy {}
 
-pub trait WowHeaderRV<V: DataVersion>: Sized {
+pub trait VWowHeaderR<V: DataVersion>: Sized {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: V) -> Result<Self>;
 }
 
@@ -32,14 +32,14 @@ pub trait WowHeaderConversible<V: DataVersion>: WowHeaderW + Sized {
     fn wow_convert(&self, to_version: V) -> Result<Self>;
 }
 
-pub trait WowConcreteDataR<T: WowHeaderR>: Sized {
+pub trait WowDataR<T: WowHeaderR>: Sized {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &T) -> Result<Self>;
 }
 
-pub trait WowConcreteDataRV<V, T>: Sized
+pub trait VWowDataR<V, T>: Sized
 where
     V: DataVersion,
-    T: WowHeaderRV<V>,
+    T: VWowHeaderR<V>,
 {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &T) -> Result<Self>;
 }
@@ -251,42 +251,42 @@ impl WowHeaderW for [f32; 3] {
     }
 }
 
-pub trait WowHeaderReader<T: WowHeaderR>: Read + Seek + Sized {
+pub trait WowReaderForHeader<T: WowHeaderR>: Read + Seek + Sized {
     fn wow_read(&mut self) -> Result<T> {
         Ok(T::wow_read(self)?)
     }
 }
-impl<T: WowHeaderR, R: Read + Seek> WowHeaderReader<T> for R {}
+impl<T: WowHeaderR, R: Read + Seek> WowReaderForHeader<T> for R {}
 
-pub trait WowReaderConcrete<H: WowHeaderR, T: WowConcreteDataR<H>>: Read + Seek + Sized {
+pub trait WowReaderForData<H: WowHeaderR, T: WowDataR<H>>: Read + Seek + Sized {
     fn new_from_header(&mut self, header: H) -> Result<T> {
         Ok(T::new_from_header(self, &header)?)
     }
 }
-impl<H: WowHeaderR, T: WowConcreteDataR<H>, R: Read + Seek> WowReaderConcrete<H, T> for R {}
+impl<H: WowHeaderR, T: WowDataR<H>, R: Read + Seek> WowReaderForData<H, T> for R {}
 
-pub trait WowHeaderReaderV<V: DataVersion, T: WowHeaderRV<V>>: Read + Seek + Sized {
+pub trait VWowHeaderReader<V: DataVersion, T: VWowHeaderR<V>>: Read + Seek + Sized {
     fn wow_read_versioned(&mut self, version: V) -> Result<T> {
         Ok(T::wow_read(self, version)?)
     }
 }
-impl<V: DataVersion, T: WowHeaderRV<V>, R: Read + Seek> WowHeaderReaderV<V, T> for R {}
+impl<V: DataVersion, T: VWowHeaderR<V>, R: Read + Seek> VWowHeaderReader<V, T> for R {}
 
-pub trait WowHeaderWriter<T: WowHeaderW>: Write + Sized {
+pub trait WowWriterForHeader<T: WowHeaderW>: Write + Sized {
     fn wow_write(&mut self, value: &T) -> Result<()> {
         value.wow_write(self)?;
         Ok(())
     }
 }
-impl<T: WowHeaderW, W: Write> WowHeaderWriter<T> for W {}
+impl<T: WowHeaderW, W: Write> WowWriterForHeader<T> for W {}
 
-pub trait WowWriterV<V: DataVersion, T: WowHeaderConversible<V>>: Write + Sized {
+pub trait VWowWriterForHeader<V: DataVersion, T: WowHeaderConversible<V>>: Write + Sized {
     fn wow_write_versioned(&mut self, value: &T, version: V) -> Result<()> {
         value.wow_write_version(self, version)?;
         Ok(())
     }
 }
-impl<V: DataVersion, T: WowHeaderConversible<V>, W: Write> WowWriterV<V, T> for W {}
+impl<V: DataVersion, T: WowHeaderConversible<V>, W: Write> VWowWriterForHeader<V, T> for W {}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct WowArray<T> {
@@ -403,7 +403,7 @@ impl WowString for String {
 pub struct WowArrayV<V, T>
 where
     V: DataVersion,
-    T: WowHeaderRV<V> + WowHeaderW,
+    T: VWowHeaderR<V> + WowHeaderW,
 {
     pub count: u32,
     pub offset: u32,
@@ -417,7 +417,7 @@ where
 impl<V, T> Clone for WowArrayV<V, T>
 where
     V: DataVersion,
-    T: WowHeaderRV<V> + WowHeaderW,
+    T: VWowHeaderR<V> + WowHeaderW,
 {
     fn clone(&self) -> Self {
         Self {
@@ -429,10 +429,10 @@ where
     }
 }
 
-impl<V, T> WowHeaderRV<V> for WowArrayV<V, T>
+impl<V, T> VWowHeaderR<V> for WowArrayV<V, T>
 where
     V: DataVersion,
-    T: WowHeaderRV<V> + WowHeaderW,
+    T: VWowHeaderR<V> + WowHeaderW,
 {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: V) -> Result<Self> {
         reader.wow_read_versioned(version)
@@ -442,7 +442,7 @@ where
 impl<V, T> Default for WowArrayV<V, T>
 where
     V: DataVersion,
-    T: WowHeaderRV<V> + WowHeaderW,
+    T: VWowHeaderR<V> + WowHeaderW,
 {
     fn default() -> Self {
         Self {
@@ -457,7 +457,7 @@ where
 pub struct WowArrayVIter<'a, V, T, R>
 where
     V: DataVersion,
-    T: WowHeaderRV<V> + WowHeaderW,
+    T: VWowHeaderR<V> + WowHeaderW,
     R: Read + Seek,
 {
     reader: &'a mut R,
@@ -471,7 +471,7 @@ where
 impl<'a, V, T, R> WowArrayVIter<'a, V, T, R>
 where
     V: DataVersion,
-    T: WowHeaderRV<V> + WowHeaderW,
+    T: VWowHeaderR<V> + WowHeaderW,
     R: Read + Seek,
 {
     pub fn new(reader: &'a mut R, version: V, array: WowArrayV<V, T>) -> Result<Self> {
@@ -532,7 +532,7 @@ where
 impl<V, T> WowArrayV<V, T>
 where
     V: DataVersion,
-    T: WowHeaderRV<V> + WowHeaderW,
+    T: VWowHeaderR<V> + WowHeaderW,
 {
     pub fn is_empty(&self) -> bool {
         self.count == 0
@@ -783,7 +783,7 @@ impl WowHeaderW for [VectorFp6_9; 2] {
 
 #[cfg(test)]
 mod tests {
-    use wow_data_derive::{WowHeaderRV, WowHeaderW};
+    use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
     use super::*;
     use std::io::Cursor;
@@ -991,7 +991,7 @@ mod tests {
         }
     }
 
-    #[derive(super::Debug, Clone, Copy, WowHeaderRV, WowHeaderW)]
+    #[derive(super::Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     enum ExampleVersioned {
         #[wow_data(read_if = version <= M2Version::TBC)]
@@ -999,7 +999,7 @@ mod tests {
         Others(u16),
     }
 
-    #[derive(super::Debug, Clone, Copy, WowHeaderRV, WowHeaderW)]
+    #[derive(super::Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     enum OptionUpToMoP<T: WowHeaderR + WowHeaderW> {
         #[wow_data(read_if = version <= M2Version::MoP)]
@@ -1007,7 +1007,7 @@ mod tests {
         None,
     }
 
-    #[derive(super::Debug, Clone, Copy, WowHeaderRV, WowHeaderW)]
+    #[derive(super::Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     enum OptionAfterMoP<T: WowHeaderR + WowHeaderW> {
         #[wow_data(read_if = version > M2Version::MoP)]
@@ -1015,7 +1015,7 @@ mod tests {
         None,
     }
 
-    #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     struct ExampleHeader {
         #[wow_data(skip = M2Version::Classic)]
@@ -1340,14 +1340,14 @@ mod tests {
         assert_eq!(*converted_writer.get_ref(), example_converted_data_bin);
     }
     //
-    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub enum M2InterpolationRange {
     //     #[wow_data(read_if = version <= M2Version::TBC)]
     //     Some(WowArray<(u32, u32)>),
     //     None,
     // }
-    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub enum TrackArray<T> {
     //     Single(WowArray<T>),
@@ -1355,7 +1355,7 @@ mod tests {
     //     #[wow_data(read_if = version > M2Version::TBC)]
     //     Multiple(WowArray<WowArray<T>>),
     // }
-    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub struct M2AnimationTrackHeader<T> {
     //     pub global_sequence: i16,
@@ -1367,7 +1367,7 @@ mod tests {
     //     pub values: TrackArray<T>,
     // }
     //
-    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // struct ClassicAnimTH {
     //     #[wow_data(versioned)]
@@ -1380,7 +1380,7 @@ mod tests {
     //     Later(M2AnimationTrackHeader<Quaternion16>),
     // }
     //
-    // impl WowHeaderRV<M2Version> for M2BoneRotation {
+    // impl VWowHeaderR<M2Version> for M2BoneRotation {
     //     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
     //         Ok(if version == M2Version::Classic {
     //             Self::Classic(reader.wow_read_versioned(version)?)
@@ -1390,7 +1390,7 @@ mod tests {
     //     }
     // }
     //
-    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub struct M2Animation {
     //     pub animation_id: u16,
@@ -1412,7 +1412,7 @@ mod tests {
     //     pub next_alias: u16,
     // }
     //
-    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub struct M2Header {
     //     /// Version of the M2 file

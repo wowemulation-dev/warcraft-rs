@@ -3,7 +3,7 @@ use crate::chunks::animation::M2AnimationTrackHeader;
 use wow_data::prelude::*;
 use wow_data::types::{C2Vector, ColorA, VectorFp6_9, WowArray, WowCharArray};
 use wow_data::{error::Result as WDResult, types::C3Vector};
-use wow_data_derive::{WowHeaderRV, WowHeaderW};
+use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
 use super::animation::{M2Box, M2FakeAnimationBlock, M2Range};
 
@@ -98,7 +98,7 @@ impl M2ParticleEmitterType {
     }
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 enum M2ParticleEmitterBlending {
     Classic {
@@ -114,7 +114,7 @@ enum M2ParticleEmitterBlending {
     },
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 enum M2ParticleEmitterMultiTextureParam {
     PreCata {
@@ -126,7 +126,7 @@ enum M2ParticleEmitterMultiTextureParam {
     AfterCata(u8),
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 enum M2ParticleEmitterLifespanVary {
     None,
@@ -135,7 +135,7 @@ enum M2ParticleEmitterLifespanVary {
     Some(f32),
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 enum M2ParticleEmitterEmissionRateVary {
     None,
@@ -144,7 +144,7 @@ enum M2ParticleEmitterEmissionRateVary {
     Some(f32),
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 enum M2ParticleEmitterColorAnimation {
     UpToTbc {
@@ -167,7 +167,7 @@ enum M2ParticleEmitterColorAnimation {
     },
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 enum M2ParticleEmitterSpin {
     UpToTbc {
@@ -184,7 +184,7 @@ enum M2ParticleEmitterSpin {
 }
 
 /// Represents a particle emitter in an M2 model
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2ParticleEmitterOld {
     pub id: u32,
@@ -297,7 +297,7 @@ impl M2ParticleEmitterOld {
     // }
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2ParticleEmitterNew {
     #[wow_data(versioned)]
@@ -315,7 +315,7 @@ pub enum M2ParticleEmitter {
     PostCata(M2ParticleEmitterNew),
 }
 
-impl WowHeaderRV<M2Version> for M2ParticleEmitter {
+impl VWowHeaderR<M2Version> for M2ParticleEmitter {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
         Ok(if version >= M2Version::Cataclysm {
             Self::PostCata(reader.wow_read_versioned(version)?)

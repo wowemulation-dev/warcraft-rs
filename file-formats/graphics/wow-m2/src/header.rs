@@ -11,7 +11,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{BoundingBox, C3Vector, WowArray, WowArrayV, WowCharArray};
-use wow_data_derive::{WowHeaderR, WowHeaderRV, WowHeaderW};
+use wow_data_derive::{VWowHeaderR, WowHeaderR, WowHeaderW};
 
 use crate::version::M2Version;
 
@@ -104,7 +104,7 @@ impl WowHeaderW for M2ModelFlags {
     }
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2PlayableAnimationLookup {
     #[wow_data(read_if = version <= M2Version::TBC)]
@@ -114,7 +114,7 @@ pub enum M2PlayableAnimationLookup {
 
 pub type M2SkinProfile = u32;
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2SkinProfiles {
     UpToTBC(WowArray<M2SkinProfile>),
@@ -132,7 +132,7 @@ pub struct M2TextureFlipbook {
     d: u32,
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2TextureFlipbooks {
     Some(WowArray<M2TextureFlipbook>),
@@ -141,7 +141,7 @@ pub enum M2TextureFlipbooks {
     None,
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2BlenMapOverrides {
     None,
@@ -162,7 +162,7 @@ impl WowHeaderR for M2TextureCombinerCombos {
     }
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2TextureTransforms {
     None,
@@ -173,7 +173,7 @@ pub enum M2TextureTransforms {
 
 /// M2 model header structure
 /// Based on: <https://wowdev.wiki/M2#Header>
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2Header {
     /// Magic signature ("MD20")

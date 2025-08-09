@@ -3,7 +3,7 @@ use crate::version::M2Version;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::C3Vector;
-use wow_data_derive::{WowHeaderRV, WowHeaderW};
+use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
 use super::animation::M2SplineKey;
 
@@ -35,7 +35,7 @@ impl WowHeaderW for M2CameraFlags {
     }
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 enum M2CameraFov {
     None,
@@ -53,7 +53,7 @@ enum M2CameraFovAnimation {
     Some(M2AnimationTrackHeader<M2SplineKey<f32>>),
 }
 
-impl WowHeaderRV<M2Version> for M2CameraFovAnimation {
+impl VWowHeaderR<M2Version> for M2CameraFovAnimation {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
         Ok(if version >= M2Version::Cataclysm {
             Self::Some(reader.wow_read_versioned(version)?)
@@ -64,7 +64,7 @@ impl WowHeaderRV<M2Version> for M2CameraFovAnimation {
 }
 
 /// Represents a camera in an M2 model
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2Camera {
     pub camera_type: u32,

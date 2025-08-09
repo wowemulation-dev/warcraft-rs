@@ -3,7 +3,7 @@ use std::io::SeekFrom;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Quaternion, Quaternion16, WowArrayV};
-use wow_data_derive::{WowHeaderRV, WowHeaderW};
+use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
 use crate::Result;
 use crate::version::M2Version;
@@ -60,7 +60,7 @@ pub enum M2BoneRotationHeader {
     Later(M2AnimationTrackHeader<Quaternion16>),
 }
 
-impl WowHeaderRV<M2Version> for M2BoneRotationHeader {
+impl VWowHeaderR<M2Version> for M2BoneRotationHeader {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
         Ok(if version == M2Version::Classic {
             Self::Classic(reader.wow_read_versioned(version)?)
@@ -76,7 +76,7 @@ pub enum M2BoneRotation {
     Later(M2AnimationTrack<Quaternion16>),
 }
 
-impl WowConcreteDataRV<M2Version, M2BoneRotationHeader> for M2BoneRotation {
+impl WowDataRV<M2Version, M2BoneRotationHeader> for M2BoneRotation {
     fn new_from_header<R: Read + Seek>(
         reader: &mut R,
         header: &M2BoneRotationHeader,
@@ -92,7 +92,7 @@ impl WowConcreteDataRV<M2Version, M2BoneRotationHeader> for M2BoneRotation {
     }
 }
 
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2BoneCrc {
     Classic {
@@ -105,7 +105,7 @@ pub enum M2BoneCrc {
 }
 
 /// Represents a bone in an M2 model
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2BoneHeader {
     pub bone_id: i32,
@@ -134,7 +134,7 @@ pub struct M2BoneData {
     pub scaling: M2AnimationTrack<C3Vector>,
 }
 
-impl WowConcreteDataRV<M2Version, M2BoneHeader> for M2BoneData {
+impl WowDataRV<M2Version, M2BoneHeader> for M2BoneData {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &M2BoneHeader) -> WDResult<Self> {
         let position = M2AnimationTrack::read_from_header(reader, &header.position)?;
         let rotation = M2AnimationTrack::read_from_header(reader, &header.scaling)?;

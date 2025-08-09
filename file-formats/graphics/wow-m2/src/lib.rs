@@ -32,7 +32,6 @@ pub mod common;
 pub mod converter;
 pub mod error;
 pub mod header;
-pub mod io_ext;
 pub mod model;
 pub mod skin;
 pub mod version;

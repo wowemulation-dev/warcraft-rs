@@ -1,7 +1,7 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Color};
-use wow_data_derive::{WowHeaderRV, WowHeaderW};
+use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
 use crate::M2Error;
 use crate::chunks::animation::M2AnimationTrackHeader;
@@ -90,7 +90,7 @@ impl WowHeaderW for M2LightType {
 }
 
 /// Represents a light in an M2 model
-#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2Light {
     pub light_type: M2LightType,
