@@ -1,41 +1,64 @@
 use custom_debug::Debug;
 use std::{cmp, fmt};
+use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
+use wow_data::types::{BoundingBox, C3Vector, WowArray};
+use wow_data_derive::{WowHeaderR, WowHeaderRV, WowHeaderW};
 use wow_utils::debug;
 
 use crate::M2Error;
-use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::common::{
-    BoundingBox, ItemParser, M2Array, M2DataR, M2DataRV, M2DataW, M2Reader, M2ReaderV, M2Writer,
-    read_array,
-};
 use crate::error::Result;
 use crate::version::M2Version;
 
-/// Animation interpolation types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M2InterpolationType {
-    /// No interpolation
     None = 0,
-    /// Linear interpolation
     Linear = 1,
-    /// Bezier curve interpolation
     Bezier = 2,
-    /// Hermite curve interpolation
     Hermite = 3,
 }
 
-impl M2InterpolationType {
-    /// Parse from integer value
-    pub fn from_u16(value: u16) -> Option<Self> {
+impl TryFrom<u16> for M2InterpolationType {
+    type Error = M2Error;
+
+    fn try_from(value: u16) -> Result<Self> {
         match value {
-            0 => Some(Self::None),
-            1 => Some(Self::Linear),
-            2 => Some(Self::Bezier),
-            3 => Some(Self::Hermite),
-            _ => None,
+            0 => Ok(Self::None),
+            1 => Ok(Self::Linear),
+            2 => Ok(Self::Bezier),
+            3 => Ok(Self::Hermite),
+            _ => Err(M2Error::ParseError("invalid interpolation value".into())),
         }
+    }
+}
+
+impl From<M2InterpolationType> for u16 {
+    fn from(value: M2InterpolationType) -> Self {
+        match value {
+            M2InterpolationType::None => 0,
+            M2InterpolationType::Linear => 1,
+            M2InterpolationType::Bezier => 2,
+            M2InterpolationType::Hermite => 3,
+        }
+    }
+}
+
+impl WowHeaderR for M2InterpolationType {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        Ok(u16::wow_read(reader)?.try_into()?)
+    }
+}
+
+impl WowHeaderW for M2InterpolationType {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        u16::wow_write(&(*self).into(), writer)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        u16::wow_size(&(*self).into())
     }
 }
 
@@ -62,202 +85,100 @@ bitflags::bitflags! {
     }
 }
 
-impl M2DataR for M2AnimationFlags {
-    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(M2AnimationFlags::from_bits_retain(reader.m2_read()?))
+impl WowHeaderR for M2AnimationFlags {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        Ok(Self::from_bits_retain(reader.wow_read()?))
     }
 }
-impl M2DataW for M2AnimationFlags {
-    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.m2_write(&self.bits())?;
+impl WowHeaderW for M2AnimationFlags {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        writer.wow_write(&self.bits())?;
         Ok(())
     }
-    fn m2_size(&self) -> usize {
+    fn wow_size(&self) -> usize {
         4
     }
 }
 
 /// Animation value ranges
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct M2Range {
-    /// Minimum value
     pub minimum: f32,
-    /// Maximum value
     pub maximum: f32,
 }
 
-impl M2DataR for M2Range {
-    fn m2_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(Self {
-            minimum: reader.m2_read()?,
-            maximum: reader.m2_read()?,
-        })
-    }
-}
-impl M2DataW for M2Range {
-    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.m2_write(&self.minimum)?;
-        writer.m2_write(&self.maximum)?;
-        Ok(())
-    }
-
-    fn m2_size(&self) -> usize {
-        self.minimum.m2_size() + self.maximum.m2_size()
-    }
+#[derive(Debug, Clone, PartialEq, WowHeaderR, WowHeaderW)]
+pub struct M2Box {
+    pub rotation_speed_min: C3Vector,
+    pub rotation_speed_max: C3Vector,
 }
 
-impl M2Range {
-    /// Parse a range from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
-        let minimum = reader.read_f32_le()?;
-        let maximum = reader.read_f32_le()?;
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
+    Single(WowArray<T>),
 
-        Ok(Self { minimum, maximum })
-    }
-
-    /// Write a range to a writer
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_f32_le(self.minimum)?;
-        writer.write_f32_le(self.maximum)?;
-
-        Ok(())
-    }
+    #[wow_data(read_if = version > M2Version::TBC)]
+    Multiple(WowArray<WowArray<T>>),
 }
 
-#[derive(Debug, Clone)]
-pub enum TrackArray<T> {
-    Single(M2Array<T>),
-    Multiple(M2Array<M2Array<T>>),
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
+enum M2InterpolationRange {
+    None,
+
+    #[wow_data(read_if = version <= M2Version::TBC)]
+    Some(WowArray<(u32, u32)>),
 }
 
-impl<T> TrackArray<T> {
-    pub fn parse_single<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(Self::Single(M2Array::parse(reader)?))
-    }
-
-    pub fn parse_multiple<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(Self::Multiple(M2Array::parse(reader)?))
-    }
-
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        match self {
-            Self::Single(single) => single.write(writer),
-            Self::Multiple(_multiple) => todo!("not implemented"),
-        }
-    }
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub struct M2AnimationBaseTrackHeader {
+    pub interpolation_type: M2InterpolationType,
+    pub global_sequence: i16,
+    #[wow_data(versioned)]
+    pub interpolation_ranges: M2InterpolationRange,
+    #[wow_data(versioned)]
+    pub timestamps: TrackArray<u32>,
 }
 
 /// An animation track header
-#[derive(Debug, Clone)]
-pub struct M2AnimationTrackHeader<T> {
-    /// Interpolation type
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub struct M2AnimationTrackHeader<T: WowHeaderR + WowHeaderW> {
     pub interpolation_type: M2InterpolationType,
-    /// Global sequence ID or -1
     pub global_sequence: i16,
-    pub interpolation_ranges: Option<M2Array<(u32, u32)>>,
-    /// Timestamps
+    #[wow_data(versioned)]
+    pub interpolation_ranges: M2InterpolationRange,
+    #[wow_data(versioned)]
     pub timestamps: TrackArray<u32>,
-    /// Values
+    #[wow_data(versioned)]
     pub values: TrackArray<T>,
 }
 
-impl<T> M2AnimationTrackHeader<T> {
-    /// Parse an animation track from a reader
-    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
-        let version = M2Version::try_from_header_version(version)
-            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
-
-        let interpolation_type_raw = reader.read_u16_le()?;
-        let interpolation_type = M2InterpolationType::from_u16(interpolation_type_raw)
-            .unwrap_or(M2InterpolationType::None);
-
-        let global_sequence = reader.read_i16_le()?;
-
-        let interpolation_ranges = if version <= M2Version::TBC {
-            Some(M2Array::parse(reader)?)
-        } else {
-            None
-        };
-
-        let timestamps = if version <= M2Version::TBC {
-            TrackArray::parse_single(reader)?
-        } else {
-            TrackArray::parse_multiple(reader)?
-        };
-
-        let values = if version <= M2Version::TBC {
-            TrackArray::parse_single(reader)?
-        } else {
-            TrackArray::parse_multiple(reader)?
-        };
-
-        Ok(Self {
-            interpolation_type,
-            interpolation_ranges,
-            global_sequence,
-            timestamps,
-            values,
-        })
-    }
-
-    /// Write an animation track to a writer
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_u16_le(self.interpolation_type as u16)?;
-        writer.write_i16_le(self.global_sequence)?;
-        self.timestamps.write(writer)?;
-        self.values.write(writer)?;
-
-        Ok(())
-    }
-
+impl<T: WowHeaderR + WowHeaderW> M2AnimationTrackHeader<T> {
     pub fn new() -> Self {
         Self {
             interpolation_type: crate::chunks::animation::M2InterpolationType::None,
             global_sequence: -1,
-            interpolation_ranges: None,
-            timestamps: TrackArray::Multiple(M2Array::new(0, 0)),
-            values: TrackArray::Multiple(M2Array::new(0, 0)),
+            interpolation_ranges: M2InterpolationRange::None,
+            timestamps: TrackArray::Multiple(WowArray::new(0, 0)),
+            values: TrackArray::Multiple(WowArray::new(0, 0)),
         }
     }
+}
+
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
+pub struct M2SplineKey<T: WowHeaderR + WowHeaderW> {
+    pub value: T,
+    pub in_tan: T,
+    pub out_tan: T,
 }
 
 #[derive(Debug, Clone)]
 pub enum TrackVec<T> {
     Single(Vec<T>),
     Multiple(Vec<Vec<T>>),
-}
-
-impl<T> TrackVec<T> {
-    pub fn from_trackarray<R, F>(reader: &mut R, array: &TrackArray<T>, parse_fn: F) -> Result<Self>
-    where
-        R: Read + Seek,
-        F: Fn(&mut R) -> Result<T>,
-    {
-        Ok(match array {
-            TrackArray::Single(single) => {
-                Self::Single(read_array(reader, &single.convert(), &parse_fn)?)
-            }
-            TrackArray::Multiple(multiple) => {
-                reader
-                    .seek(SeekFrom::Start(multiple.offset as u64))
-                    .map_err(M2Error::Io)?;
-
-                let mut result = Vec::with_capacity(multiple.count as usize);
-                for _ in 0..multiple.count {
-                    let single: M2Array<T> = M2Array::parse(reader)?;
-                    let item_end_position = reader.stream_position()?;
-                    result.push(read_array(reader, &single.convert(), &parse_fn)?);
-                    reader.seek(SeekFrom::Start(item_end_position))?;
-                }
-
-                Self::Multiple(result)
-            }
-        })
-    }
-
-    pub fn write<W: Write>(&self, _writer: &mut W) -> Result<()> {
-        todo!("implement this")
-    }
 }
 
 #[cfg(not(feature = "debug-print-all"))]
@@ -294,54 +215,21 @@ pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt
 }
 
 #[derive(Debug, Clone)]
-pub struct M2AnimationTrack<T: fmt::Debug> {
-    pub header: M2AnimationTrackHeader<T>,
+pub struct M2AnimationTrack<T: fmt::Debug + WowHeaderR + WowHeaderW> {
+    // pub header: M2AnimationTrackHeader<T>,
     pub interpolation_ranges: Option<Vec<(u32, u32)>>,
-    /// Timestamps
+
     #[debug(with = trimmed_trackvec_fmt)]
     pub timestamps: TrackVec<u32>,
-    /// Values
+
     #[debug(with = trimmed_trackvec_fmt)]
     pub values: TrackVec<T>,
 }
 
-impl<T: fmt::Debug + ItemParser<T>> M2AnimationTrack<T> {
-    pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
-        let header = M2AnimationTrackHeader::parse(reader, version)?;
-
-        let header_end_position = reader.stream_position()?;
-
-        let interpolation_ranges = match &header.interpolation_ranges {
-            Some(interpolation_ranges) => {
-                Some(read_array(reader, &interpolation_ranges.convert(), |r| {
-                    Ok((r.read_u32_le()?, r.read_u32_le()?))
-                })?)
-            }
-            None => None,
-        };
-
-        let timestamps =
-            TrackVec::from_trackarray(reader, &header.timestamps, |r| Ok(r.read_u32_le()?))?;
-
-        let values = TrackVec::from_trackarray(reader, &header.values, T::parse)?;
-
-        reader.seek(SeekFrom::Start(header_end_position))?;
-
-        Ok(Self {
-            header,
-            interpolation_ranges,
-            timestamps,
-            values,
-        })
-    }
-
-    pub fn write<W: Write>(&self, _writer: &mut W) -> Result<()> {
-        todo!("implement this")
-    }
-
+impl<T: fmt::Debug + WowHeaderR + WowHeaderW> M2AnimationTrack<T> {
     pub fn new() -> Self {
         Self {
-            header: M2AnimationTrackHeader::new(),
+            // header: M2AnimationTrackHeader::new(),
             interpolation_ranges: None,
             timestamps: TrackVec::Multiple(vec![vec![]]),
             values: TrackVec::Multiple(vec![vec![]]),
@@ -349,154 +237,109 @@ impl<T: fmt::Debug + ItemParser<T>> M2AnimationTrack<T> {
     }
 }
 
+impl<T> M2AnimationTrack<T>
+where
+    T: fmt::Debug + WowHeaderR + WowHeaderW,
+{
+    pub fn read_from_header<R: Read + Seek>(
+        reader: &mut R,
+        track_header: &M2AnimationTrackHeader<T>,
+    ) -> WDResult<Self> {
+        let header_end_position = reader.stream_position()?;
+
+        let interpolation_ranges = match &track_header.interpolation_ranges {
+            M2InterpolationRange::Some(interpolation_ranges) => {
+                Some(interpolation_ranges.wow_read_to_vec(reader)?)
+            }
+            M2InterpolationRange::None => None,
+        };
+
+        let timestamps = match track_header.timestamps {
+            TrackArray::Single(ref single) => TrackVec::Single(single.wow_read_to_vec(reader)?),
+            TrackArray::Multiple(ref multiple) => {
+                TrackVec::Multiple(multiple.wow_read_to_vec_r(reader)?)
+            }
+        };
+
+        let values = match track_header.values {
+            TrackArray::Single(ref single) => TrackVec::Single(single.wow_read_to_vec(reader)?),
+            TrackArray::Multiple(ref multiple) => {
+                TrackVec::Multiple(multiple.wow_read_to_vec_r(reader)?)
+            }
+        };
+
+        reader.seek(SeekFrom::Start(header_end_position))?;
+
+        Ok(Self {
+            // header: track_header,
+            interpolation_ranges,
+            timestamps,
+            values,
+        })
+    }
+}
+
 /// Animation block for a specific animation type
-#[derive(Debug, Clone)]
-pub struct M2AnimationBlock<T> {
-    /// Animation track
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub struct M2AnimationBlock<T: WowHeaderR + WowHeaderW> {
+    #[wow_data(versioned)]
     pub track: M2AnimationTrackHeader<T>,
-    /// Data type (phantom data)
+
+    #[wow_data(skip = std::marker::PhantomData)]
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> M2AnimationBlock<T> {
-    /// Create a new animation block from a track
+impl<T: WowHeaderR + WowHeaderW> M2AnimationBlock<T> {
     pub fn new(track: M2AnimationTrackHeader<T>) -> Self {
         Self {
             track,
             _phantom: std::marker::PhantomData,
         }
     }
-
-    /// Parse an animation block from a reader
-    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
-        let track = M2AnimationTrackHeader::parse(reader, version)?;
-
-        Ok(Self {
-            track,
-            _phantom: std::marker::PhantomData,
-        })
-    }
-
-    /// Write an animation block to a writer
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.track.write(writer)?;
-
-        Ok(())
-    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
+pub struct M2FakeAnimationBlock<T: WowHeaderR + WowHeaderW> {
+    pub timestamps: WowArray<u16>,
+    pub keys: WowArray<u16>,
+    pub values: WowArray<T>,
+}
+
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
 pub enum M2AnimationTiming {
     StartEnd(u32, u32),
+
+    #[wow_data(read_if = version > M2Version::TBC)]
     Duration(u32),
 }
 
-impl M2DataRV for M2AnimationTiming {
-    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
-        Ok(if version <= M2Version::TBC {
-            Self::StartEnd(reader.m2_read()?, reader.m2_read()?)
-        } else {
-            Self::Duration(reader.m2_read()?)
-        })
-    }
-}
-
-impl M2DataW for M2AnimationTiming {
-    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        match self {
-            Self::StartEnd(a, b) => {
-                writer.m2_write(a)?;
-                writer.m2_write(b)?;
-            }
-            Self::Duration(a) => {
-                writer.m2_write(a)?;
-            }
-        }
-        Ok(())
-    }
-
-    fn m2_size(&self) -> usize {
-        match self {
-            Self::StartEnd(a, b) => a.m2_size() + b.m2_size(),
-            Self::Duration(a) => a.m2_size(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
 pub enum M2AnimationBlending {
     Time(u32),
+
+    #[wow_data(read_if = version >= M2Version::WoD)]
     InOut(u16, u16),
 }
 
-impl M2DataRV for M2AnimationBlending {
-    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
-        Ok(if version <= M2Version::MoP {
-            Self::Time(reader.m2_read()?)
-        } else {
-            Self::InOut(reader.m2_read()?, reader.m2_read()?)
-        })
-    }
-}
-
-impl M2DataW for M2AnimationBlending {
-    fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        match self {
-            Self::Time(a) => {
-                writer.m2_write(a)?;
-            }
-            Self::InOut(a, b) => {
-                writer.m2_write(a)?;
-                writer.m2_write(b)?;
-            }
-        }
-        Ok(())
-    }
-
-    fn m2_size(&self) -> usize {
-        match self {
-            Self::Time(a) => a.m2_size(),
-            Self::InOut(a, b) => a.m2_size() + b.m2_size(),
-        }
-    }
-}
-
-impl M2AnimationBlending {
-    // TODO: Remove
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        match self {
-            Self::Time(val) => {
-                writer.write_u32_le(*val)?;
-            }
-            Self::InOut(val_in, val_out) => {
-                writer.write_u16_le(*val_in)?;
-                writer.write_u16_le(*val_out)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
 /// Animation data for a model
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, WowHeaderRV, WowHeaderW)]
+#[wow_data(version = M2Version)]
 pub struct M2Animation {
-    /// Animation ID
     pub animation_id: u16,
-    /// Sub-animation ID (variation index)
     pub sub_animation_id: u16,
-    /// Timing
+    #[wow_data(versioned)]
     pub timing: M2AnimationTiming,
-    /// Movement speed
     pub movement_speed: f32,
-    /// Flags
     pub flags: M2AnimationFlags,
     /// Frequency/Probability (renamed in later versions)
     pub frequency: i16,
-    /// Padding/Realignment
     pub padding: u16,
     /// Replay range
     pub replay: M2Range,
+    #[wow_data(versioned)]
     pub blending: M2AnimationBlending,
     pub bounding_box: BoundingBox,
     pub bounding_radius: f32,
@@ -504,135 +347,8 @@ pub struct M2Animation {
     pub next_alias: u16,
 }
 
-impl M2DataRV for M2Animation {
-    fn m2_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
-        Ok(Self {
-            animation_id: reader.m2_read()?,
-            sub_animation_id: reader.m2_read()?,
-            timing: reader.m2_read_versioned(version)?,
-            movement_speed: reader.m2_read()?,
-            flags: reader.m2_read()?,
-            frequency: reader.m2_read()?,
-            padding: reader.m2_read()?,
-            replay: reader.m2_read()?,
-            blending: reader.m2_read_versioned(version)?,
-            bounding_box: reader.m2_read()?,
-            bounding_radius: reader.m2_read()?,
-            next_animation: reader.m2_read()?,
-            next_alias: reader.m2_read()?,
-        })
-    }
-}
-
-// impl M2DataW for M2Animation {
-//     fn m2_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-//         writer.m2_write(&self.crc)?;
-//         writer.m2_write(&self.vectors)?;
-//         writer.m2_write(&self.versioned_data)?;
-//         writer.m2_write(&self.bounding_box)?;
-//         if self._version <= M2Version::MoP {
-//             writer.m2_write(self.up_to_mop.as_ref().unwrap())?
-//         } else {
-//             writer.m2_write(self.after_mop.as_ref().unwrap())?
-//         }
-//         Ok(())
-//     }
-//
-//     fn m2_size(&self) -> usize {
-//         self.crc.m2_size()
-//             + self.versioned_data.m2_size()
-//             + self.vectors.m2_size()
-//             + self.bounding_box.m2_size()
-//             + if self._version <= M2Version::MoP {
-//                 self.up_to_mop.as_ref().unwrap().m2_size()
-//             } else {
-//                 self.after_mop.as_ref().unwrap().m2_size()
-//             }
-//     }
-// }
-
-impl M2Animation {
-    /// Parse an animation from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
-        let version = M2Version::try_from_header_version(version)
-            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
-
-        let animation_id = reader.read_u16_le()?;
-        let sub_animation_id = reader.read_u16_le()?;
-
-        let timing = if version <= M2Version::TBC {
-            M2AnimationTiming::StartEnd(reader.read_u32_le()?, reader.read_u32_le()?)
-        } else {
-            M2AnimationTiming::Duration(reader.read_u32_le()?)
-        };
-
-        let movement_speed = reader.read_f32_le()?;
-        let flags = M2AnimationFlags::from_bits_retain(reader.read_u32_le()?);
-        let frequency = reader.read_i16_le()?;
-        let padding = reader.read_u16_le()?;
-        let replay = M2Range::parse(reader)?;
-        let blending = if version <= M2Version::MoP {
-            M2AnimationBlending::Time(reader.read_u32_le()?)
-        } else {
-            M2AnimationBlending::InOut(reader.read_u16_le()?, reader.read_u16_le()?)
-        };
-
-        let bounding_box = BoundingBox::read(reader)?;
-        let bounding_radius = reader.read_f32_le()?;
-        let next_animation = reader.read_i16_le()?;
-        let next_alias = reader.read_u16_le()?;
-
-        Ok(Self {
-            animation_id,
-            sub_animation_id,
-            timing,
-            movement_speed,
-            flags,
-            frequency,
-            padding,
-            replay,
-            blending,
-            bounding_box,
-            bounding_radius,
-            next_animation,
-            next_alias,
-        })
-    }
-
-    /// Write an animation to a writer
-    pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
-        let _version = M2Version::try_from_header_version(version)
-            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
-
-        writer.write_u16_le(self.animation_id)?;
-        writer.write_u16_le(self.sub_animation_id)?;
-
-        match self.timing {
-            M2AnimationTiming::StartEnd(start, end) => {
-                writer.write_u32_le(start)?;
-                writer.write_u32_le(end)?;
-            }
-            M2AnimationTiming::Duration(duration) => {
-                writer.write_u32_le(duration)?;
-            }
-        }
-
-        writer.write_f32_le(self.movement_speed)?;
-        writer.write_u32_le(self.flags.bits())?;
-        writer.write_i16_le(self.frequency)?;
-        writer.write_u16_le(self.padding)?;
-        self.replay.write(writer)?;
-        self.blending.write(writer)?;
-        self.bounding_box.write(writer)?;
-        writer.write_f32_le(self.bounding_radius)?;
-        writer.write_i16_le(self.next_animation)?;
-        writer.write_u16_le(self.next_alias)?;
-
-        Ok(())
-    }
-
-    /// Convert this animation to a different version (no version differences for animations yet)
-    pub fn convert(&self, _target_version: M2Version) -> Self {
-        self.clone()
-    }
+#[derive(Debug, Clone, Default, PartialEq, WowHeaderR, WowHeaderW)]
+pub struct M2SequenceFallback {
+    pub fallback_animation_id: i16,
+    pub flags: u16,
 }

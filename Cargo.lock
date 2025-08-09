@@ -3306,6 +3306,8 @@ dependencies = [
  "test-case",
  "thiserror 2.0.12",
  "wow-blp",
+ "wow-data",
+ "wow-data-derive",
  "wow-utils",
 ]
 

@@ -1,3 +1,9 @@
+use std::io::{Read, Seek, Write};
+use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
+
+use wow_data::types::{DataVersion, WowHeaderR, WowHeaderW};
+
 use crate::{M2Error, error::Result};
 
 /// M2 format versions across WoW expansions
@@ -200,6 +206,27 @@ impl std::fmt::Display for M2Version {
 impl From<M2Version> for u32 {
     fn from(value: M2Version) -> Self {
         value.to_header_version()
+    }
+}
+
+impl DataVersion for M2Version {}
+
+impl WowHeaderR for M2Version {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        let version: u32 = reader.wow_read()?;
+        Ok(M2Version::from_header_version(version)?)
+    }
+}
+
+impl WowHeaderW for M2Version {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        let version: u32 = (*self).into();
+        writer.wow_write(&version)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        4
     }
 }
 

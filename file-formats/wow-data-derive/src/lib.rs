@@ -2,8 +2,8 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Expr, Fields, Type, parse::Parse, parse_macro_input};
 
-#[proc_macro_derive(WowDataRV, attributes(wow_data))]
-pub fn wow_data_rv_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(WowHeaderRV, attributes(wow_data))]
+pub fn wow_header_rv_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let version_ty = match get_value_from_attrs::<Type>(&input.attrs, "wow_data", "version") {
@@ -18,7 +18,7 @@ pub fn wow_data_rv_derive(input: TokenStream) -> TokenStream {
         Data::Struct(s) => generate_struct_reader_body(&s.fields),
         Data::Enum(e) => generate_enum_reader_body(e),
         Data::Union(_) => {
-            return syn::Error::new_spanned(&input, "WowDataRV cannot be derived for unions.")
+            return syn::Error::new_spanned(&input, "WowHeaderRV cannot be derived for unions.")
                 .to_compile_error()
                 .into();
         }
@@ -30,8 +30,8 @@ pub fn wow_data_rv_derive(input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        impl #impl_generics WowDataRV<#version_ty> for #struct_name #ty_generics #where_clause {
-            fn wow_read<R: ::std::io::Read + ::std::io::Seek>(reader: &mut R, version: #version_ty) -> Result<Self> {
+        impl #impl_generics wow_data::types::WowHeaderRV<#version_ty> for #struct_name #ty_generics #where_clause {
+            fn wow_read<R: ::std::io::Read + ::std::io::Seek>(reader: &mut R, version: #version_ty) -> wow_data::error::Result<Self> {
                 Ok(#reader_body)
             }
         }
@@ -46,7 +46,7 @@ fn generate_struct_reader_body(fields: &Fields) -> syn::Result<proc_macro2::Toke
     } else {
         return Err(syn::Error::new_spanned(
             fields,
-            "WowDataRV on structs only supports named fields.",
+            "WowHeaderRV on structs only supports named fields.",
         ));
     };
 
@@ -174,8 +174,8 @@ fn get_value_from_attrs<T: Parse>(
     })
 }
 
-#[proc_macro_derive(WowDataR, attributes(wow_data))]
-pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(WowHeaderR, attributes(wow_data))]
+pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let struct_name = &input.ident;
@@ -186,13 +186,13 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
         } else {
             return syn::Error::new_spanned(
                 &s.fields,
-                "WowDataR can only be derived for structs with named fields.",
+                "WowHeaderR can only be derived for structs with named fields.",
             )
             .to_compile_error()
             .into();
         }
     } else {
-        return syn::Error::new_spanned(&input, "WowDataR can only be derived for structs.")
+        return syn::Error::new_spanned(&input, "WowHeaderR can only be derived for structs.")
             .to_compile_error()
             .into();
     };
@@ -209,8 +209,8 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics WowDataR for #struct_name #ty_generics #where_clause {
-            fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        impl #impl_generics wow_data::types::WowHeaderR for #struct_name #ty_generics #where_clause {
+            fn wow_read<R: Read + Seek>(reader: &mut R) -> wow_data::error::Result<Self> {
                 Ok(Self{
                     #(#initializers),*
                 })
@@ -221,8 +221,8 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(WowDataW, attributes(wow_data))]
-pub fn wow_data_w_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(WowHeaderW, attributes(wow_data))]
+pub fn wow_header_w_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let ident = &input.ident;
@@ -235,7 +235,7 @@ pub fn wow_data_w_derive(input: TokenStream) -> TokenStream {
         ),
         Data::Enum(e) => (generate_enum_writer_body(e), generate_enum_size_body(e)),
         Data::Union(_) => {
-            return syn::Error::new_spanned(&input, "WowDataW cannot be derived for unions.")
+            return syn::Error::new_spanned(&input, "WowHeaderW cannot be derived for unions.")
                 .to_compile_error()
                 .into();
         }
@@ -252,8 +252,8 @@ pub fn wow_data_w_derive(input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        impl #impl_generics WowDataW for #ident #ty_generics #where_clause {
-            fn wow_write<W: ::std::io::Write>(&self, writer: &mut W) -> Result<()> {
+        impl #impl_generics wow_data::types::WowHeaderW for #ident #ty_generics #where_clause {
+            fn wow_write<W: ::std::io::Write>(&self, writer: &mut W) -> wow_data::error::Result<()> {
                 #writer_body
             }
 
@@ -272,7 +272,7 @@ fn generate_struct_writer_body(fields: &Fields) -> syn::Result<proc_macro2::Toke
     } else {
         return Err(syn::Error::new_spanned(
             fields,
-            "WowDataW on structs only supports named fields.",
+            "WowHeaderW on structs only supports named fields.",
         ));
     };
     let write_statements = named_fields.iter().map(|field| {
@@ -299,7 +299,7 @@ fn generate_struct_size_body(fields: &Fields) -> syn::Result<proc_macro2::TokenS
     } else {
         return Err(syn::Error::new_spanned(
             fields,
-            "WowDataW on structs only supports named fields.",
+            "WowHeaderW on structs only supports named fields.",
         ));
     };
     let size_expressions = named_fields.iter().map(|field| {

@@ -1,26 +1,30 @@
 use custom_debug::Debug;
-use wow_data_derive::{WowDataR, WowDataW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::error::{Result, WowDataError};
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Seek, SeekFrom, Write};
+pub use std::io::{Read, Seek, SeekFrom, Write};
 
-pub trait WowDataR: Sized {
+mod wow_data {
+    pub use crate::*;
+}
+
+pub trait WowHeaderR: Sized {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self>;
 }
 
 pub trait DataVersion: Copy {}
 
-pub trait WowDataRV<V: DataVersion>: Sized {
+pub trait WowHeaderRV<V: DataVersion>: Sized {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: V) -> Result<Self>;
 }
 
-pub trait WowDataW {
+pub trait WowHeaderW {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()>;
     fn wow_size(&self) -> usize;
 }
 
-pub trait WowDataConversible<V: DataVersion>: WowDataW + Sized {
+pub trait WowHeaderConversible<V: DataVersion>: WowHeaderW + Sized {
     fn wow_write_version<W: Write>(&self, writer: &mut W, version: V) -> Result<()> {
         let converted = self.wow_convert(version)?;
         converted.wow_write(writer)
@@ -28,12 +32,24 @@ pub trait WowDataConversible<V: DataVersion>: WowDataW + Sized {
     fn wow_convert(&self, to_version: V) -> Result<Self>;
 }
 
-impl WowDataR for u32 {
+pub trait WowConcreteDataR<T: WowHeaderR>: Sized {
+    fn new_from_header<R: Read + Seek>(reader: &mut R, header: &T) -> Result<Self>;
+}
+
+pub trait WowConcreteDataRV<V, T>: Sized
+where
+    V: DataVersion,
+    T: WowHeaderRV<V>,
+{
+    fn new_from_header<R: Read + Seek>(reader: &mut R, header: &T) -> Result<Self>;
+}
+
+impl WowHeaderR for u32 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_u32_le()?)
     }
 }
-impl WowDataW for u32 {
+impl WowHeaderW for u32 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_u32_le(*self)?;
         Ok(())
@@ -44,14 +60,49 @@ impl WowDataW for u32 {
     }
 }
 
-impl WowDataR for f32 {
+impl WowHeaderR for (u32, u32) {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(reader.read_f32_le()?)
+        Ok((reader.wow_read()?, reader.wow_read()?))
     }
 }
-impl WowDataW for f32 {
+impl WowHeaderW for (u32, u32) {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_f32_le(*self)?;
+        writer.wow_write(&self.0)?;
+        writer.wow_write(&self.1)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        8
+    }
+}
+
+impl WowHeaderR for [u32; 3] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([reader.wow_read()?, reader.wow_read()?, reader.wow_read()?])
+    }
+}
+impl WowHeaderW for [u32; 3] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(&self[0])?;
+        writer.wow_write(&self[1])?;
+        writer.wow_write(&self[2])?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        0_u32.wow_size() * 3
+    }
+}
+
+impl WowHeaderR for i32 {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(reader.read_i32_le()?)
+    }
+}
+impl WowHeaderW for i32 {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_i32_le(*self)?;
         Ok(())
     }
 
@@ -60,12 +111,12 @@ impl WowDataW for f32 {
     }
 }
 
-impl WowDataR for i16 {
+impl WowHeaderR for i16 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_i16_le()?)
     }
 }
-impl WowDataW for i16 {
+impl WowHeaderW for i16 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_i16_le(*self)?;
         Ok(())
@@ -76,12 +127,29 @@ impl WowDataW for i16 {
     }
 }
 
-impl WowDataR for u16 {
+impl WowHeaderR for [i16; 2] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([reader.wow_read()?, reader.wow_read()?])
+    }
+}
+impl WowHeaderW for [i16; 2] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(&self[0])?;
+        writer.wow_write(&self[1])?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        0_i16.wow_size() * 2
+    }
+}
+
+impl WowHeaderR for u16 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_u16_le()?)
     }
 }
-impl WowDataW for u16 {
+impl WowHeaderW for u16 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_u16_le(*self)?;
         Ok(())
@@ -92,37 +160,135 @@ impl WowDataW for u16 {
     }
 }
 
-pub trait WowReader<T: WowDataR>: Read + Seek + Sized {
+impl WowHeaderR for [u16; 3] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([reader.wow_read()?, reader.wow_read()?, reader.wow_read()?])
+    }
+}
+impl WowHeaderW for [u16; 3] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(&self[0])?;
+        writer.wow_write(&self[1])?;
+        writer.wow_write(&self[2])?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        0_u16.wow_size() * 3
+    }
+}
+
+impl WowHeaderR for u8 {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(reader.read_u8()?)
+    }
+}
+impl WowHeaderW for u8 {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u8(*self)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        1
+    }
+}
+
+impl WowHeaderR for [u8; 4] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([
+            reader.read_u8()?,
+            reader.read_u8()?,
+            reader.read_u8()?,
+            reader.read_u8()?,
+        ])
+    }
+}
+impl WowHeaderW for [u8; 4] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        for i in 0..4 {
+            writer.write_u8((*self)[i])?;
+        }
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        4
+    }
+}
+
+impl WowHeaderR for f32 {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(reader.read_f32_le()?)
+    }
+}
+impl WowHeaderW for f32 {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_f32_le(*self)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        4
+    }
+}
+
+impl WowHeaderR for [f32; 3] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([reader.wow_read()?, reader.wow_read()?, reader.wow_read()?])
+    }
+}
+impl WowHeaderW for [f32; 3] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(&self[0])?;
+        writer.wow_write(&self[1])?;
+        writer.wow_write(&self[2])?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        0_f32.wow_size() * 3
+    }
+}
+
+pub trait WowHeaderReader<T: WowHeaderR>: Read + Seek + Sized {
     fn wow_read(&mut self) -> Result<T> {
         Ok(T::wow_read(self)?)
     }
 }
-impl<T: WowDataR, R: Read + Seek> WowReader<T> for R {}
+impl<T: WowHeaderR, R: Read + Seek> WowHeaderReader<T> for R {}
 
-pub trait WowReaderV<V: DataVersion, T: WowDataRV<V>>: Read + Seek + Sized {
+pub trait WowReaderConcrete<H: WowHeaderR, T: WowConcreteDataR<H>>: Read + Seek + Sized {
+    fn new_from_header(&mut self, header: H) -> Result<T> {
+        Ok(T::new_from_header(self, &header)?)
+    }
+}
+impl<H: WowHeaderR, T: WowConcreteDataR<H>, R: Read + Seek> WowReaderConcrete<H, T> for R {}
+
+pub trait WowHeaderReaderV<V: DataVersion, T: WowHeaderRV<V>>: Read + Seek + Sized {
     fn wow_read_versioned(&mut self, version: V) -> Result<T> {
         Ok(T::wow_read(self, version)?)
     }
 }
-impl<V: DataVersion, T: WowDataRV<V>, R: Read + Seek> WowReaderV<V, T> for R {}
+impl<V: DataVersion, T: WowHeaderRV<V>, R: Read + Seek> WowHeaderReaderV<V, T> for R {}
 
-pub trait WowWriter<T: WowDataW>: Write + Sized {
+pub trait WowHeaderWriter<T: WowHeaderW>: Write + Sized {
     fn wow_write(&mut self, value: &T) -> Result<()> {
         value.wow_write(self)?;
         Ok(())
     }
 }
-impl<T: WowDataW, W: Write> WowWriter<T> for W {}
+impl<T: WowHeaderW, W: Write> WowHeaderWriter<T> for W {}
 
-pub trait WowWriterV<V: DataVersion, T: WowDataConversible<V>>: Write + Sized {
+pub trait WowWriterV<V: DataVersion, T: WowHeaderConversible<V>>: Write + Sized {
     fn wow_write_versioned(&mut self, value: &T, version: V) -> Result<()> {
         value.wow_write_version(self, version)?;
         Ok(())
     }
 }
-impl<V: DataVersion, T: WowDataConversible<V>, W: Write> WowWriterV<V, T> for W {}
+impl<V: DataVersion, T: WowHeaderConversible<V>, W: Write> WowWriterV<V, T> for W {}
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, WowDataR, WowDataW)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct WowArray<T> {
     pub count: u32,
     pub offset: u32,
@@ -148,7 +314,7 @@ impl<T> WowArray<T> {
     }
 }
 
-impl<T: WowDataR> WowArray<T> {
+impl<T: WowHeaderR> WowArray<T> {
     pub fn wow_read_to_vec<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<T>> {
         if self.is_empty() {
             return Ok(Vec::new());
@@ -167,12 +333,247 @@ impl<T: WowDataR> WowArray<T> {
     }
 }
 
-pub trait WowVec<T: WowDataW> {
+impl<T: WowHeaderR> WowArray<WowArray<T>> {
+    pub fn wow_read_to_vec_r<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Vec<T>>> {
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        reader
+            .seek(SeekFrom::Start(self.offset as u64))
+            .map_err(WowDataError::Io)?;
+
+        let mut result = Vec::with_capacity(self.count as usize);
+        for _ in 0..self.count {
+            let single: WowArray<T> = reader.wow_read()?;
+            let item_end_position = reader.stream_position()?;
+            result.push(single.wow_read_to_vec(reader)?);
+            reader.seek(SeekFrom::Start(item_end_position))?;
+        }
+
+        Ok(result)
+    }
+}
+
+pub type WowCharArray = WowArray<u8>;
+
+impl WowHeaderW for String {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(self.into())?;
+        // write null terminator
+        writer.wow_write(&0_u8)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        self.len() + 1
+    }
+}
+
+pub trait WowString {
+    fn from_wow_char_array<R: Read + Seek>(
+        reader: &mut R,
+        wow_char_array: WowCharArray,
+    ) -> Result<String>;
+    fn write_wow_char_array<W: Write + Seek>(&self, writer: &mut W) -> Result<WowCharArray>;
+}
+
+impl WowString for String {
+    fn from_wow_char_array<R: Read + Seek>(
+        reader: &mut R,
+        wow_string: WowCharArray,
+    ) -> Result<String> {
+        if wow_string.count == 0 {
+            return Ok("".into());
+        }
+
+        let bytes = wow_string.wow_read_to_vec(reader)?;
+        let str_end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+        Ok(String::from_utf8_lossy(&bytes[..str_end]).to_string())
+    }
+
+    fn write_wow_char_array<W: Write + Seek>(&self, writer: &mut W) -> Result<WowCharArray> {
+        let offset = writer.stream_position()?;
+        writer.wow_write(self)?;
+        Ok(WowCharArray::new(self.wow_size() as u32, offset as u32))
+    }
+}
+
+#[derive(Debug, PartialEq, WowHeaderW)]
+pub struct WowArrayV<V, T>
+where
+    V: DataVersion,
+    T: WowHeaderRV<V> + WowHeaderW,
+{
+    pub count: u32,
+    pub offset: u32,
+
+    #[wow_data(skip = std::marker::PhantomData)]
+    _phantom: std::marker::PhantomData<T>,
+    #[wow_data(skip = std::marker::PhantomData)]
+    _version: std::marker::PhantomData<V>,
+}
+
+impl<V, T> Clone for WowArrayV<V, T>
+where
+    V: DataVersion,
+    T: WowHeaderRV<V> + WowHeaderW,
+{
+    fn clone(&self) -> Self {
+        Self {
+            count: self.count,
+            offset: self.offset,
+            _phantom: std::marker::PhantomData,
+            _version: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<V, T> WowHeaderRV<V> for WowArrayV<V, T>
+where
+    V: DataVersion,
+    T: WowHeaderRV<V> + WowHeaderW,
+{
+    fn wow_read<R: Read + Seek>(reader: &mut R, version: V) -> Result<Self> {
+        reader.wow_read_versioned(version)
+    }
+}
+
+impl<V, T> Default for WowArrayV<V, T>
+where
+    V: DataVersion,
+    T: WowHeaderRV<V> + WowHeaderW,
+{
+    fn default() -> Self {
+        Self {
+            count: 0,
+            offset: 0,
+            _phantom: std::marker::PhantomData,
+            _version: std::marker::PhantomData,
+        }
+    }
+}
+
+pub struct WowArrayVIter<'a, V, T, R>
+where
+    V: DataVersion,
+    T: WowHeaderRV<V> + WowHeaderW,
+    R: Read + Seek,
+{
+    reader: &'a mut R,
+    version: V,
+    initial_reader_pos: u64,
+    current: u32,
+    array: WowArrayV<V, T>,
+    item_size: usize,
+}
+
+impl<'a, V, T, R> WowArrayVIter<'a, V, T, R>
+where
+    V: DataVersion,
+    T: WowHeaderRV<V> + WowHeaderW,
+    R: Read + Seek,
+{
+    pub fn new(reader: &'a mut R, version: V, array: WowArrayV<V, T>) -> Result<Self> {
+        let initial_reader_pos = reader.stream_position()?;
+
+        Ok(Self {
+            reader,
+            version,
+            initial_reader_pos,
+            current: 0,
+            array,
+            item_size: 0,
+        })
+    }
+
+    /// Returns `Ok(true)` if there are items remaining or `Ok(false)` if not.
+    /// This iterator needs at least one item to get the `item_size`, so it will
+    /// read the first item and call `f` with `Some(item)` the first time and `None`
+    /// from then on. It's the user's responsibility to read the subsequent items.
+    /// The reader will always be at the correct offset for reading an item at the
+    /// closure execution start
+    /// When an Err is returned, it's no longer safe to call this function again
+    pub fn next<F>(&mut self, mut f: F) -> Result<bool>
+    where
+        F: FnMut(&mut R, Option<T>) -> Result<()>,
+    {
+        if self.current >= self.array.count {
+            return Ok(false);
+        }
+
+        let current = self.current;
+        self.current += 1;
+
+        let seek_pos = if current == 0 {
+            self.initial_reader_pos + self.array.offset as u64
+        } else {
+            self.initial_reader_pos + (self.array.offset as usize * self.item_size) as u64
+        };
+        self.reader.seek(SeekFrom::Start(seek_pos))?;
+
+        let item = if self.item_size == 0 {
+            let item: T = self.reader.wow_read_versioned(self.version)?;
+            self.item_size = item.wow_size();
+            // rewind just in case the user tries to read the item again
+            self.reader.seek(SeekFrom::Start(seek_pos))?;
+            Some(item)
+        } else {
+            None
+        };
+
+        match f(&mut self.reader, item) {
+            Ok(_) => Ok(true),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<V, T> WowArrayV<V, T>
+where
+    V: DataVersion,
+    T: WowHeaderRV<V> + WowHeaderW,
+{
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
+    pub fn add_offset(&mut self, offset: usize) {
+        self.offset += offset as u32;
+    }
+
+    pub fn wow_read_to_vec<R: Read + Seek>(&self, reader: &mut R, version: V) -> Result<Vec<T>> {
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        reader
+            .seek(SeekFrom::Start(self.offset as u64))
+            .map_err(WowDataError::Io)?;
+
+        let mut result = Vec::with_capacity(self.count as usize);
+        for _ in 0..self.count {
+            result.push(T::wow_read(reader, version)?);
+        }
+
+        Ok(result)
+    }
+
+    pub fn new_iterator<'a, R: Read + Seek>(
+        &self,
+        reader: &'a mut R,
+        version: V,
+    ) -> Result<WowArrayVIter<'a, V, T, R>> {
+        WowArrayVIter::new(reader, version, self.clone())
+    }
+}
+
+pub trait WowVec<T: WowHeaderW> {
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<WowArray<T>>;
     fn wow_size(&self) -> usize;
 }
 
-impl<T: WowDataW> WowVec<T> for Vec<T> {
+impl<T: WowHeaderW> WowVec<T> for Vec<T> {
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<WowArray<T>> {
         let offset = writer.stream_position()?;
         for item in self {
@@ -190,7 +591,7 @@ impl<T: WowDataW> WowVec<T> for Vec<T> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default, WowDataR, WowDataW)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, WowHeaderR, WowHeaderW)]
 pub struct C3Vector {
     pub x: f32,
     pub y: f32,
@@ -223,7 +624,7 @@ impl C3Vector {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default, WowDataR, WowDataW)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, WowHeaderR, WowHeaderW)]
 pub struct C2Vector {
     pub x: f32,
     pub y: f32,
@@ -243,7 +644,7 @@ impl C2Vector {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, WowDataR, WowDataW)]
+#[derive(Debug, Clone, Default, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct BoundingBox {
     pub min: C3Vector,
     pub max: C3Vector,
@@ -259,7 +660,7 @@ impl BoundingBox {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, WowDataR, WowDataW)]
+#[derive(Debug, Clone, Copy, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct Quaternion {
     pub x: f32,
     pub y: f32,
@@ -298,7 +699,7 @@ impl From<Quaternion16> for Quaternion {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, WowDataR, WowDataW)]
+#[derive(Debug, Clone, Copy, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct Quaternion16 {
     pub x: i16,
     pub y: i16,
@@ -306,9 +707,83 @@ pub struct Quaternion16 {
     pub w: i16,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, WowHeaderR, WowHeaderW)]
+pub struct Color {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, WowHeaderR, WowHeaderW)]
+pub struct ColorA {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
+}
+
+impl ColorA {
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
+    }
+
+    pub fn white() -> Self {
+        Self::new(1.0, 1.0, 1.0, 1.0)
+    }
+
+    pub fn black() -> Self {
+        Self::new(0.0, 0.0, 0.0, 1.0)
+    }
+
+    pub fn transparent() -> Self {
+        Self::new(0.0, 0.0, 0.0, 0.0)
+    }
+}
+
+impl WowHeaderR for [ColorA; 3] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([reader.wow_read()?, reader.wow_read()?, reader.wow_read()?])
+    }
+}
+impl WowHeaderW for [ColorA; 3] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(&self[0])?;
+        writer.wow_write(&self[1])?;
+        writer.wow_write(&self[2])?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        0_f32.wow_size() * 4 * 3
+    }
+}
+
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
+pub struct VectorFp6_9 {
+    pub x: u16,
+    pub y: u16,
+}
+
+impl WowHeaderR for [VectorFp6_9; 2] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([reader.wow_read()?, reader.wow_read()?])
+    }
+}
+impl WowHeaderW for [VectorFp6_9; 2] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(&self[0])?;
+        writer.wow_write(&self[1])?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        0_u16.wow_size() * 2 * 2
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use wow_data_derive::{WowDataRV, WowDataW};
+    use wow_data_derive::{WowHeaderRV, WowHeaderW};
 
     use super::*;
     use std::io::Cursor;
@@ -497,14 +972,14 @@ mod tests {
         }
     }
 
-    impl WowDataR for M2Version {
+    impl WowHeaderR for M2Version {
         fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
             let version: u32 = reader.wow_read()?;
             version.try_into()
         }
     }
 
-    impl WowDataW for M2Version {
+    impl WowHeaderW for M2Version {
         fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
             let version: u32 = (*self).into();
             writer.wow_write(&version)?;
@@ -516,7 +991,7 @@ mod tests {
         }
     }
 
-    #[derive(super::Debug, Clone, Copy, WowDataRV, WowDataW)]
+    #[derive(super::Debug, Clone, Copy, WowHeaderRV, WowHeaderW)]
     #[wow_data(version = M2Version)]
     enum ExampleVersioned {
         #[wow_data(read_if = version <= M2Version::TBC)]
@@ -524,23 +999,23 @@ mod tests {
         Others(u16),
     }
 
-    #[derive(super::Debug, Clone, Copy, WowDataRV, WowDataW)]
+    #[derive(super::Debug, Clone, Copy, WowHeaderRV, WowHeaderW)]
     #[wow_data(version = M2Version)]
-    enum OptionUpToMoP<T: WowDataR + WowDataW> {
+    enum OptionUpToMoP<T: WowHeaderR + WowHeaderW> {
         #[wow_data(read_if = version <= M2Version::MoP)]
         Some(T),
         None,
     }
 
-    #[derive(super::Debug, Clone, Copy, WowDataRV, WowDataW)]
+    #[derive(super::Debug, Clone, Copy, WowHeaderRV, WowHeaderW)]
     #[wow_data(version = M2Version)]
-    enum OptionAfterMoP<T: WowDataR + WowDataW> {
+    enum OptionAfterMoP<T: WowHeaderR + WowHeaderW> {
         #[wow_data(read_if = version > M2Version::MoP)]
         Some(T),
         None,
     }
 
-    #[derive(super::Debug, Clone, WowDataRV, WowDataW)]
+    #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
     #[wow_data(version = M2Version)]
     struct ExampleHeader {
         #[wow_data(skip = M2Version::Classic)]
@@ -668,7 +1143,7 @@ mod tests {
         }
     }
 
-    impl WowDataW for ExampleDataNoHeader {
+    impl WowHeaderW for ExampleDataNoHeader {
         fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
             let mut new_header = ExampleHeader {
                 _version: self._version,
@@ -744,7 +1219,7 @@ mod tests {
         assert_eq!(*dec_writer.get_ref(), example_data_bin);
     }
 
-    impl WowDataConversible<M2Version> for ExampleDataNoHeader {
+    impl WowHeaderConversible<M2Version> for ExampleDataNoHeader {
         fn wow_convert(&self, to_version: M2Version) -> Result<Self> {
             match to_version {
                 M2Version::Classic | M2Version::TBC => Ok(Self {
@@ -864,4 +1339,90 @@ mod tests {
 
         assert_eq!(*converted_writer.get_ref(), example_converted_data_bin);
     }
+    //
+    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[wow_data(version = M2Version)]
+    // pub enum M2InterpolationRange {
+    //     #[wow_data(read_if = version <= M2Version::TBC)]
+    //     Some(WowArray<(u32, u32)>),
+    //     None,
+    // }
+    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[wow_data(version = M2Version)]
+    // pub enum TrackArray<T> {
+    //     Single(WowArray<T>),
+    //
+    //     #[wow_data(read_if = version > M2Version::TBC)]
+    //     Multiple(WowArray<WowArray<T>>),
+    // }
+    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[wow_data(version = M2Version)]
+    // pub struct M2AnimationTrackHeader<T> {
+    //     pub global_sequence: i16,
+    //     #[wow_data(versioned)]
+    //     pub interpolation_ranges: M2InterpolationRange,
+    //     #[wow_data(versioned)]
+    //     pub timestamps: TrackArray<u32>,
+    //     #[wow_data(versioned)]
+    //     pub values: TrackArray<T>,
+    // }
+    //
+    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[wow_data(version = M2Version)]
+    // struct ClassicAnimTH {
+    //     #[wow_data(versioned)]
+    //     h: M2AnimationTrackHeader<Quaternion>,
+    // }
+    //
+    // #[derive(super::Debug, Clone, WowHeaderW)]
+    // pub enum M2BoneRotation {
+    //     Classic(M2AnimationTrackHeader<Quaternion>),
+    //     Later(M2AnimationTrackHeader<Quaternion16>),
+    // }
+    //
+    // impl WowHeaderRV<M2Version> for M2BoneRotation {
+    //     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> Result<Self> {
+    //         Ok(if version == M2Version::Classic {
+    //             Self::Classic(reader.wow_read_versioned(version)?)
+    //         } else {
+    //             Self::Later(reader.wow_read_versioned(version)?)
+    //         })
+    //     }
+    // }
+    //
+    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[wow_data(version = M2Version)]
+    // pub struct M2Animation {
+    //     pub animation_id: u16,
+    //     pub sub_animation_id: u16,
+    //     // #[wow_data(versioned)]
+    //     // pub timing: M2AnimationTiming,
+    //     pub movement_speed: f32,
+    //     // pub flags: M2AnimationFlags,
+    //     /// Frequency/Probability (renamed in later versions)
+    //     pub frequency: i16,
+    //     pub padding: u16,
+    //     /// Replay range
+    //     // pub replay: M2Range,
+    //     // #[wow_data(versioned)]
+    //     // pub blending: M2AnimationBlending,
+    //     pub bounding_box: BoundingBox,
+    //     pub bounding_radius: f32,
+    //     pub next_animation: i16,
+    //     pub next_alias: u16,
+    // }
+    //
+    // #[derive(super::Debug, Clone, WowHeaderRV, WowHeaderW)]
+    // #[wow_data(version = M2Version)]
+    // pub struct M2Header {
+    //     /// Version of the M2 file
+    //     pub version: u32,
+    //     /// Name of the model
+    //     pub name: WowArray<u8>,
+    //     // Sequence-related fields
+    //     /// Global sequences
+    //     pub global_sequences: WowArray<u32>,
+    //     #[wow_data(versioned)]
+    //     pub animations: WowArrayV<M2Version, M2Animation>,
+    // }
 }

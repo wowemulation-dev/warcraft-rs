@@ -15,6 +15,8 @@ categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 wow-utils = { path = "../../../wow-utils" }
+wow-data = { path = "../../wow-data" }
+wow-data-derive = { path = "../../wow-data-derive" }
 custom_debug = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }

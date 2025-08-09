@@ -1,5 +1,6 @@
 use std::io;
 use thiserror::Error;
+use wow_data::error::WowDataError;
 
 use crate::M2Version;
 
@@ -9,6 +10,9 @@ pub enum M2Error {
     /// I/O Error during reading or writing
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("wow-data error: {0}")]
+    WowData(#[from] wow_data::error::WowDataError),
 
     /// Invalid magic number in the file header
     #[error("Invalid magic number: expected '{expected}', got '{actual}'")]
@@ -53,3 +57,9 @@ pub enum M2Error {
 
 /// Result type using M2Error
 pub type Result<T> = std::result::Result<T, M2Error>;
+
+impl From<M2Error> for WowDataError {
+    fn from(value: M2Error) -> Self {
+        WowDataError::GenericError(format!("M2Error: {}", value))
+    }
+}

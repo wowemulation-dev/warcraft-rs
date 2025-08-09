@@ -19,17 +19,17 @@ pub mod vertex;
 // Re-export common types
 pub use attachment::{M2Attachment, M2AttachmentType};
 pub use camera::{M2Camera, M2CameraFlags};
-pub use color_animation::{M2Color, M2ColorAnimation};
+pub use color_animation::M2ColorAnimation;
 pub use event::{M2Event, M2EventType};
 pub use light::{M2Light, M2LightFlags, M2LightType};
 pub use particle_emitter::{M2ParticleEmitter, M2ParticleEmitterType, M2ParticleFlags};
-pub use physics::{
-    M2PhysicsData, M2PhysicsFlags, M2PhysicsJoint, M2PhysicsShape, M2PhysicsShapeType,
-};
+// pub use physics::{
+//     M2PhysicsData, M2PhysicsFlags, M2PhysicsJoint, M2PhysicsShape, M2PhysicsShapeType,
+// };
 pub use ribbon_emitter::M2RibbonEmitter;
-pub use texture::{M2Texture, M2TextureFlags, M2TextureType};
+pub use texture::{M2TextureFlags, M2TextureHeader, M2TextureType};
 pub use texture_animation::{M2TextureAnimation, M2TextureAnimationType};
-pub use texture_transform::{C4Quaternion, M2TextureTransform, M2TextureTransformType};
+pub use texture_transform::{M2TextureTransform, M2TextureTransformType};
 pub use transparency_animation::M2TransparencyAnimation;
 pub use vertex::M2Vertex;
 
