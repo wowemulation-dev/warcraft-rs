@@ -111,7 +111,7 @@ impl M2Model {
         let animations = header.animations.wow_read_to_vec(reader, header.version)?;
         let animation_lookup = header.animation_lookup.wow_read_to_vec(reader)?;
 
-        let bones = M2Bone::wow_read(reader, header.bones.clone(), header.version)?;
+        let bones = M2Bone::read_bone_array(reader, header.bones.clone(), header.version)?;
         // let bones = Vec::new();
 
         let key_bone_lookup = header.key_bone_lookup.wow_read_to_vec(reader)?;

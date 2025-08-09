@@ -1,8 +1,6 @@
-use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
-
 use crate::error::Result;
 use crate::version::M2Version;
+use wow_data::prelude::*;
 
 /// Sequence data for an animation
 #[derive(Debug, Clone)]

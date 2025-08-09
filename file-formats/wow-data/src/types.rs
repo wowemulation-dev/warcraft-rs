@@ -258,13 +258,6 @@ pub trait WowReaderForHeader<T: WowHeaderR>: Read + Seek + Sized {
 }
 impl<T: WowHeaderR, R: Read + Seek> WowReaderForHeader<T> for R {}
 
-pub trait WowReaderForData<H: WowHeaderR, T: WowDataR<H>>: Read + Seek + Sized {
-    fn new_from_header(&mut self, header: H) -> Result<T> {
-        Ok(T::new_from_header(self, &header)?)
-    }
-}
-impl<H: WowHeaderR, T: WowDataR<H>, R: Read + Seek> WowReaderForData<H, T> for R {}
-
 pub trait VWowHeaderReader<V: DataVersion, T: VWowHeaderR<V>>: Read + Seek + Sized {
     fn wow_read_versioned(&mut self, version: V) -> Result<T> {
         Ok(T::wow_read(self, version)?)
@@ -287,6 +280,25 @@ pub trait VWowWriterForHeader<V: DataVersion, T: WowHeaderConversible<V>>: Write
     }
 }
 impl<V: DataVersion, T: WowHeaderConversible<V>, W: Write> VWowWriterForHeader<V, T> for W {}
+
+pub trait WowReaderForData<H: WowHeaderR, T: WowDataR<H>>: Read + Seek + Sized {
+    fn new_from_header(&mut self, header: &H) -> Result<T> {
+        Ok(T::new_from_header(self, header)?)
+    }
+}
+impl<H: WowHeaderR, T: WowDataR<H>, R: Read + Seek> WowReaderForData<H, T> for R {}
+
+pub trait VWowReaderForData<V: DataVersion, H: VWowHeaderR<V>, T: VWowDataR<V, H>>:
+    Read + Seek + Sized
+{
+    fn new_from_header(&mut self, header: &H) -> Result<T> {
+        Ok(T::new_from_header(self, header)?)
+    }
+}
+impl<V: DataVersion, H: VWowHeaderR<V>, T: VWowDataR<V, H>, R: Read + Seek>
+    VWowReaderForData<V, H, T> for R
+{
+}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct WowArray<T> {

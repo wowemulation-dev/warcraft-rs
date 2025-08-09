@@ -2,7 +2,7 @@ use custom_debug::Debug;
 use std::{cmp, fmt};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data::types::{BoundingBox, C3Vector, WowArray};
+use wow_data::types::{BoundingBox, C3Vector, VWowDataR, WowArray};
 use wow_data_derive::{VWowHeaderR, WowHeaderR, WowHeaderW};
 use wow_utils::debug;
 
@@ -215,18 +215,17 @@ pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt
 }
 
 #[derive(Debug, Clone)]
-pub struct M2AnimationTrack<T: fmt::Debug + WowHeaderR + WowHeaderW> {
-    // pub header: M2AnimationTrackHeader<T>,
+pub struct M2AnimationTrackData<T: fmt::Debug + WowHeaderR + WowHeaderW> {
     pub interpolation_ranges: Option<Vec<(u32, u32)>>,
 
-    #[debug(with = trimmed_trackvec_fmt)]
+    // #[debug(with = trimmed_trackvec_fmt)]
     pub timestamps: TrackVec<u32>,
 
-    #[debug(with = trimmed_trackvec_fmt)]
+    // #[debug(with = trimmed_trackvec_fmt)]
     pub values: TrackVec<T>,
 }
 
-impl<T: fmt::Debug + WowHeaderR + WowHeaderW> M2AnimationTrack<T> {
+impl<T: fmt::Debug + WowHeaderR + WowHeaderW> M2AnimationTrackData<T> {
     pub fn new() -> Self {
         Self {
             // header: M2AnimationTrackHeader::new(),
@@ -237,31 +236,31 @@ impl<T: fmt::Debug + WowHeaderR + WowHeaderW> M2AnimationTrack<T> {
     }
 }
 
-impl<T> M2AnimationTrack<T>
+impl<T> VWowDataR<M2Version, M2AnimationTrackHeader<T>> for M2AnimationTrackData<T>
 where
     T: fmt::Debug + WowHeaderR + WowHeaderW,
 {
-    pub fn read_from_header<R: Read + Seek>(
+    fn new_from_header<R: Read + Seek>(
         reader: &mut R,
-        track_header: &M2AnimationTrackHeader<T>,
+        header: &M2AnimationTrackHeader<T>,
     ) -> WDResult<Self> {
         let header_end_position = reader.stream_position()?;
 
-        let interpolation_ranges = match &track_header.interpolation_ranges {
+        let interpolation_ranges = match &header.interpolation_ranges {
             M2InterpolationRange::Some(interpolation_ranges) => {
                 Some(interpolation_ranges.wow_read_to_vec(reader)?)
             }
             M2InterpolationRange::None => None,
         };
 
-        let timestamps = match track_header.timestamps {
+        let timestamps = match header.timestamps {
             TrackArray::Single(ref single) => TrackVec::Single(single.wow_read_to_vec(reader)?),
             TrackArray::Multiple(ref multiple) => {
                 TrackVec::Multiple(multiple.wow_read_to_vec_r(reader)?)
             }
         };
 
-        let values = match track_header.values {
+        let values = match header.values {
             TrackArray::Single(ref single) => TrackVec::Single(single.wow_read_to_vec(reader)?),
             TrackArray::Multiple(ref multiple) => {
                 TrackVec::Multiple(multiple.wow_read_to_vec_r(reader)?)
@@ -271,7 +270,6 @@ where
         reader.seek(SeekFrom::Start(header_end_position))?;
 
         Ok(Self {
-            // header: track_header,
             interpolation_ranges,
             timestamps,
             values,

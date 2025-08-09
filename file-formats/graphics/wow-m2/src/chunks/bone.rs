@@ -2,13 +2,13 @@ use std::io::SeekFrom;
 
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data::types::{C3Vector, Quaternion, Quaternion16, WowArrayV};
+use wow_data::types::{C3Vector, Quaternion, Quaternion16, VWowDataR, WowArrayV};
 use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
 use crate::Result;
 use crate::version::M2Version;
 
-use super::animation::{M2AnimationTrack, M2AnimationTrackHeader};
+use super::animation::{M2AnimationTrackData, M2AnimationTrackHeader};
 
 bitflags::bitflags! {
     /// Bone flags as defined in the M2 format
@@ -71,22 +71,22 @@ impl VWowHeaderR<M2Version> for M2BoneRotationHeader {
 }
 
 #[derive(Debug, Clone)]
-pub enum M2BoneRotation {
-    Classic(M2AnimationTrack<Quaternion>),
-    Later(M2AnimationTrack<Quaternion16>),
+pub enum M2BoneRotationData {
+    Classic(M2AnimationTrackData<Quaternion>),
+    Later(M2AnimationTrackData<Quaternion16>),
 }
 
-impl WowDataRV<M2Version, M2BoneRotationHeader> for M2BoneRotation {
+impl VWowDataR<M2Version, M2BoneRotationHeader> for M2BoneRotationData {
     fn new_from_header<R: Read + Seek>(
         reader: &mut R,
         header: &M2BoneRotationHeader,
     ) -> WDResult<Self> {
         match header {
             M2BoneRotationHeader::Classic(classic) => Ok(Self::Classic(
-                M2AnimationTrack::read_from_header(reader, classic)?,
+                M2AnimationTrackData::new_from_header(reader, classic)?,
             )),
             M2BoneRotationHeader::Later(later) => Ok(Self::Later(
-                M2AnimationTrack::read_from_header(reader, later)?,
+                M2AnimationTrackData::new_from_header(reader, later)?,
             )),
         }
     }
@@ -129,19 +129,22 @@ pub struct M2BoneHeader {
 
 #[derive(Debug, Clone)]
 pub struct M2BoneData {
-    pub position: M2AnimationTrack<C3Vector>,
-    pub rotation: M2BoneRotation,
-    pub scaling: M2AnimationTrack<C3Vector>,
+    pub position: M2AnimationTrackData<C3Vector>,
+    pub rotation: M2BoneRotationData,
+    pub scaling: M2AnimationTrackData<C3Vector>,
 }
 
-impl WowDataRV<M2Version, M2BoneHeader> for M2BoneData {
+impl VWowDataR<M2Version, M2BoneHeader> for M2BoneData {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &M2BoneHeader) -> WDResult<Self> {
-        let position = M2AnimationTrack::read_from_header(reader, &header.position)?;
-        let rotation = M2AnimationTrack::read_from_header(reader, &header.scaling)?;
-        let scaling = M2AnimationTrack::read_from_header(reader, &header.scaling)?;
+        Ok(Self {
+            position: M2AnimationTrackData::new_from_header(reader, &header.position)?,
+            rotation: M2BoneRotationData::new_from_header(reader, &header.rotation)?,
+            scaling: M2AnimationTrackData::new_from_header(reader, &header.scaling)?,
+        })
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct M2Bone {
     header: M2BoneHeader,
     data: M2BoneData,
@@ -182,7 +185,8 @@ impl M2Bone {
                     None => reader.wow_read_versioned(version)?,
                 };
                 items.push(M2Bone {
-                    data: reader.new_from_header(&item_header)?,
+                    // data: reader.new_from_header(&item_header)?,
+                    data: M2BoneData::new_from_header(reader, &item_header)?,
                     header: item_header,
                 });
                 Ok(())
