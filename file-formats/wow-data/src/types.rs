@@ -291,7 +291,7 @@ impl<H: WowHeaderR, T: WowDataR<H>, R: Read + Seek> WowReaderForData<H, T> for R
 pub trait VWowReaderForData<V: DataVersion, H: VWowHeaderR<V>, T: VWowDataR<V, H>>:
     Read + Seek + Sized
 {
-    fn new_from_header(&mut self, header: &H) -> Result<T> {
+    fn vnew_from_header(&mut self, header: &H) -> Result<T> {
         Ok(T::new_from_header(self, header)?)
     }
 }
@@ -300,15 +300,105 @@ impl<V: DataVersion, H: VWowHeaderR<V>, T: VWowDataR<V, H>, R: Read + Seek>
 {
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, WowHeaderR, WowHeaderW)]
-pub struct WowArray<T> {
+pub struct WowArrayIter<'a, T, R>
+where
+    T: WowHeaderR + WowHeaderW,
+    R: Read + Seek,
+{
+    reader: &'a mut R,
+    initial_reader_pos: u64,
+    current: u32,
+    array: WowArray<T>,
+    item_size: usize,
+}
+
+impl<'a, T, R> WowArrayIter<'a, T, R>
+where
+    T: WowHeaderR + WowHeaderW,
+    R: Read + Seek,
+{
+    pub fn new(reader: &'a mut R, array: WowArray<T>) -> Result<Self> {
+        let initial_reader_pos = reader.stream_position()?;
+
+        Ok(Self {
+            reader,
+            initial_reader_pos,
+            current: 0,
+            array,
+            item_size: 0,
+        })
+    }
+
+    /// Returns `Ok(true)` if there are items remaining or `Ok(false)` if not.
+    /// This iterator needs at least one item to get the `item_size`, so it will
+    /// read the first item and call `f` with `Some(item)` the first time and `None`
+    /// from then on. It's the user's responsibility to read the subsequent items.
+    /// The reader will always be at the correct offset for reading an item at the
+    /// closure execution start
+    /// When an Err is returned, it's no longer safe to call this function again
+    pub fn next<F>(&mut self, mut f: F) -> Result<bool>
+    where
+        F: FnMut(&mut R, Option<T>) -> Result<()>,
+    {
+        if self.current >= self.array.count {
+            return Ok(false);
+        }
+
+        let current = self.current;
+        self.current += 1;
+
+        let seek_pos = if current == 0 {
+            self.initial_reader_pos + self.array.offset as u64
+        } else {
+            self.initial_reader_pos + (self.array.offset as usize * self.item_size) as u64
+        };
+        self.reader.seek(SeekFrom::Start(seek_pos))?;
+
+        let item = if self.item_size == 0 {
+            let item: T = self.reader.wow_read()?;
+            self.item_size = item.wow_size();
+            // rewind just in case the user tries to read the item again
+            self.reader.seek(SeekFrom::Start(seek_pos))?;
+            Some(item)
+        } else {
+            None
+        };
+
+        match f(&mut self.reader, item) {
+            Ok(_) => Ok(true),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, WowHeaderR, WowHeaderW)]
+pub struct WowArray<T>
+where
+    T: WowHeaderR + WowHeaderW,
+{
     pub count: u32,
     pub offset: u32,
     #[wow_data(skip = std::marker::PhantomData)]
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> WowArray<T> {
+impl<T> Clone for WowArray<T>
+where
+    T: WowHeaderR + WowHeaderW,
+{
+    fn clone(&self) -> Self {
+        Self {
+            count: self.count,
+            offset: self.offset,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T> WowArray<T>
+where
+    T: WowHeaderR + WowHeaderW,
+{
     pub fn new(count: u32, offset: u32) -> Self {
         Self {
             count,
@@ -324,9 +414,19 @@ impl<T> WowArray<T> {
     pub fn add_offset(&mut self, offset: usize) {
         self.offset += offset as u32;
     }
+
+    pub fn new_iterator<'a, R: Read + Seek>(
+        &self,
+        reader: &'a mut R,
+    ) -> Result<WowArrayIter<'a, T, R>> {
+        WowArrayIter::new(reader, self.clone())
+    }
 }
 
-impl<T: WowHeaderR> WowArray<T> {
+impl<T> WowArray<T>
+where
+    T: WowHeaderR + WowHeaderW,
+{
     pub fn wow_read_to_vec<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<T>> {
         if self.is_empty() {
             return Ok(Vec::new());
@@ -345,7 +445,10 @@ impl<T: WowHeaderR> WowArray<T> {
     }
 }
 
-impl<T: WowHeaderR> WowArray<WowArray<T>> {
+impl<T> WowArray<WowArray<T>>
+where
+    T: WowHeaderR + WowHeaderW,
+{
     pub fn wow_read_to_vec_r<R: Read + Seek>(&self, reader: &mut R) -> Result<Vec<Vec<T>>> {
         if self.is_empty() {
             return Ok(Vec::new());
@@ -580,12 +683,12 @@ where
     }
 }
 
-pub trait WowVec<T: WowHeaderW> {
+pub trait WowVec<T: WowHeaderR + WowHeaderW> {
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<WowArray<T>>;
     fn wow_size(&self) -> usize;
 }
 
-impl<T: WowHeaderW> WowVec<T> for Vec<T> {
+impl<T: WowHeaderR + WowHeaderW> WowVec<T> for Vec<T> {
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<WowArray<T>> {
         let offset = writer.stream_position()?;
         for item in self {

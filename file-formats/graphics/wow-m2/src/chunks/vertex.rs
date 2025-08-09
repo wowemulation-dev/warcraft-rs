@@ -46,7 +46,7 @@ impl WowHeaderW for M2VertexFlags {
 
 #[derive(Debug, Clone, Default, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2TexCoords2 {
+pub enum M2TexCoords2 {
     #[default]
     None,
 

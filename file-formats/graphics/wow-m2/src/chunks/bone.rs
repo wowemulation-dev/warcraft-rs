@@ -82,12 +82,10 @@ impl VWowDataR<M2Version, M2BoneRotationHeader> for M2BoneRotationData {
         header: &M2BoneRotationHeader,
     ) -> WDResult<Self> {
         match header {
-            M2BoneRotationHeader::Classic(classic) => Ok(Self::Classic(
-                M2AnimationTrackData::new_from_header(reader, classic)?,
-            )),
-            M2BoneRotationHeader::Later(later) => Ok(Self::Later(
-                M2AnimationTrackData::new_from_header(reader, later)?,
-            )),
+            M2BoneRotationHeader::Classic(classic) => {
+                Ok(Self::Classic(reader.vnew_from_header(classic)?))
+            }
+            M2BoneRotationHeader::Later(later) => Ok(Self::Later(reader.vnew_from_header(later)?)),
         }
     }
 }
@@ -137,17 +135,17 @@ pub struct M2BoneData {
 impl VWowDataR<M2Version, M2BoneHeader> for M2BoneData {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &M2BoneHeader) -> WDResult<Self> {
         Ok(Self {
-            position: M2AnimationTrackData::new_from_header(reader, &header.position)?,
-            rotation: M2BoneRotationData::new_from_header(reader, &header.rotation)?,
-            scaling: M2AnimationTrackData::new_from_header(reader, &header.scaling)?,
+            position: reader.vnew_from_header(&header.position)?,
+            rotation: reader.vnew_from_header(&header.rotation)?,
+            scaling: reader.vnew_from_header(&header.scaling)?,
         })
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct M2Bone {
-    header: M2BoneHeader,
-    data: M2BoneData,
+    pub header: M2BoneHeader,
+    pub data: M2BoneData,
 }
 
 impl M2Bone {
@@ -185,8 +183,7 @@ impl M2Bone {
                     None => reader.wow_read_versioned(version)?,
                 };
                 items.push(M2Bone {
-                    // data: reader.new_from_header(&item_header)?,
-                    data: M2BoneData::new_from_header(reader, &item_header)?,
+                    data: reader.vnew_from_header(&item_header)?,
                     header: item_header,
                 });
                 Ok(())

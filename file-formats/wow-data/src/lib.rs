@@ -5,8 +5,8 @@ pub mod types;
 pub mod prelude {
     pub use crate::io_ext::*;
     pub use crate::types::{
-        DataVersion, Read, Seek, VWowHeaderR, VWowHeaderReader, VWowWriterForHeader, WowDataR,
-        WowHeaderR, WowHeaderW, WowReaderForData, WowReaderForHeader, WowVec, WowWriterForHeader,
-        Write,
+        DataVersion, Read, Seek, VWowDataR, VWowHeaderR, VWowHeaderReader, VWowReaderForData,
+        VWowWriterForHeader, WowDataR, WowHeaderR, WowHeaderW, WowReaderForData,
+        WowReaderForHeader, WowVec, WowWriterForHeader, Write,
     };
 }

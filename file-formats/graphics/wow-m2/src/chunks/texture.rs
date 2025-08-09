@@ -1,8 +1,8 @@
 use crate::M2Error;
 use std::io::{Read, Seek, Write};
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::WowCharArray;
+use wow_data::{error::Result as WDResult, types::WowString};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::error::Result;
@@ -148,9 +148,22 @@ impl M2TextureHeader {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct M2TextureData {
+    pub filename: String,
+}
+
+impl WowDataR<M2TextureHeader> for M2TextureData {
+    fn new_from_header<R: Read + Seek>(reader: &mut R, header: &M2TextureHeader) -> WDResult<Self> {
+        Ok(Self {
+            filename: String::from_wow_char_array(reader, header.filename)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct M2Texture {
     pub header: M2TextureHeader,
-    pub filename: String,
+    pub data: M2TextureData,
 }
 
 // #[cfg(test)]

@@ -105,24 +105,45 @@ impl M2Model {
         // Parse the header first
         let header: M2Header = reader.wow_read()?;
 
-        let name = String::from_wow_char_array(reader, header.name)?;
+        let name = String::from_wow_char_array(reader, header.name.clone())?;
 
         let global_sequences = header.global_sequences.wow_read_to_vec(reader)?;
         let animations = header.animations.wow_read_to_vec(reader, header.version)?;
         let animation_lookup = header.animation_lookup.wow_read_to_vec(reader)?;
 
         let bones = M2Bone::read_bone_array(reader, header.bones.clone(), header.version)?;
-        // let bones = Vec::new();
 
         let key_bone_lookup = header.key_bone_lookup.wow_read_to_vec(reader)?;
         let vertices = header.vertices.wow_read_to_vec(reader, header.version)?;
-        // let textures = header.textures.wow_read_to_vec(reader)?;
-        let textures = Vec::new();
+
+        let mut iter = header.textures.new_iterator(reader).unwrap();
+        let mut textures = Vec::new();
+        loop {
+            match iter.next(|reader, item_header| {
+                let item_header = match item_header {
+                    Some(item) => item,
+                    None => reader.wow_read()?,
+                };
+                textures.push(M2Texture {
+                    data: reader.new_from_header(&item_header)?,
+                    header: item_header,
+                });
+                Ok(())
+            }) {
+                Ok(is_active) => {
+                    if !is_active {
+                        break;
+                    }
+                }
+                Err(err) => return Err(err.into()),
+            }
+        }
+
         let materials = header.materials.wow_read_to_vec(reader)?;
 
         // Parse raw data for other sections
         // These are sections we won't fully parse yet but want to preserve
-        let mut raw_data = M2RawData::default();
+        let raw_data = M2RawData::default();
 
         Ok(Self {
             header,
