@@ -19,8 +19,8 @@ use crate::chunks::{
 };
 use crate::error::Result;
 use crate::header::{
-    M2Header, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles, M2TextureCombinerCombos,
-    M2TextureFlipbooks,
+    M2Header, M2ModelFlags, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles,
+    M2TextureCombinerCombos, M2TextureFlipbooks,
 };
 
 /// Main M2 model structure
@@ -96,7 +96,7 @@ pub struct M2Model {
     pub ribbon_emitters: Vec<M2RibbonEmitter>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub particle_emitters: Vec<M2ParticleEmitter>,
-    // pub texture_combiner_combos: M2TextureCombinerCombos,
+    pub texture_combiner_combos: M2TextureCombinerCombos,
 }
 
 impl M2Model {
@@ -255,7 +255,11 @@ impl M2Model {
             ribbon_emitters,
             camera_lookup_table: reader.new_from_header(&header.camera_lookup_table)?,
             particle_emitters,
-            // texture_combiner_combos: reader.new_from_header(&header.texture_combiner_combos)?,
+            texture_combiner_combos: if header.flags.contains(M2ModelFlags::USE_TEXTURE_COMBINERS) {
+                reader.new_from_header(&header.texture_combiner_combos)?
+            } else {
+                M2TextureCombinerCombos::None
+            },
             header,
         })
     }
