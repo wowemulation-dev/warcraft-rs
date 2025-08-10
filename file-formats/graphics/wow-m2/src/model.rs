@@ -19,8 +19,8 @@ use crate::chunks::{
 };
 use crate::error::Result;
 use crate::header::{
-    M2Header, M2ModelFlags, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles,
-    M2TextureCombinerCombos, M2TextureFlipbooks,
+    M2Header, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles, M2TextureCombinerCombos,
+    M2TextureFlipbooks,
 };
 
 /// Main M2 model structure
