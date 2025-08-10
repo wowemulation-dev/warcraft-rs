@@ -388,7 +388,7 @@ where
 {
     pub count: u32,
     pub offset: u32,
-    #[wow_data(skip = std::marker::PhantomData)]
+    #[wow_data(override_read = std::marker::PhantomData)]
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -539,9 +539,9 @@ where
     pub count: u32,
     pub offset: u32,
 
-    #[wow_data(skip = std::marker::PhantomData)]
+    #[wow_data(override_read = std::marker::PhantomData)]
     _phantom: std::marker::PhantomData<T>,
-    #[wow_data(skip = std::marker::PhantomData)]
+    #[wow_data(override_read = std::marker::PhantomData)]
     _version: std::marker::PhantomData<V>,
 }
 
@@ -1209,7 +1209,7 @@ mod tests {
     #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     struct ExampleHeader {
-        #[wow_data(skip = M2Version::Classic)]
+        #[wow_data(override_read = M2Version::Classic)]
         _version: M2Version,
         crc: u32,
         vectors: WowArray<C2Vector>,

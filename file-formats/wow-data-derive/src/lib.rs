@@ -88,7 +88,7 @@ fn generate_header_rv_struct_reader_body(fields: &Fields) -> syn::Result<proc_ma
 
         let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-        initializers.push(if let Some(val) = wow_data_attrs.skip {
+        initializers.push(if let Some(val) = wow_data_attrs.override_read {
             quote! { #field_name: #val }
         } else {
             if wow_data_attrs.versioned {
@@ -171,7 +171,7 @@ struct WowDataAttrs {
     version: Option<Type>,
     header: Option<Type>,
     read_if: Option<Expr>,
-    skip: Option<Expr>,
+    override_read: Option<Expr>,
 }
 
 fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
@@ -180,7 +180,7 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
         version: None,
         header: None,
         read_if: None,
-        skip: None,
+        override_read: None,
     };
 
     for attr in attrs {
@@ -208,9 +208,9 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
                 data_attrs.read_if = Some(value.parse()?);
             }
 
-            if meta.path.is_ident("skip") {
+            if meta.path.is_ident("override_read") {
                 let value = meta.value()?;
-                data_attrs.skip = Some(value.parse()?);
+                data_attrs.override_read = Some(value.parse()?);
             }
 
             Ok(())
@@ -280,7 +280,7 @@ fn generate_struct_writer_body(fields: &Fields) -> syn::Result<proc_macro2::Toke
     for field in named_fields {
         let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-        if let Some(_) = wow_data_attrs.skip {
+        if let Some(_) = wow_data_attrs.override_read {
             write_statements.push(quote! {});
         } else {
             let field_name = field.ident.as_ref().unwrap();
@@ -311,7 +311,7 @@ fn generate_struct_size_body(fields: &Fields) -> syn::Result<proc_macro2::TokenS
     for field in named_fields {
         let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-        if let Some(_) = wow_data_attrs.skip {
+        if let Some(_) = wow_data_attrs.override_read {
             size_expressions.push(quote! {0});
         } else {
             let field_name = field.ident.as_ref().unwrap();
@@ -464,7 +464,7 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
             Err(e) => return e.to_compile_error().into(),
         };
 
-        if let Some(expr) = wow_data_attrs.skip {
+        if let Some(expr) = wow_data_attrs.override_read {
             initializers.push(quote! { #field_name: #expr });
         } else {
             if wow_data_attrs.versioned {

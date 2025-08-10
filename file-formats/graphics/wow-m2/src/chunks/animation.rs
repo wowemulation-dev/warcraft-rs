@@ -287,7 +287,7 @@ pub struct M2AnimationBlock<T: WowHeaderR + WowHeaderW> {
     #[wow_data(versioned)]
     pub track: M2AnimationTrackHeader<T>,
 
-    #[wow_data(skip = std::marker::PhantomData)]
+    #[wow_data(override_read = std::marker::PhantomData)]
     _phantom: std::marker::PhantomData<T>,
 }
 
