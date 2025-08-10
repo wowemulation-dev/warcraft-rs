@@ -591,7 +591,7 @@ mod tests {
         data.extend_from_slice(&SKIN_MAGIC);
 
         // Version
-        data.extend_from_slice(&0u32.to_le_bytes());
+        data.extend_from_slice(&264u32.to_le_bytes());
 
         // Name
         data.extend_from_slice(&0u32.to_le_bytes()); // count = 0
@@ -624,7 +624,7 @@ mod tests {
         let header = SkinHeader::parse(&mut cursor).unwrap();
 
         assert_eq!(header.magic, SKIN_MAGIC);
-        assert_eq!(header.version, M2Version::Classic);
+        assert_eq!(header.version, M2Version::WotLK);
         assert_eq!(header.vertex_count, 100);
         assert_eq!(header.indices.count, 200);
         assert_eq!(header.indices.offset, 0x100);

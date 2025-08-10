@@ -41,7 +41,7 @@ pub mod version;
 // pub use converter::M2Converter;
 pub use error::{M2Error, Result};
 pub use model::M2Model;
-// pub use skin::{OldSkin, Skin};
+pub use skin::{OldSkin, Skin};
 pub use version::M2Version;
 
 // Re-export BLP types from wow-blp crate for backwards compatibility
