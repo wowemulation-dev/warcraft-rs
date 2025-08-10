@@ -64,7 +64,7 @@ impl WowHeaderW for M2TextureTransformType {
 
 #[derive(Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2TextureTransformIdType {
+pub enum M2TextureTransformIdType {
     #[wow_data(read_if = version >= M2Version::Legion)]
     Some {
         id: u32,

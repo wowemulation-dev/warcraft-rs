@@ -155,7 +155,7 @@ pub struct M2TextureData {
 impl WowDataR<M2TextureHeader> for M2TextureData {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &M2TextureHeader) -> WDResult<Self> {
         Ok(Self {
-            filename: String::from_wow_char_array(reader, header.filename)?,
+            filename: String::from_wow_char_array(reader, header.filename.clone())?,
         })
     }
 }

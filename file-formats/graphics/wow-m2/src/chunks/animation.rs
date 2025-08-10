@@ -124,7 +124,7 @@ pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2InterpolationRange {
+pub enum M2InterpolationRange {
     None,
 
     #[wow_data(read_if = version <= M2Version::TBC)]

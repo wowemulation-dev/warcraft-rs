@@ -6,7 +6,7 @@ use wow_data_derive::{VWowHeaderR, WowHeaderW};
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2RibbonEmitterRest {
+pub enum M2RibbonEmitterRest {
     None,
 
     #[wow_data(read_if = version >= M2Version::WotLK)]

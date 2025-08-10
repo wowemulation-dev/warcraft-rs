@@ -37,7 +37,7 @@ impl WowHeaderW for M2CameraFlags {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2CameraFov {
+pub enum M2CameraFov {
     None,
 
     #[wow_data(read_if = version < M2Version::Cataclysm)]
@@ -46,7 +46,7 @@ enum M2CameraFov {
 
 #[derive(Debug, Clone, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2CameraFovAnimation {
+pub enum M2CameraFovAnimation {
     None,
 
     #[wow_data(read_if = version >= M2Version::Cataclysm)]

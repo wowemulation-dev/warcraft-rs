@@ -100,7 +100,7 @@ impl M2ParticleEmitterType {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2ParticleEmitterBlending {
+pub enum M2ParticleEmitterBlending {
     Classic {
         blending_type: u16,
         emitter_type: u16,
@@ -116,7 +116,7 @@ enum M2ParticleEmitterBlending {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2ParticleEmitterMultiTextureParam {
+pub enum M2ParticleEmitterMultiTextureParam {
     PreCata {
         particle_type: u8,
         head_or_tail: u8,
@@ -128,7 +128,7 @@ enum M2ParticleEmitterMultiTextureParam {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2ParticleEmitterLifespanVary {
+pub enum M2ParticleEmitterLifespanVary {
     None,
 
     #[wow_data(read_if = version >= M2Version::WotLK)]
@@ -137,7 +137,7 @@ enum M2ParticleEmitterLifespanVary {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2ParticleEmitterEmissionRateVary {
+pub enum M2ParticleEmitterEmissionRateVary {
     None,
 
     #[wow_data(read_if = version >= M2Version::WotLK)]
@@ -146,7 +146,7 @@ enum M2ParticleEmitterEmissionRateVary {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2ParticleEmitterColorAnimation {
+pub enum M2ParticleEmitterColorAnimation {
     UpToTbc {
         mid_point: f32,
         color_values: [ColorA; 3],
@@ -169,7 +169,7 @@ enum M2ParticleEmitterColorAnimation {
 
 #[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-enum M2ParticleEmitterSpin {
+pub enum M2ParticleEmitterSpin {
     UpToTbc {
         spin: f32,
     },

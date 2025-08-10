@@ -173,7 +173,7 @@ impl M2Model {
     }
 
     /// Write an M2 model to a writer
-    pub fn write<W: Write + Seek>(&self, writer: &mut W) -> Result<()> {
+    pub fn write<W: Write + Seek>(&self, _writer: &mut W) -> Result<()> {
         todo!()
         //     // We need to recalculate all offsets and build the file in memory
         //     let mut data_section = Vec::new();

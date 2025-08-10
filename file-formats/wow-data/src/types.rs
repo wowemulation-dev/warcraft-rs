@@ -217,6 +217,22 @@ impl WowHeaderW for [u8; 4] {
     }
 }
 
+impl WowHeaderR for i8 {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(reader.read_i8()?)
+    }
+}
+impl WowHeaderW for i8 {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_i8(*self)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        1
+    }
+}
+
 impl WowHeaderR for f32 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok(reader.read_f32_le()?)
