@@ -7,14 +7,17 @@ use wow_utils::debug;
 
 use std::path::Path;
 
-use crate::chunks::M2Vertex;
 use crate::chunks::animation::M2Animation;
 use crate::chunks::bone::M2Bone;
 use crate::chunks::color_animation::M2ColorAnimation;
 use crate::chunks::material::M2Material;
 use crate::chunks::texture::M2Texture;
+use crate::chunks::texture_transform::M2TextureTransform;
+use crate::chunks::{M2TransparencyAnimation, M2Vertex};
 use crate::error::Result;
-use crate::header::{M2Header, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles};
+use crate::header::{
+    M2Header, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles, M2TextureFlipbooks,
+};
 
 /// Main M2 model structure
 #[derive(Debug, Clone)]
@@ -41,68 +44,21 @@ pub struct M2Model {
 
     #[debug(with = debug::trimmed_collection_fmt)]
     pub textures: Vec<M2Texture>,
+
+    #[debug(with = debug::trimmed_collection_fmt)]
+    pub texture_weights: Vec<M2TransparencyAnimation>,
+
+    pub texture_flipbooks: M2TextureFlipbooks,
+
+    #[debug(with = debug::trimmed_collection_fmt)]
+    pub texture_transforms: Vec<M2TextureTransform>,
+
     #[debug(with = debug::trimmed_collection_fmt)]
     pub materials: Vec<M2Material>,
-    // #[debug(with = debug::trimmed_collection_fmt)]
-    // pub materials: Vec<M2Material>,
-    /// Raw data for other sections
-    /// This is used to preserve data that we don't fully parse yet
-    pub raw_data: M2RawData,
-}
-
-/// Raw data for sections that are not fully parsed
-#[derive(Debug, Clone, Default)]
-pub struct M2RawData {
-    /// Transparency data
-    pub transparency: Vec<u8>,
-    /// Texture animations
-    pub texture_animations: Vec<u8>,
-    /// Color animations
-    pub color_animations: Vec<u8>,
-    /// Render flags
-    pub render_flags: Vec<u8>,
-    /// Bone lookup table
-    pub bone_lookup_table: Vec<u16>,
-    /// Texture lookup table
-    pub texture_lookup_table: Vec<u16>,
-    /// Texture mapping lookup table
-    pub texture_mapping_lookup_table: Vec<u16>,
-    /// Texture units
-    pub texture_units: Vec<u16>,
-    /// Transparency lookup table
-    pub transparency_lookup_table: Vec<u16>,
-    /// Texture animation lookup
-    pub texture_animation_lookup: Vec<u16>,
-    /// Bounding triangles
-    pub bounding_triangles: Vec<u8>,
-    /// Bounding vertices
-    pub bounding_vertices: Vec<u8>,
-    /// Bounding normals
-    pub bounding_normals: Vec<u8>,
-    /// Attachments
-    pub attachments: Vec<u8>,
-    /// Attachment lookup table
-    pub attachment_lookup_table: Vec<u16>,
-    /// Events
-    pub events: Vec<u8>,
-    /// Lights
-    pub lights: Vec<u8>,
-    /// Cameras
-    pub cameras: Vec<u8>,
-    /// Camera lookup table
-    pub camera_lookup_table: Vec<u16>,
-    /// Ribbon emitters
-    pub ribbon_emitters: Vec<u8>,
-    /// Particle emitters
-    pub particle_emitters: Vec<u8>,
-    /// Texture combiner combos (added in Cataclysm)
-    pub texture_combiner_combos: Option<Vec<u8>>,
 }
 
 impl M2Model {
-    /// Parse an M2 model from a reader
     pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        // Parse the header first
         let header: M2Header = reader.wow_read()?;
 
         let name = String::from_wow_char_array(reader, header.name.clone())?;
@@ -139,11 +95,33 @@ impl M2Model {
             header: item_header,
         });
 
-        let materials = header.materials.wow_read_to_vec(reader)?;
+        let texture_weights = v_wow_collection!(
+            reader,
+            header.version,
+            header.texture_weights,
+            |reader, item_header| {
+                M2TransparencyAnimation {
+                    data: reader.v_new_from_header(&item_header)?,
+                    header: item_header,
+                }
+            }
+        );
 
-        // Parse raw data for other sections
-        // These are sections we won't fully parse yet but want to preserve
-        let raw_data = M2RawData::default();
+        let texture_flipbooks = reader.v_new_from_header(&header.texture_flipbooks)?;
+
+        let texture_transforms = v_wow_collection!(
+            reader,
+            header.version,
+            header.texture_transforms,
+            |reader, item_header| {
+                M2TextureTransform {
+                    data: reader.v_new_from_header(&item_header)?,
+                    header: item_header,
+                }
+            }
+        );
+
+        let materials = header.materials.wow_read_to_vec(reader)?;
 
         Ok(Self {
             header,
@@ -158,8 +136,10 @@ impl M2Model {
             skin_profiles,
             color_animations,
             textures,
+            texture_weights,
+            texture_flipbooks,
+            texture_transforms,
             materials,
-            raw_data,
         })
     }
 

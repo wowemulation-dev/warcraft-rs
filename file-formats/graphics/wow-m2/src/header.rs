@@ -1,10 +1,13 @@
 use crate::M2Error;
 use crate::chunks::animation::{M2Animation, M2SequenceFallback};
 use crate::chunks::bone::M2BoneHeader;
+use crate::chunks::color_animation::M2ColorAnimationHeader;
 use crate::chunks::material::M2Material;
+use crate::chunks::texture::M2TextureHeader;
+use crate::chunks::texture_transform::M2TextureTransformHeader;
+use crate::chunks::transparency_animation::M2TransparencyAnimationHeader;
 use crate::chunks::{
-    M2Attachment, M2Camera, M2ColorAnimationHeader, M2Event, M2Light, M2ParticleEmitter,
-    M2RibbonEmitter, M2TextureHeader, M2TextureTransform, M2TransparencyAnimation, M2Vertex,
+    M2Attachment, M2Camera, M2Event, M2Light, M2ParticleEmitter, M2RibbonEmitter, M2Vertex,
 };
 use bitflags::bitflags;
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -154,11 +157,29 @@ pub struct M2TextureFlipbook {
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub enum M2TextureFlipbooks {
+pub enum M2TextureFlipbooksHeader {
     Some(WowArray<M2TextureFlipbook>),
 
     #[wow_data(read_if = version > M2Version::TBC)]
     None,
+}
+
+#[derive(Debug, Clone)]
+pub enum M2TextureFlipbooks {
+    Some(Vec<M2TextureFlipbook>),
+    None,
+}
+
+impl VWowDataR<M2Version, M2TextureFlipbooksHeader> for M2TextureFlipbooks {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2TextureFlipbooksHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2TextureFlipbooksHeader::Some(array) => Self::Some(array.wow_read_to_vec(reader)?),
+            M2TextureFlipbooksHeader::None => Self::None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
@@ -236,13 +257,13 @@ pub struct M2Header {
     pub textures: WowArray<M2TextureHeader>,
 
     #[wow_data(versioned)]
-    pub texture_weights: WowArrayV<M2Version, M2TransparencyAnimation>,
+    pub texture_weights: WowArrayV<M2Version, M2TransparencyAnimationHeader>,
 
     #[wow_data(versioned)]
-    pub texture_flipbooks: M2TextureFlipbooks,
+    pub texture_flipbooks: M2TextureFlipbooksHeader,
 
     #[wow_data(versioned)]
-    pub texture_transforms: WowArrayV<M2Version, M2TextureTransform>,
+    pub texture_transforms: WowArrayV<M2Version, M2TextureTransformHeader>,
 
     pub replaceable_texture_lookup: WowArray<u16>,
 
@@ -336,9 +357,9 @@ impl M2Header {
             texture_weights: WowArrayV::default(),
             texture_transforms: WowArrayV::default(),
             texture_flipbooks: if version <= M2Version::TBC {
-                M2TextureFlipbooks::Some(WowArray::default())
+                M2TextureFlipbooksHeader::Some(WowArray::default())
             } else {
-                M2TextureFlipbooks::None
+                M2TextureFlipbooksHeader::None
             },
             materials: WowArray::default(),
             bone_lookup_table: WowArray::default(),

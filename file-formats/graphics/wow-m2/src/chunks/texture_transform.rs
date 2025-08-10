@@ -1,12 +1,14 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Quaternion};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
 use crate::M2Error;
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
 use crate::error::Result;
 use crate::version::M2Version;
+
+use super::animation::M2AnimationTrackData;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M2TextureTransformType {
@@ -75,119 +77,35 @@ pub enum M2TextureTransformIdType {
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub struct M2TextureTransform {
+pub struct M2TextureTransformHeader {
     #[wow_data(versioned)]
     pub id_type: M2TextureTransformIdType,
 
     #[wow_data(versioned)]
-    pub translation: M2AnimationBlock<C3Vector>,
+    pub translation: M2AnimationTrackHeader<C3Vector>,
 
     #[wow_data(versioned)]
-    pub rotation: M2AnimationBlock<Quaternion>,
+    pub rotation: M2AnimationTrackHeader<Quaternion>,
 
     #[wow_data(versioned)]
-    pub scaling: M2AnimationBlock<C3Vector>,
+    pub scaling: M2AnimationTrackHeader<C3Vector>,
 }
 
-impl M2TextureTransform {
-    // /// Parse a texture transform from a reader
-    // pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
-    //     let id = reader.read_u32_le()?;
-    //
-    //     let transform_type_raw = reader.read_u16_le()?;
-    //     let transform_type = M2TextureTransformType::from_u16(transform_type_raw)
-    //         .unwrap_or(M2TextureTransformType::None);
-    //
-    //     // Skip 2 bytes of padding
-    //     reader.read_u16_le()?;
-    //
-    //     let translation = M2AnimationBlock::parse(reader, version)?;
-    //     let rotation = M2AnimationBlock::parse(reader, version)?;
-    //     let scaling = M2AnimationBlock::parse(reader, version)?;
-    //
-    //     Ok(Self {
-    //         id,
-    //         transform_type,
-    //         translation,
-    //         rotation,
-    //         scaling,
-    //     })
-    // }
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header = M2TextureTransformHeader)]
+pub struct M2TextureTransformData {
+    #[wow_data(versioned)]
+    pub translation: M2AnimationTrackData<C3Vector>,
 
-    // /// Write a texture transform to a writer
-    // pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-    //     writer.write_u32_le(self.id)?;
-    //     writer.write_u16_le(self.transform_type as u16)?;
-    //
-    //     // Write 2 bytes of padding
-    //     writer.write_u16_le(0)?;
-    //
-    //     self.translation.write(writer)?;
-    //     self.rotation.write(writer)?;
-    //     self.scaling.write(writer)?;
-    //
-    //     Ok(())
-    // }
+    #[wow_data(versioned)]
+    pub rotation: M2AnimationTrackData<Quaternion>,
 
-    /// Create a new texture transform with default values
-    pub fn new(id: u32, transform_type: M2TextureTransformType) -> Self {
-        Self {
-            id_type: M2TextureTransformIdType::Some { id, transform_type },
-            translation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
-            rotation: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
-            scaling: M2AnimationBlock::new(M2AnimationTrackHeader::new()),
-        }
-    }
+    #[wow_data(versioned)]
+    pub scaling: M2AnimationTrackData<C3Vector>,
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::io::Cursor;
-//
-//     #[test]
-//     fn test_c4quaternion_parse_write() {
-//         let quat = C4Quaternion {
-//             x: 0.0,
-//             y: 0.0,
-//             z: 0.0,
-//             w: 1.0,
-//         };
-//
-//         let mut data = Vec::new();
-//         quat.write(&mut data).unwrap();
-//
-//         let mut cursor = Cursor::new(data);
-//         let parsed_quat = C4Quaternion::parse(&mut cursor).unwrap();
-//
-//         assert_eq!(parsed_quat.x, 0.0);
-//         assert_eq!(parsed_quat.y, 0.0);
-//         assert_eq!(parsed_quat.z, 0.0);
-//         assert_eq!(parsed_quat.w, 1.0);
-//     }
-//
-//     #[test]
-//     fn test_texture_transform_type() {
-//         assert_eq!(
-//             M2TextureTransformType::from_u16(0),
-//             Some(M2TextureTransformType::None)
-//         );
-//         assert_eq!(
-//             M2TextureTransformType::from_u16(1),
-//             Some(M2TextureTransformType::Scroll)
-//         );
-//         assert_eq!(
-//             M2TextureTransformType::from_u16(2),
-//             Some(M2TextureTransformType::Rotate)
-//         );
-//         assert_eq!(
-//             M2TextureTransformType::from_u16(3),
-//             Some(M2TextureTransformType::Scale)
-//         );
-//         assert_eq!(
-//             M2TextureTransformType::from_u16(4),
-//             Some(M2TextureTransformType::Matrix)
-//         );
-//         assert_eq!(M2TextureTransformType::from_u16(5), None);
-//     }
-// }
+#[derive(Debug, Clone)]
+pub struct M2TextureTransform {
+    pub header: M2TextureTransformHeader,
+    pub data: M2TextureTransformData,
+}
