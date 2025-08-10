@@ -9,7 +9,6 @@ pub mod material;
 pub mod particle_emitter;
 pub mod physics;
 pub mod ribbon_emitter;
-pub mod sequence;
 pub mod texture;
 pub mod texture_animation;
 pub mod texture_transform;
@@ -19,7 +18,7 @@ pub mod vertex;
 // Re-export common types
 pub use attachment::{M2Attachment, M2AttachmentType};
 pub use camera::{M2Camera, M2CameraFlags};
-pub use color_animation::M2ColorAnimation;
+pub use color_animation::M2ColorAnimationHeader;
 pub use event::{M2Event, M2EventType};
 pub use light::{M2Light, M2LightFlags, M2LightType};
 pub use particle_emitter::{M2ParticleEmitter, M2ParticleEmitterType, M2ParticleFlags};

@@ -10,41 +10,42 @@ use std::path::Path;
 use crate::chunks::M2Vertex;
 use crate::chunks::animation::M2Animation;
 use crate::chunks::bone::M2Bone;
+use crate::chunks::color_animation::M2ColorAnimation;
 use crate::chunks::material::M2Material;
 use crate::chunks::texture::M2Texture;
 use crate::error::Result;
-use crate::header::M2Header;
+use crate::header::{M2Header, M2SkinProfile};
 
 /// Main M2 model structure
 #[derive(Debug, Clone)]
 pub struct M2Model {
-    /// M2 header
     pub header: M2Header,
-    /// Model name
     pub name: String,
-    /// Global sequences
     pub global_sequences: Vec<u32>,
-    /// Animations
     #[debug(with = debug::trimmed_collection_fmt)]
     pub animations: Vec<M2Animation>,
-    /// Animation lookups
     #[debug(with = debug::trimmed_collection_fmt)]
     pub animation_lookup: Vec<u16>,
-    /// Bones
+    // #[debug(with = debug::trimmed_collection_fmt)]
+    // pub playable_animation_lookup: Vec<u16>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub bones: Vec<M2Bone>,
-    /// Key bone lookups
     #[debug(with = debug::trimmed_collection_fmt)]
     pub key_bone_lookup: Vec<u16>,
-    /// Vertices
     #[debug(with = debug::trimmed_collection_fmt)]
     pub vertices: Vec<M2Vertex>,
-    /// Textures
+
+    // pub skin_profiles: Option<Vec<M2SkinProfile>>,
+
+    // #[debug(with = debug::trimmed_collection_fmt)]
+    // pub color_animations: Vec<M2ColorAnimation>,
+
     #[debug(with = debug::trimmed_collection_fmt)]
     pub textures: Vec<M2Texture>,
-    /// Materials (render flags)
     #[debug(with = debug::trimmed_collection_fmt)]
     pub materials: Vec<M2Material>,
+    // #[debug(with = debug::trimmed_collection_fmt)]
+    // pub materials: Vec<M2Material>,
     /// Raw data for other sections
     /// This is used to preserve data that we don't fully parse yet
     pub raw_data: M2RawData,

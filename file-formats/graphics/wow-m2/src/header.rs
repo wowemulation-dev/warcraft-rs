@@ -3,15 +3,15 @@ use crate::chunks::animation::{M2Animation, M2SequenceFallback};
 use crate::chunks::bone::M2BoneHeader;
 use crate::chunks::material::M2Material;
 use crate::chunks::{
-    M2Attachment, M2Camera, M2ColorAnimation, M2Event, M2Light, M2ParticleEmitter, M2RibbonEmitter,
-    M2TextureHeader, M2TextureTransform, M2TransparencyAnimation, M2Vertex,
+    M2Attachment, M2Camera, M2ColorAnimationHeader, M2Event, M2Light, M2ParticleEmitter,
+    M2RibbonEmitter, M2TextureHeader, M2TextureTransform, M2TransparencyAnimation, M2Vertex,
 };
 use bitflags::bitflags;
 use std::io::{Read, Seek, SeekFrom, Write};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{BoundingBox, C3Vector, WowArray, WowArrayV, WowCharArray};
-use wow_data_derive::{VWowHeaderR, WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::version::M2Version;
 
@@ -104,7 +104,7 @@ impl WowHeaderW for M2ModelFlags {
     }
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2PlayableAnimationLookup {
     #[wow_data(read_if = version <= M2Version::TBC)]
@@ -114,7 +114,7 @@ pub enum M2PlayableAnimationLookup {
 
 pub type M2SkinProfile = u32;
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2SkinProfiles {
     UpToTBC(WowArray<M2SkinProfile>),
@@ -132,7 +132,7 @@ pub struct M2TextureFlipbook {
     d: u32,
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2TextureFlipbooks {
     Some(WowArray<M2TextureFlipbook>),
@@ -141,7 +141,7 @@ pub enum M2TextureFlipbooks {
     None,
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2BlenMapOverrides {
     None,
@@ -162,7 +162,7 @@ impl WowHeaderR for M2TextureCombinerCombos {
     }
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2TextureTransforms {
     None,
@@ -173,7 +173,7 @@ pub enum M2TextureTransforms {
 
 /// M2 model header structure
 /// Based on: <https://wowdev.wiki/M2#Header>
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2Header {
     /// Magic signature ("MD20")
@@ -210,7 +210,7 @@ pub struct M2Header {
 
     // Color data
     #[wow_data(versioned)]
-    pub color_animations: WowArrayV<M2Version, M2ColorAnimation>,
+    pub color_animations: WowArrayV<M2Version, M2ColorAnimationHeader>,
 
     // Texture-related fields
     pub textures: WowArray<M2TextureHeader>,

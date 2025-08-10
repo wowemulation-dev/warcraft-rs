@@ -1,7 +1,7 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Quaternion};
-use wow_data_derive::{VWowHeaderR, WowHeaderW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::M2Error;
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
@@ -62,7 +62,7 @@ impl WowHeaderW for M2TextureTransformType {
     }
 }
 
-#[derive(Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, Copy, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2TextureTransformIdType {
     #[wow_data(read_if = version >= M2Version::Legion)]
@@ -73,7 +73,7 @@ pub enum M2TextureTransformIdType {
     None,
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2TextureTransform {
     #[wow_data(versioned)]

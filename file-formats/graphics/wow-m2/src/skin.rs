@@ -3,7 +3,7 @@ use custom_debug::Debug;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, WowArray};
-use wow_data_derive::{VWowHeaderR, WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 use wow_utils::debug;
 
 use std::fmt;
@@ -42,7 +42,7 @@ pub trait SkinHeaderT: Sized {
     -> Result<u32>;
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum SkinCenterPosition {
     None,
@@ -55,7 +55,7 @@ pub enum SkinCenterPosition {
 }
 
 /// Skin file header
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct SkinHeader {
     /// Magic signature ("SKIN")

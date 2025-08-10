@@ -22,7 +22,7 @@ pub type Result<T> = std::result::Result<T, WowDataError>;
 #[cfg(test)]
 mod tests {
 
-    use wow_data_derive::{VWowHeaderR, WowHeaderW};
+    use wow_data_derive::{WowHeaderR, WowHeaderW};
 
     use crate::types::VWowHeaderReader;
     mod wow_data {
@@ -36,7 +36,7 @@ mod tests {
     struct TestV {}
     impl DataVersion for TestV {}
 
-    #[derive(Clone, Copy, VWowHeaderR, WowHeaderW)]
+    #[derive(Clone, WowHeaderR, WowHeaderW)]
     #[wow_data(version = TestV)]
     struct ItemHeader {
         item: u32,
@@ -50,16 +50,16 @@ mod tests {
 
     impl ItemData {
         fn read<R: Read + Seek>(reader: &mut R, version: TestV) -> Self {
-            let header = reader.wow_read_versioned(version).unwrap();
+            let header: ItemHeader = reader.wow_read_versioned(version).unwrap();
 
             Self {
-                header,
                 omg: header.omg.wow_read_to_vec(reader).unwrap(),
+                header,
             }
         }
     }
 
-    #[derive(Clone, VWowHeaderR, WowHeaderW)]
+    #[derive(Clone, WowHeaderR, WowHeaderW)]
     #[wow_data(version = TestV)]
     struct TestHeader {
         #[wow_data(versioned)]
@@ -81,7 +81,7 @@ mod tests {
                 .iter()
                 .map(|header| ItemData {
                     omg: header.omg.wow_read_to_vec(reader).unwrap(),
-                    header: *header,
+                    header: header.clone(),
                 })
                 .collect();
 

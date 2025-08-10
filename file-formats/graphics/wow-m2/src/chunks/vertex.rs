@@ -2,7 +2,7 @@ use std::io::{Read, Seek, Write};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C2Vector, C3Vector};
-use wow_data_derive::{VWowHeaderR, WowHeaderW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::version::M2Version;
 
@@ -44,7 +44,7 @@ impl WowHeaderW for M2VertexFlags {
     }
 }
 
-#[derive(Debug, Clone, Default, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2TexCoords2 {
     #[default]
@@ -54,7 +54,7 @@ pub enum M2TexCoords2 {
     Some(C2Vector),
 }
 
-#[derive(Debug, Clone, Default, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2Vertex {
     pub position: C3Vector,

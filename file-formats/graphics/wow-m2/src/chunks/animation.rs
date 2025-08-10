@@ -3,7 +3,7 @@ use std::{cmp, fmt};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{BoundingBox, C3Vector, VWowDataR, WowArray};
-use wow_data_derive::{VWowHeaderR, WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 use wow_utils::debug;
 
 use crate::M2Error;
@@ -113,7 +113,7 @@ pub struct M2Box {
     pub rotation_speed_max: C3Vector,
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
     Single(WowArray<T>),
@@ -122,7 +122,7 @@ pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
     Multiple(WowArray<WowArray<T>>),
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2InterpolationRange {
     None,
@@ -131,7 +131,7 @@ pub enum M2InterpolationRange {
     Some(WowArray<(u32, u32)>),
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2AnimationBaseTrackHeader {
     pub interpolation_type: M2InterpolationType,
@@ -143,7 +143,7 @@ pub struct M2AnimationBaseTrackHeader {
 }
 
 /// An animation track header
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2AnimationTrackHeader<T: WowHeaderR + WowHeaderW> {
     pub interpolation_type: M2InterpolationType,
@@ -278,7 +278,7 @@ where
 }
 
 /// Animation block for a specific animation type
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2AnimationBlock<T: WowHeaderR + WowHeaderW> {
     #[wow_data(versioned)]
@@ -304,7 +304,7 @@ pub struct M2FakeAnimationBlock<T: WowHeaderR + WowHeaderW> {
     pub values: WowArray<T>,
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2AnimationTiming {
     StartEnd(u32, u32),
@@ -313,7 +313,7 @@ pub enum M2AnimationTiming {
     Duration(u32),
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2AnimationBlending {
     Time(u32),
@@ -323,7 +323,7 @@ pub enum M2AnimationBlending {
 }
 
 /// Animation data for a model
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2Animation {
     pub animation_id: u16,

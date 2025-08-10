@@ -3,7 +3,7 @@ use std::io::SeekFrom;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Quaternion, Quaternion16, VWowDataR, WowArrayV};
-use wow_data_derive::{VWowHeaderR, WowHeaderW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::Result;
 use crate::version::M2Version;
@@ -90,7 +90,7 @@ impl VWowDataR<M2Version, M2BoneRotationHeader> for M2BoneRotationData {
     }
 }
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2BoneCrc {
     Classic {
@@ -103,7 +103,7 @@ pub enum M2BoneCrc {
 }
 
 /// Represents a bone in an M2 model
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2BoneHeader {
     pub bone_id: i32,

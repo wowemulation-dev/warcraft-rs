@@ -2,9 +2,9 @@ use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::version::M2Version;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Color, WowArray};
-use wow_data_derive::{VWowHeaderR, WowHeaderW};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2RibbonEmitterRest {
     None,
@@ -18,7 +18,7 @@ pub enum M2RibbonEmitterRest {
 }
 
 /// Represents a ribbon emitter in an M2 model
-#[derive(Debug, Clone, VWowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub struct M2RibbonEmitter {
     pub id: u32,

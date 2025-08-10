@@ -959,7 +959,7 @@ impl WowHeaderW for [VectorFp6_9; 2] {
 
 #[cfg(test)]
 mod tests {
-    use wow_data_derive::{VWowHeaderR, WowHeaderW};
+    use wow_data_derive::{WowHeaderR, WowHeaderW};
 
     use super::*;
     use std::io::Cursor;
@@ -1167,7 +1167,7 @@ mod tests {
         }
     }
 
-    #[derive(super::Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
+    #[derive(super::Debug, Clone, Copy, WowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     enum ExampleVersioned {
         #[wow_data(read_if = version <= M2Version::TBC)]
@@ -1175,7 +1175,7 @@ mod tests {
         Others(u16),
     }
 
-    #[derive(super::Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
+    #[derive(super::Debug, Clone, Copy, WowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     enum OptionUpToMoP<T: WowHeaderR + WowHeaderW> {
         #[wow_data(read_if = version <= M2Version::MoP)]
@@ -1183,7 +1183,7 @@ mod tests {
         None,
     }
 
-    #[derive(super::Debug, Clone, Copy, VWowHeaderR, WowHeaderW)]
+    #[derive(super::Debug, Clone, Copy, WowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     enum OptionAfterMoP<T: WowHeaderR + WowHeaderW> {
         #[wow_data(read_if = version > M2Version::MoP)]
@@ -1191,7 +1191,7 @@ mod tests {
         None,
     }
 
-    #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
+    #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]
     struct ExampleHeader {
         #[wow_data(skip = M2Version::Classic)]
@@ -1516,14 +1516,14 @@ mod tests {
         assert_eq!(*converted_writer.get_ref(), example_converted_data_bin);
     }
     //
-    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
+    // #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub enum M2InterpolationRange {
     //     #[wow_data(read_if = version <= M2Version::TBC)]
     //     Some(WowArray<(u32, u32)>),
     //     None,
     // }
-    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
+    // #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub enum TrackArray<T> {
     //     Single(WowArray<T>),
@@ -1531,7 +1531,7 @@ mod tests {
     //     #[wow_data(read_if = version > M2Version::TBC)]
     //     Multiple(WowArray<WowArray<T>>),
     // }
-    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
+    // #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub struct M2AnimationTrackHeader<T> {
     //     pub global_sequence: i16,
@@ -1543,7 +1543,7 @@ mod tests {
     //     pub values: TrackArray<T>,
     // }
     //
-    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
+    // #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // struct ClassicAnimTH {
     //     #[wow_data(versioned)]
@@ -1566,7 +1566,7 @@ mod tests {
     //     }
     // }
     //
-    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
+    // #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub struct M2Animation {
     //     pub animation_id: u16,
@@ -1588,7 +1588,7 @@ mod tests {
     //     pub next_alias: u16,
     // }
     //
-    // #[derive(super::Debug, Clone, VWowHeaderR, WowHeaderW)]
+    // #[derive(super::Debug, Clone, WowHeaderR, WowHeaderW)]
     // #[wow_data(version = M2Version)]
     // pub struct M2Header {
     //     /// Version of the M2 file

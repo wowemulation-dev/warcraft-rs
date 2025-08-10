@@ -1,38 +1,68 @@
+use std::{collections::HashMap, fmt};
+
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Expr, Fields, Type, parse::Parse, parse_macro_input};
+use syn::{Data, DeriveInput, Expr, Fields, LitBool, Type, parse::Parse, parse_macro_input};
 
-#[proc_macro_derive(VWowHeaderR, attributes(wow_data))]
-pub fn wow_header_rv_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(WowHeaderR, attributes(wow_data))]
+pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let version_ty = match get_value_from_attrs::<Type>(&input.attrs, "wow_data", "version") {
-        Ok(ty) => ty,
-        Err(e) => return e.to_compile_error().into(),
+    let version_ty = match get_values_from_attrs::<Type>(&input.attrs, "wow_data", &["version"]) {
+        Ok(mut map) => map.remove("version"),
+        Err(err) => return err.to_compile_error().into(),
     };
 
     let struct_name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let reader_body = match &input.data {
-        Data::Struct(s) => generate_struct_reader_body(&s.fields),
-        Data::Enum(e) => generate_enum_reader_body(e),
-        Data::Union(_) => {
-            return syn::Error::new_spanned(&input, "VWowHeaderR cannot be derived for unions.")
+    let expanded = if let Some(version_ty) = version_ty {
+        let reader_body = match &input.data {
+            Data::Struct(s) => generate_header_rv_struct_reader_body(&s.fields),
+            Data::Enum(e) => generate_header_rv_enum_reader_body(e),
+            Data::Union(_) => {
+                return syn::Error::new_spanned(
+                    &input,
+                    "VWowHeaderR cannot be derived for unions.",
+                )
                 .to_compile_error()
                 .into();
+            }
+        };
+
+        let reader_body = match reader_body {
+            Ok(body) => body,
+            Err(e) => return e.to_compile_error().into(),
+        };
+
+        quote! {
+            impl #impl_generics wow_data::types::VWowHeaderR<#version_ty> for #struct_name #ty_generics #where_clause {
+                fn wow_read<R: ::std::io::Read + ::std::io::Seek>(reader: &mut R, version: #version_ty) -> wow_data::error::Result<Self> {
+                    Ok(#reader_body)
+                }
+            }
         }
-    };
+    } else {
+        let reader_body = if let Data::Struct(s) = &input.data {
+            generate_header_rv_struct_reader_body(&s.fields)
+        } else {
+            return syn::Error::new_spanned(&input, "WowHeaderR can only be derived for structs.")
+                .to_compile_error()
+                .into();
+        };
 
-    let reader_body = match reader_body {
-        Ok(body) => body,
-        Err(e) => return e.to_compile_error().into(),
-    };
+        let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let expanded = quote! {
-        impl #impl_generics wow_data::types::VWowHeaderR<#version_ty> for #struct_name #ty_generics #where_clause {
-            fn wow_read<R: ::std::io::Read + ::std::io::Seek>(reader: &mut R, version: #version_ty) -> wow_data::error::Result<Self> {
-                Ok(#reader_body)
+        let reader_body = match reader_body {
+            Ok(body) => body,
+            Err(e) => return e.to_compile_error().into(),
+        };
+
+        quote! {
+            impl #impl_generics wow_data::types::WowHeaderR for #struct_name #ty_generics #where_clause {
+                fn wow_read<R: Read + Seek>(reader: &mut R) -> wow_data::error::Result<Self> {
+                    Ok(#reader_body)
+                }
             }
         }
     };
@@ -40,7 +70,7 @@ pub fn wow_header_rv_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-fn generate_struct_reader_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
+fn generate_header_rv_struct_reader_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
     let named_fields = if let Fields::Named(f) = fields {
         &f.named
     } else {
@@ -50,34 +80,48 @@ fn generate_struct_reader_body(fields: &Fields) -> syn::Result<proc_macro2::Toke
         ));
     };
 
-    let initializers = named_fields.iter().map(|field| {
+    let mut initializers = Vec::new();
+
+    for field in named_fields {
         let field_name = field.ident.as_ref().unwrap();
 
-        // Check for the `#[wow_data(versioned)]` attribute on the field.
-        let is_versioned = field.attrs.iter().any(|attr| {
+        let mut is_versioned = false;
+        for attr in &field.attrs {
             if !attr.path().is_ident("wow_data") {
-                return false;
+                continue;
             }
-            // Check for `(versioned)`
+
             let mut found = false;
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("versioned") {
                     found = true;
                 }
-                Ok(()) // Ignore other attributes
+                Ok(())
             });
-            found
-        });
 
-        if is_versioned {
-            quote! { #field_name: reader.wow_read_versioned(version)? }
-        } else {
-            match get_value_from_attrs::<Expr>(&field.attrs, "wow_data", "skip") {
-                Ok(val) => quote! { #field_name: #val },
-                Err(_) => quote! { #field_name: reader.wow_read()? },
+            if found {
+                is_versioned = true;
+                break;
             }
         }
-    });
+
+        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
+            Ok(map) => {
+                initializers.push(if let Some(val) = map.get("skip") {
+                    quote! { #field_name: #val }
+                } else {
+                    if is_versioned {
+                        quote! { #field_name: reader.wow_read_versioned(version)? }
+                    } else {
+                        quote! { #field_name: reader.wow_read()? }
+                    }
+                });
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
 
     Ok(quote! {
         Self {
@@ -86,7 +130,9 @@ fn generate_struct_reader_body(fields: &Fields) -> syn::Result<proc_macro2::Toke
     })
 }
 
-fn generate_enum_reader_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::TokenStream> {
+fn generate_header_rv_enum_reader_body(
+    data: &syn::DataEnum,
+) -> syn::Result<proc_macro2::TokenStream> {
     let mut conditional_arms = Vec::new();
     let mut default_arm = None;
 
@@ -111,18 +157,22 @@ fn generate_enum_reader_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::T
             }
         };
 
-        match get_value_from_attrs::<Expr>(&variant.attrs, "wow_data", "read_if") {
-            Ok(cond_expr) => {
-                conditional_arms.push(quote! { if #cond_expr { #constructor } });
-            }
-            Err(_) => {
-                if default_arm.is_some() {
-                    return Err(syn::Error::new_spanned(
-                        variant,
-                        "Only one enum variant can be the default (lacking a `read_if` attribute).",
-                    ));
+        match get_values_from_attrs::<Expr>(&variant.attrs, "wow_data", &["read_if"]) {
+            Ok(map) => {
+                if let Some(cond_expr) = map.get("read_if") {
+                    conditional_arms.push(quote! { if #cond_expr { #constructor } });
+                } else {
+                    if default_arm.is_some() {
+                        return Err(syn::Error::new_spanned(
+                            variant,
+                            "Only one enum variant can be the default (lacking a `read_if` attribute).",
+                        ));
+                    }
+                    default_arm = Some(constructor);
                 }
-                default_arm = Some(constructor);
+            }
+            Err(err) => {
+                return Err(err);
             }
         }
     }
@@ -144,12 +194,12 @@ fn generate_enum_reader_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::T
     Ok(full_body)
 }
 
-fn get_value_from_attrs<T: Parse>(
+fn get_values_from_attrs<T: Parse + fmt::Debug>(
     attrs: &[syn::Attribute],
     attr_name: &str,
-    attr_key: &str,
-) -> syn::Result<T> {
-    let mut ret_val = None;
+    attr_keys: &[&str],
+) -> syn::Result<HashMap<String, T>> {
+    let mut ret_val = HashMap::new();
 
     for attr in attrs {
         if !attr.path().is_ident(attr_name) {
@@ -157,68 +207,18 @@ fn get_value_from_attrs<T: Parse>(
         }
 
         attr.parse_nested_meta(|meta| {
-            if meta.path.is_ident(attr_key) {
-                let value = meta.value()?;
-                let parsed: T = value.parse()?;
-                ret_val = Some(parsed);
+            for attr_key in attr_keys {
+                if meta.path.is_ident(attr_key) {
+                    let value = meta.value()?;
+                    let parsed: T = value.parse()?;
+                    ret_val.insert((*attr_key).into(), parsed);
+                }
             }
             Ok(())
         })?;
     }
 
-    ret_val.ok_or_else(|| {
-        syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "Missing required struct attribute `#[wow_data(version = YourVersionType)]`",
-        )
-    })
-}
-
-#[proc_macro_derive(WowHeaderR, attributes(wow_data))]
-pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    let struct_name = &input.ident;
-
-    let fields = if let Data::Struct(s) = &input.data {
-        if let Fields::Named(f) = &s.fields {
-            &f.named
-        } else {
-            return syn::Error::new_spanned(
-                &s.fields,
-                "WowHeaderR can only be derived for structs with named fields.",
-            )
-            .to_compile_error()
-            .into();
-        }
-    } else {
-        return syn::Error::new_spanned(&input, "WowHeaderR can only be derived for structs.")
-            .to_compile_error()
-            .into();
-    };
-
-    let initializers = fields.iter().map(|field| {
-        let field_name = field.ident.as_ref().unwrap();
-
-        match get_value_from_attrs::<Expr>(&field.attrs, "wow_data", "skip") {
-            Ok(val) => quote! { #field_name: #val },
-            Err(_) => quote! { #field_name: reader.wow_read()? },
-        }
-    });
-
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-    let expanded = quote! {
-        impl #impl_generics wow_data::types::WowHeaderR for #struct_name #ty_generics #where_clause {
-            fn wow_read<R: Read + Seek>(reader: &mut R) -> wow_data::error::Result<Self> {
-                Ok(Self{
-                    #(#initializers),*
-                })
-            }
-        }
-    };
-
-    TokenStream::from(expanded)
+    Ok(ret_val)
 }
 
 #[proc_macro_derive(WowHeaderW, attributes(wow_data))]
@@ -276,14 +276,18 @@ fn generate_struct_writer_body(fields: &Fields) -> syn::Result<proc_macro2::Toke
         ));
     };
     let write_statements = named_fields.iter().map(|field| {
-        match get_value_from_attrs::<Expr>(&field.attrs, "wow_data", "skip") {
-            Ok(_) => quote! {},
-            Err(_) => {
-                let field_name = field.ident.as_ref().unwrap();
-                quote! {
-                    writer.wow_write(&self.#field_name)?;
+        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
+            Ok(map) => {
+                if let Some(_) = map.get("skip") {
+                    quote! {}
+                } else {
+                    let field_name = field.ident.as_ref().unwrap();
+                    quote! {
+                        writer.wow_write(&self.#field_name)?;
+                    }
                 }
             }
+            Err(_) => quote! {},
         }
     });
 
@@ -302,17 +306,26 @@ fn generate_struct_size_body(fields: &Fields) -> syn::Result<proc_macro2::TokenS
             "WowHeaderW on structs only supports named fields.",
         ));
     };
-    let size_expressions = named_fields.iter().map(|field| {
-        match get_value_from_attrs::<Expr>(&field.attrs, "wow_data", "skip") {
-            Ok(_) => quote! {0},
-            Err(_) => {
-                let field_name = field.ident.as_ref().unwrap();
-                quote! {
-                    self.#field_name.wow_size()
+
+    let mut size_expressions = Vec::new();
+
+    for field in named_fields {
+        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
+            Ok(map) => {
+                if let Some(_) = map.get("skip") {
+                    size_expressions.push(quote! {0});
+                } else {
+                    let field_name = field.ident.as_ref().unwrap();
+                    size_expressions.push(quote! {
+                        self.#field_name.wow_size()
+                    });
                 }
             }
+            Err(err) => {
+                return Err(err);
+            }
         }
-    });
+    }
 
     Ok(quote! {
         0 #(+ #size_expressions)*
@@ -418,4 +431,94 @@ fn generate_enum_size_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::Tok
             #(#arms),*
         }
     })
+}
+
+#[proc_macro_derive(WowDataR, attributes(wow_data))]
+pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let wow_data_attrs_map =
+        match get_values_from_attrs::<Type>(&input.attrs, "wow_data", &["version", "header"]) {
+            Ok(ty) => ty,
+            Err(e) => return e.to_compile_error().into(),
+        };
+
+    let struct_name = &input.ident;
+
+    let fields = if let Data::Struct(s) = &input.data {
+        if let Fields::Named(f) = &s.fields {
+            &f.named
+        } else {
+            return syn::Error::new_spanned(
+                &s.fields,
+                "WowDataR can only be derived for structs with named fields.",
+            )
+            .to_compile_error()
+            .into();
+        }
+    } else {
+        return syn::Error::new_spanned(&input, "WowDataR can only be derived for structs.")
+            .to_compile_error()
+            .into();
+    };
+
+    let mut initializers = Vec::new();
+
+    for field in fields {
+        let field_name = field.ident.as_ref().unwrap();
+
+        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
+            Ok(map) => {
+                if let Some(expr) = map.get("skip") {
+                    initializers.push(quote! { #field_name: #expr });
+                } else {
+                    match get_values_from_attrs::<LitBool>(&field.attrs, "wow_data", &["versioned"])
+                    {
+                        Ok(submap) => {
+                            if let Some(_) = submap.get("versioned") {
+                                initializers.push(quote! { #field_name: reader.vnew_from_header(&header.#field_name)? });
+                            } else {
+                                initializers.push(quote! { #field_name: reader.new_from_header(&header.#field_name)? });
+                            }
+                        }
+                        Err(err) => {
+                            return err.to_compile_error().into();
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                return err.to_compile_error().into();
+            }
+        }
+    }
+
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let expanded = match (
+        wow_data_attrs_map.get("version"),
+        wow_data_attrs_map.get("header"),
+    ) {
+        (Some(version_ty), Some(header_ty)) => {
+            quote! {
+                impl #impl_generics wow_data::types::WowDataR<#version_ty, #header_ty> for #struct_name #ty_generics #where_clause {
+                    fn new_from_header<R: Read + Seek>(reader: &mut R, header: #header_ty) -> wow_data::error::Result<Self> {
+                        Ok(Self{
+                            #(#initializers),*
+                        })
+                    }
+                }
+            }
+        }
+        _ => {
+            return syn::Error::new_spanned(
+                &fields,
+                "WowDataR needs #[wow_data(version = Version, header = Header)] definition.",
+            )
+            .to_compile_error()
+            .into();
+        }
+    };
+
+    TokenStream::from(expanded)
 }
