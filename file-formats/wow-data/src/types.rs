@@ -565,8 +565,13 @@ where
     V: DataVersion,
     T: VWowHeaderR<V> + WowHeaderW,
 {
-    fn wow_read<R: Read + Seek>(reader: &mut R, version: V) -> Result<Self> {
-        reader.wow_read_versioned(version)
+    fn wow_read<R: Read + Seek>(reader: &mut R, _version: V) -> Result<Self> {
+        Ok(Self {
+            count: reader.wow_read()?,
+            offset: reader.wow_read()?,
+            _phantom: std::marker::PhantomData,
+            _version: std::marker::PhantomData,
+        })
     }
 }
 
