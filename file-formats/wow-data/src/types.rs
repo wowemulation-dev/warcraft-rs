@@ -641,11 +641,8 @@ where
         let current = self.current;
         self.current += 1;
 
-        let seek_pos = if current == 0 {
-            self.initial_reader_pos + self.array.offset as u64
-        } else {
-            self.initial_reader_pos + (self.array.offset as usize * self.item_size) as u64
-        };
+        let seek_pos = self.initial_reader_pos + (current as usize * self.item_size) as u64;
+        dbg!(&seek_pos);
         self.reader.seek(SeekFrom::Start(seek_pos))?;
 
         let item = if self.item_size == 0 {
