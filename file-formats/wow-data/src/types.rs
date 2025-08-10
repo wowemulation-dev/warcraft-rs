@@ -334,11 +334,9 @@ where
     R: Read + Seek,
 {
     pub fn new(reader: &'a mut R, array: WowArray<T>) -> Result<Self> {
-        let initial_reader_pos = reader.stream_position()?;
-
         Ok(Self {
             reader,
-            initial_reader_pos,
+            initial_reader_pos: array.offset as u64,
             current: 0,
             array,
             item_size: 0,
@@ -363,11 +361,7 @@ where
         let current = self.current;
         self.current += 1;
 
-        let seek_pos = if current == 0 {
-            self.initial_reader_pos + self.array.offset as u64
-        } else {
-            self.initial_reader_pos + (self.array.offset as usize * self.item_size) as u64
-        };
+        let seek_pos = self.initial_reader_pos + (current as usize * self.item_size) as u64;
         self.reader.seek(SeekFrom::Start(seek_pos))?;
 
         let item = if self.item_size == 0 {
@@ -611,12 +605,10 @@ where
     R: Read + Seek,
 {
     pub fn new(reader: &'a mut R, version: V, array: WowArrayV<V, T>) -> Result<Self> {
-        let initial_reader_pos = reader.stream_position()?;
-
         Ok(Self {
             reader,
             version,
-            initial_reader_pos,
+            initial_reader_pos: array.offset as u64,
             current: 0,
             array,
             item_size: 0,
@@ -642,7 +634,6 @@ where
         self.current += 1;
 
         let seek_pos = self.initial_reader_pos + (current as usize * self.item_size) as u64;
-        dbg!(&seek_pos);
         self.reader.seek(SeekFrom::Start(seek_pos))?;
 
         let item = if self.item_size == 0 {
