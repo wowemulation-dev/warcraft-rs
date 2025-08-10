@@ -50,7 +50,7 @@ pub enum M2TexCoords2 {
     #[default]
     None,
 
-    #[wow_data(read_if = version >= M2Version::Cataclysm)]
+    #[wow_data(read_if = version >= M2Version::WotLK)]
     Some(C2Vector),
 }
 
