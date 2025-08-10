@@ -125,6 +125,22 @@ pub struct M2BoneHeader {
     pub pivot: C3Vector,
 }
 
+impl M2BoneHeader {
+    pub fn new(bone_id: i32, parent_bone: i16) -> Self {
+        Self {
+            bone_id,
+            flags: M2BoneFlags::empty(),
+            parent_bone,
+            submesh_id: 0,
+            bone_crc: M2BoneCrc::Crc(0),
+            position: M2AnimationTrackHeader::new(),
+            rotation: M2BoneRotationHeader::Later(M2AnimationTrackHeader::new()),
+            scaling: M2AnimationTrackHeader::new(),
+            pivot: C3Vector::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct M2BoneData {
     pub position: M2AnimationTrackData<C3Vector>,
@@ -174,138 +190,38 @@ impl M2Bone {
             }
         }
 
-        let mut iter = bone_header_array.new_iterator(reader, version).unwrap();
-        let mut items = Vec::new();
-        loop {
-            match iter.next(|reader, item_header| {
-                let item_header = match item_header {
-                    Some(item) => item,
-                    None => reader.wow_read_versioned(version)?,
-                };
-                items.push(M2Bone {
+        Ok(vwow_collection!(
+            reader,
+            version,
+            bone_header_array,
+            |reader, item_header| {
+                M2Bone {
                     data: reader.vnew_from_header(&item_header)?,
                     header: item_header,
-                });
-                Ok(())
-            }) {
-                Ok(is_active) => {
-                    if !is_active {
-                        break;
-                    }
                 }
-                Err(err) => return Err(err.into()),
             }
-        }
-
-        Ok(items)
+        ))
     }
 }
 
-// impl M2Bone {
-//     /// Parse a bone from a reader based on the M2 version
-//     pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
-//         let version_e = M2Version::try_from_header_version(version)
-//             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
-//
-//         // Read header fields properly
-//         let bone_id = reader.read_i32_le()?;
-//         let flags = M2BoneFlags::from_bits_retain(reader.read_u32_le()?);
-//         let parent_bone = reader.read_i16_le()?;
-//         let submesh_id = reader.read_u16_le()?;
-//
-//         let bone_crc = if version_e >= M2Version::TBC {
-//             M2BoneCrc::Later(reader.read_u32_le()?)
-//         } else {
-//             M2BoneCrc::Classic(reader.read_u16_le()?, reader.read_u16_le()?)
-//         };
-//
-//         let position = M2AnimationTrack::parse(reader, version)?;
-//
-//         let rotation = match version_e {
-//             M2Version::Classic => {
-//                 M2BoneRotation::Classic(M2AnimationTrack::parse(reader, version)?)
-//             }
-//             _ => M2BoneRotation::Later(M2AnimationTrack::parse(reader, version)?),
-//         };
-//
-//         let scaling = M2AnimationTrack::parse(reader, version)?;
-//
-//         let pivot = C3Vector::parse(reader)?;
-//
-//         Ok(Self {
-//             bone_id,
-//             flags,
-//             parent_bone,
-//             submesh_id,
-//             bone_crc,
-//             position,
-//             rotation,
-//             scaling,
-//             pivot,
-//         })
-//     }
-//
-//     /// Write a bone to a writer
-//     pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
-//         let _version_e = M2Version::try_from_header_version(version)
-//             .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))?;
-//
-//         writer.write_i32_le(self.bone_id)?;
-//         writer.write_u32_le(self.flags.bits())?;
-//         writer.write_i16_le(self.parent_bone)?;
-//         writer.write_u16_le(self.submesh_id)?;
-//
-//         self.bone_crc.write(writer)?;
-//
-//         self.position.write(writer)?;
-//
-//         self.rotation.write(writer)?;
-//
-//         self.scaling.write(writer)?;
-//
-//         self.pivot.write(writer)?;
-//
-//         Ok(())
-//     }
-//
-//     /// Convert this bone to a different version (no version differences for bones yet)
-//     pub fn convert(&self, _target_version: M2Version) -> Self {
-//         self.clone()
-//     }
-//
-//     /// Create a new bone with default values
-//     pub fn new(bone_id: i32, parent_bone: i16) -> Self {
-//         Self {
-//             bone_id,
-//             flags: M2BoneFlags::empty(),
-//             parent_bone,
-//             submesh_id: 0,
-//             bone_crc: M2BoneCrc::Later(0),
-//             position: M2AnimationTrack::new(),
-//             rotation: M2BoneRotation::Later(M2AnimationTrack::new()),
-//             scaling: M2AnimationTrack::new(),
-//             pivot: C3Vector {
-//                 x: 0.0,
-//                 y: 0.0,
-//                 z: 0.0,
-//             },
-//         }
-//     }
-//
-//     /// Check if this bone is a billboard
-//     pub fn is_billboard(&self) -> bool {
-//         self.flags.contains(M2BoneFlags::SPHERICAL_BILLBOARD)
-//             || self
-//                 .flags
-//                 .contains(M2BoneFlags::CYLINDRICAL_BILLBOARD_LOCK_X)
-//             || self
-//                 .flags
-//                 .contains(M2BoneFlags::CYLINDRICAL_BILLBOARD_LOCK_Y)
-//             || self
-//                 .flags
-//                 .contains(M2BoneFlags::CYLINDRICAL_BILLBOARD_LOCK_Z)
-//     }
-// }
+impl M2Bone {
+    /// Check if this bone is a billboard
+    pub fn is_billboard(&self) -> bool {
+        self.header.flags.contains(M2BoneFlags::SPHERICAL_BILLBOARD)
+            || self
+                .header
+                .flags
+                .contains(M2BoneFlags::CYLINDRICAL_BILLBOARD_LOCK_X)
+            || self
+                .header
+                .flags
+                .contains(M2BoneFlags::CYLINDRICAL_BILLBOARD_LOCK_Y)
+            || self
+                .header
+                .flags
+                .contains(M2BoneFlags::CYLINDRICAL_BILLBOARD_LOCK_Z)
+    }
+}
 
 // #[cfg(test)]
 // mod tests {

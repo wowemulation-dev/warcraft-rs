@@ -1,5 +1,5 @@
 use std::fs::File;
-use wow_data::prelude::*;
+use wow_data::{prelude::*, wow_collection};
 
 use custom_debug::Debug;
 use wow_data::types::WowString;
@@ -116,28 +116,10 @@ impl M2Model {
         let key_bone_lookup = header.key_bone_lookup.wow_read_to_vec(reader)?;
         let vertices = header.vertices.wow_read_to_vec(reader, header.version)?;
 
-        let mut iter = header.textures.new_iterator(reader).unwrap();
-        let mut textures = Vec::new();
-        loop {
-            match iter.next(|reader, item_header| {
-                let item_header = match item_header {
-                    Some(item) => item,
-                    None => reader.wow_read()?,
-                };
-                textures.push(M2Texture {
-                    data: reader.new_from_header(&item_header)?,
-                    header: item_header,
-                });
-                Ok(())
-            }) {
-                Ok(is_active) => {
-                    if !is_active {
-                        break;
-                    }
-                }
-                Err(err) => return Err(err.into()),
-            }
-        }
+        let textures = wow_collection!(reader, header.textures, |reader, item_header| M2Texture {
+            data: reader.new_from_header(&item_header)?,
+            header: item_header,
+        });
 
         let materials = header.materials.wow_read_to_vec(reader)?;
 

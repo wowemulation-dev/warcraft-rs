@@ -692,6 +692,58 @@ where
     }
 }
 
+#[macro_export]
+macro_rules! wow_collection {
+    ($reader:ident, $header:expr, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
+        let mut iter = $header.new_iterator($local_reader)?;
+        let mut vec = Vec::with_capacity($header.count as usize);
+        loop {
+            match iter.next(|$local_reader, temp_header| {
+                let $item_header = match temp_header {
+                    Some(item) => item,
+                    None => $local_reader.wow_read()?,
+                };
+                vec.push($constructor);
+                Ok(())
+            }) {
+                Ok(is_active) => {
+                    if !is_active {
+                        break;
+                    }
+                }
+                Err(err) => return Err(err.into()),
+            }
+        }
+        vec
+    }};
+}
+
+#[macro_export]
+macro_rules! vwow_collection {
+    ($reader:ident, $version:ident, $header:expr, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
+        let mut iter = $header.new_iterator($local_reader, $version)?;
+        let mut vec = Vec::with_capacity($header.count as usize);
+        loop {
+            match iter.next(|$local_reader, temp_header| {
+                let $item_header = match temp_header {
+                    Some(item) => item,
+                    None => $local_reader.wow_read_versioned($version)?,
+                };
+                vec.push($constructor);
+                Ok(())
+            }) {
+                Ok(is_active) => {
+                    if !is_active {
+                        break;
+                    }
+                }
+                Err(err) => return Err(err.into()),
+            }
+        }
+        vec
+    }};
+}
+
 pub trait WowVec<T: WowHeaderR + WowHeaderW> {
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<WowArray<T>>;
     fn wow_size(&self) -> usize;
