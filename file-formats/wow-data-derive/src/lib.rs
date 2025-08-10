@@ -1,22 +1,23 @@
-use std::{collections::HashMap, fmt};
-
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Expr, Fields, LitBool, Type, parse::Parse, parse_macro_input};
+use syn::{Data, DeriveInput, Expr, Fields, Type, parse_macro_input};
 
 #[proc_macro_derive(WowHeaderR, attributes(wow_data))]
 pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let version_ty = match get_values_from_attrs::<Type>(&input.attrs, "wow_data", &["version"]) {
-        Ok(mut map) => map.remove("version"),
-        Err(err) => return err.to_compile_error().into(),
+    let struct_wow_attrs = match parse_wow_data_attrs(&input.attrs) {
+        Ok(value) => value,
+        Err(err) => {
+            return err.to_compile_error().into();
+        }
     };
 
     let struct_name = &input.ident;
+
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let expanded = if let Some(version_ty) = version_ty {
+    let expanded = if let Some(version_ty) = struct_wow_attrs.version {
         let reader_body = match &input.data {
             Data::Struct(s) => generate_header_rv_struct_reader_body(&s.fields),
             Data::Enum(e) => generate_header_rv_enum_reader_body(e),
@@ -85,42 +86,17 @@ fn generate_header_rv_struct_reader_body(fields: &Fields) -> syn::Result<proc_ma
     for field in named_fields {
         let field_name = field.ident.as_ref().unwrap();
 
-        let mut is_versioned = false;
-        for attr in &field.attrs {
-            if !attr.path().is_ident("wow_data") {
-                continue;
-            }
+        let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-            let mut found = false;
-            let _ = attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("versioned") {
-                    found = true;
-                }
-                Ok(())
-            });
-
-            if found {
-                is_versioned = true;
-                break;
+        initializers.push(if let Some(val) = wow_data_attrs.skip {
+            quote! { #field_name: #val }
+        } else {
+            if wow_data_attrs.versioned {
+                quote! { #field_name: reader.wow_read_versioned(version)? }
+            } else {
+                quote! { #field_name: reader.wow_read()? }
             }
-        }
-
-        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
-            Ok(map) => {
-                initializers.push(if let Some(val) = map.get("skip") {
-                    quote! { #field_name: #val }
-                } else {
-                    if is_versioned {
-                        quote! { #field_name: reader.wow_read_versioned(version)? }
-                    } else {
-                        quote! { #field_name: reader.wow_read()? }
-                    }
-                });
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        }
+        });
     }
 
     Ok(quote! {
@@ -157,23 +133,18 @@ fn generate_header_rv_enum_reader_body(
             }
         };
 
-        match get_values_from_attrs::<Expr>(&variant.attrs, "wow_data", &["read_if"]) {
-            Ok(map) => {
-                if let Some(cond_expr) = map.get("read_if") {
-                    conditional_arms.push(quote! { if #cond_expr { #constructor } });
-                } else {
-                    if default_arm.is_some() {
-                        return Err(syn::Error::new_spanned(
-                            variant,
-                            "Only one enum variant can be the default (lacking a `read_if` attribute).",
-                        ));
-                    }
-                    default_arm = Some(constructor);
-                }
+        let wow_data_attrs = parse_wow_data_attrs(&variant.attrs)?;
+
+        if let Some(cond_expr) = wow_data_attrs.read_if {
+            conditional_arms.push(quote! { if #cond_expr { #constructor } });
+        } else {
+            if default_arm.is_some() {
+                return Err(syn::Error::new_spanned(
+                    variant,
+                    "Only one enum variant can be the default (lacking a `read_if` attribute).",
+                ));
             }
-            Err(err) => {
-                return Err(err);
-            }
+            default_arm = Some(constructor);
         }
     }
 
@@ -194,31 +165,59 @@ fn generate_header_rv_enum_reader_body(
     Ok(full_body)
 }
 
-fn get_values_from_attrs<T: Parse + fmt::Debug>(
-    attrs: &[syn::Attribute],
-    attr_name: &str,
-    attr_keys: &[&str],
-) -> syn::Result<HashMap<String, T>> {
-    let mut ret_val = HashMap::new();
+#[derive(Debug)]
+struct WowDataAttrs {
+    versioned: bool,
+    version: Option<Type>,
+    header: Option<Type>,
+    read_if: Option<Expr>,
+    skip: Option<Expr>,
+}
+
+fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
+    let mut data_attrs = WowDataAttrs {
+        versioned: false,
+        version: None,
+        header: None,
+        read_if: None,
+        skip: None,
+    };
 
     for attr in attrs {
-        if !attr.path().is_ident(attr_name) {
+        if !attr.path().is_ident("wow_data") {
             continue;
         }
 
         attr.parse_nested_meta(|meta| {
-            for attr_key in attr_keys {
-                if meta.path.is_ident(attr_key) {
-                    let value = meta.value()?;
-                    let parsed: T = value.parse()?;
-                    ret_val.insert((*attr_key).into(), parsed);
-                }
+            if meta.path.is_ident("versioned") {
+                data_attrs.versioned = true;
             }
+
+            if meta.path.is_ident("version") {
+                let value = meta.value()?;
+                data_attrs.version = Some(value.parse()?);
+            }
+
+            if meta.path.is_ident("header") {
+                let value = meta.value()?;
+                data_attrs.header = Some(value.parse()?);
+            }
+
+            if meta.path.is_ident("read_if") {
+                let value = meta.value()?;
+                data_attrs.read_if = Some(value.parse()?);
+            }
+
+            if meta.path.is_ident("skip") {
+                let value = meta.value()?;
+                data_attrs.skip = Some(value.parse()?);
+            }
+
             Ok(())
         })?;
     }
 
-    Ok(ret_val)
+    Ok(data_attrs)
 }
 
 #[proc_macro_derive(WowHeaderW, attributes(wow_data))]
@@ -275,21 +274,21 @@ fn generate_struct_writer_body(fields: &Fields) -> syn::Result<proc_macro2::Toke
             "WowHeaderW on structs only supports named fields.",
         ));
     };
-    let write_statements = named_fields.iter().map(|field| {
-        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
-            Ok(map) => {
-                if let Some(_) = map.get("skip") {
-                    quote! {}
-                } else {
-                    let field_name = field.ident.as_ref().unwrap();
-                    quote! {
-                        writer.wow_write(&self.#field_name)?;
-                    }
-                }
-            }
-            Err(_) => quote! {},
+
+    let mut write_statements = Vec::new();
+
+    for field in named_fields {
+        let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
+
+        if let Some(_) = wow_data_attrs.skip {
+            write_statements.push(quote! {});
+        } else {
+            let field_name = field.ident.as_ref().unwrap();
+            write_statements.push(quote! {
+                writer.wow_write(&self.#field_name)?;
+            });
         }
-    });
+    }
 
     Ok(quote! {
         #(#write_statements)*
@@ -310,20 +309,15 @@ fn generate_struct_size_body(fields: &Fields) -> syn::Result<proc_macro2::TokenS
     let mut size_expressions = Vec::new();
 
     for field in named_fields {
-        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
-            Ok(map) => {
-                if let Some(_) = map.get("skip") {
-                    size_expressions.push(quote! {0});
-                } else {
-                    let field_name = field.ident.as_ref().unwrap();
-                    size_expressions.push(quote! {
-                        self.#field_name.wow_size()
-                    });
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
+        let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
+
+        if let Some(_) = wow_data_attrs.skip {
+            size_expressions.push(quote! {0});
+        } else {
+            let field_name = field.ident.as_ref().unwrap();
+            size_expressions.push(quote! {
+                self.#field_name.wow_size()
+            });
         }
     }
 
@@ -437,11 +431,10 @@ fn generate_enum_size_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::Tok
 pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let wow_data_attrs_map =
-        match get_values_from_attrs::<Type>(&input.attrs, "wow_data", &["version", "header"]) {
-            Ok(ty) => ty,
-            Err(e) => return e.to_compile_error().into(),
-        };
+    let struct_wow_data_attrs = match parse_wow_data_attrs(&input.attrs) {
+        Ok(data_attrs) => data_attrs,
+        Err(e) => return e.to_compile_error().into(),
+    };
 
     let struct_name = &input.ident;
 
@@ -466,59 +459,55 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
 
     for field in fields {
         let field_name = field.ident.as_ref().unwrap();
+        let wow_data_attrs = match parse_wow_data_attrs(&field.attrs) {
+            Ok(data_attrs) => data_attrs,
+            Err(e) => return e.to_compile_error().into(),
+        };
 
-        match get_values_from_attrs::<Expr>(&field.attrs, "wow_data", &["skip"]) {
-            Ok(map) => {
-                if let Some(expr) = map.get("skip") {
-                    initializers.push(quote! { #field_name: #expr });
-                } else {
-                    match get_values_from_attrs::<LitBool>(&field.attrs, "wow_data", &["versioned"])
-                    {
-                        Ok(submap) => {
-                            if let Some(_) = submap.get("versioned") {
-                                initializers.push(quote! { #field_name: reader.vnew_from_header(&header.#field_name)? });
-                            } else {
-                                initializers.push(quote! { #field_name: reader.new_from_header(&header.#field_name)? });
-                            }
-                        }
-                        Err(err) => {
-                            return err.to_compile_error().into();
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                return err.to_compile_error().into();
+        if let Some(expr) = wow_data_attrs.skip {
+            initializers.push(quote! { #field_name: #expr });
+        } else {
+            if wow_data_attrs.versioned {
+                initializers
+                    .push(quote! { #field_name: reader.v_new_from_header(&header.#field_name)? });
+            } else {
+                initializers
+                    .push(quote! { #field_name: reader.new_from_header(&header.#field_name)? });
             }
         }
     }
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let expanded = match (
-        wow_data_attrs_map.get("version"),
-        wow_data_attrs_map.get("header"),
-    ) {
-        (Some(version_ty), Some(header_ty)) => {
-            quote! {
-                impl #impl_generics wow_data::types::WowDataR<#version_ty, #header_ty> for #struct_name #ty_generics #where_clause {
-                    fn new_from_header<R: Read + Seek>(reader: &mut R, header: #header_ty) -> wow_data::error::Result<Self> {
-                        Ok(Self{
-                            #(#initializers),*
-                        })
-                    }
+    let Some(header_ty) = struct_wow_data_attrs.header else {
+        return syn::Error::new_spanned(
+            &input,
+            "WowDataR needs at least #[wow_data(header = H)] definition.",
+        )
+        .to_compile_error()
+        .into();
+    };
+
+    TokenStream::from(if struct_wow_data_attrs.version.is_none() {
+        quote! {
+            impl #impl_generics wow_data::types::WowDataR<#header_ty> for #struct_name #ty_generics #where_clause {
+                fn new_from_header<R: Read + Seek>(reader: &mut R, header: &#header_ty) -> wow_data::error::Result<Self> {
+                    Ok(Self{
+                        #(#initializers),*
+                    })
                 }
             }
         }
-        _ => {
-            return syn::Error::new_spanned(
-                &fields,
-                "WowDataR needs #[wow_data(version = Version, header = Header)] definition.",
-            )
-            .to_compile_error()
-            .into();
+    } else {
+        let version_ty = struct_wow_data_attrs.version.unwrap();
+        quote! {
+            impl #impl_generics wow_data::types::VWowDataR<#version_ty, #header_ty> for #struct_name #ty_generics #where_clause {
+                fn new_from_header<R: Read + Seek>(reader: &mut R, header: &#header_ty) -> wow_data::error::Result<Self> {
+                    Ok(Self{
+                        #(#initializers),*
+                    })
+                }
+            }
         }
-    };
-
-    TokenStream::from(expanded)
+    })
 }

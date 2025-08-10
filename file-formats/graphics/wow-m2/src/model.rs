@@ -14,7 +14,7 @@ use crate::chunks::color_animation::M2ColorAnimation;
 use crate::chunks::material::M2Material;
 use crate::chunks::texture::M2Texture;
 use crate::error::Result;
-use crate::header::{M2Header, M2SkinProfile};
+use crate::header::{M2Header, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles};
 
 /// Main M2 model structure
 #[derive(Debug, Clone)]
@@ -26,8 +26,7 @@ pub struct M2Model {
     pub animations: Vec<M2Animation>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub animation_lookup: Vec<u16>,
-    // #[debug(with = debug::trimmed_collection_fmt)]
-    // pub playable_animation_lookup: Vec<u16>,
+    pub playable_animation_lookup: M2PlayableAnimationLookup,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub bones: Vec<M2Bone>,
     #[debug(with = debug::trimmed_collection_fmt)]
@@ -35,10 +34,10 @@ pub struct M2Model {
     #[debug(with = debug::trimmed_collection_fmt)]
     pub vertices: Vec<M2Vertex>,
 
-    // pub skin_profiles: Option<Vec<M2SkinProfile>>,
+    pub skin_profiles: Option<Vec<M2SkinProfile>>,
 
-    // #[debug(with = debug::trimmed_collection_fmt)]
-    // pub color_animations: Vec<M2ColorAnimation>,
+    #[debug(with = debug::trimmed_collection_fmt)]
+    pub color_animations: Vec<M2ColorAnimation>,
 
     #[debug(with = debug::trimmed_collection_fmt)]
     pub textures: Vec<M2Texture>,
@@ -111,11 +110,29 @@ impl M2Model {
         let global_sequences = header.global_sequences.wow_read_to_vec(reader)?;
         let animations = header.animations.wow_read_to_vec(reader, header.version)?;
         let animation_lookup = header.animation_lookup.wow_read_to_vec(reader)?;
-
+        let playable_animation_lookup =
+            reader.v_new_from_header(&header.playable_animation_lookup)?;
         let bones = M2Bone::read_bone_array(reader, header.bones.clone(), header.version)?;
-
         let key_bone_lookup = header.key_bone_lookup.wow_read_to_vec(reader)?;
         let vertices = header.vertices.wow_read_to_vec(reader, header.version)?;
+
+        let skin_profiles = if let M2SkinProfiles::UpToTBC(skin_profiles) = &header.skin_profiles {
+            Some(skin_profiles.wow_read_to_vec(reader)?)
+        } else {
+            None
+        };
+
+        let color_animations = v_wow_collection!(
+            reader,
+            header.version,
+            header.color_animations,
+            |reader, item_header| {
+                M2ColorAnimation {
+                    data: reader.v_new_from_header(&item_header)?,
+                    header: item_header,
+                }
+            }
+        );
 
         let textures = wow_collection!(reader, header.textures, |reader, item_header| M2Texture {
             data: reader.new_from_header(&item_header)?,
@@ -134,9 +151,12 @@ impl M2Model {
             global_sequences,
             animations,
             animation_lookup,
+            playable_animation_lookup,
             bones,
             key_bone_lookup,
             vertices,
+            skin_profiles,
+            color_animations,
             textures,
             materials,
             raw_data,

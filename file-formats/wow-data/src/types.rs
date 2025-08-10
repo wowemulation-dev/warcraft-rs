@@ -307,7 +307,7 @@ impl<H: WowHeaderR, T: WowDataR<H>, R: Read + Seek> WowReaderForData<H, T> for R
 pub trait VWowReaderForData<V: DataVersion, H: VWowHeaderR<V>, T: VWowDataR<V, H>>:
     Read + Seek + Sized
 {
-    fn vnew_from_header(&mut self, header: &H) -> Result<T> {
+    fn v_new_from_header(&mut self, header: &H) -> Result<T> {
         Ok(T::new_from_header(self, header)?)
     }
 }
@@ -719,8 +719,8 @@ macro_rules! wow_collection {
 }
 
 #[macro_export]
-macro_rules! vwow_collection {
-    ($reader:ident, $version:ident, $header:expr, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
+macro_rules! v_wow_collection {
+    ($reader:ident, $version:expr, $header:expr, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
         let mut iter = $header.new_iterator($local_reader, $version)?;
         let mut vec = Vec::with_capacity($header.count as usize);
         loop {

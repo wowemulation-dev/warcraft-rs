@@ -106,10 +106,30 @@ impl WowHeaderW for M2ModelFlags {
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub enum M2PlayableAnimationLookup {
+pub enum M2PlayableAnimationLookupHeader {
     #[wow_data(read_if = version <= M2Version::TBC)]
     Some(WowArray<M2SequenceFallback>),
     None,
+}
+
+#[derive(Debug, Clone)]
+pub enum M2PlayableAnimationLookup {
+    Some(Vec<M2SequenceFallback>),
+    None,
+}
+
+impl VWowDataR<M2Version, M2PlayableAnimationLookupHeader> for M2PlayableAnimationLookup {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2PlayableAnimationLookupHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2PlayableAnimationLookupHeader::Some(array) => {
+                Self::Some(array.wow_read_to_vec(reader)?)
+            }
+            M2PlayableAnimationLookupHeader::None => Self::None,
+        })
+    }
 }
 
 pub type M2SkinProfile = u32;
@@ -193,7 +213,7 @@ pub struct M2Header {
 
     /// Playable animation lookup - only present in versions <= 263
     #[wow_data(versioned)]
-    pub playable_animation_lookup: M2PlayableAnimationLookup,
+    pub playable_animation_lookup: M2PlayableAnimationLookupHeader,
 
     // Bone-related fields
     #[wow_data(versioned)]
@@ -299,9 +319,9 @@ impl M2Header {
             animations: WowArrayV::default(),
             animation_lookup: WowArray::default(),
             playable_animation_lookup: if version <= M2Version::TBC {
-                M2PlayableAnimationLookup::Some(WowArray::default())
+                M2PlayableAnimationLookupHeader::Some(WowArray::default())
             } else {
-                M2PlayableAnimationLookup::None
+                M2PlayableAnimationLookupHeader::None
             },
             bones: WowArrayV::default(),
             key_bone_lookup: WowArray::default(),

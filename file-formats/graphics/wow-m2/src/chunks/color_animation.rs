@@ -1,4 +1,3 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::Color;
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
@@ -19,13 +18,12 @@ pub struct M2ColorAnimationHeader {
     pub alpha: M2AnimationTrackHeader<u16>,
 }
 
-// #[derive(Debug, Clone, WowDataR)]
-// #[wow_data(version = M2Version, header = M2ColorAnimationHeader)]
-// #[wow_data(version = M2Version)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header = M2ColorAnimationHeader)]
 pub struct M2ColorAnimationData {
-    // #[wow_data(versioned = true)]
+    #[wow_data(versioned)]
     pub color: M2AnimationTrackData<Color>,
+    #[wow_data(versioned)]
     pub alpha: M2AnimationTrackData<u16>,
 }
 
@@ -34,15 +32,3 @@ pub struct M2ColorAnimation {
     pub header: M2ColorAnimationHeader,
     pub data: M2ColorAnimationData,
 }
-
-// impl VWowDataR<M2Version, M2ColorAnimationHeader> for M2ColorAnimationData {
-//     fn new_from_header<R: Read + Seek>(
-//         reader: &mut R,
-//         header: &M2ColorAnimationHeader,
-//     ) -> WDResult<Self> {
-//         Ok(Self {
-//             color: reader.vnew_from_header(&header.color)?,
-//             alpha: reader.vnew_from_header(&header.alpha)?,
-//         })
-//     }
-// }

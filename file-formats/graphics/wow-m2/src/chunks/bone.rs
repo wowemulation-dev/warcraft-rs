@@ -3,7 +3,7 @@ use std::io::SeekFrom;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Quaternion, Quaternion16, VWowDataR, WowArrayV};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
 use crate::Result;
 use crate::version::M2Version;
@@ -83,9 +83,9 @@ impl VWowDataR<M2Version, M2BoneRotationHeader> for M2BoneRotationData {
     ) -> WDResult<Self> {
         match header {
             M2BoneRotationHeader::Classic(classic) => {
-                Ok(Self::Classic(reader.vnew_from_header(classic)?))
+                Ok(Self::Classic(reader.v_new_from_header(classic)?))
             }
-            M2BoneRotationHeader::Later(later) => Ok(Self::Later(reader.vnew_from_header(later)?)),
+            M2BoneRotationHeader::Later(later) => Ok(Self::Later(reader.v_new_from_header(later)?)),
         }
     }
 }
@@ -141,21 +141,15 @@ impl M2BoneHeader {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version=M2Version, header=M2BoneHeader)]
 pub struct M2BoneData {
+    #[wow_data(versioned)]
     pub position: M2AnimationTrackData<C3Vector>,
+    #[wow_data(versioned)]
     pub rotation: M2BoneRotationData,
+    #[wow_data(versioned)]
     pub scaling: M2AnimationTrackData<C3Vector>,
-}
-
-impl VWowDataR<M2Version, M2BoneHeader> for M2BoneData {
-    fn new_from_header<R: Read + Seek>(reader: &mut R, header: &M2BoneHeader) -> WDResult<Self> {
-        Ok(Self {
-            position: reader.vnew_from_header(&header.position)?,
-            rotation: reader.vnew_from_header(&header.rotation)?,
-            scaling: reader.vnew_from_header(&header.scaling)?,
-        })
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -190,13 +184,13 @@ impl M2Bone {
             }
         }
 
-        Ok(vwow_collection!(
+        Ok(v_wow_collection!(
             reader,
             version,
             bone_header_array,
             |reader, item_header| {
                 M2Bone {
-                    data: reader.vnew_from_header(&item_header)?,
+                    data: reader.v_new_from_header(&item_header)?,
                     header: item_header,
                 }
             }
@@ -223,108 +217,42 @@ impl M2Bone {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::io::Cursor;
-//
-//     #[test]
-//     fn test_bone_parse() {
-//         let mut data = Vec::new();
-//
-//         // Bone ID
-//         data.extend_from_slice(&1i32.to_le_bytes());
-//
-//         // Flags (TRANSFORMED)
-//         data.extend_from_slice(&0x200u32.to_le_bytes());
-//
-//         // Parent bone
-//         data.extend_from_slice(&(-1i16).to_le_bytes());
-//
-//         // Submesh ID
-//         data.extend_from_slice(&0u16.to_le_bytes());
-//
-//         // Unknown
-//         data.extend_from_slice(&0u16.to_le_bytes());
-//         data.extend_from_slice(&0u16.to_le_bytes());
-//
-//         // Position
-//         data.extend_from_slice(&1.0f32.to_le_bytes());
-//         data.extend_from_slice(&2.0f32.to_le_bytes());
-//         data.extend_from_slice(&3.0f32.to_le_bytes());
-//
-//         // Position animation
-//         data.extend_from_slice(&0u32.to_le_bytes());
-//         data.extend_from_slice(&0u32.to_le_bytes());
-//
-//         // Rotation
-//         data.extend_from_slice(&0.0f32.to_le_bytes());
-//         data.extend_from_slice(&0.0f32.to_le_bytes());
-//         data.extend_from_slice(&0.0f32.to_le_bytes());
-//         data.extend_from_slice(&1.0f32.to_le_bytes());
-//
-//         // Rotation animation
-//         data.extend_from_slice(&0u32.to_le_bytes());
-//         data.extend_from_slice(&0u32.to_le_bytes());
-//
-//         // Scaling
-//         data.extend_from_slice(&1.0f32.to_le_bytes());
-//         data.extend_from_slice(&1.0f32.to_le_bytes());
-//         data.extend_from_slice(&1.0f32.to_le_bytes());
-//
-//         // Scaling animation
-//         data.extend_from_slice(&0u32.to_le_bytes());
-//         data.extend_from_slice(&0u32.to_le_bytes());
-//
-//         // Pivot
-//         data.extend_from_slice(&0.0f32.to_le_bytes());
-//         data.extend_from_slice(&0.0f32.to_le_bytes());
-//         data.extend_from_slice(&0.0f32.to_le_bytes());
-//
-//         let mut cursor = Cursor::new(data);
-//         let bone =
-//             M2BoneHeader::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
-//
-//         assert_eq!(bone.bone_id, 1);
-//         assert_eq!(bone.flags, M2BoneFlags::TRANSFORMED);
-//         assert_eq!(bone.parent_bone, -1);
-//         assert_eq!(bone.submesh_id, 0);
-//         // assert_eq!(bone.position.x, 1.0);
-//         // assert_eq!(bone.position.y, 2.0);
-//         // assert_eq!(bone.position.z, 3.0);
-//     }
-//
-//     #[test]
-//     fn test_bone_write() {
-//         let bone = M2BoneHeader {
-//             bone_id: 1,
-//             flags: M2BoneFlags::TRANSFORMED,
-//             parent_bone: -1,
-//             submesh_id: 0,
-//             bone_crc: M2BoneCrc::Later(0),
-//             position: M2AnimationTrack::new(),
-//             rotation: M2BoneRotation::Later(M2AnimationTrack::new()),
-//             scaling: M2AnimationTrack::new(),
-//             pivot: C3Vector {
-//                 x: 0.0,
-//                 y: 0.0,
-//                 z: 0.0,
-//             },
-//         };
-//
-//         let mut data = Vec::new();
-//         bone.write(&mut data, 260).unwrap(); // BC version
-//
-//         // Verify that the written data has the correct length
-//         // BC M2Bone size: 4 + 4 + 2 + 2 + 4 (extra unknown) + 12 + 8 + 16 + 8 + 12 + 8 + 12 = 92 bytes
-//         assert_eq!(data.len(), 92);
-//
-//         // Test Classic version too
-//         let mut classic_data = Vec::new();
-//         bone.write(&mut classic_data, 256).unwrap(); // Classic version
-//
-//         // Classic M2Bone size: 4 + 4 + 2 + 2 + 2 + 2 (two uint16 unknowns) + 12 + 8 + 16 + 8 + 12 + 8 + 12 = 92 bytes
-//         // Note: The comment was wrong - it's actually 92 bytes, same as BC but with different unknown field layout
-//         assert_eq!(classic_data.len(), 92);
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    // use super::*;
+    // use std::io::Cursor;
+    //
+    // #[test]
+    // fn test_bone_write() {
+    //     let bone = M2BoneHeader {
+    //         bone_id: 1,
+    //         flags: M2BoneFlags::TRANSFORMED,
+    //         parent_bone: -1,
+    //         submesh_id: 0,
+    //         bone_crc: M2BoneCrc::Later(0),
+    //         position: M2AnimationTrack::new(),
+    //         rotation: M2BoneRotation::Later(M2AnimationTrack::new()),
+    //         scaling: M2AnimationTrack::new(),
+    //         pivot: C3Vector {
+    //             x: 0.0,
+    //             y: 0.0,
+    //             z: 0.0,
+    //         },
+    //     };
+    //
+    //     let mut data = Vec::new();
+    //     bone.write(&mut data, 260).unwrap(); // BC version
+    //
+    //     // Verify that the written data has the correct length
+    //     // BC M2Bone size: 4 + 4 + 2 + 2 + 4 (extra unknown) + 12 + 8 + 16 + 8 + 12 + 8 + 12 = 92 bytes
+    //     assert_eq!(data.len(), 92);
+    //
+    //     // Test Classic version too
+    //     let mut classic_data = Vec::new();
+    //     bone.write(&mut classic_data, 256).unwrap(); // Classic version
+    //
+    //     // Classic M2Bone size: 4 + 4 + 2 + 2 + 2 + 2 (two uint16 unknowns) + 12 + 8 + 16 + 8 + 12 + 8 + 12 = 92 bytes
+    //     // Note: The comment was wrong - it's actually 92 bytes, same as BC but with different unknown field layout
+    //     assert_eq!(classic_data.len(), 92);
+    // }
+}
