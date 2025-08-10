@@ -3,9 +3,11 @@ use crate::chunks::animation::M2AnimationTrackHeader;
 use wow_data::prelude::*;
 use wow_data::types::{C2Vector, ColorA, VectorFp6_9, WowArray, WowCharArray};
 use wow_data::{error::Result as WDResult, types::C3Vector};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
-use super::animation::{M2Box, M2FakeAnimationBlock, M2Range};
+use super::animation::{
+    M2AnimationTrackData, M2Box, M2FakeAnimationBlockData, M2FakeAnimationBlockHeader, M2Range,
+};
 
 bitflags::bitflags! {
     /// Particle flags as defined in the M2 format
@@ -146,7 +148,7 @@ pub enum M2ParticleEmitterEmissionRateVary {
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub enum M2ParticleEmitterColorAnimation {
+pub enum M2ParticleEmitterColorAnimationHeader {
     UpToTbc {
         mid_point: f32,
         color_values: [ColorA; 3],
@@ -158,13 +160,59 @@ pub enum M2ParticleEmitterColorAnimation {
 
     #[wow_data(read_if = version >= M2Version::WotLK)]
     Later {
-        color_animation: M2FakeAnimationBlock<C3Vector>,
-        alpha_animation: M2FakeAnimationBlock<u16>,
-        scale_animation: M2FakeAnimationBlock<C2Vector>,
+        color_animation: M2FakeAnimationBlockHeader<C3Vector>,
+        alpha_animation: M2FakeAnimationBlockHeader<u16>,
+        scale_animation: M2FakeAnimationBlockHeader<C2Vector>,
         scale_vary: C2Vector,
-        head_cell_animation: M2FakeAnimationBlock<u16>,
-        tail_cell_animation: M2FakeAnimationBlock<u16>,
+        head_cell_animation: M2FakeAnimationBlockHeader<u16>,
+        tail_cell_animation: M2FakeAnimationBlockHeader<u16>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum M2ParticleEmitterColorAnimation {
+    UpToTbc,
+    Later {
+        color_animation: M2FakeAnimationBlockData<C3Vector>,
+        alpha_animation: M2FakeAnimationBlockData<u16>,
+        scale_animation: M2FakeAnimationBlockData<C2Vector>,
+        head_cell_animation: M2FakeAnimationBlockData<u16>,
+        tail_cell_animation: M2FakeAnimationBlockData<u16>,
+    },
+}
+
+impl VWowDataR<M2Version, M2ParticleEmitterColorAnimationHeader>
+    for M2ParticleEmitterColorAnimation
+{
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2ParticleEmitterColorAnimationHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2ParticleEmitterColorAnimationHeader::Later {
+                color_animation,
+                alpha_animation,
+                scale_animation,
+                scale_vary: _,
+                head_cell_animation,
+                tail_cell_animation,
+            } => Self::Later {
+                color_animation: reader.new_from_header(color_animation)?,
+                alpha_animation: reader.new_from_header(alpha_animation)?,
+                scale_animation: reader.new_from_header(scale_animation)?,
+                head_cell_animation: reader.new_from_header(head_cell_animation)?,
+                tail_cell_animation: reader.new_from_header(tail_cell_animation)?,
+            },
+            M2ParticleEmitterColorAnimationHeader::UpToTbc {
+                mid_point: _,
+                color_values: _,
+                scale_values: _,
+                decay_uv_animation: _,
+                tail_uv_animation: _,
+                tail_decay_uv_animation: _,
+            } => Self::UpToTbc,
+        })
+    }
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
@@ -186,7 +234,7 @@ pub enum M2ParticleEmitterSpin {
 /// Represents a particle emitter in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub struct M2ParticleEmitterOld {
+pub struct M2ParticleEmitterOldHeader {
     pub id: u32,
     pub flags: M2ParticleFlags,
     pub position: C3Vector,
@@ -226,7 +274,7 @@ pub struct M2ParticleEmitterOld {
     #[wow_data(versioned)]
     pub zsource: M2AnimationTrackHeader<f32>,
     #[wow_data(versioned)]
-    pub color_animation: M2ParticleEmitterColorAnimation,
+    pub color_animation: M2ParticleEmitterColorAnimationHeader,
     pub tail_length: f32,
     pub twinkle_speed: f32,
     pub twinkle_percent: f32,
@@ -247,75 +295,70 @@ pub struct M2ParticleEmitterOld {
     pub enabled_in: M2AnimationTrackHeader<u8>,
 }
 
-impl M2ParticleEmitterOld {
-    // /// Convert this particle emitter to a different version
-    // pub fn convert(&self, target_version: M2Version) -> Self {
-    //     let mut new_emitter = self.clone();
-    //
-    //     // Handle version-specific conversions
-    //     if target_version >= M2Version::Legion && self.fallback_model_filename.is_none() {
-    //         // When upgrading to Legion or later, add fallback model filename and texture file data IDs if missing
-    //         new_emitter.fallback_model_filename = Some(WowArray::new(0, 0));
-    //         new_emitter.texture_file_data_ids = Some(WowArray::new(0, 0));
-    //     } else if target_version < M2Version::Legion {
-    //         // When downgrading to pre-Legion, remove fallback model filename and texture file data IDs
-    //         new_emitter.fallback_model_filename = None;
-    //         new_emitter.texture_file_data_ids = None;
-    //     }
-    //
-    //     if target_version >= M2Version::WoD && self.enable_encryption.is_none() {
-    //         // When upgrading to WoD or later, add encryption if missing
-    //         new_emitter.enable_encryption = Some(0);
-    //     } else if target_version < M2Version::WoD {
-    //         // When downgrading to pre-WoD, remove encryption
-    //         new_emitter.enable_encryption = None;
-    //     }
-    //
-    //     if target_version >= M2Version::BfA && self.multi_texture_param0.is_none() {
-    //         // When upgrading to BfA or later, add multi-texture params if missing
-    //         new_emitter.multi_texture_param0 = Some([0, 0, 0, 0]);
-    //         new_emitter.multi_texture_param1 = Some([0, 0, 0, 0]);
-    //     } else if target_version < M2Version::BfA {
-    //         // When downgrading to pre-BfA, remove multi-texture params
-    //         new_emitter.multi_texture_param0 = None;
-    //         new_emitter.multi_texture_param1 = None;
-    //     }
-    //
-    //     if target_version >= M2Version::Legion && self.particle_initial_state.is_none() {
-    //         // When upgrading to Legion or later, add particle state if missing
-    //         new_emitter.particle_initial_state = Some(0);
-    //         new_emitter.particle_initial_state_variation = Some(0.0);
-    //         new_emitter.particle_convergence_time = Some(0.0);
-    //     } else if target_version < M2Version::Legion {
-    //         // When downgrading to pre-Legion, remove particle state
-    //         new_emitter.particle_initial_state = None;
-    //         new_emitter.particle_initial_state_variation = None;
-    //         new_emitter.particle_convergence_time = None;
-    //     }
-    //
-    //     new_emitter
-    // }
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header = M2ParticleEmitterOldHeader)]
+pub struct M2ParticleEmitterOldData {
+    pub model_filename: String,
+    pub recursion_model_filename: String,
+    #[wow_data(versioned)]
+    pub emission_speed: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub speed_variation: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub vertical_range: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub horizontal_range: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub gravity: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub lifespan: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub emission_rate: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub emission_area_length: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub emission_area_width: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub zsource: M2AnimationTrackData<f32>,
+    #[wow_data(versioned)]
+    pub color_animation: M2ParticleEmitterColorAnimation,
+    pub spline_points: Vec<C3Vector>,
+    #[wow_data(versioned)]
+    pub enabled_in: M2AnimationTrackData<u8>,
+}
+
+#[derive(Debug, Clone)]
+pub struct M2ParticleEmitterOld {
+    pub header: M2ParticleEmitterOldHeader,
+    pub data: M2ParticleEmitterOldData,
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub struct M2ParticleEmitterNew {
+pub struct M2ParticleEmitterNewHeader {
     #[wow_data(versioned)]
-    pub old_particle: M2ParticleEmitterOld,
+    pub old_particle: M2ParticleEmitterOldHeader,
     pub multi_texture_param_0: [VectorFp6_9; 2],
     pub multi_texture_param_1: [VectorFp6_9; 2],
 }
 
-#[derive(Debug, Clone, WowHeaderW)]
-#[wow_data(version = M2Version)]
-pub enum M2ParticleEmitter {
-    PreCata(M2ParticleEmitterOld),
-
-    #[wow_data(read_if = version >= M2Version::Cataclysm)]
-    PostCata(M2ParticleEmitterNew),
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header = M2ParticleEmitterNewHeader)]
+pub struct M2ParticleEmitterNewData {
+    #[wow_data(versioned)]
+    pub old_particle: M2ParticleEmitterOldData,
 }
 
-impl VWowHeaderR<M2Version> for M2ParticleEmitter {
+#[derive(Debug, Clone, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub enum M2ParticleEmitterHeader {
+    PreCata(M2ParticleEmitterOldHeader),
+
+    #[wow_data(read_if = version >= M2Version::Cataclysm)]
+    PostCata(M2ParticleEmitterNewHeader),
+}
+
+impl VWowHeaderR<M2Version> for M2ParticleEmitterHeader {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
         Ok(if version >= M2Version::Cataclysm {
             Self::PostCata(reader.wow_read_versioned(version)?)
@@ -325,15 +368,24 @@ impl VWowHeaderR<M2Version> for M2ParticleEmitter {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn test_particle_emitter_flags() {
-//         let flags = M2ParticleFlags::BILLBOARDED | M2ParticleFlags::ROTATING;
-//         assert!(flags.contains(M2ParticleFlags::BILLBOARDED));
-//         assert!(flags.contains(M2ParticleFlags::ROTATING));
-//         assert!(!flags.contains(M2ParticleFlags::PHYSICS));
-//     }
-// }
+#[derive(Debug, Clone)]
+pub enum M2ParticleEmitter {
+    PreCata(M2ParticleEmitterOldData),
+    PostCata(M2ParticleEmitterNewData),
+}
+
+impl VWowDataR<M2Version, M2ParticleEmitterHeader> for M2ParticleEmitter {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2ParticleEmitterHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2ParticleEmitterHeader::PreCata(header) => {
+                Self::PreCata(reader.v_new_from_header(header)?)
+            }
+            M2ParticleEmitterHeader::PostCata(header) => {
+                Self::PostCata(reader.v_new_from_header(header)?)
+            }
+        })
+    }
+}

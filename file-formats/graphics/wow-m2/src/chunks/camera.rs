@@ -3,9 +3,9 @@ use crate::version::M2Version;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::C3Vector;
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
-use super::animation::M2SplineKey;
+use super::animation::{M2AnimationTrackData, M2SplineKey};
 
 bitflags::bitflags! {
     /// Camera flags as defined in the M2 format
@@ -46,14 +46,14 @@ pub enum M2CameraFov {
 
 #[derive(Debug, Clone, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub enum M2CameraFovAnimation {
+pub enum M2CameraFovAnimationHeader {
     None,
 
     #[wow_data(read_if = version >= M2Version::Cataclysm)]
     Some(M2AnimationTrackHeader<M2SplineKey<f32>>),
 }
 
-impl VWowHeaderR<M2Version> for M2CameraFovAnimation {
+impl VWowHeaderR<M2Version> for M2CameraFovAnimationHeader {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
         Ok(if version >= M2Version::Cataclysm {
             Self::Some(reader.wow_read_versioned(version)?)
@@ -63,10 +63,31 @@ impl VWowHeaderR<M2Version> for M2CameraFovAnimation {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum M2CameraFovAnimation {
+    None,
+
+    Some(M2AnimationTrackData<M2SplineKey<f32>>),
+}
+
+impl VWowDataR<M2Version, M2CameraFovAnimationHeader> for M2CameraFovAnimation {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2CameraFovAnimationHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2CameraFovAnimationHeader::Some(header) => {
+                Self::Some(reader.v_new_from_header(header)?)
+            }
+            M2CameraFovAnimationHeader::None => Self::None,
+        })
+    }
+}
+
 /// Represents a camera in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub struct M2Camera {
+pub struct M2CameraHeader {
     pub camera_type: u32,
     /// Field of view (in radians)
     #[wow_data(versioned)]
@@ -87,57 +108,29 @@ pub struct M2Camera {
     pub roll_animation: M2AnimationTrackHeader<M2SplineKey<f32>>,
 
     #[wow_data(versioned)]
-    pub fov_animation: M2CameraFovAnimation,
+    pub fov_animation: M2CameraFovAnimationHeader,
     // pub id: u32,
     // pub flags: M2CameraFlags,
 }
 
-impl M2Camera {
-    // /// Create a new camera with default values
-    // pub fn new(id: u32) -> Self {
-    //     Self {
-    //         camera_type: 0,
-    //         fov: 0.8726646, // 50 degrees in radians
-    //         far_clip: 100.0,
-    //         near_clip: 0.1,
-    //         position_animation: M2AnimationTrackHeader::new(M2AnimationTrackHeader::new()),
-    //         target_position_animation: M2AnimationTrackHeader::new(M2AnimationTrackHeader::new()),
-    //         roll_animation: M2AnimationTrackHeader::new(M2AnimationTrackHeader::new()),
-    //         id,
-    //         flags: M2CameraFlags::empty(),
-    //     }
-    // }
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header = M2CameraHeader)]
+pub struct M2CameraData {
+    #[wow_data(versioned)]
+    pub position_animation: M2AnimationTrackData<M2SplineKey<C3Vector>>,
+
+    #[wow_data(versioned)]
+    pub target_position_animation: M2AnimationTrackData<M2SplineKey<C3Vector>>,
+
+    #[wow_data(versioned)]
+    pub roll_animation: M2AnimationTrackData<M2SplineKey<f32>>,
+
+    #[wow_data(versioned)]
+    pub fov_animation: M2CameraFovAnimation,
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::io::Cursor;
-//
-//     #[test]
-//     fn test_camera_parse_write() {
-//         let camera = M2Camera::new(1);
-//
-//         // Test write
-//         let mut data = Vec::new();
-//         camera
-//             .write(&mut data, M2Version::Classic.to_header_version())
-//             .unwrap();
-//
-//         // Test parse
-//         let mut cursor = Cursor::new(data);
-//         let parsed = M2Camera::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
-//
-//         assert_eq!(parsed.camera_type, 0);
-//         assert_eq!(parsed.id, 1);
-//         assert_eq!(parsed.flags, M2CameraFlags::empty());
-//     }
-//
-//     #[test]
-//     fn test_camera_flags() {
-//         let flags = M2CameraFlags::CUSTOM_UV | M2CameraFlags::AUTO_GENERATED;
-//         assert!(flags.contains(M2CameraFlags::CUSTOM_UV));
-//         assert!(flags.contains(M2CameraFlags::AUTO_GENERATED));
-//         assert!(!flags.contains(M2CameraFlags::GLOBAL_POSITION));
-//     }
-// }
+#[derive(Debug, Clone)]
+pub struct M2Camera {
+    pub header: M2CameraHeader,
+    pub data: M2CameraData,
+}

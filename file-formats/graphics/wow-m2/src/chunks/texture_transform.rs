@@ -4,7 +4,7 @@ use wow_data::types::{C3Vector, Quaternion};
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
 use crate::M2Error;
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrackHeader};
+use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::error::Result;
 use crate::version::M2Version;
 

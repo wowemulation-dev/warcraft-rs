@@ -524,6 +524,12 @@ impl WowString for String {
     }
 }
 
+impl WowDataR<WowCharArray> for String {
+    fn new_from_header<R: Read + Seek>(reader: &mut R, header: &WowCharArray) -> Result<Self> {
+        String::from_wow_char_array(reader, header.clone())
+    }
+}
+
 #[derive(Debug, PartialEq, WowHeaderW)]
 pub struct WowArrayV<V, T>
 where
@@ -764,6 +770,15 @@ impl<T: WowHeaderR + WowHeaderW> WowVec<T> for Vec<T> {
         } else {
             self.len() * self[0].wow_size()
         }
+    }
+}
+
+impl<T> WowDataR<WowArray<T>> for Vec<T>
+where
+    T: WowHeaderR + WowHeaderW,
+{
+    fn new_from_header<R: Read + Seek>(reader: &mut R, header: &WowArray<T>) -> Result<Self> {
+        Ok(header.wow_read_to_vec(reader)?)
     }
 }
 

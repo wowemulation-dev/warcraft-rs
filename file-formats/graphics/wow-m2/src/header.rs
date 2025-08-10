@@ -1,14 +1,18 @@
 use crate::M2Error;
+use crate::chunks::M2Vertex;
 use crate::chunks::animation::{M2Animation, M2SequenceFallback};
+use crate::chunks::attachment::M2AttachmentHeader;
 use crate::chunks::bone::M2BoneHeader;
+use crate::chunks::camera::M2CameraHeader;
 use crate::chunks::color_animation::M2ColorAnimationHeader;
+use crate::chunks::event::M2EventHeader;
+use crate::chunks::light::M2LightHeader;
 use crate::chunks::material::M2Material;
+use crate::chunks::particle_emitter::M2ParticleEmitterHeader;
+use crate::chunks::ribbon_emitter::M2RibbonEmitterHeader;
 use crate::chunks::texture::M2TextureHeader;
 use crate::chunks::texture_transform::M2TextureTransformHeader;
 use crate::chunks::transparency_animation::M2TransparencyAnimationHeader;
-use crate::chunks::{
-    M2Attachment, M2Camera, M2Event, M2Light, M2ParticleEmitter, M2RibbonEmitter, M2Vertex,
-};
 use bitflags::bitflags;
 use std::io::{Read, Seek, SeekFrom, Write};
 use wow_data::error::Result as WDResult;
@@ -192,14 +196,34 @@ pub enum M2BlenMapOverrides {
 }
 
 #[derive(Debug, Clone, WowHeaderW)]
-pub enum M2TextureCombinerCombos {
+pub enum M2TextureCombinerCombosHeader {
     None,
     Some(WowArray<u16>),
 }
 
-impl WowHeaderR for M2TextureCombinerCombos {
+impl WowHeaderR for M2TextureCombinerCombosHeader {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
         Ok(Self::Some(reader.wow_read()?))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum M2TextureCombinerCombos {
+    Some(Vec<u16>),
+    None,
+}
+
+impl WowDataR<M2TextureCombinerCombosHeader> for M2TextureCombinerCombos {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2TextureCombinerCombosHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2TextureCombinerCombosHeader::Some(array) => {
+                Self::Some(reader.new_from_header(array)?)
+            }
+            M2TextureCombinerCombosHeader::None => Self::None,
+        })
     }
 }
 
@@ -286,23 +310,23 @@ pub struct M2Header {
 
     // Attachments and events
     #[wow_data(versioned)]
-    pub attachments: WowArrayV<M2Version, M2Attachment>,
+    pub attachments: WowArrayV<M2Version, M2AttachmentHeader>,
     pub attachment_lookup_table: WowArray<u16>,
     #[wow_data(versioned)]
-    pub events: WowArrayV<M2Version, M2Event>,
+    pub events: WowArrayV<M2Version, M2EventHeader>,
     #[wow_data(versioned)]
-    pub lights: WowArrayV<M2Version, M2Light>,
+    pub lights: WowArrayV<M2Version, M2LightHeader>,
     #[wow_data(versioned)]
-    pub cameras: WowArrayV<M2Version, M2Camera>,
+    pub cameras: WowArrayV<M2Version, M2CameraHeader>,
     pub camera_lookup_table: WowArray<u16>,
 
     // Particle systems
     #[wow_data(versioned)]
-    pub ribbon_emitters: WowArrayV<M2Version, M2RibbonEmitter>,
+    pub ribbon_emitters: WowArrayV<M2Version, M2RibbonEmitterHeader>,
     #[wow_data(versioned)]
-    pub particle_emitters: WowArrayV<M2Version, M2ParticleEmitter>,
+    pub particle_emitters: WowArrayV<M2Version, M2ParticleEmitterHeader>,
 
-    pub texture_combiner_combos: M2TextureCombinerCombos,
+    pub texture_combiner_combos: M2TextureCombinerCombosHeader,
 }
 
 impl WowHeaderR for M2Header {
@@ -384,151 +408,10 @@ impl M2Header {
             ribbon_emitters: WowArrayV::default(),
             particle_emitters: WowArrayV::default(),
             texture_combiner_combos: if version >= M2Version::TBC {
-                M2TextureCombinerCombos::Some(WowArray::default())
+                M2TextureCombinerCombosHeader::Some(WowArray::default())
             } else {
-                M2TextureCombinerCombos::None
+                M2TextureCombinerCombosHeader::None
             },
         }
     }
-
-    ///// Convert this header to a different version
-    // pub fn convert(&self, target_version: M2Version) -> Result<Self> {
-    //     let source_version = self.version().ok_or(M2Error::ConversionError {
-    //         from: self.version,
-    //         to: target_version.to_header_version(),
-    //         reason: "Unknown source version".to_string(),
-    //     })?;
-    //
-    //     if source_version == target_version {
-    //         return Ok(self.clone());
-    //     }
-    //
-    //     let mut new_header = self.clone();
-    //     new_header.version = target_version.to_header_version();
-    //
-    //     // Handle version-specific fields
-    //     if target_version >= M2Version::Cataclysm && source_version < M2Version::Cataclysm {
-    //         // Add texture_combiner_combos when upgrading to Cataclysm or later
-    //         new_header.texture_combiner_combos = Some(WowArray::default());
-    //     } else if target_version < M2Version::Cataclysm && source_version >= M2Version::Cataclysm {
-    //         // Remove texture_combiner_combos when downgrading to pre-Cataclysm
-    //         new_header.texture_combiner_combos = None;
-    //     }
-    //
-    //     if target_version >= M2Version::Legion && source_version < M2Version::Legion {
-    //         // Add texture_transforms when upgrading to Legion or later
-    //         new_header.texture_transforms = Some(WowArray::default());
-    //     } else if target_version < M2Version::Legion && source_version >= M2Version::Legion {
-    //         // Remove texture_transforms when downgrading to pre-Legion
-    //         new_header.texture_transforms = None;
-    //     }
-    //
-    //     Ok(new_header)
-    // }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::io::Cursor;
-//
-//     // Helper function to create a basic test header
-//     fn create_test_header(version: M2Version) -> Vec<u8> {
-//         let mut data = Vec::new();
-//
-//         // Magic "MD20"
-//         data.extend_from_slice(&M2_MAGIC);
-//
-//         // Version
-//         data.extend_from_slice(&version.to_header_version().to_le_bytes());
-//
-//         // Name
-//         data.extend_from_slice(&0u32.to_le_bytes()); // count = 0
-//         data.extend_from_slice(&0u32.to_le_bytes()); // offset = 0
-//
-//         // Flags
-//         data.extend_from_slice(&0u32.to_le_bytes());
-//
-//         // Global sequences
-//         data.extend_from_slice(&0u32.to_le_bytes()); // count = 0
-//         data.extend_from_slice(&0u32.to_le_bytes()); // offset = 0
-//
-//         // ... continue for all required fields
-//         // This is simplified for brevity - in a real test, we'd populate all fields
-//
-//         // For brevity, let's just add enough bytes to cover the base header
-//         for _ in 0..100 {
-//             data.extend_from_slice(&0u32.to_le_bytes());
-//         }
-//
-//         data
-//     }
-//
-//     #[test]
-//     fn test_header_parse_classic() {
-//         let data = create_test_header(M2Version::Classic);
-//         let mut cursor = Cursor::new(data);
-//
-//         let header = M2Header::parse(&mut cursor).unwrap();
-//
-//         assert_eq!(header.magic, M2_MAGIC);
-//         assert_eq!(header.version, M2Version::Classic.to_header_version());
-//         assert_eq!(header.texture_combiner_combos, None);
-//         assert_eq!(header.texture_transforms, None);
-//     }
-//
-//     #[test]
-//     fn test_header_parse_cataclysm() {
-//         let data = create_test_header(M2Version::Cataclysm);
-//         let mut cursor = Cursor::new(data);
-//
-//         let header = M2Header::parse(&mut cursor).unwrap();
-//
-//         assert_eq!(header.magic, M2_MAGIC);
-//         assert_eq!(header.version, M2Version::Cataclysm.to_header_version());
-//         assert!(header.texture_combiner_combos.is_some());
-//         assert_eq!(header.texture_transforms, None);
-//     }
-//
-//     #[test]
-//     fn test_header_parse_legion() {
-//         let data = create_test_header(M2Version::Legion);
-//         let mut cursor = Cursor::new(data);
-//
-//         let header = M2Header::parse(&mut cursor).unwrap();
-//
-//         assert_eq!(header.magic, M2_MAGIC);
-//         assert_eq!(header.version, M2Version::Legion.to_header_version());
-//         assert!(header.texture_combiner_combos.is_some());
-//         assert!(header.texture_transforms.is_some());
-//     }
-//
-//     #[test]
-//     fn test_header_conversion() {
-//         let classic_header = M2Header::new(M2Version::Classic);
-//
-//         // Convert Classic to Cataclysm
-//         let cataclysm_header = classic_header.convert(M2Version::Cataclysm).unwrap();
-//         assert_eq!(
-//             cataclysm_header.version,
-//             M2Version::Cataclysm.to_header_version()
-//         );
-//         assert!(cataclysm_header.texture_combiner_combos.is_some());
-//         assert_eq!(cataclysm_header.texture_transforms, None);
-//
-//         // Convert Cataclysm to Legion
-//         let legion_header = cataclysm_header.convert(M2Version::Legion).unwrap();
-//         assert_eq!(legion_header.version, M2Version::Legion.to_header_version());
-//         assert!(legion_header.texture_combiner_combos.is_some());
-//         assert!(legion_header.texture_transforms.is_some());
-//
-//         // Convert Legion back to Classic
-//         let classic_header_2 = legion_header.convert(M2Version::Classic).unwrap();
-//         assert_eq!(
-//             classic_header_2.version,
-//             M2Version::Classic.to_header_version()
-//         );
-//         assert_eq!(classic_header_2.texture_combiner_combos, None);
-//         assert_eq!(classic_header_2.texture_transforms, None);
-//     }
-// }

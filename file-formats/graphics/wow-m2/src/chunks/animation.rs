@@ -3,12 +3,10 @@ use std::{cmp, fmt};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{BoundingBox, C3Vector, VWowDataR, WowArray};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 use wow_utils::debug;
 
 use crate::M2Error;
-use std::io::{Read, Seek, SeekFrom, Write};
-
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -124,11 +122,30 @@ pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub enum M2InterpolationRange {
+pub enum M2InterpolationRangeHeader {
     None,
 
     #[wow_data(read_if = version <= M2Version::TBC)]
     Some(WowArray<(u32, u32)>),
+}
+
+#[derive(Debug, Clone)]
+pub enum M2InterpolationRange {
+    None,
+
+    Some(Vec<(u32, u32)>),
+}
+
+impl VWowDataR<M2Version, M2InterpolationRangeHeader> for M2InterpolationRange {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2InterpolationRangeHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2InterpolationRangeHeader::Some(array) => Self::Some(array.wow_read_to_vec(reader)?),
+            M2InterpolationRangeHeader::None => Self::None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
@@ -137,9 +154,24 @@ pub struct M2AnimationBaseTrackHeader {
     pub interpolation_type: M2InterpolationType,
     pub global_sequence: i16,
     #[wow_data(versioned)]
-    pub interpolation_ranges: M2InterpolationRange,
+    pub interpolation_ranges: M2InterpolationRangeHeader,
     #[wow_data(versioned)]
     pub timestamps: TrackArray<u32>,
+}
+
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header=M2AnimationBaseTrackHeader)]
+pub struct M2AnimationBaseTrackData {
+    #[wow_data(versioned)]
+    pub interpolation_ranges: M2InterpolationRange,
+    #[wow_data(versioned)]
+    pub timestamps: TrackVec<u32>,
+}
+
+#[derive(Debug, Clone)]
+pub struct M2AnimationBaseTrack {
+    pub header: M2AnimationBaseTrackHeader,
+    pub data: M2AnimationBaseTrackData,
 }
 
 /// An animation track header
@@ -149,7 +181,7 @@ pub struct M2AnimationTrackHeader<T: WowHeaderR + WowHeaderW> {
     pub interpolation_type: M2InterpolationType,
     pub global_sequence: i16,
     #[wow_data(versioned)]
-    pub interpolation_ranges: M2InterpolationRange,
+    pub interpolation_ranges: M2InterpolationRangeHeader,
     #[wow_data(versioned)]
     pub timestamps: TrackArray<u32>,
     #[wow_data(versioned)]
@@ -161,7 +193,7 @@ impl<T: WowHeaderR + WowHeaderW> M2AnimationTrackHeader<T> {
         Self {
             interpolation_type: crate::chunks::animation::M2InterpolationType::None,
             global_sequence: -1,
-            interpolation_ranges: M2InterpolationRange::None,
+            interpolation_ranges: M2InterpolationRangeHeader::None,
             timestamps: TrackArray::Multiple(WowArray::new(0, 0)),
             values: TrackArray::Multiple(WowArray::new(0, 0)),
         }
@@ -179,6 +211,15 @@ pub struct M2SplineKey<T: WowHeaderR + WowHeaderW> {
 pub enum TrackVec<T> {
     Single(Vec<T>),
     Multiple(Vec<Vec<T>>),
+}
+
+impl<T: WowHeaderR + WowHeaderW> VWowDataR<M2Version, TrackArray<T>> for TrackVec<T> {
+    fn new_from_header<R: Read + Seek>(reader: &mut R, header: &TrackArray<T>) -> WDResult<Self> {
+        Ok(match header {
+            TrackArray::Multiple(array) => Self::Multiple(array.wow_read_to_vec_r(reader)?),
+            TrackArray::Single(array) => Self::Single(array.wow_read_to_vec(reader)?),
+        })
+    }
 }
 
 #[cfg(not(feature = "debug-print-all"))]
@@ -214,66 +255,28 @@ pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt
     write!(f, "{:#?}", n)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header = M2AnimationTrackHeader<T>)]
 pub struct M2AnimationTrackData<T: fmt::Debug + WowHeaderR + WowHeaderW> {
-    pub interpolation_ranges: Option<Vec<(u32, u32)>>,
+    #[wow_data(versioned)]
+    pub interpolation_ranges: M2InterpolationRange,
 
     // #[debug(with = trimmed_trackvec_fmt)]
+    #[wow_data(versioned)]
     pub timestamps: TrackVec<u32>,
 
     // #[debug(with = trimmed_trackvec_fmt)]
+    #[wow_data(versioned)]
     pub values: TrackVec<T>,
 }
 
 impl<T: fmt::Debug + WowHeaderR + WowHeaderW> M2AnimationTrackData<T> {
     pub fn new() -> Self {
         Self {
-            // header: M2AnimationTrackHeader::new(),
-            interpolation_ranges: None,
+            interpolation_ranges: M2InterpolationRange::None,
             timestamps: TrackVec::Multiple(vec![vec![]]),
             values: TrackVec::Multiple(vec![vec![]]),
         }
-    }
-}
-
-impl<T> VWowDataR<M2Version, M2AnimationTrackHeader<T>> for M2AnimationTrackData<T>
-where
-    T: fmt::Debug + WowHeaderR + WowHeaderW,
-{
-    fn new_from_header<R: Read + Seek>(
-        reader: &mut R,
-        header: &M2AnimationTrackHeader<T>,
-    ) -> WDResult<Self> {
-        let header_end_position = reader.stream_position()?;
-
-        let interpolation_ranges = match &header.interpolation_ranges {
-            M2InterpolationRange::Some(interpolation_ranges) => {
-                Some(interpolation_ranges.wow_read_to_vec(reader)?)
-            }
-            M2InterpolationRange::None => None,
-        };
-
-        let timestamps = match header.timestamps {
-            TrackArray::Single(ref single) => TrackVec::Single(single.wow_read_to_vec(reader)?),
-            TrackArray::Multiple(ref multiple) => {
-                TrackVec::Multiple(multiple.wow_read_to_vec_r(reader)?)
-            }
-        };
-
-        let values = match header.values {
-            TrackArray::Single(ref single) => TrackVec::Single(single.wow_read_to_vec(reader)?),
-            TrackArray::Multiple(ref multiple) => {
-                TrackVec::Multiple(multiple.wow_read_to_vec_r(reader)?)
-            }
-        };
-
-        reader.seek(SeekFrom::Start(header_end_position))?;
-
-        Ok(Self {
-            interpolation_ranges,
-            timestamps,
-            values,
-        })
     }
 }
 
@@ -298,10 +301,24 @@ impl<T: WowHeaderR + WowHeaderW> M2AnimationBlock<T> {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-pub struct M2FakeAnimationBlock<T: WowHeaderR + WowHeaderW> {
+pub struct M2FakeAnimationBlockHeader<T: WowHeaderR + WowHeaderW> {
     pub timestamps: WowArray<u16>,
     pub keys: WowArray<u16>,
     pub values: WowArray<T>,
+}
+
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(header = M2FakeAnimationBlockHeader<T>)]
+pub struct M2FakeAnimationBlockData<T: WowHeaderR + WowHeaderW> {
+    pub timestamps: Vec<u16>,
+    pub keys: Vec<u16>,
+    pub values: Vec<T>,
+}
+
+#[derive(Debug, Clone)]
+pub struct M2FakeAnimationBlock<T: WowHeaderR + WowHeaderW> {
+    pub header: M2FakeAnimationBlockHeader<T>,
+    pub data: M2FakeAnimationBlockData<T>,
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
