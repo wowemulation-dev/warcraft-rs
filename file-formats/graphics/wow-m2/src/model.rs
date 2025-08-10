@@ -255,11 +255,7 @@ impl M2Model {
             ribbon_emitters,
             camera_lookup_table: reader.new_from_header(&header.camera_lookup_table)?,
             particle_emitters,
-            texture_combiner_combos: if header.flags.contains(M2ModelFlags::USE_TEXTURE_COMBINERS) {
-                reader.new_from_header(&header.texture_combiner_combos)?
-            } else {
-                M2TextureCombinerCombos::None
-            },
+            texture_combiner_combos: reader.new_from_header(&header.texture_combiner_combos)?,
             header,
         })
     }

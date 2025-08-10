@@ -81,29 +81,36 @@ fn generate_header_rv_struct_reader_body(fields: &Fields) -> syn::Result<proc_ma
         ));
     };
 
+    let mut read_lines = Vec::new();
     let mut initializers = Vec::new();
 
     for field in named_fields {
         let field_name = field.ident.as_ref().unwrap();
+        let field_ty = &field.ty;
 
         let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-        initializers.push(if let Some(val) = wow_data_attrs.override_read {
-            quote! { #field_name: #val }
+        if let Some(val) = wow_data_attrs.override_read {
+            read_lines.push(quote! { let #field_name = #val; });
         } else {
             if wow_data_attrs.versioned {
-                quote! { #field_name: reader.wow_read_versioned(version)? }
+                read_lines.push(
+                    quote! { let #field_name: #field_ty = reader.wow_read_versioned(version)?; },
+                );
             } else {
-                quote! { #field_name: reader.wow_read()? }
+                read_lines.push(quote! { let #field_name: #field_ty = reader.wow_read()?; });
             }
-        });
+        }
+
+        initializers.push(quote! { #field_name });
     }
 
-    Ok(quote! {
+    Ok(quote! {{
+        #(#read_lines)*
         Self {
             #(#initializers),*
         }
-    })
+    }})
 }
 
 fn generate_header_rv_enum_reader_body(

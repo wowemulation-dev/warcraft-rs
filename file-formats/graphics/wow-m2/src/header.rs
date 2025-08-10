@@ -326,6 +326,11 @@ pub struct M2Header {
     #[wow_data(versioned)]
     pub particle_emitters: WowArrayV<M2Version, M2ParticleEmitterHeader>,
 
+    #[wow_data(override_read = if flags.contains(M2ModelFlags::USE_TEXTURE_COMBINERS) {
+        M2TextureCombinerCombosHeader::Some(reader.wow_read()?)
+    } else {
+        M2TextureCombinerCombosHeader::None
+    } )]
     pub texture_combiner_combos: M2TextureCombinerCombosHeader,
 }
 
