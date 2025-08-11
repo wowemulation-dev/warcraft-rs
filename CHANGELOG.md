@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-08-11
+
+### Added
+
+- **wow-blp**: Support for alpha_type=7 (TBC+ enhanced alpha blending) for improved compatibility
+- **wow-m2**: Empirically verified M2 version numbers from format analysis (Classic=256, TBC=260, WotLK=264, Cata/MoP=272)
+- **wow-wmo**: MCVP (Convex Volume Planes) chunk support for Cataclysm+ transport WMOs
+
+### Fixed
+
+- **wow-m2**: Ribbon emitter parsing for MoP - now uses numeric version comparison instead of enum comparison
+- **wow-mpq**: Replaced custom ReadLittleEndian trait with standard byteorder crate (50+ occurrences standardized)
+- **wow-mpq**: Added generic error conversion helpers for compression algorithms
+- **wow-blp**: Extracted duplicate bounds checking logic into reusable module
+- **wow-wmo**: Simplified manual error handling patterns in chunk reading
+
+### Changed
+
+- **Code Quality**: Major refactoring for idiomatic Rust patterns across all crates
+- **Testing**: Removed 29 development/exploration files (~5,800 lines) for cleaner codebase
+- **Testing**: Comprehensive parser testing achieved 99.5% success rate across 200+ files
+
 ## [0.3.0] - 2025-08-07
 
 ### Breaking Changes
