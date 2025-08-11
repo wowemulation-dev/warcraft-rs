@@ -1,32 +1,10 @@
 //! MPQ header structures and parsing
 
 use crate::{Error, Result};
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 
 use crate::debug::{format_size, hex_string};
-
-/// Helper trait for reading little-endian integers
-trait ReadLittleEndian: Read {
-    fn read_u16_le(&mut self) -> Result<u16> {
-        let mut buf = [0u8; 2];
-        self.read_exact(&mut buf)?;
-        Ok(u16::from_le_bytes(buf))
-    }
-
-    fn read_u32_le(&mut self) -> Result<u32> {
-        let mut buf = [0u8; 4];
-        self.read_exact(&mut buf)?;
-        Ok(u32::from_le_bytes(buf))
-    }
-
-    fn read_u64_le(&mut self) -> Result<u64> {
-        let mut buf = [0u8; 8];
-        self.read_exact(&mut buf)?;
-        Ok(u64::from_le_bytes(buf))
-    }
-}
-
-impl<R: Read> ReadLittleEndian for R {}
 
 /// MPQ archive header signature ('MPQ\x1A')
 pub const MPQ_HEADER_SIGNATURE: u32 = 0x1A51504D;
@@ -159,7 +137,7 @@ impl MpqHeader {
     /// Read an MPQ header from the given reader
     pub fn read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         // Read the signature
-        let signature = reader.read_u32_le()?;
+        let signature = reader.read_u32::<LittleEndian>()?;
         if signature != MPQ_HEADER_SIGNATURE {
             return Err(Error::invalid_format("Invalid MPQ header signature"));
         }
@@ -168,14 +146,14 @@ impl MpqHeader {
         let header_start = reader.stream_position()? - 4;
 
         // Read basic header fields
-        let header_size = reader.read_u32_le()?;
-        let archive_size = reader.read_u32_le()?;
-        let format_version_raw = reader.read_u16_le()?;
-        let block_size = reader.read_u16_le()?;
-        let hash_table_pos = reader.read_u32_le()?;
-        let block_table_pos = reader.read_u32_le()?;
-        let hash_table_size = reader.read_u32_le()?;
-        let block_table_size = reader.read_u32_le()?;
+        let header_size = reader.read_u32::<LittleEndian>()?;
+        let archive_size = reader.read_u32::<LittleEndian>()?;
+        let format_version_raw = reader.read_u16::<LittleEndian>()?;
+        let block_size = reader.read_u16::<LittleEndian>()?;
+        let hash_table_pos = reader.read_u32::<LittleEndian>()?;
+        let block_table_pos = reader.read_u32::<LittleEndian>()?;
+        let hash_table_size = reader.read_u32::<LittleEndian>()?;
+        let block_table_size = reader.read_u32::<LittleEndian>()?;
 
         let format_version = FormatVersion::from_raw(format_version_raw)
             .ok_or(Error::UnsupportedVersion(format_version_raw))?;
@@ -208,16 +186,16 @@ impl MpqHeader {
         // Read version-specific fields
         if format_version >= FormatVersion::V2 {
             // Version 2+ fields
-            header.hi_block_table_pos = Some(reader.read_u64_le()?);
-            header.hash_table_pos_hi = Some(reader.read_u16_le()?);
-            header.block_table_pos_hi = Some(reader.read_u16_le()?);
+            header.hi_block_table_pos = Some(reader.read_u64::<LittleEndian>()?);
+            header.hash_table_pos_hi = Some(reader.read_u16::<LittleEndian>()?);
+            header.block_table_pos_hi = Some(reader.read_u16::<LittleEndian>()?);
         }
 
         if format_version >= FormatVersion::V3 {
             // Version 3+ fields
-            header.archive_size_64 = Some(reader.read_u64_le()?);
-            header.bet_table_pos = Some(reader.read_u64_le()?);
-            header.het_table_pos = Some(reader.read_u64_le()?);
+            header.archive_size_64 = Some(reader.read_u64::<LittleEndian>()?);
+            header.bet_table_pos = Some(reader.read_u64::<LittleEndian>()?);
+            header.het_table_pos = Some(reader.read_u64::<LittleEndian>()?);
         }
 
         // Check if we have V4 data based on header size
@@ -235,12 +213,12 @@ impl MpqHeader {
             } else {
                 // Version 4 fields
                 let mut v4_data = MpqHeaderV4Data {
-                    hash_table_size_64: reader.read_u64_le()?,
-                    block_table_size_64: reader.read_u64_le()?,
-                    hi_block_table_size_64: reader.read_u64_le()?,
-                    het_table_size_64: reader.read_u64_le()?,
-                    bet_table_size_64: reader.read_u64_le()?,
-                    raw_chunk_size: reader.read_u32_le()?,
+                    hash_table_size_64: reader.read_u64::<LittleEndian>()?,
+                    block_table_size_64: reader.read_u64::<LittleEndian>()?,
+                    hi_block_table_size_64: reader.read_u64::<LittleEndian>()?,
+                    het_table_size_64: reader.read_u64::<LittleEndian>()?,
+                    bet_table_size_64: reader.read_u64::<LittleEndian>()?,
+                    raw_chunk_size: reader.read_u32::<LittleEndian>()?,
                     md5_block_table: [0; 16],
                     md5_hash_table: [0; 16],
                     md5_hi_block_table: [0; 16],
@@ -308,7 +286,7 @@ pub fn find_header<R: Read + Seek>(
         reader.seek(SeekFrom::Start(offset))?;
 
         // Try to read a signature
-        let signature = match reader.read_u32_le() {
+        let signature = match reader.read_u32::<LittleEndian>() {
             Ok(sig) => sig,
             Err(_) => {
                 offset += HEADER_ALIGNMENT;
@@ -325,9 +303,9 @@ pub fn find_header<R: Read + Seek>(
             }
             MPQ_USERDATA_SIGNATURE => {
                 // Found user data header
-                let user_data_size = reader.read_u32_le()?;
-                let header_offset = reader.read_u32_le()?;
-                let user_data_header_size = reader.read_u32_le()?;
+                let user_data_size = reader.read_u32::<LittleEndian>()?;
+                let header_offset = reader.read_u32::<LittleEndian>()?;
+                let user_data_header_size = reader.read_u32::<LittleEndian>()?;
 
                 let user_data = UserDataHeader {
                     user_data_size,
@@ -341,7 +319,7 @@ pub fn find_header<R: Read + Seek>(
                     reader.seek(SeekFrom::Start(mpq_offset))?;
 
                     // Verify there's an MPQ header at the calculated position
-                    let mpq_sig = reader.read_u32_le()?;
+                    let mpq_sig = reader.read_u32::<LittleEndian>()?;
                     if mpq_sig == MPQ_HEADER_SIGNATURE {
                         reader.seek(SeekFrom::Start(mpq_offset))?;
                         let header = MpqHeader::read(reader)?;

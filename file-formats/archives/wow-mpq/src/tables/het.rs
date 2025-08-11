@@ -1,6 +1,7 @@
 //! HET (Hash Extended Table) implementation for MPQ v3+ archives
 
-use super::common::{ReadLittleEndian, decrypt_table_data};
+use super::common::decrypt_table_data;
+use byteorder::{LittleEndian, ReadBytesExt};
 use crate::compression::decompress;
 use crate::crypto::het_hash;
 use crate::{Error, Result};
@@ -203,14 +204,14 @@ impl HetTable {
 
         let mut cursor = std::io::Cursor::new(data);
         Ok(HetHeader {
-            table_size: cursor.read_u32_le()?,
-            max_file_count: cursor.read_u32_le()?,
-            hash_table_size: cursor.read_u32_le()?,
-            hash_entry_size: cursor.read_u32_le()?,
-            total_index_size: cursor.read_u32_le()?,
-            index_size_extra: cursor.read_u32_le()?,
-            index_size: cursor.read_u32_le()?,
-            block_table_size: cursor.read_u32_le()?,
+            table_size: cursor.read_u32::<LittleEndian>()?,
+            max_file_count: cursor.read_u32::<LittleEndian>()?,
+            hash_table_size: cursor.read_u32::<LittleEndian>()?,
+            hash_entry_size: cursor.read_u32::<LittleEndian>()?,
+            total_index_size: cursor.read_u32::<LittleEndian>()?,
+            index_size_extra: cursor.read_u32::<LittleEndian>()?,
+            index_size: cursor.read_u32::<LittleEndian>()?,
+            block_table_size: cursor.read_u32::<LittleEndian>()?,
         })
     }
 

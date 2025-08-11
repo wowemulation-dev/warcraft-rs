@@ -2,6 +2,15 @@ use crate::error::{Result, WmoError};
 use crate::types::ChunkId;
 use std::io::{Read, Seek, SeekFrom, Write};
 
+/// Helper function to handle `read_exact` operations with proper EOF handling
+fn read_exact_or_eof<R: Read>(reader: &mut R, buf: &mut [u8]) -> Result<()> {
+    match reader.read_exact(buf) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => Err(WmoError::UnexpectedEof),
+        Err(e) => Err(WmoError::Io(e)),
+    }
+}
+
 /// Represents a chunk header in a WMO file
 #[derive(Debug, Clone, Copy)]
 pub struct ChunkHeader {
@@ -18,26 +27,14 @@ impl ChunkHeader {
     /// Read a chunk header from a reader
     pub fn read<R: Read>(reader: &mut R) -> Result<Self> {
         let mut id_bytes = [0u8; 4];
-        match reader.read_exact(&mut id_bytes) {
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                return Err(WmoError::UnexpectedEof);
-            }
-            Err(e) => return Err(WmoError::Io(e)),
-        }
+        read_exact_or_eof(reader, &mut id_bytes)?;
 
         // WMO files store chunk IDs in little-endian order, so we need to reverse
         // the bytes to get the correct ASCII representation
         id_bytes.reverse();
 
         let mut size_bytes = [0u8; 4];
-        match reader.read_exact(&mut size_bytes) {
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                return Err(WmoError::UnexpectedEof);
-            }
-            Err(e) => return Err(WmoError::Io(e)),
-        }
+        read_exact_or_eof(reader, &mut size_bytes)?;
         let size = u32::from_le_bytes(size_bytes);
 
         Ok(Self {

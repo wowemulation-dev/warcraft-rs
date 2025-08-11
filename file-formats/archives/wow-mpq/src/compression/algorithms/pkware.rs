@@ -1,6 +1,7 @@
 //! PKWare compression implementation using implode crate for MPQ archives
 
-use crate::{Error, Result};
+use crate::Result;
+use crate::compression::error_helpers::{compression_error, decompression_error};
 use implode::exploder::Exploder;
 use implode::symbol::DEFAULT_CODE_TABLE;
 use pklib::{CompressionMode, DictionarySize, implode_bytes};
@@ -15,7 +16,7 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
     // Use ASCII mode with 2KB dictionary as default for MPQ archives
     // This provides good compression ratio for most data types
     implode_bytes(data, CompressionMode::ASCII, DictionarySize::Size2K)
-        .map_err(|e| Error::compression(format!("PKWare compression failed: {e}")))
+        .map_err(|e| compression_error("PKWare", e))
 }
 
 /// Decompress PKWare compressed data using implode crate (for MPQ archives)
@@ -57,9 +58,7 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
             }
             Err(e) => {
                 log::error!("PKWare decompression failed at input position {input_pos}: {e:?}");
-                return Err(Error::compression(format!(
-                    "PKWare decompression failed: {e:?}"
-                )));
+                return Err(decompression_error("PKWare", format!("{e:?}")));
             }
         }
     }
@@ -87,7 +86,7 @@ pub(crate) fn compress_with_options(
     }
 
     implode_bytes(data, mode, dict_size)
-        .map_err(|e| Error::compression(format!("PKWare compression failed: {e}")))
+        .map_err(|e| compression_error("PKWare", e))
 }
 
 #[cfg(test)]

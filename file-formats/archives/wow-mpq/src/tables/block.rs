@@ -1,6 +1,6 @@
 //! Block table implementation for MPQ archives
 
-use super::common::ReadLittleEndian;
+use byteorder::{LittleEndian, ReadBytesExt};
 use crate::crypto::{decrypt_block, hash_string, hash_type};
 use crate::{Error, Result};
 use std::io::{Read, Seek, SeekFrom};
@@ -83,10 +83,10 @@ impl BlockEntry {
 
         let mut cursor = std::io::Cursor::new(data);
         Ok(Self {
-            file_pos: cursor.read_u32_le()?,
-            compressed_size: cursor.read_u32_le()?,
-            file_size: cursor.read_u32_le()?,
-            flags: cursor.read_u32_le()?,
+            file_pos: cursor.read_u32::<LittleEndian>()?,
+            compressed_size: cursor.read_u32::<LittleEndian>()?,
+            file_size: cursor.read_u32::<LittleEndian>()?,
+            flags: cursor.read_u32::<LittleEndian>()?,
         })
     }
 }
@@ -252,7 +252,7 @@ impl HiBlockTable {
 
         let mut entries = Vec::with_capacity(size as usize);
         for _ in 0..size {
-            entries.push(reader.read_u16_le()?);
+            entries.push(reader.read_u16::<LittleEndian>()?);
         }
 
         Ok(Self { entries })

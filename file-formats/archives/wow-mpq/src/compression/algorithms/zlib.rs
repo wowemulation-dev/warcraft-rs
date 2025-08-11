@@ -1,6 +1,7 @@
 //! Zlib compression and decompression
 
-use crate::{Error, Result};
+use crate::Result;
+use crate::compression::error_helpers::{compression_error, decompression_error};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
@@ -45,9 +46,7 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
             if data.len() <= 64 {
                 log::trace!("Full data ({} bytes): {:02X?}", data.len(), data);
             }
-            Err(Error::compression(format!(
-                "Zlib decompression failed: {e}"
-            )))
+            Err(decompression_error("Zlib", e))
         }
     }
 }
@@ -57,11 +56,11 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
     encoder
         .write_all(data)
-        .map_err(|e| Error::compression(format!("Zlib compression failed: {e}")))?;
+        .map_err(|e| compression_error("Zlib", e))?;
 
     encoder
         .finish()
-        .map_err(|e| Error::compression(format!("Zlib compression failed: {e}")))
+        .map_err(|e| compression_error("Zlib", e))
 }
 
 #[cfg(test)]

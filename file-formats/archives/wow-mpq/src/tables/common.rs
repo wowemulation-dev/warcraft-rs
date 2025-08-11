@@ -1,30 +1,5 @@
 //! Common utilities and traits for MPQ tables
 
-use crate::Result;
-use std::io::Read;
-
-/// Helper trait for reading little-endian integers
-pub(crate) trait ReadLittleEndian: Read {
-    fn read_u16_le(&mut self) -> Result<u16> {
-        let mut buf = [0u8; 2];
-        self.read_exact(&mut buf)?;
-        Ok(u16::from_le_bytes(buf))
-    }
-
-    fn read_u32_le(&mut self) -> Result<u32> {
-        let mut buf = [0u8; 4];
-        self.read_exact(&mut buf)?;
-        Ok(u32::from_le_bytes(buf))
-    }
-
-    fn read_u64_le(&mut self) -> Result<u64> {
-        let mut buf = [0u8; 8];
-        self.read_exact(&mut buf)?;
-        Ok(u64::from_le_bytes(buf))
-    }
-}
-
-impl<R: Read> ReadLittleEndian for R {}
 
 /// Helper function to decrypt table data
 pub(crate) fn decrypt_table_data(data: &mut [u8], key: u32) {

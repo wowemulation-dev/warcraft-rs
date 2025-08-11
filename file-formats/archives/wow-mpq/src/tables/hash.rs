@@ -1,6 +1,6 @@
 //! Hash table implementation for MPQ archives
 
-use super::common::ReadLittleEndian;
+use byteorder::{LittleEndian, ReadBytesExt};
 use crate::crypto::{decrypt_block, hash_string, hash_type};
 use crate::{Error, Result};
 use std::io::{Read, Seek, SeekFrom};
@@ -61,11 +61,11 @@ impl HashEntry {
 
         let mut cursor = std::io::Cursor::new(data);
         Ok(Self {
-            name_1: cursor.read_u32_le()?,
-            name_2: cursor.read_u32_le()?,
-            locale: cursor.read_u16_le()?,
-            platform: cursor.read_u16_le()?,
-            block_index: cursor.read_u32_le()?,
+            name_1: cursor.read_u32::<LittleEndian>()?,
+            name_2: cursor.read_u32::<LittleEndian>()?,
+            locale: cursor.read_u16::<LittleEndian>()?,
+            platform: cursor.read_u16::<LittleEndian>()?,
+            block_index: cursor.read_u32::<LittleEndian>()?,
         })
     }
 }

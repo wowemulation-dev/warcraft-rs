@@ -3218,6 +3218,7 @@ version = "0.3.0"
 dependencies = [
  "adler",
  "assert_cmd",
+ "byteorder",
  "bytes",
  "bzip2",
  "chrono",
