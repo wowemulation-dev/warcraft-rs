@@ -626,5 +626,5 @@ pub fn extract_portion(
     };
 
     // Merge (extract) the specified portion
-    merge_adts(&[source.clone()], &options)
+    merge_adts(std::slice::from_ref(source), &options)
 }

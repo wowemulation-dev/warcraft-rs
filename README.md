@@ -5,7 +5,7 @@ creating World of Warcraft file formats.
 
 <div align="center">
 
-[![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/QbXn7Vqb)
+[![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/Q44pPMvGEd)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE-APACHE)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
