@@ -1,8 +1,8 @@
 //! Block table implementation for MPQ archives
 
-use byteorder::{LittleEndian, ReadBytesExt};
 use crate::crypto::{decrypt_block, hash_string, hash_type};
 use crate::{Error, Result};
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 
 /// Block table entry (16 bytes)

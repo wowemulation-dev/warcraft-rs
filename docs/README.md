@@ -1,22 +1,23 @@
-# 📚 warcraft-rs Documentation
+# warcraft-rs Documentation
 
-Welcome to the `warcraft-rs` documentation! This guide covers all supported
-World of Warcraft file formats and provides examples for parsing and handling
-them.
+This documentation covers all supported World of Warcraft file formats and
+provides examples for parsing and handling them.
 
-## 🚀 Getting Started
+## Getting Started
 
 - [Quick Start Guide](getting-started/quick-start.md) - Get up and running quickly
-- [Installation](getting-started/installation.md) - Detailed installation instructions
+- [Installation](getting-started/installation.md) - Detailed installation
+  instructions
 - [Basic Usage](getting-started/basic-usage.md) - Common usage patterns
 
-## 📁 File Formats
+## File Formats
 
 ### Archives
 
-- [MPQ Format](formats/archives/mpq.md) - Blizzard's archive format (100% StormLib compatible)
+- [MPQ Format](formats/archives/mpq.md) - Blizzard's archive format
+  (100% StormLib compatible)
 
-### World Data
+### Terrain and World Data
 
 - [ADT Format](formats/world-data/adt.md) - Terrain tiles
 - [WDL Format](formats/world-data/wdl.md) - Low-resolution world maps
@@ -31,21 +32,21 @@ them.
   - [.phys Files](formats/graphics/m2-phys.md) - Physics data
 - [WMO Format](formats/graphics/wmo.md) - World map objects
 
-### Database
+### Client Database
 
 - [DBC Format](formats/database/dbc.md) - Client database files
 
-## 📖 Guides
+## Guides
 
 ### MPQ Archives
 
 - [Working with MPQ Archives](guides/mpq-archives.md)
 - [MPQ CLI Usage](guides/mpq-cli-usage.md)
-- [MPQ Digital Signatures](guides/mpq-signatures.md) 🔐
+- [MPQ Digital Signatures](guides/mpq-signatures.md)
 - [StormLib vs wow-mpq Differences](guides/stormlib-differences.md)
 - [WoW Patch Chain Summary](guides/wow-patch-chain-summary.md)
 
-### World Data
+### Terrain and World Tools
 
 - [ADT CLI Usage](guides/adt-cli-usage.md)
 - [WDT CLI Usage](guides/wdt-cli-usage.md)
@@ -60,23 +61,23 @@ them.
 - [Animation System](guides/animation-system.md)
 - [LOD System](guides/lod-system.md)
 
-### Database
+### Client Database Tools
 
 - [DBC Data Extraction](guides/dbc-extraction.md)
 
-## 🔧 API Reference
+## API Reference
 
 - [Core Types](api/core-types.md)
 - [Error Handling](api/error-handling.md)
 - [Traits & Interfaces](api/traits.md)
 
-## 📚 Resources
+## Resources
 
 - [Glossary](resources/glossary.md) - Common terms and abbreviations
 - [Version Support](resources/version-support.md) - WoW version compatibility
 - [External Links](resources/links.md) - Helpful external resources
 
-## 🤝 Contributing
+## Contributing
 
 See our [Contributing Guide](../CONTRIBUTING.md) for information on how to
 contribute to this project.

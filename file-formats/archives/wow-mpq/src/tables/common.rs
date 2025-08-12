@@ -1,6 +1,5 @@
 //! Common utilities and traits for MPQ tables
 
-
 /// Helper function to decrypt table data
 pub(crate) fn decrypt_table_data(data: &mut [u8], key: u32) {
     use crate::crypto::{decrypt_block, decrypt_dword};

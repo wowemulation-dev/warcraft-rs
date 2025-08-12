@@ -5,15 +5,10 @@ use super::types::ParseResult;
 use log::error;
 
 /// Check if a given offset and size are within the bounds of input data
-/// 
+///
 /// This helper function consolidates the bounds checking logic that was duplicated
 /// across multiple BLP parsing functions.
-pub fn check_bounds(
-    input: &[u8],
-    offset: u32,
-    size: u32,
-    mipmap_index: usize,
-) -> ParseResult<()> {
+pub fn check_bounds(input: &[u8], offset: u32, size: u32, mipmap_index: usize) -> ParseResult<()> {
     // Check if offset is within input bounds
     if offset as usize >= input.len() {
         error!(
@@ -46,7 +41,7 @@ pub fn check_bounds(
 }
 
 /// Get a slice from input data after bounds checking
-/// 
+///
 /// Convenience function that checks bounds and returns the slice if valid.
 pub fn get_bounded_slice(
     input: &[u8],

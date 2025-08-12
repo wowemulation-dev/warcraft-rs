@@ -13,7 +13,8 @@ used by World of Warcraft and other Blizzard Entertainment games.
 
 ## Status
 
-✅ **Production Ready** - Feature-complete MPQ implementation with 100% StormLib bidirectional compatibility
+**Production Ready** - Feature-complete MPQ implementation with 100% StormLib
+bidirectional compatibility
 
 ## Overview
 
@@ -24,17 +25,28 @@ comprehensive support for all format versions and features.
 
 ## Features
 
-- 📖 **Complete Archive Reading** - All MPQ versions (v1-v4) with full feature coverage
-- 🔨 **Archive Creation** - Build new archives with full control over format and compression
-- ✏️ **Archive Modification** - Add, remove, and rename files with automatic listfile/attributes updates
-- 🔧 **Archive Rebuilding** - Comprehensive rebuild with format upgrades and optimization
-- 🗜️ **All Compression Algorithms** - Zlib, BZip2, LZMA, Sparse, ADPCM, PKWare, Huffman
-- 🔐 **Full Cryptography** - File encryption/decryption, signature verification and generation
-- 🔗 **Patch Chain Support** - Complete World of Warcraft patch archive management
-- 📊 **Advanced Tables** - HET/BET tables for v3+ archives with optimal compression
-- 🤝 **StormLib Compatibility** - 100% bidirectional compatibility with the reference implementation
-- 🚀 **High Performance** - Efficient I/O, zero-copy where possible, comprehensive benchmarks
-- ⚡ **Parallel Processing** - Multi-threaded extraction and validation for better performance
+- **Complete Archive Reading** - All MPQ versions (v1-v4) with full
+  feature coverage
+- **Archive Creation** - Build new archives with full control over format
+  and compression
+- **Archive Modification** - Add, remove, and rename files with automatic
+  listfile/attributes updates
+- **Archive Rebuilding** - Comprehensive rebuild with format upgrades and
+  optimization
+- **All Compression Algorithms** - Zlib, BZip2, LZMA, Sparse, ADPCM,
+  PKWare, Huffman
+- **Full Cryptography** - File encryption/decryption, signature verification
+  and generation
+- **Patch Chain Support** - Complete World of Warcraft patch archive
+  management
+- **Advanced Tables** - HET/BET tables for v3+ archives with optimal
+  compression
+- **StormLib Compatibility** - 100% bidirectional compatibility with the
+  reference implementation
+- **High Performance** - Efficient I/O, zero-copy where possible,
+  comprehensive benchmarks
+- **Parallel Processing** - Multi-threaded extraction and validation for
+  better performance
 
 ## Installation
 
@@ -83,11 +95,11 @@ mutable.flush()?; // Save all changes
 
 ## Supported Versions
 
-- ✅ **Classic** (1.12.1) - Full support including patch archives
-- ✅ **The Burning Crusade** (2.4.3) - Full support with v2 features
-- ✅ **Wrath of the Lich King** (3.3.5a) - Full support with LZMA compression
-- ✅ **Cataclysm** (4.3.4) - Full support with HET/BET tables
-- ✅ **Mists of Pandaria** (5.4.8) - Full support with v4 format
+- **Classic** (1.12.1) - Full support including patch archives
+- **The Burning Crusade** (2.4.3) - Full support with v2 features
+- **Wrath of the Lich King** (3.3.5a) - Full support with LZMA compression
+- **Cataclysm** (4.3.4) - Full support with HET/BET tables
+- **Mists of Pandaria** (5.4.8) - Full support with v4 format
 
 ## Advanced Features
 
@@ -160,7 +172,8 @@ let signature = generate_weak_signature(
 
 ### Debug Utilities
 
-The crate includes comprehensive debug utilities for analyzing MPQ archives (requires `debug-utils` feature):
+The crate includes debug utilities for analyzing MPQ archives (requires
+`debug-utils` feature):
 
 ```rust
 use wow_mpq::{Archive, debug};
@@ -187,7 +200,9 @@ let config = debug::ExtractionTraceConfig {
     show_decompression: true,
     max_raw_bytes: 256,
 };
-debug::trace_file_extraction(&mut archive, "example.txt", &config)?;
+debug::trace_file_extraction(
+    &mut archive, "example.txt", &config
+)?
 
 // Create hex dumps of binary data
 let data = archive.read_file("binary.dat")?;
@@ -247,16 +262,15 @@ performance and specialized features are not implemented:
 - **Archive Compacting** - Use rebuild instead for optimization
 - **Async I/O** - Synchronous operations only
 
-
 ## Compatibility Notes
 
 ### Blizzard Archives
 
 Blizzard's MPQ implementation has some quirks that this library handles gracefully:
 
-- **Attributes File Size**: All official Blizzard MPQs have attributes files that are
-  exactly 28 bytes larger than the specification. This library detects and handles
-  this discrepancy automatically.
+- **Attributes File Size**: All official Blizzard MPQs have attributes files
+  that are exactly 28 bytes larger than the specification. This library detects
+  and handles this discrepancy automatically.
 - **Path Separators**: MPQ archives use backslashes (`\`) as path separators. While
   this library accepts forward slashes for convenience, they are automatically converted
   to backslashes internally.
@@ -265,7 +279,10 @@ Blizzard's MPQ implementation has some quirks that this library handles graceful
 
 Licensed under either of
 
-- Apache License, Version 2.0, ([LICENSE-APACHE](../../LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
-- MIT license ([LICENSE-MIT](../../LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+- Apache License, Version 2.0,
+  ([LICENSE-APACHE](../../LICENSE-APACHE) or
+  <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](../../LICENSE-MIT) or
+  <http://opensource.org/licenses/MIT>)
 
 at your option.

@@ -58,9 +58,7 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
         .write_all(data)
         .map_err(|e| compression_error("Zlib", e))?;
 
-    encoder
-        .finish()
-        .map_err(|e| compression_error("Zlib", e))
+    encoder.finish().map_err(|e| compression_error("Zlib", e))
 }
 
 #[cfg(test)]

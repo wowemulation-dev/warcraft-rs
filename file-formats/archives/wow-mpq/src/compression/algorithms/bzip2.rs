@@ -17,7 +17,14 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
         .map_err(|e| decompression_error("BZip2", e))?;
 
     if decompressed.len() != expected_size {
-        return Err(decompression_error("BZip2", format!("Decompressed size mismatch: expected {}, got {}", expected_size, decompressed.len())));
+        return Err(decompression_error(
+            "BZip2",
+            format!(
+                "Decompressed size mismatch: expected {}, got {}",
+                expected_size,
+                decompressed.len()
+            ),
+        ));
     }
 
     Ok(decompressed)
@@ -30,9 +37,7 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
         .write_all(data)
         .map_err(|e| compression_error("BZip2", e))?;
 
-    encoder
-        .finish()
-        .map_err(|e| compression_error("BZip2", e))
+    encoder.finish().map_err(|e| compression_error("BZip2", e))
 }
 
 #[cfg(test)]

@@ -4,8 +4,8 @@
 //! including CRC32 checksums, MD5 hashes, file timestamps, and patch information.
 
 use crate::error::{Error, Result};
-use bytes::Bytes;
 use byteorder::{LittleEndian, ReadBytesExt};
+use bytes::Bytes;
 use std::io::{Cursor, Read};
 
 /// Flags indicating which attributes are present in the file
@@ -324,8 +324,6 @@ impl Attributes {
         Ok(data)
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

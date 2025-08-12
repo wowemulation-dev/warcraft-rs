@@ -1,10 +1,10 @@
-# Contributing to `warcraft-rs`
+# Contributing to warcraft-rs
 
-First off, thank you for considering contributing to `warcraft-rs`! 🎉 We're
-excited to have you join our community. This document provides guidelines and
-instructions to make the contribution process smooth and effective for everyone.
+Thank you for considering contributing to warcraft-rs. This document provides
+guidelines and instructions to make the contribution process smooth and
+effective for everyone.
 
-## 📝 Table of Contents
+## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
@@ -152,7 +152,9 @@ Our CI/CD pipeline automatically runs the following checks on all pull requests:
    git push origin my-feature-branch
    ```
 
-2. **Create a Pull Request**: Go to the [repository page](https://github.com/wowemulation-dev/warcraft-rs) and click "New Pull Request"
+2. **Create a Pull Request**: Go to the
+   [repository page](https://github.com/wowemulation-dev/warcraft-rs) and
+   click "New Pull Request"
 
 3. **Describe your changes**:
    - Provide a clear title
@@ -178,7 +180,8 @@ Good documentation is essential for our project:
 
 - **Code Comments**: Document functions and complex logic
 - **Examples**: Add examples for new features in the `examples/` directory
-- **README**: Update the README if your changes add new features or change existing functionality
+- **README**: Update the README if your changes add new features or change
+  existing functionality
 - **Rustdoc**: Add documentation comments (`///`) to public API elements
 
 ## Community
@@ -199,7 +202,7 @@ We value all contributions, big and small! Contributors will be:
 
 ---
 
-## 🚀 Beginner's Guide to Open Source Contribution
+## Beginner's Guide to Open Source Contribution
 
 New to open source or Rust? Here are some tips to get started:
 

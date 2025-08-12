@@ -3,7 +3,7 @@
 This directory contains all file format parsing and handling crates for World of
 Warcraft, organized by category.
 
-## 📂 Directory Structure
+## Directory Structure
 
 ```text
 file-formats/
@@ -21,12 +21,12 @@ file-formats/
     └── wow-cdbc   # cDBC (Database Client) files
 ```
 
-## 🎯 Format Categories
+## Format Categories
 
 ### Archives
 
-- **MPQ** - The primary archive format used by World of Warcraft for storing game
-  assets
+- **MPQ** - The primary archive format used by World of Warcraft for
+  storing game assets
 
 ### World Data
 
@@ -44,7 +44,7 @@ file-formats/
 
 - **cDBC** - Client-side database files containing game data
 
-## 🔧 Usage
+## Usage
 
 Each crate can be used independently:
 
@@ -55,7 +55,7 @@ wow-cdbc = { path = "file-formats/database/wow-cdbc" }
 wow-blp = { path = "file-formats/graphics/wow-blp" }
 ```
 
-## 📖 Documentation
+## Documentation
 
 See the individual README files in each crate for format-specific documentation
 and usage examples.

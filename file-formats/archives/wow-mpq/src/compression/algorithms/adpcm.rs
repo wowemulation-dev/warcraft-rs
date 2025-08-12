@@ -4,8 +4,8 @@
 //! Differential Pulse Code Modulation) compression algorithm used in MPQ archives
 //! for compressing audio data, particularly WAV files.
 
-use crate::error::{Error, Result};
 use crate::compression::error_helpers::compression_error;
+use crate::error::{Error, Result};
 
 /// Maximum number of channels supported
 const MAX_ADPCM_CHANNEL_COUNT: usize = 2;
@@ -42,7 +42,12 @@ pub(crate) fn compress_stereo(input: &[u8], compression_level: u8) -> Result<Vec
 fn compress_internal(input: &[u8], compression_level: u8, channel_count: usize) -> Result<Vec<u8>> {
     // Validate channel count
     if channel_count == 0 || channel_count > MAX_ADPCM_CHANNEL_COUNT {
-        return Err(compression_error("ADPCM", format!("Invalid channel count: {channel_count}. ADPCM supports 1-{MAX_ADPCM_CHANNEL_COUNT} channels")));
+        return Err(compression_error(
+            "ADPCM",
+            format!(
+                "Invalid channel count: {channel_count}. ADPCM supports 1-{MAX_ADPCM_CHANNEL_COUNT} channels"
+            ),
+        ));
     }
 
     // ADPCM works with 16-bit samples
@@ -189,7 +194,12 @@ pub(crate) fn decompress_stereo(input: &[u8], output_size: usize) -> Result<Vec<
 fn decompress_internal(input: &[u8], output_size: usize, channel_count: usize) -> Result<Vec<u8>> {
     // Validate channel count
     if channel_count == 0 || channel_count > MAX_ADPCM_CHANNEL_COUNT {
-        return Err(compression_error("ADPCM", format!("Invalid channel count: {channel_count}. ADPCM supports 1-{MAX_ADPCM_CHANNEL_COUNT} channels")));
+        return Err(compression_error(
+            "ADPCM",
+            format!(
+                "Invalid channel count: {channel_count}. ADPCM supports 1-{MAX_ADPCM_CHANNEL_COUNT} channels"
+            ),
+        ));
     }
 
     // Handle empty input
@@ -213,7 +223,10 @@ fn decompress_internal(input: &[u8], output_size: usize, channel_count: usize) -
     // In practice, bit_shift values should be small (typically 0-8)
     // We'll cap at 31 to prevent shift overflow on i32
     if bit_shift > 31 {
-        return Err(compression_error("ADPCM", format!("Invalid ADPCM bit shift value: {bit_shift}. Maximum allowed is 31")));
+        return Err(compression_error(
+            "ADPCM",
+            format!("Invalid ADPCM bit shift value: {bit_shift}. Maximum allowed is 31"),
+        ));
     }
 
     // Initialize state for each channel

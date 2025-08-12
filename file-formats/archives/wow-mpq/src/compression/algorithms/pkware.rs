@@ -85,8 +85,7 @@ pub(crate) fn compress_with_options(
         return Ok(Vec::new());
     }
 
-    implode_bytes(data, mode, dict_size)
-        .map_err(|e| compression_error("PKWare", e))
+    implode_bytes(data, mode, dict_size).map_err(|e| compression_error("PKWare", e))
 }
 
 #[cfg(test)]

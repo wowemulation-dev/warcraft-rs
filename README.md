@@ -32,7 +32,8 @@ Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 
 ## Supported File Formats
 
-- **MPQ Archives** - Game data archives with StormLib compatibility and **parallel processing**
+- **MPQ Archives** - Game data archives with StormLib compatibility and
+  parallel processing
 - **DBC** - Client database files containing game data
 - **BLP Textures** - Compressed texture format with DXT and palette support
 - **M2 Models** - Character, creature, and object 3D models

@@ -37,7 +37,10 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
                         "First 16 bytes of data: {:02X?}",
                         &data[..16.min(data.len())]
                     );
-                    Err(decompression_error("LZMA/XZ", format!("LZMA: {e:?}, XZ: {xz_err:?}")))
+                    Err(decompression_error(
+                        "LZMA/XZ",
+                        format!("LZMA: {e:?}, XZ: {xz_err:?}"),
+                    ))
                 }
             }
         }

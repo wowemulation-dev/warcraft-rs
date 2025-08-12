@@ -1,9 +1,9 @@
 //! BET (Block Extended Table) implementation for MPQ v3+ archives
 
 use super::common::decrypt_table_data;
-use byteorder::{LittleEndian, ReadBytesExt};
 use crate::compression::decompress;
 use crate::{Error, Result};
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 
 /// BET (Block Entry Table) for v3+ archives
