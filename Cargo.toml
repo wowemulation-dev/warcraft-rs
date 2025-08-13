@@ -1,7 +1,9 @@
 [workspace]
 members = [
   # Utils
-  "file-formats/wow-data", "file-formats/wow-data-derive",
+  "file-formats/wow-data",
+  "file-formats/wow-data-derive",
+  "wow-utils",
 
   # Archives
   "file-formats/archives/wow-mpq",
@@ -24,9 +26,6 @@ members = [
 
   # CLI
   "warcraft-rs",
-
-  # Utils
-  "wow-utils",
 ]
 resolver = "2"
 

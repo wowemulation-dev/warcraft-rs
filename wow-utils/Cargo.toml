@@ -12,4 +12,4 @@ homepage.workspace = true
 custom_debug = { workspace = true }
 
 [features]
-debug-print-all = []
+trimmed-debug-output = []

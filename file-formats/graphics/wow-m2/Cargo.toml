@@ -38,7 +38,7 @@ test-case = { workspace = true }
 [features]
 default = []
 serde-support = ["serde", "glam/serde"]
-debug-print-all = ["wow-utils/debug-print-all"]
+trimmed-debug-output = ["wow-utils/trimmed-debug-output"]
 
 [[bench]]
 name = "parse_bench"

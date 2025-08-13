@@ -1,6 +1,6 @@
 use std::{cmp, fmt, sync};
 
-#[cfg(not(feature = "debug-print-all"))]
+#[cfg(feature = "trimmed-debug-output")]
 pub const FIRST_N_ELEMENTS: usize = 7;
 
 pub trait HasLength {
@@ -42,7 +42,7 @@ impl<T: ?Sized + HasLength> HasLength for sync::Arc<T> {
     }
 }
 
-#[cfg(not(feature = "debug-print-all"))]
+#[cfg(feature = "trimmed-debug-output")]
 pub fn trimmed_collection_fmt<T: HasLength + fmt::Debug>(
     n: &T,
     f: &mut fmt::Formatter,
@@ -56,7 +56,7 @@ pub fn trimmed_collection_fmt<T: HasLength + fmt::Debug>(
         write!(f, "{:#?} + {} elements", first_three, num_elements)
     }
 }
-#[cfg(feature = "debug-print-all")]
+#[cfg(not(feature = "trimmed-debug-output"))]
 pub fn trimmed_collection_fmt<T: HasLength + fmt::Debug>(
     n: &T,
     f: &mut fmt::Formatter,
@@ -64,7 +64,7 @@ pub fn trimmed_collection_fmt<T: HasLength + fmt::Debug>(
     write!(f, "{:#?}", n)
 }
 
-#[cfg(not(feature = "debug-print-all"))]
+#[cfg(feature = "trimmed-debug-output")]
 pub fn option_trimmed_collection_fmt<T: HasLength + fmt::Debug>(
     n: &Option<T>,
     f: &mut fmt::Formatter,
@@ -82,7 +82,7 @@ pub fn option_trimmed_collection_fmt<T: HasLength + fmt::Debug>(
         write!(f, "{:#?}", n)
     }
 }
-#[cfg(feature = "debug-print-all")]
+#[cfg(not(feature = "trimmed-debug-output"))]
 pub fn option_trimmed_collection_fmt<T: HasLength + fmt::Debug>(
     n: &Option<T>,
     f: &mut fmt::Formatter,

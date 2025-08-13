@@ -222,7 +222,7 @@ impl<T: WowHeaderR + WowHeaderW> VWowDataR<M2Version, TrackArray<T>> for TrackVe
     }
 }
 
-#[cfg(not(feature = "debug-print-all"))]
+#[cfg(feature = "trimmed-debug-output")]
 pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &TrackVec<T>, f: &mut fmt::Formatter) -> fmt::Result {
     match n {
         TrackVec::Single(single) => debug::trimmed_collection_fmt(single, f),
@@ -250,7 +250,7 @@ pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &TrackVec<T>, f: &mut fmt::Formatt
         }
     }
 }
-#[cfg(feature = "debug-print-all")]
+#[cfg(not(feature = "trimmed-debug-output"))]
 pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{:#?}", n)
 }
