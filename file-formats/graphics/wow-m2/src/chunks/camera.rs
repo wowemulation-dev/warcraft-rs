@@ -1,10 +1,11 @@
-use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
-
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::{C3Vector, M2Array};
-use crate::error::Result;
+use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::version::M2Version;
+use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
+use wow_data::types::C3Vector;
+use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
+
+use super::animation::{M2AnimationTrackData, M2SplineKey};
 
 bitflags::bitflags! {
     /// Camera flags as defined in the M2 format
@@ -19,145 +20,117 @@ bitflags::bitflags! {
     }
 }
 
-/// Represents a camera in an M2 model
-#[derive(Debug, Clone)]
-pub struct M2Camera {
-    /// Camera type
-    pub camera_type: u32,
-    /// Field of view (in radians)
-    pub fov: f32,
-    /// Far clip distance
-    pub far_clip: f32,
-    /// Near clip distance
-    pub near_clip: f32,
-    /// Camera position animation
-    pub position_animation: M2AnimationBlock<C3Vector>,
-    /// Target position animation
-    pub target_position_animation: M2AnimationBlock<C3Vector>,
-    /// Roll animation (rotation around the view axis)
-    pub roll_animation: M2AnimationBlock<f32>,
-    /// Camera ID
-    pub id: u32,
-    /// Camera flags
-    pub flags: M2CameraFlags,
-}
-
-impl M2Camera {
-    /// Parse a camera from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
-        let camera_type = reader.read_u32_le()?;
-        let fov = reader.read_f32_le()?;
-        let far_clip = reader.read_f32_le()?;
-        let near_clip = reader.read_f32_le()?;
-
-        let position_animation = M2AnimationBlock::parse(reader)?;
-        let target_position_animation = M2AnimationBlock::parse(reader)?;
-        let roll_animation = M2AnimationBlock::parse(reader)?;
-
-        let id = reader.read_u32_le()?;
-
-        // 2 bytes for flags, 2 bytes of padding
-        let flags = M2CameraFlags::from_bits_retain(reader.read_u16_le()?);
-        reader.read_u16_le()?; // Skip padding
-
-        Ok(Self {
-            camera_type,
-            fov,
-            far_clip,
-            near_clip,
-            position_animation,
-            target_position_animation,
-            roll_animation,
-            id,
-            flags,
-        })
+impl WowHeaderR for M2CameraFlags {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        Ok(Self::from_bits_retain(reader.wow_read()?))
     }
-
-    /// Write a camera to a writer based on the M2 version
-    pub fn write<W: Write>(&self, writer: &mut W, _version: u32) -> Result<()> {
-        writer.write_u32_le(self.camera_type)?;
-        writer.write_f32_le(self.fov)?;
-        writer.write_f32_le(self.far_clip)?;
-        writer.write_f32_le(self.near_clip)?;
-
-        self.position_animation.write(writer)?;
-        self.target_position_animation.write(writer)?;
-        self.roll_animation.write(writer)?;
-
-        writer.write_u32_le(self.id)?;
-
-        // 2 bytes for flags, 2 bytes of padding
-        writer.write_u16_le(self.flags.bits())?;
-        writer.write_u16_le(0)?; // Write padding
-
+}
+impl WowHeaderW for M2CameraFlags {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        writer.wow_write(&self.bits())?;
         Ok(())
     }
-
-    /// Convert this camera to a different version (no version differences for cameras)
-    pub fn convert(&self, _target_version: M2Version) -> Self {
-        self.clone()
-    }
-
-    /// Create a new camera with default values
-    pub fn new(id: u32) -> Self {
-        Self {
-            camera_type: 0,
-            fov: 0.8726646, // 50 degrees in radians
-            far_clip: 100.0,
-            near_clip: 0.1,
-            position_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            target_position_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            roll_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            id,
-            flags: M2CameraFlags::empty(),
-        }
+    fn wow_size(&self) -> usize {
+        2
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Cursor;
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub enum M2CameraFov {
+    None,
 
-    #[test]
-    fn test_camera_parse_write() {
-        let camera = M2Camera::new(1);
+    #[wow_data(read_if = version < M2Version::Cataclysm)]
+    Some(f32),
+}
 
-        // Test write
-        let mut data = Vec::new();
-        camera
-            .write(&mut data, M2Version::Classic.to_header_version())
-            .unwrap();
+#[derive(Debug, Clone, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub enum M2CameraFovAnimationHeader {
+    None,
 
-        // Test parse
-        let mut cursor = Cursor::new(data);
-        let parsed = M2Camera::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
+    #[wow_data(read_if = version >= M2Version::Cataclysm)]
+    Some(M2AnimationTrackHeader<M2SplineKey<f32>>),
+}
 
-        assert_eq!(parsed.camera_type, 0);
-        assert_eq!(parsed.id, 1);
-        assert_eq!(parsed.flags, M2CameraFlags::empty());
+impl VWowHeaderR<M2Version> for M2CameraFovAnimationHeader {
+    fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
+        Ok(if version >= M2Version::Cataclysm {
+            Self::Some(reader.wow_read_versioned(version)?)
+        } else {
+            Self::None
+        })
     }
+}
 
-    #[test]
-    fn test_camera_flags() {
-        let flags = M2CameraFlags::CUSTOM_UV | M2CameraFlags::AUTO_GENERATED;
-        assert!(flags.contains(M2CameraFlags::CUSTOM_UV));
-        assert!(flags.contains(M2CameraFlags::AUTO_GENERATED));
-        assert!(!flags.contains(M2CameraFlags::GLOBAL_POSITION));
+#[derive(Debug, Clone)]
+pub enum M2CameraFovAnimation {
+    None,
+
+    Some(M2AnimationTrackData<M2SplineKey<f32>>),
+}
+
+impl VWowDataR<M2Version, M2CameraFovAnimationHeader> for M2CameraFovAnimation {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2CameraFovAnimationHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2CameraFovAnimationHeader::Some(header) => {
+                Self::Some(reader.v_new_from_header(header)?)
+            }
+            M2CameraFovAnimationHeader::None => Self::None,
+        })
     }
+}
+
+/// Represents a camera in an M2 model
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
+#[wow_data(version = M2Version)]
+pub struct M2CameraHeader {
+    pub camera_type: u32,
+    /// Field of view (in radians)
+    #[wow_data(versioned)]
+    pub fov: M2CameraFov,
+
+    pub far_clip: f32,
+    pub near_clip: f32,
+
+    #[wow_data(versioned)]
+    pub position_animation: M2AnimationTrackHeader<M2SplineKey<C3Vector>>,
+    pub position_base: C3Vector,
+
+    #[wow_data(versioned)]
+    pub target_position_animation: M2AnimationTrackHeader<M2SplineKey<C3Vector>>,
+    pub target_position_base: C3Vector,
+
+    #[wow_data(versioned)]
+    pub roll_animation: M2AnimationTrackHeader<M2SplineKey<f32>>,
+
+    #[wow_data(versioned)]
+    pub fov_animation: M2CameraFovAnimationHeader,
+    // pub id: u32,
+    // pub flags: M2CameraFlags,
+}
+
+#[derive(Debug, Clone, WowDataR)]
+#[wow_data(version = M2Version, header = M2CameraHeader)]
+pub struct M2CameraData {
+    #[wow_data(versioned)]
+    pub position_animation: M2AnimationTrackData<M2SplineKey<C3Vector>>,
+
+    #[wow_data(versioned)]
+    pub target_position_animation: M2AnimationTrackData<M2SplineKey<C3Vector>>,
+
+    #[wow_data(versioned)]
+    pub roll_animation: M2AnimationTrackData<M2SplineKey<f32>>,
+
+    #[wow_data(versioned)]
+    pub fov_animation: M2CameraFovAnimation,
+}
+
+#[derive(Debug, Clone)]
+pub struct M2Camera {
+    pub header: M2CameraHeader,
+    pub data: M2CameraData,
 }

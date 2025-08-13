@@ -1,12 +1,13 @@
-use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use crate::M2Error;
+use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
+use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::error::Result;
-use crate::version::M2Version;
 
 bitflags::bitflags! {
     /// Render flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct M2RenderFlags: u16 {
         /// Unlit
         const UNLIT = 0x01;
@@ -35,9 +36,24 @@ bitflags::bitflags! {
     }
 }
 
+impl WowHeaderR for M2RenderFlags {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        Ok(Self::from_bits_retain(reader.wow_read()?))
+    }
+}
+impl WowHeaderW for M2RenderFlags {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        writer.wow_write(&self.bits())?;
+        Ok(())
+    }
+    fn wow_size(&self) -> usize {
+        2
+    }
+}
+
 bitflags::bitflags! {
     /// Blend modes as defined in the M2 format
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct M2BlendMode: u16 {
         /// Blend mode: opaque
         const OPAQUE = 0;
@@ -58,10 +74,26 @@ bitflags::bitflags! {
     }
 }
 
+impl WowHeaderR for M2BlendMode {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        Ok(Self::from_bits_retain(reader.wow_read()?))
+    }
+}
+impl WowHeaderW for M2BlendMode {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        writer.wow_write(&self.bits())?;
+        Ok(())
+    }
+    fn wow_size(&self) -> usize {
+        2
+    }
+}
+
 /// Material texture transformations
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum M2TexTransformType {
     /// No texture transform
+    #[default]
     None = 0,
     /// Scroll texture
     Scroll = 1,
@@ -75,127 +107,67 @@ pub enum M2TexTransformType {
     Camera = 5,
 }
 
-impl M2TexTransformType {
-    /// Parse from integer value
-    pub fn from_u16(value: u16) -> Option<Self> {
+impl TryFrom<u16> for M2TexTransformType {
+    type Error = M2Error;
+
+    fn try_from(value: u16) -> Result<Self> {
         match value {
-            0 => Some(Self::None),
-            1 => Some(Self::Scroll),
-            2 => Some(Self::Rotate),
-            3 => Some(Self::Scale),
-            4 => Some(Self::Stretch),
-            5 => Some(Self::Camera),
-            _ => None,
+            0 => Ok(Self::None),
+            1 => Ok(Self::Scroll),
+            2 => Ok(Self::Rotate),
+            3 => Ok(Self::Scale),
+            4 => Ok(Self::Stretch),
+            5 => Ok(Self::Camera),
+            _ => Err(M2Error::UnsupportedNumericVersion(value as u32)),
         }
+    }
+}
+
+impl From<M2TexTransformType> for u16 {
+    fn from(value: M2TexTransformType) -> Self {
+        match value {
+            M2TexTransformType::None => 0,
+            M2TexTransformType::Scroll => 1,
+            M2TexTransformType::Rotate => 2,
+            M2TexTransformType::Scale => 3,
+            M2TexTransformType::Stretch => 4,
+            M2TexTransformType::Camera => 4,
+        }
+    }
+}
+
+impl WowHeaderR for M2TexTransformType {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        let value: u16 = reader.wow_read()?;
+        Ok(value.try_into()?)
+    }
+}
+impl WowHeaderW for M2TexTransformType {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        let value: u16 = (*self).into();
+        writer.wow_write(&value)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        2
     }
 }
 
 /// Represents a material layer (render flags) in an M2 model
 /// This corresponds to the ModelRenderFlagsM2 structure in WMVx
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 pub struct M2Material {
-    /// Render flags
     pub flags: M2RenderFlags,
-    /// Blend mode
     pub blend_mode: M2BlendMode,
 }
 
 impl M2Material {
-    /// Parse a material from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
-        let flags = M2RenderFlags::from_bits_retain(reader.read_u16_le()?);
-        let blend_mode_raw = reader.read_u16_le()?;
-        let blend_mode = M2BlendMode::from_bits_retain(blend_mode_raw);
-
-        Ok(Self { flags, blend_mode })
-    }
-
-    /// Write a material to a writer based on the M2 version
-    pub fn write<W: Write>(&self, writer: &mut W, _version: u32) -> Result<()> {
-        writer.write_u16_le(self.flags.bits())?;
-        writer.write_u16_le(self.blend_mode.bits())?;
-        Ok(())
-    }
-
-    /// Convert this material to a different version
-    pub fn convert(&self, _target_version: M2Version) -> Self {
-        // Materials have the same structure across all versions
-        self.clone()
-    }
-
     /// Create a new material with default values
     pub fn new(blend_mode: M2BlendMode) -> Self {
         Self {
             flags: M2RenderFlags::DEPTH_TEST | M2RenderFlags::DEPTH_WRITE,
             blend_mode,
         }
-    }
-
-    /// Calculate the size of this material in bytes for a specific version
-    pub fn size_in_bytes(_version: M2Version) -> usize {
-        4 // flags (2) + blend_mode (2)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Cursor;
-
-    #[test]
-    fn test_material_parse() {
-        let mut data = Vec::new();
-
-        // Flags (DEPTH_TEST | DEPTH_WRITE)
-        data.extend_from_slice(
-            &(M2RenderFlags::DEPTH_TEST | M2RenderFlags::DEPTH_WRITE)
-                .bits()
-                .to_le_bytes(),
-        );
-
-        // Blend mode (ALPHA)
-        data.extend_from_slice(&M2BlendMode::ALPHA.bits().to_le_bytes());
-
-        let mut cursor = Cursor::new(data);
-        let material =
-            M2Material::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
-
-        assert_eq!(
-            material.flags,
-            M2RenderFlags::DEPTH_TEST | M2RenderFlags::DEPTH_WRITE
-        );
-        assert_eq!(material.blend_mode, M2BlendMode::ALPHA);
-    }
-
-    #[test]
-    fn test_material_write() {
-        let material = M2Material {
-            flags: M2RenderFlags::DEPTH_TEST | M2RenderFlags::DEPTH_WRITE,
-            blend_mode: M2BlendMode::ALPHA,
-        };
-
-        let mut data = Vec::new();
-        material
-            .write(&mut data, M2Version::Classic.to_header_version())
-            .unwrap();
-
-        // Should be 4 bytes total
-        assert_eq!(data.len(), 4);
-
-        // Check the written data
-        assert_eq!(
-            data[0..2],
-            (M2RenderFlags::DEPTH_TEST | M2RenderFlags::DEPTH_WRITE)
-                .bits()
-                .to_le_bytes()
-        );
-        assert_eq!(data[2..4], M2BlendMode::ALPHA.bits().to_le_bytes());
-    }
-
-    #[test]
-    fn test_material_size() {
-        assert_eq!(M2Material::size_in_bytes(M2Version::Classic), 4);
-        assert_eq!(M2Material::size_in_bytes(M2Version::Cataclysm), 4);
-        assert_eq!(M2Material::size_in_bytes(M2Version::WoD), 4);
     }
 }

@@ -1,0 +1,15 @@
+[package]
+name = "wow-data"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+wow-data-derive = { path = "../wow-data-derive" }
+custom_debug = { workspace = true }
+thiserror = { workspace = true }
+glam = { workspace = true }

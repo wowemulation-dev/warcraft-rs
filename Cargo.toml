@@ -1,5 +1,8 @@
 [workspace]
 members = [
+  # Utils
+  "file-formats/wow-data", "file-formats/wow-data-derive",
+
   # Archives
   "file-formats/archives/wow-mpq",
 
@@ -21,6 +24,9 @@ members = [
 
   # CLI
   "warcraft-rs",
+
+  # Utils
+  "wow-utils",
 ]
 resolver = "2"
 
@@ -51,6 +57,7 @@ memchr = "2.7"
 glam = "0.30"
 memmap2 = "0.9.5"
 rayon = "1.10"
+custom_debug = "0.6.2"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

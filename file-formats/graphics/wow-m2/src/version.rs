@@ -1,4 +1,10 @@
-use crate::error::Result;
+use std::io::{Read, Seek, Write};
+use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
+
+use wow_data::types::{DataVersion, WowHeaderR, WowHeaderW};
+
+use crate::{M2Error, error::Result};
 
 /// M2 format versions across WoW expansions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -97,47 +103,42 @@ impl M2Version {
         }
     }
 
-    /// Convert header version number to M2Version enum
-    /// Based on empirical analysis of WoW versions 1.12.1 through 5.4.8
-    pub fn from_header_version(version: u32) -> Option<Self> {
+    /// Try to convert header version number to M2Version enum
+    pub fn try_from_header_version(version: u32) -> Option<Self> {
         match version {
-            // Empirically verified exact versions from format analysis
-            256 => Some(Self::Classic),   // Vanilla 1.12.1
-            260 => Some(Self::TBC),       // The Burning Crusade 2.4.3
-            264 => Some(Self::WotLK),     // Wrath of the Lich King 3.3.5a
-            272 => Some(Self::Cataclysm), // Cataclysm 4.3.4 and MoP 5.4.8
+            // Classic through WotLK use versions 256-264
+            256..=263 => Some(Self::Classic), // Covers all pre-WotLK versions
+            264 => Some(Self::WotLK),
 
-            // Legacy support for version ranges (avoiding overlaps)
-            257..=259 => Some(Self::Classic),
-            261..=263 => Some(Self::TBC),
-            265..=271 => Some(Self::WotLK),
+            // Cataclysm uses 272 (actual files), but internally referenced as 4
+            272 | 4 => Some(Self::Cataclysm),
 
-            // MoP uses same version as Cataclysm based on empirical findings
-            // Post-MoP versions (theoretical, not empirically verified)
+            // MoP and later use sequential version numbers
             8 => Some(Self::MoP),
             10 => Some(Self::WoD),
             11 => Some(Self::Legion),
             16 => Some(Self::BfA),
             17 => Some(Self::Shadowlands),
             18 => Some(Self::Dragonflight),
-            19 => Some(Self::TheWarWithin),
+            19..=u32::MAX => Some(Self::TheWarWithin),
 
             _ => None,
         }
     }
 
+    pub fn from_header_version(version: u32) -> Result<Self> {
+        Self::try_from_header_version(version)
+            .ok_or_else(|| M2Error::UnsupportedNumericVersion(version))
+    }
+
     /// Convert M2Version enum to header version number
-    /// Returns empirically verified version numbers for WoW 1.12.1 through 5.4.8
     pub fn to_header_version(&self) -> u32 {
         match self {
-            // Empirically verified versions from format analysis
-            Self::Classic => 256,   // Vanilla 1.12.1
-            Self::TBC => 260,       // The Burning Crusade 2.4.3
-            Self::WotLK => 264,     // Wrath of the Lich King 3.3.5a
-            Self::Cataclysm => 272, // Cataclysm 4.3.4
-            Self::MoP => 272,       // MoP 5.4.8 (same as Cataclysm)
-
-            // Post-MoP versions (theoretical, not empirically verified)
+            // For compatibility, we use the newer simplified version numbers
+            Self::Classic | Self::TBC => 263, // Use the highest pre-WotLK version
+            Self::WotLK => 264,
+            Self::Cataclysm => 272, // Use the actual file version, not 4
+            Self::MoP => 8,
             Self::WoD => 10,
             Self::Legion => 11,
             Self::BfA => 16,
@@ -189,49 +190,6 @@ impl M2Version {
 
         (self_ord as isize - target_ord as isize).abs() == 1
     }
-
-    /// Returns true if this version supports chunked format capability
-    /// Based on empirical analysis: chunked format capability introduced in v264 (WotLK)
-    /// but not actually used until post-MoP expansions
-    pub fn supports_chunked_format(&self) -> bool {
-        match self {
-            Self::Classic | Self::TBC => false,
-            Self::WotLK | Self::Cataclysm | Self::MoP => true, // Capability exists but unused
-            _ => true, // Post-MoP versions may use chunked format
-        }
-    }
-
-    /// Returns true if this version uses external chunks
-    /// Based on empirical analysis: no external chunks found through MoP 5.4.8
-    /// All data remains inline in the main M2 file
-    pub fn uses_external_chunks(&self) -> bool {
-        match self {
-            Self::Classic | Self::TBC | Self::WotLK | Self::Cataclysm | Self::MoP => false,
-            _ => false, // Even post-MoP versions may not use external chunks
-        }
-    }
-
-    /// Returns true if this version uses inline data structure
-    /// Based on empirical analysis: 100% inline data through MoP 5.4.8
-    pub fn uses_inline_data(&self) -> bool {
-        match self {
-            Self::Classic | Self::TBC | Self::WotLK | Self::Cataclysm | Self::MoP => true,
-            _ => true, // Assume inline data for newer versions too
-        }
-    }
-
-    /// Get the empirically verified version number for this M2 version
-    /// Returns None if the version was not part of the empirical analysis
-    pub fn empirical_version_number(&self) -> Option<u32> {
-        match self {
-            Self::Classic => Some(256),
-            Self::TBC => Some(260),
-            Self::WotLK => Some(264),
-            Self::Cataclysm => Some(272),
-            Self::MoP => Some(272),
-            _ => None, // Post-MoP versions not empirically verified
-        }
-    }
 }
 
 impl std::fmt::Display for M2Version {
@@ -242,6 +200,33 @@ impl std::fmt::Display for M2Version {
             self.expansion_name(),
             self.to_version_string()
         )
+    }
+}
+
+impl From<M2Version> for u32 {
+    fn from(value: M2Version) -> Self {
+        value.to_header_version()
+    }
+}
+
+impl DataVersion for M2Version {}
+
+impl WowHeaderR for M2Version {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        let version: u32 = reader.wow_read()?;
+        Ok(M2Version::from_header_version(version)?)
+    }
+}
+
+impl WowHeaderW for M2Version {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        let version: u32 = (*self).into();
+        writer.wow_write(&version)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        4
     }
 }
 
@@ -296,48 +281,54 @@ mod tests {
 
     #[test]
     fn test_header_version_conversion() {
-        // Empirically verified versions
+        // Classic versions
         assert_eq!(
-            M2Version::from_header_version(256),
+            M2Version::try_from_header_version(256),
             Some(M2Version::Classic)
         );
-        assert_eq!(M2Version::from_header_version(260), Some(M2Version::TBC));
-        assert_eq!(M2Version::from_header_version(264), Some(M2Version::WotLK));
         assert_eq!(
-            M2Version::from_header_version(272),
+            M2Version::try_from_header_version(263),
+            Some(M2Version::Classic)
+        );
+        assert_eq!(
+            M2Version::try_from_header_version(264),
+            Some(M2Version::WotLK)
+        );
+
+        // Cataclysm
+        assert_eq!(
+            M2Version::try_from_header_version(272),
+            Some(M2Version::Cataclysm)
+        );
+        assert_eq!(
+            M2Version::try_from_header_version(4),
             Some(M2Version::Cataclysm)
         );
 
-        // Legacy support ranges
-        assert_eq!(
-            M2Version::from_header_version(257),
-            Some(M2Version::Classic)
-        );
-        assert_eq!(M2Version::from_header_version(261), Some(M2Version::TBC));
-        assert_eq!(M2Version::from_header_version(265), Some(M2Version::WotLK));
-
         // Later versions
-        assert_eq!(M2Version::from_header_version(8), Some(M2Version::MoP));
-        assert_eq!(M2Version::from_header_version(10), Some(M2Version::WoD));
-        assert_eq!(M2Version::from_header_version(11), Some(M2Version::Legion));
-        assert_eq!(M2Version::from_header_version(16), Some(M2Version::BfA));
+        assert_eq!(M2Version::try_from_header_version(8), Some(M2Version::MoP));
+        assert_eq!(M2Version::try_from_header_version(10), Some(M2Version::WoD));
         assert_eq!(
-            M2Version::from_header_version(17),
+            M2Version::try_from_header_version(11),
+            Some(M2Version::Legion)
+        );
+        assert_eq!(M2Version::try_from_header_version(16), Some(M2Version::BfA));
+        assert_eq!(
+            M2Version::try_from_header_version(17),
             Some(M2Version::Shadowlands)
         );
         assert_eq!(
-            M2Version::from_header_version(18),
+            M2Version::try_from_header_version(18),
             Some(M2Version::Dragonflight)
         );
         assert_eq!(
-            M2Version::from_header_version(19),
+            M2Version::try_from_header_version(19),
             Some(M2Version::TheWarWithin)
         );
 
         // Unknown versions
-        assert_eq!(M2Version::from_header_version(1), None);
-        assert_eq!(M2Version::from_header_version(5), None);
-        assert_eq!(M2Version::from_header_version(273), None);
+        assert_eq!(M2Version::try_from_header_version(1), None);
+        assert_eq!(M2Version::try_from_header_version(5), None);
     }
 
     #[test]
@@ -347,70 +338,5 @@ mod tests {
         assert!(M2Version::WotLK.has_direct_conversion_path(&M2Version::Cataclysm));
         assert!(!M2Version::Classic.has_direct_conversion_path(&M2Version::MoP));
         assert!(!M2Version::Classic.has_direct_conversion_path(&M2Version::TheWarWithin));
-    }
-
-    #[test]
-    fn test_empirical_version_features() {
-        // Test chunked format support
-        assert!(!M2Version::Classic.supports_chunked_format());
-        assert!(!M2Version::TBC.supports_chunked_format());
-        assert!(M2Version::WotLK.supports_chunked_format());
-        assert!(M2Version::Cataclysm.supports_chunked_format());
-        assert!(M2Version::MoP.supports_chunked_format());
-
-        // Test external chunks usage (none found through MoP)
-        assert!(!M2Version::Classic.uses_external_chunks());
-        assert!(!M2Version::TBC.uses_external_chunks());
-        assert!(!M2Version::WotLK.uses_external_chunks());
-        assert!(!M2Version::Cataclysm.uses_external_chunks());
-        assert!(!M2Version::MoP.uses_external_chunks());
-
-        // Test inline data usage (100% through MoP)
-        assert!(M2Version::Classic.uses_inline_data());
-        assert!(M2Version::TBC.uses_inline_data());
-        assert!(M2Version::WotLK.uses_inline_data());
-        assert!(M2Version::Cataclysm.uses_inline_data());
-        assert!(M2Version::MoP.uses_inline_data());
-    }
-
-    #[test]
-    fn test_empirical_version_numbers() {
-        assert_eq!(M2Version::Classic.empirical_version_number(), Some(256));
-        assert_eq!(M2Version::TBC.empirical_version_number(), Some(260));
-        assert_eq!(M2Version::WotLK.empirical_version_number(), Some(264));
-        assert_eq!(M2Version::Cataclysm.empirical_version_number(), Some(272));
-        assert_eq!(M2Version::MoP.empirical_version_number(), Some(272));
-
-        // Post-MoP versions not empirically verified
-        assert_eq!(M2Version::WoD.empirical_version_number(), None);
-        assert_eq!(M2Version::Legion.empirical_version_number(), None);
-    }
-
-    #[test]
-    fn test_header_version_roundtrip() {
-        // Test that empirically verified versions roundtrip correctly
-        assert_eq!(M2Version::Classic.to_header_version(), 256);
-        assert_eq!(M2Version::TBC.to_header_version(), 260);
-        assert_eq!(M2Version::WotLK.to_header_version(), 264);
-        assert_eq!(M2Version::Cataclysm.to_header_version(), 272);
-        assert_eq!(M2Version::MoP.to_header_version(), 272);
-
-        // Verify roundtrip for empirically verified versions
-        assert_eq!(
-            M2Version::from_header_version(M2Version::Classic.to_header_version()),
-            Some(M2Version::Classic)
-        );
-        assert_eq!(
-            M2Version::from_header_version(M2Version::TBC.to_header_version()),
-            Some(M2Version::TBC)
-        );
-        assert_eq!(
-            M2Version::from_header_version(M2Version::WotLK.to_header_version()),
-            Some(M2Version::WotLK)
-        );
-        assert_eq!(
-            M2Version::from_header_version(M2Version::Cataclysm.to_header_version()),
-            Some(M2Version::Cataclysm)
-        );
     }
 }

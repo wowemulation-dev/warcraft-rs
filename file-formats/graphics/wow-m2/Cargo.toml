@@ -14,6 +14,10 @@ keywords = ["wow", "warcraft", "m2", "models", "gamedev"]
 categories = ["game-development", "parser-implementations"]
 
 [dependencies]
+wow-utils = { path = "../../../wow-utils" }
+wow-data = { path = "../../wow-data" }
+wow-data-derive = { path = "../../wow-data-derive" }
+custom_debug = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
 bytes = { workspace = true }
@@ -34,6 +38,7 @@ test-case = { workspace = true }
 [features]
 default = []
 serde-support = ["serde", "glam/serde"]
+debug-print-all = ["wow-utils/debug-print-all"]
 
 [[bench]]
 name = "parse_bench"

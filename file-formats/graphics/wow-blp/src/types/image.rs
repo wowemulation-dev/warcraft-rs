@@ -231,7 +231,7 @@ pub enum CompressionType {
     Jpeg,
     /// Palettized 256-color format with alpha
     Raw1,
-    /// Uncompressed RGBA format  
+    /// Uncompressed RGBA format
     Raw3,
     /// DXT1 compression (no alpha or 1-bit alpha)
     Dxt1,
