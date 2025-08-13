@@ -3272,6 +3272,7 @@ dependencies = [
 name = "wow-data"
 version = "0.3.1"
 dependencies = [
+ "byteorder",
  "custom_debug",
  "glam",
  "thiserror 2.0.12",
@@ -3293,6 +3294,7 @@ version = "0.3.1"
 dependencies = [
  "anyhow",
  "bitflags 2.9.1",
+ "byteorder",
  "bytes",
  "criterion",
  "custom_debug",

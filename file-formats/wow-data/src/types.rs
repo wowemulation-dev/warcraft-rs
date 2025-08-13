@@ -1,8 +1,8 @@
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use custom_debug::Debug;
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::error::{Result, WowDataError};
-use crate::io_ext::{ReadExt, WriteExt};
 pub use std::io::{Read, Seek, SeekFrom, Write};
 
 mod wow_data {
@@ -46,12 +46,12 @@ where
 
 impl WowHeaderR for u32 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(reader.read_u32_le()?)
+        Ok(reader.read_u32::<LittleEndian>()?)
     }
 }
 impl WowHeaderW for u32 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_u32_le(*self)?;
+        writer.write_u32::<LittleEndian>(*self)?;
         Ok(())
     }
 
@@ -97,12 +97,12 @@ impl WowHeaderW for [u32; 3] {
 
 impl WowHeaderR for i32 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(reader.read_i32_le()?)
+        Ok(reader.read_i32::<LittleEndian>()?)
     }
 }
 impl WowHeaderW for i32 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_i32_le(*self)?;
+        writer.write_i32::<LittleEndian>(*self)?;
         Ok(())
     }
 
@@ -113,12 +113,12 @@ impl WowHeaderW for i32 {
 
 impl WowHeaderR for i16 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(reader.read_i16_le()?)
+        Ok(reader.read_i16::<LittleEndian>()?)
     }
 }
 impl WowHeaderW for i16 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_i16_le(*self)?;
+        writer.write_i16::<LittleEndian>(*self)?;
         Ok(())
     }
 
@@ -146,12 +146,12 @@ impl WowHeaderW for [i16; 2] {
 
 impl WowHeaderR for u16 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(reader.read_u16_le()?)
+        Ok(reader.read_u16::<LittleEndian>()?)
     }
 }
 impl WowHeaderW for u16 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_u16_le(*self)?;
+        writer.write_u16::<LittleEndian>(*self)?;
         Ok(())
     }
 
@@ -235,12 +235,12 @@ impl WowHeaderW for i8 {
 
 impl WowHeaderR for f32 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        Ok(reader.read_f32_le()?)
+        Ok(reader.read_f32::<LittleEndian>()?)
     }
 }
 impl WowHeaderW for f32 {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_f32_le(*self)?;
+        writer.write_f32::<LittleEndian>(*self)?;
         Ok(())
     }
 

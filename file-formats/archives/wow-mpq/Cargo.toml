@@ -37,7 +37,7 @@ implode = "0.1.1"
 
 # Data structures and utilities
 bytes = "1.10"
-byteorder = "1.5"
+byteorder = { workspace = true }
 rand = { workspace = true }
 tempfile = { workspace = true }
 

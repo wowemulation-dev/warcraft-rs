@@ -10,6 +10,7 @@ homepage.workspace = true
 
 [dependencies]
 wow-data-derive = { path = "../wow-data-derive" }
+byteorder = { workspace = true }
 custom_debug = { workspace = true }
 thiserror = { workspace = true }
 glam = { workspace = true }

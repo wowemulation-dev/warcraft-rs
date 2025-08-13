@@ -1,9 +1,12 @@
 use custom_debug::Debug;
-use std::{cmp, fmt};
+#[cfg(feature = "trimmed-debug-output")]
+use std::cmp;
+use std::fmt;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{BoundingBox, C3Vector, VWowDataR, WowArray};
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
+#[cfg(feature = "trimmed-debug-output")]
 use wow_utils::debug;
 
 use crate::M2Error;

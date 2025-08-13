@@ -1,4 +1,5 @@
 use bitflags::bitflags;
+use byteorder::LittleEndian;
 use custom_debug::Debug;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
@@ -150,7 +151,7 @@ impl SkinHeaderT for SkinHeader {
         reader.seek(SeekFrom::Start(self.material_lookup.offset as u64))?;
         let mut material_lookup = Vec::with_capacity(self.material_lookup.count as usize);
         for _ in 0..self.material_lookup.count {
-            material_lookup.push(reader.read_u16_le()?);
+            material_lookup.push(reader.read_u16::<LittleEndian>()?);
         }
         Ok(material_lookup)
     }
