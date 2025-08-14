@@ -56,7 +56,6 @@ uphold this code. Please report unacceptable behavior to
 - Check the [Issues](https://github.com/wowemulation-dev/warcraft-rs/issues)
   tab for tasks labeled "good first issue" or "help wanted"
 - The [TODO.md](TODO.md) file contains a list of planned features and improvements
-- Feel free to ask in the [Discussions](https://github.com/wowemulation-dev/warcraft-rs/discussions)
   if you need help finding a suitable task
 
 ## Making Contributions
@@ -188,7 +187,7 @@ Good documentation is essential for our project:
 
 We're building a friendly and inclusive community:
 
-- **Ask questions**: If you're unsure about something, ask in [Discussions](https://github.com/wowemulation-dev/warcraft-rs/discussions)
+- **Ask questions**: If you're unsure about something, ask
 - **Help others**: Share your knowledge by answering questions
 - **Be respectful**: Always be kind and constructive in communications
 
@@ -233,4 +232,4 @@ New to open source or Rust? Here are some tips to get started:
 
 Thank you for contributing to `warcraft-rs`! Your efforts help make this project
 better for everyone. If you have any questions or need assistance, please reach
-out to us in the Discussions section.
+out to us in the Discord.
