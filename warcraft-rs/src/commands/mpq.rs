@@ -589,7 +589,7 @@ fn extract_files(
             // For bulk extraction, read listfile directly to avoid slow database lookups
             println!("Reading file list from archive...");
             let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
-            
+
             // Try to read (listfile) directly for faster bulk operations
             match archive.read_file("(listfile)") {
                 Ok(listfile_data) => {
@@ -598,18 +598,28 @@ fn extract_files(
                         Ok(filenames) => {
                             println!("Found {} files in listfile", filenames.len());
                             filenames
-                        },
+                        }
                         Err(_) => {
-                            println!("Failed to parse listfile, falling back to slow enumeration...");
-                            let file_list = archive.list()?.into_iter().map(|e| e.name).collect::<Vec<String>>();
+                            println!(
+                                "Failed to parse listfile, falling back to slow enumeration..."
+                            );
+                            let file_list = archive
+                                .list()?
+                                .into_iter()
+                                .map(|e| e.name)
+                                .collect::<Vec<String>>();
                             println!("Found {} files", file_list.len());
                             file_list
                         }
                     }
-                },
+                }
                 Err(_) => {
                     println!("No listfile found, using slow enumeration...");
-                    let file_list = archive.list()?.into_iter().map(|e| e.name).collect::<Vec<String>>();
+                    let file_list = archive
+                        .list()?
+                        .into_iter()
+                        .map(|e| e.name)
+                        .collect::<Vec<String>>();
                     println!("Found {} files", file_list.len());
                     file_list
                 }
@@ -620,9 +630,26 @@ fn extract_files(
 
         let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
 
-        // Configure parallel extraction with sensible defaults
+        // Configure parallel extraction with sensible defaults for large extractions
+        let default_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
+        let batch_size = if files_to_extract.len() > 5000 {
+            // For very large extractions, use bigger batches to reduce overhead
+            std::cmp::max(
+                50,
+                files_to_extract.len() / (threads.unwrap_or(default_threads) * 4),
+            )
+        } else if files_to_extract.len() > 1000 {
+            // For moderately large extractions, use medium batches
+            25
+        } else {
+            // For small extractions, use small batches
+            10
+        };
+
         let mut config = ParallelConfig::new()
-            .batch_size(10) // Default batch size
+            .batch_size(batch_size)
             .skip_errors(skip_errors);
 
         if let Some(num_threads) = threads {
