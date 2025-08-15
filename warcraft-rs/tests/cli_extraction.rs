@@ -11,6 +11,15 @@ use tempfile::TempDir;
 
 /// Get the path to the warcraft-rs binary
 fn get_binary_path() -> Result<std::path::PathBuf> {
+    // Check if we're running under cargo-llvm-cov (code coverage)
+    if let Ok(target_dir) = std::env::var("CARGO_TARGET_DIR") {
+        // Try llvm-cov-target directory first (used by coverage)
+        let coverage_binary = std::path::Path::new(&target_dir).join("debug/warcraft-rs");
+        if coverage_binary.exists() {
+            return Ok(coverage_binary);
+        }
+    }
+    
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let target_dir = std::path::Path::new(manifest_dir).join("../target");
 
@@ -23,9 +32,27 @@ fn get_binary_path() -> Result<std::path::PathBuf> {
     } else if release_binary.exists() {
         Ok(release_binary)
     } else {
-        Err(anyhow::anyhow!(
-            "warcraft-rs binary not found. Run 'cargo build' first."
-        ))
+        // Build the binary if it doesn't exist
+        let output = std::process::Command::new("cargo")
+            .args(&["build", "--bin", "warcraft-rs"])
+            .current_dir(manifest_dir)
+            .output()?;
+        
+        if !output.status.success() {
+            return Err(anyhow::anyhow!(
+                "Failed to build warcraft-rs binary: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+        
+        // Try again after building
+        if debug_binary.exists() {
+            Ok(debug_binary)
+        } else {
+            Err(anyhow::anyhow!(
+                "warcraft-rs binary not found even after building"
+            ))
+        }
     }
 }
 
