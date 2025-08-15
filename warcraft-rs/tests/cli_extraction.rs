@@ -34,7 +34,7 @@ fn get_binary_path() -> Result<std::path::PathBuf> {
     } else {
         // Build the binary if it doesn't exist
         let output = std::process::Command::new("cargo")
-            .args(&["build", "--bin", "warcraft-rs"])
+            .args(["build", "--bin", "warcraft-rs"])
             .current_dir(manifest_dir)
             .output()?;
 
