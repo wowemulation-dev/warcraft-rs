@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tempfile::TempDir;
-use wow_mpq::{Archive, PatchChain};
+use wow_mpq::Archive;
 
 /// Test configuration for different MPQ archives
 struct TestArchive {
