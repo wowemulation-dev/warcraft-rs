@@ -285,10 +285,8 @@ fn extract_with_config_batched<P: AsRef<Path>>(
                     let result = if config.skip_errors {
                         archive_handle.read_file(filename)
                     } else {
-                        match archive_handle.read_file(filename) {
-                            Ok(data) => Ok(data),
-                            Err(e) => return Err(e), // Early exit on error
-                        }
+                        let data = archive_handle.read_file(filename)?;
+                        Ok(data)
                     };
                     batch_results.push((filename.to_string(), result));
                 }
