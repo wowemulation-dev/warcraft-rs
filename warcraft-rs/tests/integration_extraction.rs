@@ -377,7 +377,7 @@ fn test_error_handling_missing_files() -> Result<()> {
     }
 
     let test_archive = &archives[0];
-    let temp_dir = TempDir::new().context("Failed to create temp directory")?;
+    let _temp_dir = TempDir::new().context("Failed to create temp directory")?;
 
     println!(
         "Testing error handling with missing files: {}",

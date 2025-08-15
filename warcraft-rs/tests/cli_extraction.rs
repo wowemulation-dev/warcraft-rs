@@ -183,9 +183,6 @@ fn test_cli_extract_preserve_paths() -> Result<()> {
     }
 
     // Check if directory structure was preserved
-    let mut found_subdirs = false;
-    let mut total_files = 0;
-
     fn count_files_recursive(dir: &Path) -> Result<(usize, bool)> {
         let mut file_count = 0;
         let mut has_subdirs = false;
@@ -204,9 +201,7 @@ fn test_cli_extract_preserve_paths() -> Result<()> {
         Ok((file_count, has_subdirs))
     }
 
-    let (file_count, has_subdirs) = count_files_recursive(temp_dir.path())?;
-    total_files = file_count;
-    found_subdirs = has_subdirs;
+    let (total_files, found_subdirs) = count_files_recursive(temp_dir.path())?;
 
     println!("Extract results with preserve-paths:");
     println!("  Total files extracted: {}", total_files);
