@@ -19,7 +19,7 @@ fn get_binary_path() -> Result<std::path::PathBuf> {
             return Ok(coverage_binary);
         }
     }
-    
+
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let target_dir = std::path::Path::new(manifest_dir).join("../target");
 
@@ -37,14 +37,14 @@ fn get_binary_path() -> Result<std::path::PathBuf> {
             .args(&["build", "--bin", "warcraft-rs"])
             .current_dir(manifest_dir)
             .output()?;
-        
+
         if !output.status.success() {
             return Err(anyhow::anyhow!(
                 "Failed to build warcraft-rs binary: {}",
                 String::from_utf8_lossy(&output.stderr)
             ));
         }
-        
+
         // Try again after building
         if debug_binary.exists() {
             Ok(debug_binary)
