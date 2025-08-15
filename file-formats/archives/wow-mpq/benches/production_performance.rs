@@ -347,7 +347,7 @@ fn bench_realistic_wow_archive(c: &mut Criterion) {
                                 // Only test with reasonably sized archives
                                 if file_count > 100 && file_count < 30000 {
                                     // Extract a sample of files
-                                    let sample_size = (file_count / 20).min(500).max(50);
+                                    let sample_size = (file_count / 20).clamp(50, 500);
                                     let sample_files: Vec<String> = file_list
                                         .into_iter()
                                         .step_by(file_count / sample_size)

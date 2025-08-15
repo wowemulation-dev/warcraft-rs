@@ -78,7 +78,7 @@ fn create_test_archive(
     avg_file_size_kb: usize,
     size_variation: f64,
 ) -> Result<(TempDir, std::path::PathBuf, u64)> {
-    let temp_dir = TempDir::new().map_err(|e| wow_mpq::Error::Io(e))?;
+    let temp_dir = TempDir::new().map_err(wow_mpq::Error::Io)?;
     let path = temp_dir.path().join(format!("{name}.mpq"));
 
     let mut builder = ArchiveBuilder::new()

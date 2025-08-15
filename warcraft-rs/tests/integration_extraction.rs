@@ -630,7 +630,7 @@ fn print_test_result(result: &ExtractionTestResult) {
 /// Sanitize filename for safe filesystem operations
 fn sanitize_filename(filename: &str) -> String {
     // Convert MPQ path to just the filename, replacing invalid characters
-    let name = filename.split('\\').last().unwrap_or(filename);
+    let name = filename.split('\\').next_back().unwrap_or(filename);
     name.chars()
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',

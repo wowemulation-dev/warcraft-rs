@@ -40,7 +40,7 @@ fn find_test_archive() -> Option<std::path::PathBuf> {
 
     test_paths
         .iter()
-        .map(|p| std::path::PathBuf::from(p))
+        .map(std::path::PathBuf::from)
         .find(|p| p.exists())
 }
 

@@ -11,7 +11,7 @@ use wow_mpq::{Archive, ArchiveBuilder, Result, compression::flags};
 /// Create a large archive that would previously cause hanging
 fn create_large_test_archive() -> Result<(TempDir, std::path::PathBuf, usize)> {
     println!("📦 Creating large test archive (this may take a moment)...");
-    let temp_dir = TempDir::new().map_err(|e| wow_mpq::Error::Io(e))?;
+    let temp_dir = TempDir::new().map_err(wow_mpq::Error::Io)?;
     let path = temp_dir.path().join("stress_test.mpq");
 
     let mut builder = ArchiveBuilder::new()
