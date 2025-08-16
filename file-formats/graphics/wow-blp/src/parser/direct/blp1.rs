@@ -1,8 +1,7 @@
-use super::super::error::Error;
+use super::super::bounds::get_bounded_slice;
 use super::super::reader::{ByteReader, Cursor};
 use super::super::types::ParseResult;
 use crate::types::*;
-use log::*;
 
 pub fn parse_raw1<'a>(
     blp_header: &BlpHeader,
@@ -15,32 +14,7 @@ pub fn parse_raw1<'a>(
     let mut read_image = |i: usize| -> ParseResult<()> {
         let offset = offsets[i];
         let size = sizes[i];
-        if offset as usize >= original_input.len() {
-            error!(
-                "Offset of mipmap {} is out of bounds! {} >= {}",
-                i,
-                offset,
-                original_input.len()
-            );
-            return Err(Error::OutOfBounds {
-                offset: offset as usize,
-                size: 0,
-            });
-        }
-        if (offset + size) as usize > original_input.len() {
-            error!(
-                "Offset+size of mipmap {} is out of bounds! {} > {}",
-                i,
-                offset + size,
-                original_input.len()
-            );
-            return Err(Error::OutOfBounds {
-                offset: offset as usize,
-                size: size as usize,
-            });
-        }
-
-        let image_bytes = &original_input[offset as usize..(offset + size) as usize];
+        let image_bytes = get_bounded_slice(original_input, offset, size, i)?;
         let mut reader = Cursor::new(image_bytes);
 
         let n = blp_header.mipmap_pixels(i);

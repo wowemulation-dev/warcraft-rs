@@ -118,6 +118,11 @@ impl WdtFile {
         })
     }
 
+    /// Get the detected WoW version
+    pub fn version(&self) -> WowVersion {
+        self.version_config.version
+    }
+
     /// Validate the WDT file structure
     pub fn validate(&self) -> Vec<String> {
         let mut warnings = Vec::new();
@@ -261,7 +266,70 @@ impl<R: Read + Seek> WdtReader<R> {
             return Err(Error::MissingChunk("MAIN".to_string()));
         }
 
+        // Detect actual version based on chunk presence and content
+        let detected_version = self.detect_version(&wdt);
+
+        // Update the WDT's version configuration with detected version
+        wdt.version_config = VersionConfig::new(detected_version);
+
         Ok(wdt)
+    }
+
+    /// Detect WoW version based on chunk presence and content
+    fn detect_version(&self, wdt: &WdtFile) -> WowVersion {
+        // Version detection based on chunk presence and content:
+        // 1. MAID chunk (BfA+ 8.x+)
+        // 2. MWMO presence rules (Cataclysm+ breaking change)
+        // 3. Flag usage patterns
+
+        // Check for MAID chunk (Battle for Azeroth+)
+        if wdt.maid.is_some() {
+            return WowVersion::BfA;
+        }
+
+        // Check MWMO presence rules
+        let has_mwmo = wdt.mwmo.is_some();
+        let is_wmo_only = wdt.is_wmo_only();
+
+        // In Cataclysm+, terrain maps don't have MWMO chunks
+        // Pre-Cataclysm, all maps have MWMO chunks (even if empty)
+        if !is_wmo_only && !has_mwmo {
+            // Terrain map without MWMO = Cataclysm+
+            // Without other indicators, assume Cataclysm
+            return WowVersion::Cataclysm;
+        } else if !is_wmo_only && has_mwmo {
+            // Terrain map with MWMO = pre-Cataclysm
+            // Check flags to differentiate further
+            let flags = wdt.mphd.flags.bits();
+
+            // Advanced flags suggest later pre-Cata versions
+            if (flags & 0x0002) != 0 || (flags & 0x0004) != 0 || (flags & 0x0008) != 0 {
+                // These flags were more commonly used from WotLK
+                return WowVersion::WotLK;
+            } else if (flags & 0x0001) != 0 || flags > 1 {
+                // Basic flags suggest TBC+
+                return WowVersion::TBC;
+            } else {
+                // Minimal flags suggest Vanilla
+                return WowVersion::Classic;
+            }
+        }
+
+        // WMO-only maps should have both MWMO and MODF
+        if is_wmo_only && wdt.modf.is_some() {
+            // Both chunks present, check flag sophistication
+            let flags = wdt.mphd.flags.bits();
+            if flags > 0x000F {
+                return WowVersion::WotLK;
+            } else if flags > 1 {
+                return WowVersion::TBC;
+            } else {
+                return WowVersion::Classic;
+            }
+        }
+
+        // Default fallback based on initial version hint
+        self.version
     }
 
     /// Read a chunk header (magic + size)
@@ -300,8 +368,14 @@ impl<W: Write> WdtWriter<W> {
             maid.write_chunk(&mut self.writer)?;
         }
 
+        // Write MWMO only if appropriate for the version and map type
         if let Some(ref mwmo) = wdt.mwmo {
-            mwmo.write_chunk(&mut self.writer)?;
+            let should_write = wdt
+                .version_config
+                .should_have_chunk("MWMO", wdt.is_wmo_only());
+            if should_write {
+                mwmo.write_chunk(&mut self.writer)?;
+            }
         }
 
         if let Some(ref modf) = wdt.modf {

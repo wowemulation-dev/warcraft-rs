@@ -57,14 +57,53 @@ impl AdtVersion {
         has_mcnk_with_mccv: bool,
     ) -> Self {
         // Version detection based on chunk presence:
+        // - MTXP: MoP+ (5.x+) - texture parameters chunk
+        // - MTFX: Cataclysm+ (4.x+) - texture effects chunk
+        // - MH2O: WotLK+ (3.x+) - advanced water chunk
+        // - MFBO: TBC+ (2.x+) - flight boundaries chunk
+        // - MCCV in MCNK: WotLK+ (3.x+) - vertex colors in terrain chunks
+
+        // Note: MTXP detection would require additional parameter
+        // For now, we can't distinguish MoP from Cataclysm without MTXP chunk detection
+
+        if has_mtfx {
+            // MTFX was introduced in Cataclysm
+            // Without MTXP detection, default to Cataclysm for 4.x+
+            AdtVersion::Cataclysm
+        } else if has_mh2o || has_mcnk_with_mccv {
+            // MH2O and MCCV were introduced in WotLK
+            AdtVersion::WotLK
+        } else if has_mfbo {
+            // MFBO was introduced in TBC
+            AdtVersion::TBC
+        } else {
+            // No version-specific chunks found, assume Vanilla
+            AdtVersion::Vanilla
+        }
+    }
+
+    /// Enhanced version detection with additional chunk information
+    pub fn detect_from_chunks_extended(
+        has_mfbo: bool,
+        has_mh2o: bool,
+        has_mtfx: bool,
+        has_mcnk_with_mccv: bool,
+        has_mtxp: bool,
+        has_mamp: bool,
+    ) -> Self {
+        // Version detection based on chunk presence:
+        // - MAMP: Cataclysm+ (4 bytes, appears in 4.x+)
+        // - MTXP: MoP+ (5.x+)
         // - MTFX: Cataclysm+ (4.x+)
         // - MH2O: WotLK+ (3.x+)
         // - MFBO: TBC+ (2.x+)
         // - MCCV in MCNK: WotLK+ (3.x+)
 
-        if has_mtfx {
-            // MTFX was introduced in Cataclysm
-            // TODO: Further differentiate between Cata, MoP, WoD, etc. based on other indicators
+        if has_mtxp {
+            // MTXP was introduced in MoP
+            AdtVersion::MoP
+        } else if has_mtfx || has_mamp {
+            // MTFX and MAMP were introduced in Cataclysm
             AdtVersion::Cataclysm
         } else if has_mh2o || has_mcnk_with_mccv {
             // MH2O and MCCV were introduced in WotLK
@@ -218,6 +257,45 @@ mod tests {
                 AdtVersion::Legion,
                 AdtVersion::Dragonflight,
             ]
+        );
+    }
+
+    #[test]
+    fn test_extended_version_detection() {
+        // Vanilla - no special chunks
+        assert_eq!(
+            AdtVersion::detect_from_chunks_extended(false, false, false, false, false, false),
+            AdtVersion::Vanilla
+        );
+
+        // TBC - has MFBO
+        assert_eq!(
+            AdtVersion::detect_from_chunks_extended(true, false, false, false, false, false),
+            AdtVersion::TBC
+        );
+
+        // WotLK - has MH2O
+        assert_eq!(
+            AdtVersion::detect_from_chunks_extended(true, true, false, false, false, false),
+            AdtVersion::WotLK
+        );
+
+        // Cataclysm - has MTFX
+        assert_eq!(
+            AdtVersion::detect_from_chunks_extended(true, true, true, false, false, false),
+            AdtVersion::Cataclysm
+        );
+
+        // Cataclysm - has MAMP
+        assert_eq!(
+            AdtVersion::detect_from_chunks_extended(true, true, false, false, false, true),
+            AdtVersion::Cataclysm
+        );
+
+        // MoP - has MTXP
+        assert_eq!(
+            AdtVersion::detect_from_chunks_extended(true, true, true, true, true, false),
+            AdtVersion::MoP
         );
     }
 }

@@ -5,7 +5,7 @@ creating World of Warcraft file formats.
 
 <div align="center">
 
-[![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/QbXn7Vqb)
+[![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/Q44pPMvGEd)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE-APACHE)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
@@ -32,7 +32,8 @@ Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 
 ## Supported File Formats
 
-- **MPQ Archives** - Game data archives with StormLib compatibility and **parallel processing**
+- **MPQ Archives** - Game data archives with StormLib compatibility and
+  parallel processing
 - **DBC** - Client database files containing game data
 - **BLP Textures** - Compressed texture format with DXT and palette support
 - **M2 Models** - Character, creature, and object 3D models
@@ -90,21 +91,33 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.2.0"
-wow-blp = "0.2.0"
-wow-adt = "0.2.0"
+wow-mpq = "0.3.0"
+wow-blp = "0.3.0"
+wow-adt = "0.3.0"
 # ... other formats as needed
 ```
 
 ## Installation
 
-### Install from crates.io
+### Binary Releases
+
+Pre-built binaries are available for Linux, macOS, and Windows:
+
+```bash
+# Unix/Linux/macOS
+curl -fsSL https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.sh | bash
+
+# Windows PowerShell
+irm https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.ps1 | iex
+```
+
+### From crates.io
 
 ```bash
 # Install the CLI tool
 cargo install warcraft-rs
 
-# Install specific crates as dependencies
+# Add specific crates as dependencies
 cargo add wow-mpq wow-blp wow-adt
 ```
 
@@ -113,7 +126,7 @@ cargo add wow-mpq wow-blp wow-adt
 ```bash
 git clone https://github.com/wowemulation-dev/warcraft-rs
 cd warcraft-rs
-cargo install --path .
+cargo install --path warcraft-rs
 ```
 
 ## Documentation

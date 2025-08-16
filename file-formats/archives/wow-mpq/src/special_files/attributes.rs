@@ -4,8 +4,9 @@
 //! including CRC32 checksums, MD5 hashes, file timestamps, and patch information.
 
 use crate::error::{Error, Result};
+use byteorder::{LittleEndian, ReadBytesExt};
 use bytes::Bytes;
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 
 /// Flags indicating which attributes are present in the file
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,7 +112,7 @@ impl Attributes {
         let mut cursor = Cursor::new(data);
 
         // Read header
-        let version = read_u32_le(&mut cursor)?;
+        let version = cursor.read_u32::<LittleEndian>().map_err(Error::Io)?;
         if version != Self::EXPECTED_VERSION {
             return Err(Error::invalid_format(format!(
                 "Unsupported attributes version: {} (expected {})",
@@ -120,7 +121,7 @@ impl Attributes {
             )));
         }
 
-        let flags = AttributeFlags::new(read_u32_le(&mut cursor)?);
+        let flags = AttributeFlags::new(cursor.read_u32::<LittleEndian>().map_err(Error::Io)?);
 
         // Calculate expected size
         let mut expected_size = 8; // header
@@ -175,7 +176,7 @@ impl Attributes {
         let crc32_values = if flags.has_crc32() {
             let mut values = Vec::with_capacity(block_count);
             for _ in 0..block_count {
-                values.push(read_u32_le(&mut cursor)?);
+                values.push(cursor.read_u32::<LittleEndian>().map_err(Error::Io)?);
             }
             Some(values)
         } else {
@@ -186,7 +187,7 @@ impl Attributes {
         let filetime_values = if flags.has_filetime() {
             let mut values = Vec::with_capacity(block_count);
             for _ in 0..block_count {
-                values.push(read_u64_le(&mut cursor)?);
+                values.push(cursor.read_u64::<LittleEndian>().map_err(Error::Io)?);
             }
             Some(values)
         } else {
@@ -198,7 +199,7 @@ impl Attributes {
             let mut values = Vec::with_capacity(block_count);
             for _ in 0..block_count {
                 let mut hash = [0u8; 16];
-                read_exact(&mut cursor, &mut hash)?;
+                cursor.read_exact(&mut hash).map_err(Error::Io)?;
                 values.push(hash);
             }
             Some(values)
@@ -225,7 +226,7 @@ impl Attributes {
             let mut bits = vec![0u8; ideal_byte_count]; // Always allocate the ideal size
             if actual_byte_count > 0 {
                 let mut actual_bits = vec![0u8; actual_byte_count];
-                read_exact(&mut cursor, &mut actual_bits)?;
+                cursor.read_exact(&mut actual_bits).map_err(Error::Io)?;
                 bits[..actual_byte_count].copy_from_slice(&actual_bits);
                 // Remaining bytes in bits stay as 0, which is safe for patch bit interpretation
             }
@@ -322,27 +323,6 @@ impl Attributes {
 
         Ok(data)
     }
-}
-
-// Helper functions for reading from cursor
-fn read_u32_le(cursor: &mut Cursor<&Bytes>) -> Result<u32> {
-    use std::io::Read;
-    let mut bytes = [0u8; 4];
-    cursor.read_exact(&mut bytes).map_err(Error::Io)?;
-    Ok(u32::from_le_bytes(bytes))
-}
-
-fn read_u64_le(cursor: &mut Cursor<&Bytes>) -> Result<u64> {
-    use std::io::Read;
-    let mut bytes = [0u8; 8];
-    cursor.read_exact(&mut bytes).map_err(Error::Io)?;
-    Ok(u64::from_le_bytes(bytes))
-}
-
-fn read_exact(cursor: &mut Cursor<&Bytes>, buf: &mut [u8]) -> Result<()> {
-    use std::io::Read;
-    cursor.read_exact(buf).map_err(Error::Io)?;
-    Ok(())
 }
 
 #[cfg(test)]

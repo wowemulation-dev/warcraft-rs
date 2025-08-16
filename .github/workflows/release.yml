@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - 'v[0-9]+.*'
+      - 'warcraft-rs-v[0-9]+.*'
 
   workflow_dispatch:
     inputs:
@@ -12,292 +13,249 @@ on:
         description: 'Version to release (e.g., 0.1.0)'
         required: true
         type: string
+      release-type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - all
+          - libraries
+          - cli
+        default: cli
+      dry-run:
+        description: 'Dry run (no actual publishing)'
+        required: false
+        type: boolean
+        default: false
+      skip-tests:
+        description: 'Skip tests (use with caution)'
+        required: false
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   RUSTFLAGS: -D warnings
   CARGO_INCREMENTAL: 0
-  CARGO_NET_RETRY: 10
-  RUSTUP_MAX_RETRIES: 10
-  # Performance improvements
-  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-  CARGO_PROFILE_DEV_DEBUG: 0
+
+# Prevent concurrent releases
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
-  discussions: write
   packages: write
 
 jobs:
-  create-release:
-    name: Create Release
+  determine-release-type:
+    name: Determine Release Type
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
+      release-libraries: ${{ steps.determine.outputs.release-libraries }}
+      release-cli: ${{ steps.determine.outputs.release-cli }}
+      version: ${{ steps.determine.outputs.version }}
+      dry-run: ${{ steps.determine.outputs.dry-run }}
+      skip-tests: ${{ steps.determine.outputs.skip-tests }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Extract release version from tag or input
-        id: get_version
+      - name: Determine what to release
+        id: determine
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ inputs.version }}"
+            RELEASE_TYPE="${{ inputs.release-type }}"
+            DRY_RUN="${{ inputs.dry-run }}"
+            SKIP_TESTS="${{ inputs.skip-tests }}"
           else
-            VERSION=${GITHUB_REF#refs/tags/v}
+            # Parse tag to determine release type
+            TAG="${GITHUB_REF#refs/tags/}"
+            if [[ "$TAG" == warcraft-rs-v* ]]; then
+              VERSION="${TAG#warcraft-rs-v}"
+              RELEASE_TYPE="cli"
+            elif [[ "$TAG" == libs-v* ]]; then
+              VERSION="${TAG#libs-v}"
+              RELEASE_TYPE="libraries"
+            else
+              VERSION="${TAG#v}"
+              RELEASE_TYPE="all"
+            fi
+            DRY_RUN="false"
+            SKIP_TESTS="false"
           fi
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "dry-run=$DRY_RUN" >> $GITHUB_OUTPUT
+          echo "skip-tests=$SKIP_TESTS" >> $GITHUB_OUTPUT
 
-      - name: Install minisign for binary signing
-        run: |
-          cargo install minisign
-
-      - name: Generate ephemeral signing keypair for this release
-        run: |
-          # Generate ephemeral keypair for this release
-          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -G -p minisign.pub -s minisign.key -W
-
-      - uses: actions/upload-artifact@v4
-        name: Upload public key
-        with:
-          name: minisign-public-key
-          path: minisign.pub
-
-      - uses: softprops/action-gh-release@v2
-        name: Create Release
-        id: create_release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag: v${{ steps.get_version.outputs.version }}
-          title: Release v${{ steps.get_version.outputs.version }}
-          prerelease: false
-          files: minisign.pub
-
-  # Build all binaries in parallel
-  build-binaries:
-    name: Build (${{ matrix.target }})
-    needs: create-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux builds using cross for better compatibility
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            binary: warcraft-rs
-            use_cross: true
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            binary: warcraft-rs
-            use_cross: true
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            binary: warcraft-rs
-            use_cross: true
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
-            binary: warcraft-rs
-            use_cross: true
-          - target: armv7-unknown-linux-gnueabihf
-            os: ubuntu-latest
-            binary: warcraft-rs
-            use_cross: true
-          - target: armv7-unknown-linux-musleabihf
-            os: ubuntu-latest
-            binary: warcraft-rs
-            use_cross: true
-
-          # Windows
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            binary: warcraft-rs.exe
-            use_cross: false
-          - target: aarch64-pc-windows-msvc
-            os: windows-latest
-            binary: warcraft-rs.exe
-            use_cross: false
-          - target: x86_64-pc-windows-gnu
-            os: ubuntu-latest
-            binary: warcraft-rs.exe
-            use_cross: true
-
-          # macOS
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            binary: warcraft-rs
-            use_cross: false
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            binary: warcraft-rs
-            use_cross: false
-
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-          targets: ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}"
-          cache-on-failure: true
-          cache-all-crates: true
-
-      # Install cross for Linux builds
-      - name: Install cross
-        if: matrix.use_cross == true
-        run: |
-          # Use cargo-binstall for faster installation if available
-          if command -v cargo-binstall >/dev/null 2>&1; then
-            cargo binstall --no-confirm cross
-          else
-            cargo install cross --git https://github.com/cross-rs/cross
+          # Determine what to release
+          case "$RELEASE_TYPE" in
+            all)
+              echo "release-libraries=true" >> $GITHUB_OUTPUT
+              echo "release-cli=true" >> $GITHUB_OUTPUT
+              echo "::notice::Releasing both libraries and CLI for v$VERSION"
+              ;;
+            libraries)
+              echo "release-libraries=true" >> $GITHUB_OUTPUT
+              echo "release-cli=false" >> $GITHUB_OUTPUT
+              echo "::notice::Releasing libraries only for v$VERSION"
+              ;;
+            cli)
+              echo "release-libraries=false" >> $GITHUB_OUTPUT
+              echo "release-cli=true" >> $GITHUB_OUTPUT
+              echo "::notice::Releasing CLI only for v$VERSION"
+              ;;
+          esac
+          
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "::warning::DRY RUN MODE - No actual publishing will occur"
           fi
 
-      # Build using cross or cargo
-      - name: Build release binary
-        run: |
-          if [[ "${{ matrix.use_cross }}" == "true" ]]; then
-            cross build --release --target ${{ matrix.target }} --bin warcraft-rs
-          else
-            cargo build --release --target ${{ matrix.target }} --bin warcraft-rs
-          fi
-        shell: bash
-
-      - name: Download signing key for binary verification
-        uses: actions/download-artifact@v4
-        with:
-          name: minisign-public-key
-          path: .
-
-      - name: Install minisign for binary signing
-        run: |
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            # Install minisign on Windows via cargo
-            cargo install minisign
-          else
-            cargo install minisign
-          fi
-
-      - name: Package and cryptographically sign binary archive
-        shell: bash
-        run: |
-          cd target/${{ matrix.target }}/release
-
-          # Create archive
-          if [[ "${{ matrix.os }}" == "windows-latest" ]] || [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            7z a ../../../warcraft-rs-${{ matrix.target }}.zip ${{ matrix.binary }}
-            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.zip"
-          else
-            tar czf ../../../warcraft-rs-${{ matrix.target }}.tar.gz ${{ matrix.binary }}
-            ARCHIVE="../../../warcraft-rs-${{ matrix.target }}.tar.gz"
-          fi
-
-          cd ../../../
-
-          # Generate signing key from secret
-          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -G -p temp.pub -s minisign.key -W -f
-
-          # Sign the archive
-          echo "${{ secrets.MINISIGN_PASSWORD }}" | minisign -S -s minisign.key -m warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }} -x warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip.minisig' || 'tar.gz.minisig' }}
-
-          # Clean up key
-          rm minisign.key temp.pub
-
-      - uses: softprops/action-gh-release@v2
-        name: Upload Release Assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          files: |
-            warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip' || 'tar.gz' }}
-            warcraft-rs-${{ matrix.target }}.${{ contains(matrix.target, 'windows') && 'zip.minisig' || 'tar.gz.minisig' }}
-
-  # Publish crates to crates.io after binaries are built
-  publish-crates:
-    name: Publish to crates.io
-    needs: [build-binaries]
+  # Release libraries to crates.io
+  release-libraries:
+    name: Release Libraries
+    needs: determine-release-type
+    if: needs.determine-release-type.outputs.release-libraries == 'true'
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust stable toolchain for publishing
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
 
-      - name: Cache dependencies for publishing
+      - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "publish-${{ hashFiles('**/Cargo.lock') }}"
-          cache-on-failure: true
-          cache-all-crates: true
 
-      # Publish crates in dependency order
-      # File format crates first (no interdependencies)
-      - name: Publish wow-mpq
-        run: cargo publish -p wow-mpq --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish wow-cdbc
-        run: cargo publish -p wow-cdbc --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish wow-blp
-        run: cargo publish -p wow-blp --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish wow-m2
-        run: cargo publish -p wow-m2 --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish wow-wmo
-        run: cargo publish -p wow-wmo --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish wow-adt
-        run: cargo publish -p wow-adt --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish wow-wdl
-        run: cargo publish -p wow-wdl --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      - name: Publish wow-wdt
-        run: cargo publish -p wow-wdt --no-verify
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
-
-      # Main CLI crate last (depends on others)
-      - name: Publish warcraft-rs
+      - name: Verify versions match
         run: |
-          # Wait a bit for crates.io to index the dependencies
-          sleep 30
-          cargo publish -p warcraft-rs --no-verify
+          VERSION="${{ needs.determine-release-type.outputs.version }}"
+          for crate in wow-mpq wow-adt wow-wdl wow-wdt wow-blp wow-m2 wow-wmo wow-cdbc warcraft-rs; do
+            CRATE_VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r ".packages[] | select(.name == \"$crate\") | .version")
+            if [[ "$CRATE_VERSION" != "$VERSION" ]]; then
+              echo "Version mismatch for $crate: expected $VERSION, found $CRATE_VERSION"
+              exit 1
+            fi
+          done
+
+      - name: Run tests
+        if: needs.determine-release-type.outputs.skip-tests != 'true'
+        run: cargo test --all-features --workspace
+
+      - name: Publish to crates.io (Dry Run)
+        if: needs.determine-release-type.outputs.dry-run == 'true'
+        run: |
+          echo "::warning::DRY RUN MODE - Would publish these packages in dependency order:"
+          echo "1. First batch (no workspace deps): wow-mpq, wow-blp, wow-cdbc, wow-wdl, wow-wdt, wow-adt, wow-wmo"
+          echo "2. Second batch (depends on wow-blp): wow-m2"
+          echo "3. CLI (depends on all others): warcraft-rs"
+          echo "::notice::No actual publishing performed"
+          
+      - name: Publish to crates.io (Production)
+        if: needs.determine-release-type.outputs.dry-run != 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        continue-on-error: true
+        run: |
+          echo "::notice::Publishing packages to crates.io in dependency order..."
+          
+          # First batch: Independent crates (can be published in parallel)
+          echo "::group::Publishing independent crates"
+          cargo publish -p wow-mpq &
+          cargo publish -p wow-blp &
+          cargo publish -p wow-cdbc &
+          cargo publish -p wow-wdl &
+          cargo publish -p wow-wdt &
+          cargo publish -p wow-adt &
+          cargo publish -p wow-wmo &
+          wait  # Wait for all parallel publishes to complete
+          echo "::endgroup::"
+          
+          # Wait for crates.io to index the first batch
+          echo "::notice::Waiting for crates.io to index first batch..."
+          sleep 60
+          
+          # Second batch: Crates that depend on first batch
+          echo "::group::Publishing dependent crates"
+          cargo publish -p wow-m2  # Depends on wow-blp
+          echo "::endgroup::"
+          
+          # Wait for crates.io to index second batch
+          echo "::notice::Waiting for crates.io to index second batch..."
+          sleep 60
+          
+          # Third batch: CLI crate (depends on all others)
+          echo "::group::Publishing CLI crate"
+          cargo publish -p warcraft-rs  # Depends on all other workspace crates
+          echo "::endgroup::"
+          
+          echo "::notice::All packages published successfully!"
+
+      - name: Create library release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.determine-release-type.outputs.version }}
+          name: warcraft-rs libraries v${{ needs.determine-release-type.outputs.version }}
+          body: |
+            ## Library Release v${{ needs.determine-release-type.outputs.version }}
+
+            This release includes updates to all warcraft-rs libraries:
+            - wow-mpq - MPQ archive support
+            - wow-blp - BLP texture support
+            - wow-m2 - M2 model support
+            - wow-wmo - WMO world map object support
+            - wow-adt - ADT terrain support
+            - wow-wdl - WDL low-resolution terrain support
+            - wow-wdt - WDT map support
+            - wow-cdbc - cDBC database support
+
+            ### Installation
+
+            Add to your `Cargo.toml`:
+            ```toml
+            [dependencies]
+            wow-mpq = "${{ needs.determine-release-type.outputs.version }}"
+            wow-blp = "${{ needs.determine-release-type.outputs.version }}"
+            # ... other crates as needed
+            ```
+
+            See the [CHANGELOG](https://github.com/wowemulation-dev/warcraft-rs/blob/main/CHANGELOG.md) for details.
+
+  # Release CLI binaries
+  release-cli:
+    name: Release CLI
+    needs: determine-release-type
+    if: needs.determine-release-type.outputs.release-cli == 'true'
+    uses: ./.github/workflows/release-cli.yml
+    with:
+      version: ${{ needs.determine-release-type.outputs.version }}
+      dry-run: ${{ needs.determine-release-type.outputs.dry-run == 'true' }}
+    secrets: inherit
+
+  # Final success check
+  release-success:
+    name: Release Success
+    if: always()
+    needs: [determine-release-type, release-libraries, release-cli]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check release status
+        run: |
+          echo "Release type determination: ${{ needs.determine-release-type.result }}"
+          echo "Library release: ${{ needs.release-libraries.result }}"
+          echo "CLI release: ${{ needs.release-cli.result }}"
+          
+          # Check if any required job failed
+          if [[ "${{ needs.determine-release-type.outputs.release-libraries }}" == "true" ]] && [[ "${{ needs.release-libraries.result }}" != "success" ]]; then
+            echo "Library release failed"
+            exit 1
+          fi
+          
+          if [[ "${{ needs.determine-release-type.outputs.release-cli }}" == "true" ]] && [[ "${{ needs.release-cli.result }}" != "success" ]]; then
+            echo "CLI release failed"
+            exit 1
+          fi
+          
+          echo "All releases completed successfully!"
+

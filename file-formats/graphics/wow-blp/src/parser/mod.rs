@@ -1,3 +1,5 @@
+/// Bounds checking utilities  
+mod bounds;
 mod direct;
 /// Error types for BLP parsing operations
 pub mod error;

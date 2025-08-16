@@ -1,6 +1,6 @@
 [package]
 name = "wow-wdl"
-version = "0.2.0"
+version = "0.3.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 rust-version.workspace = true
 homepage.workspace = true
 documentation = "https://docs.rs/wow-wdl"
-description = "Parser for World of Warcraft WDL (low-resolution terrain) files"
+description = "Parser for World of Warcraft WDL (World Detail Level) low-resolution terrain files"
 readme = "README.md"
 keywords = ["wow", "warcraft", "wdl", "terrain", "gamedev"]
 categories = ["game-development", "parser-implementations"]

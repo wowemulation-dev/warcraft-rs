@@ -16,15 +16,11 @@ and supporting world map generation.
 
 ## Version History
 
-| Version | First Appearance | Notable Changes | WoW Version |
-|---------|-----------------|-----------------|-------------|
-| 18 | Classic WoW | Initial format | 1.x |
-| 19 | The Burning Crusade | Enhanced data structure | 2.x |
-| 20 | Wrath of the Lich King | Additional chunk types | 3.x |
-| 21+ | Later Expansions | Format refinements | 4.x+ |
+Based on analysis of WDL files from WoW versions 1.12.1 through 5.4.8:
 
-⚠️ **Note**: Version history requires validation against actual game files from
-different expansions.
+| Version | WoW Versions | Notes |
+|---------|--------------|-------|
+| 18 | All versions (1.12.1 - 5.4.8) | Consistent across all tested versions |
 
 ## File Structure
 
@@ -51,17 +47,47 @@ struct ChunkHeader {
 }
 ```
 
+## Chunk Evolution Timeline
+
+Based on empirical analysis of WDL files across WoW versions:
+
+### Classic (1.12.1)
+- **Core chunks**: MVER, MAOF, MARE
+- **MAOF size**: 16384 bytes (64×64×4 bytes)
+- **MARE size**: 1090 bytes (when present)
+
+### The Burning Crusade (2.4.3)
+- **New chunk**: MAHO (height holes/occlusion)
+- **MAHO size**: Variable (typically 32-2176 bytes)
+- All other chunks unchanged
+
+### Wrath of the Lich King (3.3.5a)
+- No new chunks
+- MAHO more commonly present
+- Structure remains stable
+
+### Cataclysm (4.3.4) - MAJOR CHANGES
+- **New chunks**: MWID, MWMO, MODF
+- **MWID**: WMO instance IDs (often 0 bytes)
+- **MWMO**: WMO filenames (often 0 bytes)
+- **MODF**: WMO placement data (often 0 bytes)
+- Support for WMO references in low-res world
+
+### Mists of Pandaria (5.4.8)
+- No structural changes from Cataclysm
+- Same chunk set as 4.3.4
+
 ## Main Chunks
 
-| Chunk | Size | Description | Required |
-|-------|------|-------------|----------|
-| MVER | 4 | Version number | ✅ |
-| MAOF | Variable | Map area offset table | ✅ |
-| MARE | Variable | Map area data (terrain) | ✅ |
-| MAHO | Variable | Map area holes | ❌ |
-| MWMO | Variable | WMO placement info | ❌ |
-| MWID | Variable | WMO indices | ❌ |
-| MODF | Variable | WMO placement data | ❌ |
+| Chunk | Size | Description | First Seen | Required |
+|-------|------|-------------|------------|----------|
+| MVER | 4 | Version number (always 18) | 1.12.1 | ✅ |
+| MAOF | 16384 | Map area offset table (64×64×4) | 1.12.1 | ✅ |
+| MARE | 1090 | Map area terrain heights | 1.12.1 | ❌ |
+| MAHO | 32-2176 | Map area height holes | 2.4.3 | ❌ |
+| MWID | Variable | WMO instance IDs | 4.3.4 | ❌ |
+| MWMO | Variable | WMO filenames | 4.3.4 | ❌ |
+| MODF | Variable | WMO placement data | 4.3.4 | ❌ |
 
 ### MVER - Version Chunk
 
@@ -70,33 +96,108 @@ Always appears first in the file:
 ```rust
 struct MverChunk {
     header: ChunkHeader,  // magic = b"MVER", size = 4
-    version: u32,         // Format version (18-21+)
+    version: u32,         // Always 18 in all tested versions (1.12.1-5.4.8)
 }
 ```
 
 ### MAOF - Area Offset Chunk
 
-Contains offset information for area data within the file:
+Contains offset information for area data. Always 16384 bytes (64×64×4):
 
 ```rust
-struct AreaOffset {
-    offset: u32,  // Offset to area data within the file
-    size: u32,    // Size of the area data
-}
-
 struct MaofChunk {
-    header: ChunkHeader,  // magic = b"MAOF"
-    // Array of area offsets
-    // Length = header.size / sizeof(AreaOffset)
+    header: ChunkHeader,  // magic = b"MAOF", size = 16384
+    offsets: [[u32; 64]; 64],  // 64×64 grid of offsets
 }
 ```
 
+**Notes**:
+- Most entries are zero (86-100% zeros in tested files)
+- Non-zero values indicate tiles with terrain data
+- Grid corresponds to ADT tile layout
+
 ### MARE - Area Information Chunk
 
-Contains the actual low-resolution terrain data:
+Contains low-resolution heightmap data. Consistently 1090 bytes when present:
 
-⚠️ **Note**: The internal structure of MARE chunks is not fully documented and
-requires reverse engineering.
+```rust
+struct MareChunk {
+    header: ChunkHeader,  // magic = b"MARE", size = 1090
+    data: [u8; 1090],     // Height and area data
+}
+```
+
+**Structure** (preliminary analysis):
+- Contains 17×17 height grid per tile (545 int16 values = 1090 bytes)
+- Provides low-resolution heightmap for distant terrain
+- Not present in all WDL files (only maps with terrain)
+
+### MAHO - Map Area Height Occlusion (TBC+)
+
+Added in The Burning Crusade, contains height hole/occlusion data:
+
+```rust
+struct MahoChunk {
+    header: ChunkHeader,  // magic = b"MAHO", size varies (32-2176 bytes)
+    data: Vec<i16>,       // Height occlusion values
+}
+```
+
+**Notes**:
+- Size varies based on map complexity
+- Often contains many zero values
+- Used for occlusion culling optimization
+
+### MWID - WMO Instance IDs (Cataclysm+)
+
+Added in Cataclysm, maps WMO instances:
+
+```rust
+struct MwidChunk {
+    header: ChunkHeader,  // magic = b"MWID", size varies (often 0)
+    wmo_ids: Vec<u32>,    // WMO instance IDs
+}
+```
+
+### MWMO - WMO Filenames (Cataclysm+)
+
+Added in Cataclysm, contains WMO filename strings:
+
+```rust
+struct MwmoChunk {
+    header: ChunkHeader,  // magic = b"MWMO", size varies (often 0)
+    filenames: Vec<CString>,  // Null-terminated WMO filenames
+}
+```
+
+### MODF - WMO Placement Data (Cataclysm+)
+
+Added in Cataclysm, defines WMO positions:
+
+```rust
+struct ModfChunk {
+    header: ChunkHeader,  // magic = b"MODF", size varies (often 0)
+    entries: Vec<ModfEntry>,  // WMO placement entries (64 bytes each)
+}
+
+struct ModfEntry {
+    id: u32,              // Index into MWMO
+    unique_id: u32,       // Unique instance ID
+    position: [f32; 3],   // X, Y, Z position
+    rotation: [f32; 3],   // X, Y, Z rotation (radians)
+    lower_bounds: [f32; 3],  // Bounding box min
+    upper_bounds: [f32; 3],  // Bounding box max
+    flags: u16,           // WMO flags
+    doodad_set: u16,      // Doodad set index
+    name_set: u16,        // Name set index
+    scale: u16,           // Scale factor (1024 = 1.0)
+}
+```
+
+**Notes**:
+- Often empty (0 bytes) in WDL files
+- When present, uses same structure as ADT MODF chunks
+- Primarily for major landmarks visible from distance
 
 ```rust
 struct MareChunk {

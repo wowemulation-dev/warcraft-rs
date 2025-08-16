@@ -1,6 +1,7 @@
 //! LZMA compression and decompression
 
-use crate::{Error, Result};
+use crate::Result;
+use crate::compression::error_helpers::{compression_error, decompression_error};
 use std::io::{BufReader, Cursor};
 
 /// Decompress using LZMA
@@ -36,9 +37,10 @@ pub(crate) fn decompress(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
                         "First 16 bytes of data: {:02X?}",
                         &data[..16.min(data.len())]
                     );
-                    Err(Error::compression(format!(
-                        "LZMA/XZ decompression failed: LZMA: {e:?}, XZ: {xz_err:?}"
-                    )))
+                    Err(decompression_error(
+                        "LZMA/XZ",
+                        format!("LZMA: {e:?}, XZ: {xz_err:?}"),
+                    ))
                 }
             }
         }
@@ -54,9 +56,7 @@ pub(crate) fn compress(data: &[u8]) -> Result<Vec<u8>> {
     // Use LZMA format (not XZ) for MPQ compatibility
     match lzma_rs::lzma_compress(&mut input, &mut output) {
         Ok(()) => Ok(output),
-        Err(e) => Err(Error::compression(format!(
-            "LZMA compression failed: {e:?}"
-        ))),
+        Err(e) => Err(compression_error("LZMA", format!("{e:?}"))),
     }
 }
 

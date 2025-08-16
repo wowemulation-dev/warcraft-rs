@@ -67,18 +67,14 @@ impl M2RibbonEmitter {
         let texture_cols = reader.read_u16_le()?;
 
         // Version-specific fields
-        let (texture_slice, variation) =
-            if let Some(m2_version) = M2Version::from_header_version(version) {
-                if m2_version >= M2Version::MoP {
-                    let slice = reader.read_u16_le()?;
-                    let var = reader.read_u16_le()?;
-                    (Some(slice), Some(var))
-                } else {
-                    (None, None)
-                }
-            } else {
-                (None, None)
-            };
+        // Version 272 is used by both Cataclysm and MoP, and includes texture_slice/variation
+        let (texture_slice, variation) = if version >= 272 {
+            let slice = reader.read_u16_le()?;
+            let var = reader.read_u16_le()?;
+            (Some(slice), Some(var))
+        } else {
+            (None, None)
+        };
 
         let id = reader.read_u32_le()?;
         let flags = reader.read_u32_le()?;
@@ -124,11 +120,10 @@ impl M2RibbonEmitter {
         writer.write_u16_le(self.texture_cols)?;
 
         // Version-specific fields
-        if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version >= M2Version::MoP {
-                writer.write_u16_le(self.texture_slice.unwrap_or(0))?;
-                writer.write_u16_le(self.variation.unwrap_or(0))?;
-            }
+        // Version 272 is used by both Cataclysm and MoP, and includes texture_slice/variation
+        if version >= 272 {
+            writer.write_u16_le(self.texture_slice.unwrap_or(0))?;
+            writer.write_u16_le(self.variation.unwrap_or(0))?;
         }
 
         writer.write_u32_le(self.id)?;
@@ -142,12 +137,15 @@ impl M2RibbonEmitter {
         let mut new_emitter = self.clone();
 
         // Handle version-specific conversions
-        if target_version >= M2Version::MoP && self.texture_slice.is_none() {
-            // When upgrading to MoP or later, add texture slice and variation if missing
+        // Version 272 (Cataclysm/MoP) introduced texture_slice and variation
+        let target_version_num = target_version.to_header_version();
+
+        if target_version_num >= 272 && self.texture_slice.is_none() {
+            // When upgrading to v272+, add texture slice and variation if missing
             new_emitter.texture_slice = Some(0);
             new_emitter.variation = Some(0);
-        } else if target_version < M2Version::MoP {
-            // When downgrading to pre-MoP, remove texture slice and variation
+        } else if target_version_num < 272 {
+            // When downgrading from v272+, remove texture slice and variation
             new_emitter.texture_slice = None;
             new_emitter.variation = None;
         }
@@ -181,7 +179,8 @@ impl M2RibbonEmitter {
         size += 2 * 2;
 
         // Version-specific fields
-        if version >= M2Version::MoP {
+        // Version 272 (Cataclysm/MoP) added texture_slice and variation
+        if version.to_header_version() >= 272 {
             // Texture slice, variation
             size += 2 * 2;
         }

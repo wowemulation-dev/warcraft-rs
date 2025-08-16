@@ -70,7 +70,7 @@ where
                     .map_err(|e| e.with_context("raw3 format"))?;
                     Ok(BlpContent::Raw3(BlpRaw3 { cmap, images }))
                 }
-                Compression::Dxtc if alpha_type == 0 => {
+                Compression::Dxtc if alpha_type == AlphaType::None => {
                     let format = DxtnFormat::Dxt1;
                     let mut images = vec![];
                     parse_dxtn(
@@ -89,7 +89,7 @@ where
                         images,
                     }))
                 }
-                Compression::Dxtc if alpha_type == 1 => {
+                Compression::Dxtc if alpha_type == AlphaType::OneBit => {
                     let format = DxtnFormat::Dxt3;
                     let mut images = vec![];
                     parse_dxtn(
@@ -109,7 +109,7 @@ where
                         images,
                     }))
                 }
-                Compression::Dxtc if alpha_type == 7 => {
+                Compression::Dxtc if alpha_type == AlphaType::Enhanced => {
                     let format = DxtnFormat::Dxt5;
                     let mut images = vec![];
                     parse_dxtn(
@@ -130,7 +130,7 @@ where
                 }
                 Compression::Dxtc => {
                     error!("Alpha type {alpha_type} is not supported for BLP2!");
-                    Err(Error::Blp2UnknownAlphaType(alpha_type))
+                    Err(Error::Blp2UnknownAlphaType(alpha_type.into()))
                 }
             },
         },

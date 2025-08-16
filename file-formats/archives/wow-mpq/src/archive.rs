@@ -17,6 +17,7 @@ use crate::{
     special_files,
     tables::{BetTable, BlockTable, HashTable, HetTable, HiBlockTable},
 };
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::fs::File;
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -2206,7 +2207,7 @@ impl Archive {
         let mut sector_offsets = Vec::with_capacity(sector_count + 1);
         let mut cursor = std::io::Cursor::new(&offset_data);
         for _ in 0..=sector_count {
-            sector_offsets.push(cursor.read_u32_le()?);
+            sector_offsets.push(cursor.read_u32::<LittleEndian>()?);
         }
 
         log::debug!(
@@ -2239,7 +2240,7 @@ impl Archive {
                 let mut crcs = Vec::with_capacity(sector_count);
                 let mut cursor = std::io::Cursor::new(&crc_data);
                 for _ in 0..sector_count {
-                    crcs.push(cursor.read_u32_le()?);
+                    crcs.push(cursor.read_u32::<LittleEndian>()?);
                 }
 
                 // Log before moving

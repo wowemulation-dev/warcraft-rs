@@ -1,6 +1,6 @@
 [package]
 name = "wow-m2"
-version = "0.2.0"
+version = "0.3.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 rust-version.workspace = true
 homepage.workspace = true
 documentation = "https://docs.rs/wow-m2"
-description = "A parser for World of Warcraft M2 model files with version conversion support"
+description = "Parser, validator, and converter for World of Warcraft M2 model files with animation support"
 readme = "README.md"
 keywords = ["wow", "warcraft", "m2", "models", "gamedev"]
 categories = ["game-development", "parser-implementations"]
@@ -22,7 +22,7 @@ memchr = { workspace = true }
 bitflags = { workspace = true }
 glam = { workspace = true }
 anyhow = { workspace = true }
-wow-blp = { path = "../wow-blp", version = "0.2.0" }
+wow-blp = { path = "../wow-blp", version = "0.3.0" }
 
 [dev-dependencies]
 criterion = { workspace = true }

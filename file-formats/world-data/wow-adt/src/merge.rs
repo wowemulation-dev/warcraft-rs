@@ -430,9 +430,8 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
         // Default if none found
         found_mfbo.or({
             Some(MfboChunk {
-                max: [0, 0],
-                min: [0, 0],
-                additional_data: Vec::new(),
+                max: [0; 9],
+                min: [0; 9],
             })
         })
     } else {
@@ -526,6 +525,8 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
         mfbo,
         mh2o,
         mtfx,
+        mamp: None, // MAMP not supported in merge yet
+        mtxp: None, // MTXP not supported in merge yet
     };
 
     Ok(merged_adt)
@@ -625,5 +626,5 @@ pub fn extract_portion(
     };
 
     // Merge (extract) the specified portion
-    merge_adts(&[source.clone()], &options)
+    merge_adts(std::slice::from_ref(source), &options)
 }

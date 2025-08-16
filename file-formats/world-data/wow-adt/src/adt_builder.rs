@@ -45,7 +45,7 @@ pub struct AdtBuilder {
     /// Water data
     water_chunks: Vec<Option<WaterInfo>>,
     /// Flight boundaries (TBC+)
-    flight_bounds: Option<(u16, u16, u16, u16)>,
+    flight_bounds: Option<([i16; 9], [i16; 9])>,
     /// Texture effects (Cataclysm+)
     texture_effects: Vec<u32>,
 }
@@ -397,13 +397,11 @@ impl AdtBuilder {
     }
 
     /// Set flight boundaries (TBC+)
-    pub fn set_flight_bounds(
-        &mut self,
-        max_x: u16,
-        max_y: u16,
-        min_x: u16,
-        min_y: u16,
-    ) -> Result<()> {
+    /// Set flight boundary planes (TBC+)
+    ///
+    /// Each plane contains 9 int16 values defining the boundary.
+    /// This is the proper 36-byte MFBO structure validated against TrinityCore.
+    pub fn set_flight_bounds(&mut self, max_plane: [i16; 9], min_plane: [i16; 9]) -> Result<()> {
         if self.version < AdtVersion::TBC {
             return Err(crate::error::AdtError::ParseError(format!(
                 "Flight boundaries not supported in version: {}",
@@ -411,7 +409,7 @@ impl AdtBuilder {
             )));
         }
 
-        self.flight_bounds = Some((max_x, max_y, min_x, min_y));
+        self.flight_bounds = Some((max_plane, min_plane));
 
         Ok(())
     }
@@ -694,18 +692,16 @@ impl AdtBuilder {
         }
 
         // Create MFBO chunk (TBC+)
-        let mfbo = if let Some((max_x, max_y, min_x, min_y)) = self.flight_bounds {
+        let mfbo = if let Some((max_plane, min_plane)) = self.flight_bounds {
             Some(MfboChunk {
-                max: [max_x, max_y],
-                min: [min_x, min_y],
-                additional_data: Vec::new(),
+                max: max_plane,
+                min: min_plane,
             })
         } else if self.version >= AdtVersion::TBC {
-            // Default flight bounds
+            // Default flight bounds planes
             Some(MfboChunk {
-                max: [0, 0],
-                min: [0, 0],
-                additional_data: Vec::new(),
+                max: [0; 9],
+                min: [0; 9],
             })
         } else {
             None
@@ -864,6 +860,8 @@ impl AdtBuilder {
             mfbo,
             mh2o: None, // TODO: Convert from mh20::Mh2oChunk to chunk::Mh2oChunk
             mtfx,
+            mamp: None, // MAMP not supported in builder yet
+            mtxp: None, // MTXP not supported in builder yet
         };
 
         Ok(adt)

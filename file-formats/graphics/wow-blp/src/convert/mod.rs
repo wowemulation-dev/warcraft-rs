@@ -363,7 +363,7 @@ pub fn image_to_blp(
                     flags: BlpFlags::Blp2 {
                         compression: Compression::Raw1,
                         alpha_bits: alpha_bits.into(),
-                        alpha_type: 0,
+                        alpha_type: AlphaType::None,
                         has_mipmaps: if make_mipmaps { 1 } else { 0 },
                     },
                     width,
@@ -386,7 +386,7 @@ pub fn image_to_blp(
                         flags: BlpFlags::Blp2 {
                             compression: Compression::Raw3,
                             alpha_bits: 8,
-                            alpha_type: 0,
+                            alpha_type: AlphaType::None,
                             has_mipmaps: if make_mipmaps { 1 } else { 0 },
                         },
                         width,
@@ -406,7 +406,7 @@ pub fn image_to_blp(
                         flags: BlpFlags::Blp2 {
                             compression: Compression::Jpeg,
                             alpha_bits: 8,
-                            alpha_type: 0,
+                            alpha_type: AlphaType::None,
                             has_mipmaps: if make_mipmaps { 1 } else { 0 },
                         },
                         width: image.width(),
@@ -437,7 +437,7 @@ pub fn image_to_blp(
                         flags: BlpFlags::Blp2 {
                             compression: Compression::Dxtc,
                             alpha_bits,
-                            alpha_type: 0,
+                            alpha_type: AlphaType::None,
                             has_mipmaps: if make_mipmaps { 1 } else { 0 },
                         },
                         width,
@@ -468,7 +468,7 @@ pub fn image_to_blp(
                         flags: BlpFlags::Blp2 {
                             compression: Compression::Dxtc,
                             alpha_bits,
-                            alpha_type: 1,
+                            alpha_type: AlphaType::OneBit,
                             has_mipmaps: if make_mipmaps { 1 } else { 0 },
                         },
                         width,
@@ -499,7 +499,7 @@ pub fn image_to_blp(
                         flags: BlpFlags::Blp2 {
                             compression: Compression::Dxtc,
                             alpha_bits,
-                            alpha_type: 7,
+                            alpha_type: AlphaType::Enhanced,
                             has_mipmaps: if make_mipmaps { 1 } else { 0 },
                         },
                         width,

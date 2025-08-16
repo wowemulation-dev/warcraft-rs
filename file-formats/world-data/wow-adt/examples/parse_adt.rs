@@ -146,12 +146,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display flight boundary information (TBC+)
     if let Some(mfbo) = &adt.mfbo {
         println!();
-        println!("✈️  Flight Boundaries:");
-        println!("  • Min boundary: ({}, {})", mfbo.min[0], mfbo.min[1]);
-        println!("  • Max boundary: ({}, {})", mfbo.max[0], mfbo.max[1]);
-        if !mfbo.additional_data.is_empty() {
-            println!("  • Additional data: {} bytes", mfbo.additional_data.len());
-        }
+        println!("✈️  Flight Boundaries (36 bytes, 2 planes × 9 values):");
+        println!(
+            "  • Min plane first 2 values: ({}, {})",
+            mfbo.min[0], mfbo.min[1]
+        );
+        println!(
+            "  • Max plane first 2 values: ({}, {})",
+            mfbo.max[0], mfbo.max[1]
+        );
+        println!("  • Total values per plane: 9 int16 coordinates");
     }
 
     // Perform basic validation

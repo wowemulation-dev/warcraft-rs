@@ -92,7 +92,7 @@ download_file() {
 # Get latest release version
 get_latest_version() {
     local version
-    version=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+    version=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"warcraft-rs-v([^"]+)".*/\1/')
 
     if [[ -z "$version" ]]; then
         error "Failed to get latest version"
@@ -101,14 +101,44 @@ get_latest_version() {
     echo "$version"
 }
 
+# Verify binary with ephemeral minisign key
+verify_binary() {
+    local file="$1"
+    local pubkey_file="$2"
+
+    # Check if signature verification tools are available
+    if command -v rsign >/dev/null 2>&1; then
+        info "Verifying signature with rsign..."
+        if rsign verify -p "$pubkey_file" "$file"; then
+            info "Signature verification successful"
+        else
+            error "Signature verification failed"
+        fi
+    elif command -v minisign >/dev/null 2>&1; then
+        info "Verifying signature with minisign..."
+        if minisign -V -p "$pubkey_file" -m "$file"; then
+            info "Signature verification successful"
+        else
+            error "Signature verification failed"
+        fi
+    else
+        warn "Neither rsign nor minisign found, skipping signature verification"
+        warn "Install minisign or rsign to verify binary signatures"
+    fi
+}
+
 # Main installation function
-install_warcraft_rs() {
+install() {
     local version="${1:-}"
-    local install_dir="${CARGO_HOME:-$HOME/.cargo}/bin"
+    local install_dir="${INSTALL_DIR:-$HOME/.local/bin}"
+    local temp_dir
+    temp_dir=$(mktemp -d)
+
+    trap 'rm -rf "$temp_dir"' EXIT
 
     # Get version if not specified
     if [[ -z "$version" ]]; then
-        info "Getting latest version..."
+        info "Fetching latest version..."
         version=$(get_latest_version)
     fi
 
@@ -119,100 +149,137 @@ install_warcraft_rs() {
     platform=$(detect_platform)
     info "Detected platform: ${platform}"
 
-    # Determine file extension
-    local ext="tar.gz"
+    # Determine file extension and archive format
+    local ext archive_ext
     if [[ "$platform" == *"windows"* ]]; then
-        ext="zip"
-    fi
-
-    # Create temporary directory
-    local temp_dir
-    temp_dir=$(mktemp -d)
-    trap 'rm -rf $temp_dir' EXIT
-
-    # Download archive and signature
-    local archive_url="${BASE_URL}/download/v${version}/${BINARY_NAME}-${platform}.${ext}"
-    local sig_url="${archive_url}.minisig"
-    local archive_path="${temp_dir}/${BINARY_NAME}-${platform}.${ext}"
-    local sig_path="${archive_path}.minisig"
-
-    info "Downloading ${BINARY_NAME}..."
-    download_file "$archive_url" "$archive_path"
-
-    # Verify signature if minisign is available
-    if command -v minisign >/dev/null 2>&1; then
-        info "Downloading signature..."
-        download_file "$sig_url" "$sig_path"
-
-        # Download public key
-        local pubkey_url="${BASE_URL}/download/v${version}/minisign.pub"
-        local pubkey_path="${temp_dir}/minisign.pub"
-        download_file "$pubkey_url" "$pubkey_path"
-
-        info "Verifying signature..."
-        if minisign -V -p "$pubkey_path" -m "$archive_path"; then
-            info "Signature verified successfully"
-        else
-            warn "Signature verification failed, proceeding anyway"
-        fi
+        ext=".exe"
+        archive_ext=".zip"
     else
-        warn "minisign not found, skipping signature verification"
+        ext=""
+        archive_ext=".tar.gz"
     fi
 
-    # Extract archive
-    info "Extracting archive..."
+    # Download URL
+    local filename="${BINARY_NAME}-${version}-${platform}${archive_ext}"
+    local download_url="${BASE_URL}/download/warcraft-rs-v${version}/${filename}"
+
+    info "Downloading from: ${download_url}"
+    download_file "$download_url" "${temp_dir}/${filename}"
+
+    # Download signature and public key (ephemeral signing uses .sig extension)
+    download_file "${download_url}.sig" "${temp_dir}/${filename}.sig" || warn "Signature file not found"
+    download_file "${BASE_URL}/download/warcraft-rs-v${version}/minisign.pub" "${temp_dir}/minisign.pub" || warn "Public key not found"
+
+    # Verify if signature and public key were downloaded
+    if [[ -f "${temp_dir}/${filename}.sig" ]] && [[ -f "${temp_dir}/minisign.pub" ]]; then
+        verify_binary "${temp_dir}/${filename}" "${temp_dir}/minisign.pub"
+    fi
+
+    # Extract binary
+    info "Extracting binary..."
     cd "$temp_dir"
-    if [[ "$ext" == "zip" ]]; then
-        unzip -q "$archive_path"
+    if [[ "$archive_ext" == ".zip" ]]; then
+        unzip -q "$filename"
     else
-        tar -xzf "$archive_path"
+        tar -xzf "$filename"
     fi
 
-    # Install binary
-    info "Installing to ${install_dir}..."
+    # Create install directory if it doesn't exist
     mkdir -p "$install_dir"
 
-    local binary_name="${BINARY_NAME}"
-    if [[ "$platform" == *"windows"* ]]; then
-        binary_name="${BINARY_NAME}.exe"
+    # Install binary
+    local binary_name="${BINARY_NAME}${ext}"
+    if [[ -f "$binary_name" ]]; then
+        info "Installing to ${install_dir}/${binary_name}"
+        mv "$binary_name" "${install_dir}/"
+        chmod +x "${install_dir}/${binary_name}"
+    else
+        error "Binary ${binary_name} not found in archive"
     fi
 
-    if [[ -f "$binary_name" ]]; then
-        chmod +x "$binary_name"
-        mv "$binary_name" "${install_dir}/"
-        info "Successfully installed ${BINARY_NAME} v${version}"
-        info "Run '${BINARY_NAME} --version' to verify installation"
+    # Verify installation
+    if "${install_dir}/${binary_name}" --version >/dev/null 2>&1; then
+        info "Installation successful!"
+        info "Binary installed to: ${install_dir}/${binary_name}"
+        
+        # Check if install_dir is in PATH
+        if ! echo "$PATH" | grep -q "$install_dir"; then
+            warn "${install_dir} is not in your PATH"
+            warn "Add it to your PATH by adding this to your shell configuration:"
+            warn "  export PATH=\"${install_dir}:\$PATH\""
+        fi
     else
-        error "Binary not found in archive"
+        error "Installation verification failed"
     fi
+}
+
+# Show help
+show_help() {
+    cat << EOF
+Install script for warcraft-rs
+
+USAGE:
+    $0 [OPTIONS] [VERSION]
+
+OPTIONS:
+    -h, --help          Show this help message
+    -d, --dir DIR       Install directory (default: \$HOME/.local/bin)
+    -t, --tag TAG       Install specific release tag
+
+ENVIRONMENT VARIABLES:
+    INSTALL_DIR         Override default install directory
+
+EXAMPLES:
+    # Install latest version
+    $0
+
+    # Install specific version
+    $0 0.1.0
+
+    # Install to custom directory
+    INSTALL_DIR=/usr/local/bin $0
+
+    # Install specific tag
+    $0 --tag warcraft-rs-v0.1.0
+EOF
 }
 
 # Parse command line arguments
 main() {
     local version=""
+    local tag=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -v|--version)
-                version="$2"
-                shift 2
-                ;;
             -h|--help)
-                echo "Usage: $0 [-v|--version VERSION]"
-                echo "Install warcraft-rs binary"
-                echo ""
-                echo "Options:"
-                echo "  -v, --version VERSION    Install specific version (default: latest)"
-                echo "  -h, --help              Show this help message"
+                show_help
                 exit 0
                 ;;
-            *)
+            -d|--dir)
+                INSTALL_DIR="$2"
+                shift 2
+                ;;
+            -t|--tag)
+                tag="$2"
+                shift 2
+                ;;
+            -*)
                 error "Unknown option: $1"
+                ;;
+            *)
+                version="$1"
+                shift
                 ;;
         esac
     done
 
-    install_warcraft_rs "$version"
+    # Extract version from tag if provided
+    if [[ -n "$tag" ]]; then
+        version="${tag#warcraft-rs-v}"
+    fi
+
+    install "$version"
 }
 
+# Run main function
 main "$@"

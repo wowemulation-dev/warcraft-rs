@@ -1,8 +1,9 @@
 //! BET (Block Extended Table) implementation for MPQ v3+ archives
 
-use super::common::{ReadLittleEndian, decrypt_table_data};
+use super::common::decrypt_table_data;
 use crate::compression::decompress;
 use crate::{Error, Result};
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 
 /// BET (Block Entry Table) for v3+ archives
@@ -184,7 +185,7 @@ impl BetTable {
         // Read file flags
         let mut file_flags = Vec::with_capacity(header.flag_count as usize);
         for _ in 0..header.flag_count {
-            file_flags.push(cursor.read_u32_le()?);
+            file_flags.push(cursor.read_u32::<LittleEndian>()?);
         }
 
         // Calculate sizes
@@ -197,7 +198,7 @@ impl BetTable {
         let hash_count = header.bet_hash_array_size / 8; // Each hash is 8 bytes
         let mut bet_hashes = Vec::with_capacity(hash_count as usize);
         for _ in 0..hash_count {
-            bet_hashes.push(cursor.read_u64_le()?);
+            bet_hashes.push(cursor.read_u64::<LittleEndian>()?);
         }
 
         Ok(Self {
@@ -216,25 +217,25 @@ impl BetTable {
 
         let mut cursor = std::io::Cursor::new(data);
         Ok(BetHeader {
-            table_size: cursor.read_u32_le()?,
-            file_count: cursor.read_u32_le()?,
-            unknown_08: cursor.read_u32_le()?,
-            table_entry_size: cursor.read_u32_le()?,
-            bit_index_file_pos: cursor.read_u32_le()?,
-            bit_index_file_size: cursor.read_u32_le()?,
-            bit_index_cmp_size: cursor.read_u32_le()?,
-            bit_index_flag_index: cursor.read_u32_le()?,
-            bit_index_unknown: cursor.read_u32_le()?,
-            bit_count_file_pos: cursor.read_u32_le()?,
-            bit_count_file_size: cursor.read_u32_le()?,
-            bit_count_cmp_size: cursor.read_u32_le()?,
-            bit_count_flag_index: cursor.read_u32_le()?,
-            bit_count_unknown: cursor.read_u32_le()?,
-            total_bet_hash_size: cursor.read_u32_le()?,
-            bet_hash_size_extra: cursor.read_u32_le()?,
-            bet_hash_size: cursor.read_u32_le()?,
-            bet_hash_array_size: cursor.read_u32_le()?,
-            flag_count: cursor.read_u32_le()?,
+            table_size: cursor.read_u32::<LittleEndian>()?,
+            file_count: cursor.read_u32::<LittleEndian>()?,
+            unknown_08: cursor.read_u32::<LittleEndian>()?,
+            table_entry_size: cursor.read_u32::<LittleEndian>()?,
+            bit_index_file_pos: cursor.read_u32::<LittleEndian>()?,
+            bit_index_file_size: cursor.read_u32::<LittleEndian>()?,
+            bit_index_cmp_size: cursor.read_u32::<LittleEndian>()?,
+            bit_index_flag_index: cursor.read_u32::<LittleEndian>()?,
+            bit_index_unknown: cursor.read_u32::<LittleEndian>()?,
+            bit_count_file_pos: cursor.read_u32::<LittleEndian>()?,
+            bit_count_file_size: cursor.read_u32::<LittleEndian>()?,
+            bit_count_cmp_size: cursor.read_u32::<LittleEndian>()?,
+            bit_count_flag_index: cursor.read_u32::<LittleEndian>()?,
+            bit_count_unknown: cursor.read_u32::<LittleEndian>()?,
+            total_bet_hash_size: cursor.read_u32::<LittleEndian>()?,
+            bet_hash_size_extra: cursor.read_u32::<LittleEndian>()?,
+            bet_hash_size: cursor.read_u32::<LittleEndian>()?,
+            bet_hash_array_size: cursor.read_u32::<LittleEndian>()?,
+            flag_count: cursor.read_u32::<LittleEndian>()?,
         })
     }
 

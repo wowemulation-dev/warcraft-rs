@@ -216,7 +216,94 @@ impl ParallelConfig {
 }
 
 /// Extract files with custom configuration
+///
+/// This function efficiently handles large numbers of files by using batched extraction
+/// to reduce resource pressure and prevent system overload.
 pub fn extract_with_config<P: AsRef<Path>>(
+    archive_path: P,
+    filenames: &[&str],
+    config: ParallelConfig,
+) -> Result<Vec<(String, Result<Vec<u8>>)>> {
+    // For large file counts, force batched extraction to prevent resource exhaustion
+    let use_batched = filenames.len() > 1000;
+
+    if use_batched {
+        extract_with_config_batched(archive_path, filenames, config)
+    } else {
+        extract_with_config_unbatched(archive_path, filenames, config)
+    }
+}
+
+/// Extract files using batched approach for better resource management
+fn extract_with_config_batched<P: AsRef<Path>>(
+    archive_path: P,
+    filenames: &[&str],
+    config: ParallelConfig,
+) -> Result<Vec<(String, Result<Vec<u8>>)>> {
+    let archive = ParallelArchive::open(archive_path)?;
+
+    // Calculate appropriate batch size based on file count and available threads
+    let num_threads = config
+        .num_threads
+        .unwrap_or_else(rayon::current_num_threads);
+    let effective_batch_size = if filenames.len() > 5000 {
+        // For very large extractions, use larger batches to reduce overhead
+        std::cmp::max(config.batch_size, filenames.len() / (num_threads * 2))
+    } else {
+        config.batch_size
+    };
+
+    // Configure thread pool if specified
+    let pool = if let Some(threads) = config.num_threads {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .map_err(|e| {
+                Error::Io(std::io::Error::other(format!(
+                    "Failed to create thread pool: {e}"
+                )))
+            })?
+    } else {
+        rayon::ThreadPoolBuilder::new().build().unwrap()
+    };
+
+    // Execute batched extraction in the configured thread pool
+    pool.install(|| {
+        // Split files into chunks for batched processing
+        let chunks: Vec<_> = filenames.chunks(effective_batch_size).collect();
+
+        // Process chunks in parallel, each chunk using one Archive handle
+        let batch_results: Result<Vec<_>> = chunks
+            .par_iter()
+            .map(|chunk| {
+                // Open one archive handle per batch to limit resource usage
+                let mut archive_handle = Archive::open(archive.path.as_path())?;
+
+                // Process all files in this batch with the same handle
+                let mut batch_results = Vec::with_capacity(chunk.len());
+                for &filename in chunk.iter() {
+                    let result = if config.skip_errors {
+                        archive_handle.read_file(filename)
+                    } else {
+                        let data = archive_handle.read_file(filename)?;
+                        Ok(data)
+                    };
+                    batch_results.push((filename.to_string(), result));
+                }
+                Ok(batch_results)
+            })
+            .collect();
+
+        // Flatten results while preserving order
+        match batch_results {
+            Ok(batches) => Ok(batches.into_iter().flatten().collect()),
+            Err(e) => Err(e),
+        }
+    })
+}
+
+/// Extract files using individual file approach for smaller file sets
+fn extract_with_config_unbatched<P: AsRef<Path>>(
     archive_path: P,
     filenames: &[&str],
     config: ParallelConfig,

@@ -409,16 +409,17 @@ impl Adt {
             let pos = writer.stream_position()? as u32;
             offsets.mfbo = Some(pos);
 
-            // MFBO is always 8 bytes
-            write_chunk_header(writer, b"MFBO", 8)?;
+            // MFBO is always 36 bytes (2 planes × 9 int16 values)
+            write_chunk_header(writer, b"MFBO", 36)?;
 
-            // Write boundaries
-            for i in 0..2 {
-                writer.write_u16_le(mfbo.max[i])?;
+            // Write maximum flight bounds plane (9 int16 values)
+            for i in 0..9 {
+                writer.write_i16_le(mfbo.max[i])?;
             }
 
-            for i in 0..2 {
-                writer.write_u16_le(mfbo.min[i])?;
+            // Write minimum flight bounds plane (9 int16 values)
+            for i in 0..9 {
+                writer.write_i16_le(mfbo.min[i])?;
             }
         }
 

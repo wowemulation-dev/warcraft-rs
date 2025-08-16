@@ -166,6 +166,12 @@ impl WmoParser {
         let skybox = self.parse_skybox(&chunks, reader, version, &header)?;
         debug!("Skybox: {:?}", skybox);
 
+        // Parse convex volume planes (Cataclysm+)
+        let convex_volume_planes = self.parse_convex_volume_planes(&chunks, reader, version)?;
+        if let Some(ref cvp) = convex_volume_planes {
+            debug!("Found {} convex volume planes", cvp.planes.len());
+        }
+
         // Create global bounding box from all groups
         let bounding_box = self.calculate_global_bounding_box(&groups);
 
@@ -183,6 +189,7 @@ impl WmoParser {
             textures,
             header,
             skybox,
+            convex_volume_planes,
         })
     }
 
@@ -911,6 +918,61 @@ impl WmoParser {
         } else {
             Ok(Some(skybox_path))
         }
+    }
+
+    /// Parse convex volume planes (MCVP chunk) - Cataclysm+ transport WMOs
+    fn parse_convex_volume_planes<R: Read + Seek>(
+        &self,
+        chunks: &HashMap<ChunkId, Chunk>,
+        reader: &mut R,
+        version: WmoVersion,
+    ) -> Result<Option<WmoConvexVolumePlanes>> {
+        // MCVP was introduced in Cataclysm for transport WMOs
+        if !version.supports_feature(WmoFeature::ConvexVolumePlanes) {
+            return Ok(None);
+        }
+
+        let mcvp_chunk = match chunks.get(&chunks::MCVP) {
+            Some(chunk) => chunk,
+            None => return Ok(None), // No MCVP chunk
+        };
+
+        let mcvp_data = mcvp_chunk.read_data(reader)?;
+
+        // Each convex volume plane is 20 bytes: Vec3 normal (12) + f32 distance (4) + u32 flags (4)
+        const PLANE_SIZE: usize = 20;
+
+        if mcvp_data.len() % PLANE_SIZE != 0 {
+            warn!(
+                "MCVP chunk size {} is not a multiple of plane size {}",
+                mcvp_data.len(),
+                PLANE_SIZE
+            );
+            return Ok(None);
+        }
+
+        let plane_count = mcvp_data.len() / PLANE_SIZE;
+        let mut planes = Vec::with_capacity(plane_count);
+
+        let mut cursor = std::io::Cursor::new(&mcvp_data);
+
+        for _ in 0..plane_count {
+            let normal = Vec3 {
+                x: cursor.read_f32_le()?,
+                y: cursor.read_f32_le()?,
+                z: cursor.read_f32_le()?,
+            };
+            let distance = cursor.read_f32_le()?;
+            let flags = cursor.read_u32_le()?;
+
+            planes.push(WmoConvexVolumePlane {
+                normal,
+                distance,
+                flags,
+            });
+        }
+
+        Ok(Some(WmoConvexVolumePlanes { planes }))
     }
 
     /// Parse a list of null-terminated strings from a buffer

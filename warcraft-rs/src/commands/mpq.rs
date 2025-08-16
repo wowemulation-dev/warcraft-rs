@@ -585,42 +585,81 @@ fn extract_files(
 ) -> Result<()> {
     if patches.is_empty() {
         // Use parallel extraction by default
-        let spinner = create_spinner("Opening archive...");
-        let parallel_archive =
-            ParallelArchive::open(archive_path).context("Failed to open archive")?;
-        spinner.finish_and_clear();
-
         let files_to_extract: Vec<String> = if files.is_empty() {
-            parallel_archive.list_files().to_vec()
+            // For bulk extraction, read listfile directly to avoid slow database lookups
+            println!("Reading file list from archive...");
+            let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
+
+            // Try to read (listfile) directly for faster bulk operations
+            match archive.read_file("(listfile)") {
+                Ok(listfile_data) => {
+                    println!("Parsing listfile...");
+                    match wow_mpq::special_files::parse_listfile(&listfile_data) {
+                        Ok(filenames) => {
+                            println!("Found {} files in listfile", filenames.len());
+                            filenames
+                        }
+                        Err(_) => {
+                            println!(
+                                "Failed to parse listfile, falling back to slow enumeration..."
+                            );
+                            let file_list = archive
+                                .list()?
+                                .into_iter()
+                                .map(|e| e.name)
+                                .collect::<Vec<String>>();
+                            println!("Found {} files", file_list.len());
+                            file_list
+                        }
+                    }
+                }
+                Err(_) => {
+                    println!("No listfile found, using slow enumeration...");
+                    let file_list = archive
+                        .list()?
+                        .into_iter()
+                        .map(|e| e.name)
+                        .collect::<Vec<String>>();
+                    println!("Found {} files", file_list.len());
+                    file_list
+                }
+            }
         } else {
             files
         };
 
         let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
 
-        // Configure parallel extraction with sensible defaults
+        // Configure parallel extraction with sensible defaults for large extractions
+        let default_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
+        let batch_size = if files_to_extract.len() > 5000 {
+            // For very large extractions, use bigger batches to reduce overhead
+            std::cmp::max(
+                50,
+                files_to_extract.len() / (threads.unwrap_or(default_threads) * 4),
+            )
+        } else if files_to_extract.len() > 1000 {
+            // For moderately large extractions, use medium batches
+            25
+        } else {
+            // For small extractions, use small batches
+            10
+        };
+
         let mut config = ParallelConfig::new()
-            .batch_size(10) // Default batch size
+            .batch_size(batch_size)
             .skip_errors(skip_errors);
 
         if let Some(num_threads) = threads {
             config = config.threads(num_threads);
         }
 
-        // Extract files in parallel
+        // Extract files in parallel using the direct API (avoids slow ParallelArchive::open)
         let file_refs: Vec<&str> = files_to_extract.iter().map(|s| s.as_str()).collect();
-        let results = if skip_errors {
-            use wow_mpq::single_archive_parallel::extract_with_config;
-            extract_with_config(archive_path, &file_refs, config)?
-        } else {
-            // If not skipping errors, use the simpler API
-            parallel_archive
-                .extract_files_parallel(&file_refs)
-                .context("Failed to extract files")?
-                .into_iter()
-                .map(|(name, data)| (name, Ok(data)))
-                .collect()
-        };
+        use wow_mpq::single_archive_parallel::extract_with_config;
+        let results = extract_with_config(archive_path, &file_refs, config)?;
 
         // Write extracted files to disk
         let mut success_count = 0;

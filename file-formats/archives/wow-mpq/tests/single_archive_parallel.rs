@@ -357,3 +357,105 @@ fn test_thread_count() {
     assert!(thread_count > 0);
     println!("Current thread count: {thread_count}");
 }
+
+#[test]
+fn test_large_scale_extraction_with_config() {
+    // Create archive with many files to test bulk extraction behavior
+    let temp = TempDir::new().unwrap();
+    let path = temp.path().join("large_test.mpq");
+
+    let mut builder = ArchiveBuilder::new()
+        .block_size(7)
+        .default_compression(flags::ZLIB);
+
+    // Create 2000+ files to simulate large-scale extraction scenario
+    for i in 0..2000 {
+        let content = format!("Test file {i} with content").repeat(10);
+        builder = builder.add_file_data(content.into_bytes(), &format!("bulk/file_{i:04}.txt"));
+    }
+
+    builder.build(&path).unwrap();
+
+    // Test extraction with different configurations
+    let files: Vec<&str> = (0..2000)
+        .map(|i| Box::leak(format!("bulk/file_{i:04}.txt").into_boxed_str()) as &str)
+        .collect();
+
+    // Test with small batch size (should trigger batched mode)
+    let config = ParallelConfig::new()
+        .batch_size(25)
+        .threads(4)
+        .skip_errors(false);
+
+    let results = extract_with_config(&path, &files, config).unwrap();
+    assert_eq!(results.len(), 2000);
+
+    // Verify all files were extracted successfully
+    for (i, (filename, result)) in results.iter().enumerate() {
+        assert_eq!(filename, &format!("bulk/file_{i:04}.txt"));
+        assert!(
+            result.is_ok(),
+            "Failed to extract {filename}: {:?}",
+            result.as_ref().err()
+        );
+        let data = result.as_ref().unwrap();
+        assert!(!data.is_empty());
+    }
+
+    println!(
+        "Successfully extracted {len} files using batched mode",
+        len = results.len()
+    );
+}
+
+#[test]
+fn test_very_large_scale_extraction_performance() {
+    // Simulate the scenario with 12K+ files like Patch-4.MPQ
+    let temp = TempDir::new().unwrap();
+    let path = temp.path().join("massive_test.mpq");
+
+    let mut builder = ArchiveBuilder::new()
+        .block_size(7)
+        .default_compression(flags::ZLIB);
+
+    // Create 5000 files to test performance characteristics without timeout
+    for i in 0..5000 {
+        let content = format!("Large scale test file {i}").repeat(5);
+        builder = builder.add_file_data(content.into_bytes(), &format!("massive/test_{i:05}.dat"));
+    }
+
+    builder.build(&path).unwrap();
+
+    let files: Vec<&str> = (0..5000)
+        .map(|i| Box::leak(format!("massive/test_{i:05}.dat").into_boxed_str()) as &str)
+        .collect();
+
+    // Use configuration optimized for large-scale extraction
+    let config = ParallelConfig::new()
+        .batch_size(100) // Larger batch size for efficiency
+        .threads(8)
+        .skip_errors(true); // Continue on errors
+
+    let start = std::time::Instant::now();
+    let results = extract_with_config(&path, &files, config).unwrap();
+    let elapsed = start.elapsed();
+
+    assert_eq!(results.len(), 5000);
+    println!(
+        "Extracted {} files in {:?} ({:.2} files/sec)",
+        results.len(),
+        elapsed,
+        results.len() as f64 / elapsed.as_secs_f64()
+    );
+
+    // Verify reasonable performance (should not take more than 30 seconds)
+    assert!(
+        elapsed.as_secs() < 30,
+        "Extraction took too long: {:?}",
+        elapsed
+    );
+
+    // Count successful extractions
+    let successful = results.iter().filter(|(_, result)| result.is_ok()).count();
+    assert_eq!(successful, 5000, "Some extractions failed");
+}
