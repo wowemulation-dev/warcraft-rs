@@ -67,7 +67,7 @@ pub fn normalize_mpq_path(path: &str) -> String {
 pub fn mpq_path_to_system(path: &str) -> String {
     #[cfg(unix)]
     {
-        path.replace('\\', "/")
+        path.replace('\\', "/").to_lowercase()
     }
 
     #[cfg(windows)]
