@@ -219,6 +219,8 @@ pub struct Skin {
     pub bone_indices: Vec<u8>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub submeshes: Vec<SkinSubmesh>,
+    #[debug(with = debug::trimmed_collection_fmt)]
+    pub texture_units: Vec<M2Batch>,
 
     pub shadow_batches: SkinShadowBatches,
 }
@@ -232,6 +234,7 @@ impl VWowStructR<SkinVersion> for Skin {
             triangles: header.triangles.wow_read_to_vec(reader)?,
             bone_indices: header.bone_indices.wow_read_to_vec(reader)?,
             submeshes: header.submeshes.wow_read_to_vec(reader)?,
+            texture_units: header.texture_units.wow_read_to_vec(reader)?,
             shadow_batches: reader.v_new_from_header(&header.shadow_batches)?,
             header,
         })
@@ -249,14 +252,16 @@ impl WowStructW for Skin {
         header.triangles = self.triangles.wow_write(&mut data_section_writer)?;
         header.bone_indices = self.bone_indices.wow_write(&mut data_section_writer)?;
         header.submeshes = self.submeshes.wow_write(&mut data_section_writer)?;
+        header.texture_units = self.texture_units.wow_write(&mut data_section_writer)?;
         header.shadow_batches = self.shadow_batches.wow_write(&mut data_section_writer)?;
 
         let header_size = header.wow_size();
-        header.shadow_batches.add_offset(header_size);
         header.indices.add_offset(header_size);
         header.triangles.add_offset(header_size);
         header.bone_indices.add_offset(header_size);
         header.submeshes.add_offset(header_size);
+        header.texture_units.add_offset(header_size);
+        header.shadow_batches.add_offset(header_size);
 
         writer.wow_write(&header)?;
         writer.write_all(&data_section)?;

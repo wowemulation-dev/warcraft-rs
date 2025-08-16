@@ -71,7 +71,7 @@ pub enum M2Commands {
         detailed: bool,
 
         /// Parse version
-        #[arg(short, long)]
+        #[arg(long)]
         version: u32,
     },
 
@@ -262,7 +262,7 @@ fn handle_skin_info(path: PathBuf, detailed: bool, version: u32) -> Result<()> {
 
     if detailed {
         println!("\n=== Detailed Information ===");
-        println!("{:?}", &skin);
+        println!("{:#?}", &skin);
     }
 
     Ok(())
