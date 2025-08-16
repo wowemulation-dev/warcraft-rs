@@ -108,7 +108,7 @@ pub enum M2ParticleEmitterBlending {
         emitter_type: u16,
     },
 
-    #[wow_data(read_if = version >= M2Version::TBC)]
+    #[wow_data(read_if = version >= M2Version::TBCV1)]
     Later {
         blending_type: u8,
         emitter_type: u8,

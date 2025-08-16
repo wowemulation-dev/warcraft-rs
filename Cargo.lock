@@ -2788,6 +2788,7 @@ dependencies = [
  "wow-adt",
  "wow-blp",
  "wow-cdbc",
+ "wow-data",
  "wow-m2",
  "wow-mpq",
  "wow-wdl",

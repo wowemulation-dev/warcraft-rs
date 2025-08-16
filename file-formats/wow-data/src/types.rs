@@ -13,7 +13,7 @@ pub trait WowHeaderR: Sized {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self>;
 }
 
-pub trait DataVersion: Copy {}
+pub trait DataVersion: Copy + PartialEq + Eq + PartialOrd + Ord {}
 
 pub trait VWowHeaderR<V: DataVersion>: Sized {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: V) -> Result<Self>;
@@ -42,6 +42,18 @@ where
     T: VWowHeaderR<V>,
 {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &T) -> Result<Self>;
+}
+
+pub trait WowStructR: Sized {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self>;
+}
+
+pub trait VWowStructR<V: DataVersion>: Sized {
+    fn wow_read<R: Read + Seek>(reader: &mut R, version: V) -> Result<Self>;
+}
+
+pub trait WowStructW {
+    fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<()>;
 }
 
 impl WowHeaderR for u32 {
@@ -752,24 +764,17 @@ macro_rules! v_wow_collection {
 
 pub trait WowVec<T: WowHeaderR + WowHeaderW> {
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<WowArray<T>>;
-    fn wow_size(&self) -> usize;
 }
 
 impl<T: WowHeaderR + WowHeaderW> WowVec<T> for Vec<T> {
+    /// Write vector data to `writer` and return a `WowArray<T>`. The offset property
+    /// is set from the current writer position.
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<WowArray<T>> {
         let offset = writer.stream_position()?;
         for item in self {
             writer.wow_write(item)?
         }
         Ok(WowArray::<T>::new(self.len() as u32, offset as u32))
-    }
-
-    fn wow_size(&self) -> usize {
-        if self.is_empty() {
-            0
-        } else {
-            self.len() * self[0].wow_size()
-        }
     }
 }
 
@@ -1239,7 +1244,7 @@ mod tests {
         fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
             let header_size = self.header.wow_size();
 
-            let mut data_section = Vec::with_capacity(self.vectors.wow_size());
+            let mut data_section = Vec::new();
             let mut data_section_writer = Cursor::new(&mut data_section);
 
             let mut vectors = self.vectors.wow_write(&mut data_section_writer)?;
@@ -1348,7 +1353,7 @@ mod tests {
 
             let header_size = new_header.wow_size();
 
-            let mut data_section = Vec::with_capacity(self.vectors.wow_size());
+            let mut data_section = Vec::new();
             let mut data_section_writer = Cursor::new(&mut data_section);
 
             new_header.vectors = self.vectors.wow_write(&mut data_section_writer)?;

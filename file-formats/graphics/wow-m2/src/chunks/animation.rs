@@ -119,7 +119,7 @@ pub struct M2Box {
 pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
     Single(WowArray<T>),
 
-    #[wow_data(read_if = version > M2Version::TBC)]
+    #[wow_data(read_if = version >= M2Version::WotLK)]
     Multiple(WowArray<WowArray<T>>),
 }
 
@@ -128,7 +128,7 @@ pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
 pub enum M2InterpolationRangeHeader {
     None,
 
-    #[wow_data(read_if = version <= M2Version::TBC)]
+    #[wow_data(read_if = version <= M2Version::TBCV4)]
     Some(WowArray<(u32, u32)>),
 }
 
@@ -329,7 +329,7 @@ pub struct M2FakeAnimationBlock<T: WowHeaderR + WowHeaderW> {
 pub enum M2AnimationTiming {
     StartEnd(u32, u32),
 
-    #[wow_data(read_if = version > M2Version::TBC)]
+    #[wow_data(read_if = version>= M2Version::WotLK)]
     Duration(u32),
 }
 
@@ -338,7 +338,7 @@ pub enum M2AnimationTiming {
 pub enum M2AnimationBlending {
     Time(u32),
 
-    #[wow_data(read_if = version >= M2Version::WoD)]
+    #[wow_data(read_if = version >= M2Version::BfAPlus)]
     InOut(u16, u16),
 }
 

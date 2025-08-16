@@ -17,6 +17,7 @@ clap = { version = "4.5", features = ["derive", "cargo", "env"] }
 clap_complete = "4.5"
 
 # File format crates
+wow-data = { path = "../file-formats/wow-data", version = "0.3.0", optional = true }
 wow-mpq = { path = "../file-formats/archives/wow-mpq", version = "0.3.0" }
 wow-cdbc = { path = "../file-formats/database/wow-cdbc", version = "0.3.0", optional = true, features = [
   "cli",
@@ -76,7 +77,7 @@ full = [
 mpq = []
 dbc = ["dep:wow-cdbc"]
 blp = ["dep:wow-blp", "dep:image"]
-m2 = ["dep:wow-m2"]
+m2 = ["dep:wow-m2", "dep:wow-data"]
 wmo = ["dep:wow-wmo"]
 adt = ["dep:wow-adt"]
 wdt = ["dep:wow-wdt", "serde"]

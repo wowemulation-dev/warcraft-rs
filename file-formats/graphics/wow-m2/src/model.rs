@@ -24,7 +24,7 @@ use crate::header::{
 };
 
 /// Main M2 model structure
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct M2Model {
     pub header: M2Header,
     pub name: String,

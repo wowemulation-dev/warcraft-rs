@@ -62,7 +62,7 @@ pub enum M2BoneRotationHeader {
 
 impl VWowHeaderR<M2Version> for M2BoneRotationHeader {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
-        Ok(if version == M2Version::Classic {
+        Ok(if version <= M2Version::ClassicV4 {
             Self::Classic(reader.wow_read_versioned(version)?)
         } else {
             Self::Later(reader.wow_read_versioned(version)?)
@@ -98,7 +98,7 @@ pub enum M2BoneCrc {
         u_zratio_of_chain: u16,
     },
 
-    #[wow_data(read_if = version > M2Version::Classic)]
+    #[wow_data(read_if = version >= M2Version::TBCV1)]
     Crc(u32),
 }
 
@@ -165,7 +165,10 @@ impl M2Bone {
         version: M2Version,
     ) -> Result<Vec<M2Bone>> {
         // Special handling for BC item files with 203 bones
-        if version == M2Version::TBC && bone_header_array.count == 203 {
+        if version >= M2Version::TBCV1
+            && version <= M2Version::TBCV4
+            && bone_header_array.count == 203
+        {
             // Check if this might be an item file with bone indices instead of bone structures
             let current_pos = reader.stream_position()?;
             let file_size = reader.seek(SeekFrom::End(0))?;
