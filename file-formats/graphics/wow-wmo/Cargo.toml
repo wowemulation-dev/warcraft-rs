@@ -26,7 +26,7 @@ tracing-subscriber = "0.3.19"
 [dev-dependencies]
 criterion = { workspace = true }
 tempfile = { workspace = true }
-rstest = "0.25.0"
+rstest = { workspace = true }
 test-case = "3.3.1"
 
 [[bench]]

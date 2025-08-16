@@ -27,7 +27,7 @@ memchr = { workspace = true }
 bitflags = { workspace = true }
 glam = { workspace = true }
 anyhow = { workspace = true }
-wow-blp = { path = "../wow-blp", version = "0.3.0" }
+wow-blp = { path = "../wow-blp" }
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -35,6 +35,7 @@ tempfile = { workspace = true }
 env_logger = { workspace = true }
 pretty_assertions = { workspace = true }
 test-case = { workspace = true }
+rstest = { workspace = true }
 
 [features]
 default = []

@@ -15,7 +15,6 @@ use std::path::Path;
 use crate::error::{M2Error, Result};
 use crate::version::M2Version;
 
-/// Magic signature for Skin files ("SKIN")
 pub const SKIN_MAGIC: [u8; 4] = *b"SKIN";
 
 pub trait SkinHeaderT: Sized {
@@ -53,6 +52,15 @@ pub enum SkinCenterPosition {
         position: C3Vector,
         radius: f32,
     },
+}
+
+impl SkinCenterPosition {
+    pub fn is_none(&self) -> bool {
+        match self {
+            Self::None => true,
+            _ => false,
+        }
+    }
 }
 
 /// Skin file header
@@ -324,7 +332,6 @@ impl SkinHeaderT for OldSkinHeader {
 }
 
 impl OldSkinHeader {
-    /// Create a new Skin header for a specific version
     pub fn new() -> Self {
         Self {
             magic: SKIN_MAGIC,
@@ -341,27 +348,20 @@ impl OldSkinHeader {
 /// Submesh structure
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 pub struct SkinSubmesh {
-    /// Submesh ID
     pub id: u16,
     /// Level of detail
     pub level: u16,
-    /// Start vertex index
     pub vertex_start: u16,
-    /// Vertex count
     pub vertex_count: u16,
-    /// Start triangle index
     pub triangle_start: u16,
-    /// Triangle count
     pub triangle_count: u16,
-    /// Bone count
     pub bone_count: u16,
-    /// Start bone index
     pub bone_start: u16,
     /// Bone influence count (max bones per vertex)
     pub bone_influence: u16,
+    pub _padding: u16,
     /// Center of mass
     pub center: C3Vector,
-    /// Sort center
     pub sort_center: C3Vector,
     /// Bounding sphere radius
     pub bounding_radius: f32,
@@ -373,18 +373,14 @@ pub struct SkinG<H>
 where
     H: SkinHeaderT,
 {
-    /// Skin header
     pub header: H,
-    /// Indices
     #[debug(with = debug::trimmed_collection_fmt)]
     pub indices: Vec<u16>,
     /// Triangles (each is 3 indices)
     #[debug(with = debug::trimmed_collection_fmt)]
     pub triangles: Vec<u16>,
-    /// Bone indices
     #[debug(with = debug::trimmed_collection_fmt)]
     pub bone_indices: Vec<u8>,
-    /// Submeshes
     #[debug(with = debug::trimmed_collection_fmt)]
     pub submeshes: Vec<SkinSubmesh>,
     #[debug(with = debug::trimmed_collection_fmt)]
@@ -428,7 +424,6 @@ where
 
     /// Write a Skin to a writer
     pub fn write<W: Write + Seek>(&self, writer: &mut W) -> Result<()> {
-        // We need to recalculate all offsets and build the file in memory
         let mut data_section = Vec::new();
         let mut header = self.header.clone();
 
@@ -637,40 +632,40 @@ mod tests {
         assert_eq!(header.submeshes.offset, 0x400);
         assert_eq!(header.material_lookup.count, 5);
         assert_eq!(header.material_lookup.offset, 0x500);
-        // assert!(header.center_position.is_none());
-        // assert!(header.center_bounds.is_none());
+        assert!(header.center_position.is_none());
     }
 
-    // #[test]
-    // fn test_submesh_parse_write() {
-    //     let submesh = SkinSubmesh {
-    //         id: 1,
-    //         level: 0,
-    //         vertex_start: 0,
-    //         vertex_count: 100,
-    //         triangle_start: 0,
-    //         triangle_count: 50,
-    //         bone_count: 10,
-    //         bone_start: 0,
-    //         bone_influence: 4,
-    //         center: [1.0, 2.0, 3.0],
-    //         sort_center: [1.5, 2.5, 3.5],
-    //         bounding_radius: 5.0,
-    //     };
-    //
-    //     let mut data = Vec::new();
-    //     submesh.write(&mut data).unwrap();
-    //
-    //     let mut cursor = Cursor::new(data);
-    //     let parsed_submesh = SkinSubmesh::parse(&mut cursor).unwrap();
-    //
-    //     assert_eq!(parsed_submesh.id, 1);
-    //     assert_eq!(parsed_submesh.vertex_count, 100);
-    //     assert_eq!(parsed_submesh.triangle_count, 50);
-    //     assert_eq!(parsed_submesh.bone_count, 10);
-    //     assert_eq!(parsed_submesh.bone_influence, 4);
-    //     assert_eq!(parsed_submesh.center, [1.0, 2.0, 3.0]);
-    //     assert_eq!(parsed_submesh.sort_center, [1.5, 2.5, 3.5]);
-    //     assert_eq!(parsed_submesh.bounding_radius, 5.0);
-    // }
+    #[test]
+    fn test_submesh_parse_write() {
+        let submesh = SkinSubmesh {
+            id: 1,
+            level: 0,
+            vertex_start: 0,
+            vertex_count: 100,
+            triangle_start: 0,
+            triangle_count: 50,
+            bone_count: 10,
+            bone_start: 0,
+            bone_influence: 4,
+            _padding: 0,
+            center: C3Vector::new(1.0, 2.0, 3.0),
+            sort_center: C3Vector::new(1.5, 2.5, 3.5),
+            bounding_radius: 5.0,
+        };
+
+        let mut data = Vec::new();
+        submesh.wow_write(&mut data).unwrap();
+
+        let mut cursor = Cursor::new(data);
+        let parsed_submesh = SkinSubmesh::wow_read(&mut cursor).unwrap();
+
+        assert_eq!(parsed_submesh.id, 1);
+        assert_eq!(parsed_submesh.vertex_count, 100);
+        assert_eq!(parsed_submesh.triangle_count, 50);
+        assert_eq!(parsed_submesh.bone_count, 10);
+        assert_eq!(parsed_submesh.bone_influence, 4);
+        assert_eq!(parsed_submesh.center, C3Vector::new(1.0, 2.0, 3.0));
+        assert_eq!(parsed_submesh.sort_center, C3Vector::new(1.5, 2.5, 3.5));
+        assert_eq!(parsed_submesh.bounding_radius, 5.0);
+    }
 }

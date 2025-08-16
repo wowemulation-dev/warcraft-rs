@@ -3303,6 +3303,7 @@ dependencies = [
  "log",
  "memchr",
  "pretty_assertions",
+ "rstest",
  "serde",
  "tempfile",
  "test-case",
