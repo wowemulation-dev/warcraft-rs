@@ -99,7 +99,7 @@ pub enum M2BoneCrc {
     #[wow_data(read_if = version >= M2Version::TBCV1 && version <= M2Version::TBCV4)]
     TBC([u8; 4]),
 
-    #[wow_data(read_if = version >= M2Version::TBCV1)]
+    #[wow_data(read_if = version >= M2Version::WotLK)]
     Crc(u32),
 }
 
