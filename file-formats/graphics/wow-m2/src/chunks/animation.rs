@@ -329,7 +329,7 @@ pub struct M2FakeAnimationBlock<T: WowHeaderR + WowHeaderW> {
 pub enum M2AnimationTiming {
     StartEnd(u32, u32),
 
-    #[wow_data(read_if = version>= M2Version::WotLK)]
+    #[wow_data(read_if = version >= M2Version::WotLK)]
     Duration(u32),
 }
 

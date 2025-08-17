@@ -1,11 +1,9 @@
-use std::fs::File;
-use wow_data::{prelude::*, wow_collection};
+use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
 
 use custom_debug::Debug;
-use wow_data::types::C3Vector;
+use wow_data::types::{C3Vector, WowStructR, WowStructW};
 use wow_utils::debug;
-
-use std::path::Path;
 
 use crate::chunks::animation::M2Animation;
 use crate::chunks::bone::M2Bone;
@@ -17,9 +15,8 @@ use crate::chunks::{
     M2Attachment, M2Camera, M2Event, M2Light, M2ParticleEmitter, M2RibbonEmitter,
     M2TransparencyAnimation, M2Vertex,
 };
-use crate::error::Result;
 use crate::header::{
-    M2Header, M2PlayableAnimationLookup, M2SkinProfile, M2SkinProfiles, M2TextureCombinerCombos,
+    M2Header, M2PlayableAnimationLookup, M2SkinProfiles, M2TextureCombinerCombos,
     M2TextureFlipbooks,
 };
 
@@ -41,7 +38,7 @@ pub struct M2Model {
     #[debug(with = debug::trimmed_collection_fmt)]
     pub vertices: Vec<M2Vertex>,
 
-    pub skin_profiles: Option<Vec<M2SkinProfile>>,
+    pub skin_profiles: M2SkinProfiles,
 
     #[debug(with = debug::trimmed_collection_fmt)]
     pub color_animations: Vec<M2ColorAnimation>,
@@ -99,15 +96,9 @@ pub struct M2Model {
     pub texture_combiner_combos: M2TextureCombinerCombos,
 }
 
-impl M2Model {
-    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+impl WowStructR for M2Model {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
         let header: M2Header = reader.wow_read()?;
-
-        let skin_profiles = if let M2SkinProfiles::UpToTBC(skin_profiles) = &header.skin_profiles {
-            Some(skin_profiles.wow_read_to_vec(reader)?)
-        } else {
-            None
-        };
 
         let color_animations = v_wow_collection!(
             reader,
@@ -226,8 +217,8 @@ impl M2Model {
                 .v_new_from_header(&header.playable_animation_lookup)?,
             bones: M2Bone::read_bone_array(reader, header.bones.clone(), header.version)?,
             key_bone_lookup: reader.new_from_header(&header.key_bone_lookup)?,
-            vertices: header.vertices.wow_read_to_vec(reader, header.version)?,
-            skin_profiles,
+            vertices: header.vertices.wow_read_to_vec(reader)?,
+            skin_profiles: reader.v_new_from_header(&header.skin_profiles)?,
             color_animations,
             textures,
             texture_weights,
@@ -259,21 +250,10 @@ impl M2Model {
             header,
         })
     }
+}
 
-    /// Load an M2 model from a file
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let mut file = File::open(path)?;
-        Self::parse(&mut file)
-    }
-
-    /// Save an M2 model to a file
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let mut file = File::create(path)?;
-        self.write(&mut file)
-    }
-
-    /// Write an M2 model to a writer
-    pub fn write<W: Write + Seek>(&self, _writer: &mut W) -> Result<()> {
+impl WowStructW for M2Model {
+    fn wow_write<W: Write + Seek>(&self, _writer: &mut W) -> WDResult<()> {
         todo!()
     }
 }

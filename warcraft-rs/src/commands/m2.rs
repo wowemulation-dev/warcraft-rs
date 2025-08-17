@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use std::{fs::File, path::PathBuf};
-use wow_data::types::VWowStructR;
+use wow_data::types::{VWowStructR, WowStructR};
 
 use wow_blp::parser::load_blp;
 use wow_m2::{M2Model, Skin, skin::SkinVersion};
@@ -159,19 +159,16 @@ pub fn execute(cmd: M2Commands) -> Result<()> {
 fn handle_info(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading M2 model: {}", path.display());
 
-    let _model = M2Model::load(&path)
-        .with_context(|| format!("Failed to load M2 model from {}", path.display()))?;
+    let mut fp = File::open(path)?;
+    let model = M2Model::wow_read(&mut fp)?;
 
     println!("\n=== M2 Model Information ===");
-
-    // Note: Many fields are private in the M2Model struct, so we can only show basic info
-    // The actual model implementation would need to expose more public methods/fields
 
     println!("File loaded successfully!");
 
     if detailed {
         println!("\n=== Detailed Information ===");
-        println!("(Detailed information requires additional public API methods)");
+        println!("{:#?}", &model);
     }
 
     Ok(())
@@ -226,8 +223,8 @@ fn handle_info(path: PathBuf, detailed: bool) -> Result<()> {
 // }
 
 fn handle_tree(path: PathBuf, max_depth: usize, _show_size: bool, _show_refs: bool) -> Result<()> {
-    let _model = M2Model::load(&path)
-        .with_context(|| format!("Failed to load M2 model from {}", path.display()))?;
+    let mut fp = File::open(path)?;
+    let _model = M2Model::wow_read(&mut fp)?;
 
     let root = TreeNode::new("M2 Model".to_string(), NodeType::Root);
 

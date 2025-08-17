@@ -147,16 +147,36 @@ pub type M2SkinProfile = u32;
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
-pub enum M2SkinProfiles {
+pub enum M2SkinProfilesHeader {
     UpToTBC(WowArray<M2SkinProfile>),
 
     #[wow_data(read_if = version >= M2Version::WotLK)]
     Later(u32),
 }
 
-impl Default for M2SkinProfiles {
+impl Default for M2SkinProfilesHeader {
     fn default() -> Self {
         Self::Later(4)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub enum M2SkinProfiles {
+    Some(Vec<M2SkinProfile>),
+
+    #[default]
+    None,
+}
+
+impl VWowDataR<M2Version, M2SkinProfilesHeader> for M2SkinProfiles {
+    fn new_from_header<R: Read + Seek>(
+        reader: &mut R,
+        header: &M2SkinProfilesHeader,
+    ) -> WDResult<Self> {
+        Ok(match header {
+            M2SkinProfilesHeader::UpToTBC(array) => Self::Some(array.wow_read_to_vec(reader)?),
+            M2SkinProfilesHeader::Later(_) => Self::None,
+        })
     }
 }
 
@@ -284,11 +304,10 @@ pub struct M2Header {
     pub key_bone_lookup: WowArray<u16>,
 
     // Geometry data
-    #[wow_data(versioned)]
-    pub vertices: WowArrayV<M2Version, M2Vertex>,
+    pub vertices: WowArray<M2Vertex>,
 
     #[wow_data(versioned)]
-    pub skin_profiles: M2SkinProfiles,
+    pub skin_profiles: M2SkinProfilesHeader,
 
     // Color data
     #[wow_data(versioned)]
@@ -392,11 +411,11 @@ impl M2Header {
             },
             bones: WowArrayV::default(),
             key_bone_lookup: WowArray::default(),
-            vertices: WowArrayV::default(),
+            vertices: WowArray::default(),
             skin_profiles: if version >= M2Version::WotLK {
-                M2SkinProfiles::Later(0)
+                M2SkinProfilesHeader::Later(0)
             } else {
-                M2SkinProfiles::UpToTBC(WowArray::default())
+                M2SkinProfilesHeader::UpToTBC(WowArray::default())
             },
             color_animations: WowArrayV::default(),
             textures: WowArray::default(),

@@ -4,8 +4,6 @@ use wow_data::prelude::*;
 use wow_data::types::{C2Vector, C3Vector};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
-use crate::version::M2Version;
-
 bitflags::bitflags! {
     /// Vertex flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,31 +43,13 @@ impl WowHeaderW for M2VertexFlags {
 }
 
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
-pub enum M2TexCoords2 {
-    #[default]
-    None,
-
-    #[wow_data(read_if = version >= M2Version::WotLK)]
-    Some(C2Vector),
-}
-
-#[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
 pub struct M2Vertex {
     pub position: C3Vector,
-    /// Bone weights (0-255)
     pub bone_weights: [u8; 4],
-    /// Bone indices
     pub bone_indices: [u8; 4],
-    /// Normal vector
     pub normal: C3Vector,
-    /// Primary texture coordinates
     pub tex_coords: C2Vector,
-
-    /// Secondary texture coordinates (added in Cataclysm)
-    #[wow_data(versioned)]
-    pub tex_coords2: M2TexCoords2,
+    pub tex_coords2: C2Vector,
 }
 
 impl M2Vertex {
