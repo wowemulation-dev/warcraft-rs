@@ -30,7 +30,10 @@ impl TryFrom<u16> for M2InterpolationType {
             1 => Ok(Self::Linear),
             2 => Ok(Self::Bezier),
             3 => Ok(Self::Hermite),
-            _ => Err(M2Error::UnsupportedNumericVersion(value as u32)),
+            _ => Err(M2Error::ParseError(format!(
+                "Invalid interpolation value: {}",
+                value
+            ))),
         }
     }
 }

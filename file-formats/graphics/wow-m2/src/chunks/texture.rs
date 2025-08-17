@@ -54,7 +54,10 @@ impl TryFrom<u32> for M2TextureType {
             9 => Ok(Self::Custom1),
             10 => Ok(Self::Custom2),
             11 => Ok(Self::Custom3),
-            _ => Err(M2Error::UnsupportedNumericVersion(value)),
+            _ => Err(M2Error::ParseError(format!(
+                "Invalid texture type value: {}",
+                value
+            ))),
         }
     }
 }

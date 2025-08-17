@@ -29,7 +29,10 @@ impl TryFrom<u16> for M2TextureTransformType {
             2 => Ok(Self::Rotate),
             3 => Ok(Self::Scale),
             4 => Ok(Self::Matrix),
-            _ => Err(M2Error::UnsupportedNumericVersion(value as u32)),
+            _ => Err(M2Error::ParseError(format!(
+                "Invalid texture transform type value: {}",
+                value
+            ))),
         }
     }
 }

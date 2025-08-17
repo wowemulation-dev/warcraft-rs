@@ -57,7 +57,10 @@ impl TryFrom<u16> for M2LightType {
             1 => Ok(Self::Point),
             2 => Ok(Self::Spot),
             3 => Ok(Self::Ambient),
-            _ => Err(M2Error::UnsupportedNumericVersion(value as u32)),
+            _ => Err(M2Error::ParseError(format!(
+                "Invalid light type value: {}",
+                value
+            ))),
         }
     }
 }

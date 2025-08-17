@@ -118,7 +118,10 @@ impl TryFrom<u16> for M2TexTransformType {
             3 => Ok(Self::Scale),
             4 => Ok(Self::Stretch),
             5 => Ok(Self::Camera),
-            _ => Err(M2Error::UnsupportedNumericVersion(value as u32)),
+            _ => Err(M2Error::ParseError(format!(
+                "Invalid tex transform type value: {}",
+                value
+            ))),
         }
     }
 }
