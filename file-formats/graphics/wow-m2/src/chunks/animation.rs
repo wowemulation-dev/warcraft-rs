@@ -267,11 +267,11 @@ pub struct M2AnimationTrackData<T: fmt::Debug + WowHeaderR + WowHeaderW> {
     #[wow_data(versioned)]
     pub interpolation_ranges: M2InterpolationRange,
 
-    // #[debug(with = trimmed_trackvec_fmt)]
+    #[debug(with = trimmed_trackvec_fmt)]
     #[wow_data(versioned)]
     pub timestamps: TrackVec<u32>,
 
-    // #[debug(with = trimmed_trackvec_fmt)]
+    #[debug(with = trimmed_trackvec_fmt)]
     #[wow_data(versioned)]
     pub values: TrackVec<T>,
 }
