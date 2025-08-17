@@ -93,10 +93,11 @@ impl VWowDataR<M2Version, M2BoneRotationHeader> for M2BoneRotationData {
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = M2Version)]
 pub enum M2BoneCrc {
-    Classic {
-        u_dist_to_furth_desc: u16,
-        u_zratio_of_chain: u16,
-    },
+    None,
+
+    /// Unknown use
+    #[wow_data(read_if = version >= M2Version::TBCV1 && version <= M2Version::TBCV4)]
+    TBC([u8; 4]),
 
     #[wow_data(read_if = version >= M2Version::TBCV1)]
     Crc(u32),
@@ -123,22 +124,6 @@ pub struct M2BoneHeader {
     #[wow_data(versioned)]
     pub scaling: M2AnimationTrackHeader<C3Vector>,
     pub pivot: C3Vector,
-}
-
-impl M2BoneHeader {
-    pub fn new(bone_id: i32, parent_bone: i16) -> Self {
-        Self {
-            bone_id,
-            flags: M2BoneFlags::empty(),
-            parent_bone,
-            submesh_id: 0,
-            bone_crc: M2BoneCrc::Crc(0),
-            position: M2AnimationTrackHeader::new(),
-            rotation: M2BoneRotationHeader::Later(M2AnimationTrackHeader::new()),
-            scaling: M2AnimationTrackHeader::new(),
-            pivot: C3Vector::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, WowDataR)]

@@ -10,31 +10,41 @@ use crate::error::Result;
 /// Texture type enum as defined in the M2 format
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum M2TextureType {
-    /// Regular texture
+    /// Texture defined in filename
     #[default]
     Hardcoded = 0,
     /// Body + clothes
     Body = 1,
     /// Item, capes
     Item = 2,
-    /// Weapon, armor (armorless)
-    WeaponArmorBasic = 3,
     /// Weapon blade
-    WeaponBlade = 4,
+    WeaponBlade = 3,
     /// Weapon handle
-    WeaponHandle = 5,
+    WeaponHandle = 4,
     /// Environment
-    Environment = 6,
+    Environment = 5,
     /// Hair, beard
-    Hair = 7,
-    /// Accessories
-    Accessories = 8,
-    /// Custom type, not used
-    Custom1 = 9,
-    /// Custom type, not used
-    Custom2 = 10,
-    /// Custom type, not used
-    Custom3 = 11,
+    Hair = 6,
+    FacialHair = 7,
+    SkinExtra = 8,
+    UISkin = 9,
+    TaurenMane = 10,
+    Monster1 = 11,
+    Monster2 = 12,
+    Monster3 = 13,
+    ItemIcon = 14,
+    GuildBgColor = 15,
+    GuildEmblemColor = 16,
+    GuildBorderColor = 17,
+    GuildEmblem = 18,
+    CharacterEyes = 19,
+    CharacterAccessory = 20,
+    CharacterSecondarySkin = 21,
+    CharacterSecondaryHair = 22,
+    CharacterSecondaryArmor = 23,
+    Unknown1 = 24,
+    Unknown2 = 25,
+    Unknown3 = 26,
 }
 
 impl TryFrom<u32> for M2TextureType {
@@ -45,15 +55,30 @@ impl TryFrom<u32> for M2TextureType {
             0 => Ok(Self::Hardcoded),
             1 => Ok(Self::Body),
             2 => Ok(Self::Item),
-            3 => Ok(Self::WeaponArmorBasic),
-            4 => Ok(Self::WeaponBlade),
-            5 => Ok(Self::WeaponHandle),
-            6 => Ok(Self::Environment),
-            7 => Ok(Self::Hair),
-            8 => Ok(Self::Accessories),
-            9 => Ok(Self::Custom1),
-            10 => Ok(Self::Custom2),
-            11 => Ok(Self::Custom3),
+            3 => Ok(Self::WeaponBlade),
+            4 => Ok(Self::WeaponHandle),
+            5 => Ok(Self::Environment),
+            6 => Ok(Self::Hair),
+            7 => Ok(Self::FacialHair),
+            8 => Ok(Self::SkinExtra),
+            9 => Ok(Self::UISkin),
+            10 => Ok(Self::TaurenMane),
+            11 => Ok(Self::Monster1),
+            12 => Ok(Self::Monster2),
+            13 => Ok(Self::Monster3),
+            14 => Ok(Self::ItemIcon),
+            15 => Ok(Self::GuildBgColor),
+            16 => Ok(Self::GuildEmblemColor),
+            17 => Ok(Self::GuildBorderColor),
+            18 => Ok(Self::GuildEmblem),
+            19 => Ok(Self::CharacterEyes),
+            20 => Ok(Self::CharacterAccessory),
+            21 => Ok(Self::CharacterSecondarySkin),
+            22 => Ok(Self::CharacterSecondaryHair),
+            23 => Ok(Self::CharacterSecondaryArmor),
+            24 => Ok(Self::Unknown1),
+            25 => Ok(Self::Unknown2),
+            26 => Ok(Self::Unknown3),
             _ => Err(M2Error::ParseError(format!(
                 "Invalid texture type value: {}",
                 value
@@ -68,15 +93,30 @@ impl From<M2TextureType> for u32 {
             M2TextureType::Hardcoded => 0,
             M2TextureType::Body => 1,
             M2TextureType::Item => 2,
-            M2TextureType::WeaponArmorBasic => 3,
-            M2TextureType::WeaponBlade => 4,
-            M2TextureType::WeaponHandle => 5,
-            M2TextureType::Environment => 6,
-            M2TextureType::Hair => 7,
-            M2TextureType::Accessories => 8,
-            M2TextureType::Custom1 => 9,
-            M2TextureType::Custom2 => 10,
-            M2TextureType::Custom3 => 11,
+            M2TextureType::WeaponBlade => 3,
+            M2TextureType::WeaponHandle => 4,
+            M2TextureType::Environment => 5,
+            M2TextureType::Hair => 6,
+            M2TextureType::FacialHair => 7,
+            M2TextureType::SkinExtra => 8,
+            M2TextureType::UISkin => 9,
+            M2TextureType::TaurenMane => 10,
+            M2TextureType::Monster1 => 11,
+            M2TextureType::Monster2 => 12,
+            M2TextureType::Monster3 => 13,
+            M2TextureType::ItemIcon => 14,
+            M2TextureType::GuildBgColor => 15,
+            M2TextureType::GuildEmblemColor => 16,
+            M2TextureType::GuildBorderColor => 17,
+            M2TextureType::GuildEmblem => 18,
+            M2TextureType::CharacterEyes => 19,
+            M2TextureType::CharacterAccessory => 20,
+            M2TextureType::CharacterSecondarySkin => 21,
+            M2TextureType::CharacterSecondaryHair => 22,
+            M2TextureType::CharacterSecondaryArmor => 23,
+            M2TextureType::Unknown1 => 24,
+            M2TextureType::Unknown2 => 25,
+            M2TextureType::Unknown3 => 26,
         }
     }
 }
