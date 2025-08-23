@@ -21,9 +21,12 @@ pub enum Chunk {
     ShapeBox(Vec<shape::ShapeBox>),
     ShapeCapsule(Vec<shape::ShapeCapsule>),
     ShapeSphere(Vec<shape::ShapeSphere>),
-    Shape(Vec<shape::Shape>),
+    Shape {
+        version: shape::Version,
+        items: Vec<shape::Shape>,
+    },
     Body {
-        version: body::BodyVersion,
+        version: body::Version,
         items: Vec<body::Body>,
     },
     Unkown(Vec<u8>),
@@ -70,9 +73,15 @@ impl WowStructR for PhysFile {
                 shape::SPHS => {
                     Chunk::ShapeSphere(read_chunk_items!(reader, chunk_header, shape::ShapeSphere))
                 }
-                shape::SHAP => Chunk::Shape(read_chunk_items!(reader, chunk_header, shape::Shape)),
+                shape::SHAP | shape::SHP2 => {
+                    let version: shape::Version = chunk_header.magic.try_into()?;
+                    Chunk::Shape {
+                        version,
+                        items: v_read_chunk_items!(reader, version, chunk_header, shape::Shape),
+                    }
+                }
                 body::BODY | body::BDY2 | body::BDY3 | body::BDY4 => {
-                    let version: body::BodyVersion = chunk_header.magic.try_into()?;
+                    let version: body::Version = chunk_header.magic.try_into()?;
                     Chunk::Body {
                         version,
                         items: v_read_chunk_items!(reader, version, chunk_header, body::Body),

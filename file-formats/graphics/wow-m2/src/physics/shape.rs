@@ -9,6 +9,62 @@ pub const BOXS: MagicStr = *b"SXOB";
 pub const CAPS: MagicStr = *b"SPAC";
 pub const SPHS: MagicStr = *b"SHPS";
 pub const SHAP: MagicStr = *b"PAHS";
+pub const SHP2: MagicStr = *b"2PHS";
+
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Version {
+    V1,
+    #[default]
+    V2,
+}
+
+impl DataVersion for Version {}
+
+impl TryFrom<MagicStr> for Version {
+    type Error = M2Error;
+
+    fn try_from(value: MagicStr) -> Result<Self> {
+        Ok(match value {
+            SHAP => Self::V1,
+            SHP2 => Self::V2,
+
+            _ => {
+                return Err(M2Error::ParseError(format!(
+                    "Invalid body magic: {:?}",
+                    value
+                )));
+            }
+        })
+    }
+}
+
+impl From<Version> for MagicStr {
+    fn from(value: Version) -> Self {
+        match value {
+            Version::V1 => SHAP,
+            Version::V2 => SHP2,
+        }
+    }
+}
+
+impl WowHeaderR for Version {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        let version: MagicStr = reader.wow_read()?;
+        Ok(version.try_into()?)
+    }
+}
+
+impl WowHeaderW for Version {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
+        let version: MagicStr = (*self).into();
+        writer.wow_write(&version)?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        4
+    }
+}
 
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 pub struct ShapeBox {
@@ -83,12 +139,36 @@ impl WowHeaderW for ShapeType {
     }
 }
 
+#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
+#[wow_data(version = Version)]
+pub enum VGTE2<T: Default + WowHeaderR + WowHeaderW> {
+    None,
+
+    #[wow_data(read_if = version >= Version::V2)]
+    Some(T),
+}
+
+impl<T: Default + WowHeaderR + WowHeaderW> Default for VGTE2<T> {
+    fn default() -> Self {
+        Self::Some(T::default())
+    }
+}
+
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
+#[wow_data(version = Version)]
 pub struct Shape {
     pub shape_type: ShapeType,
     pub index: i16,
-    pub unknown: [u8; 4],
+    pub unknown_x04: [u8; 4],
     pub friction: f32,
     pub restitution: f32,
     pub density: f32,
+    #[wow_data(versioned)]
+    pub unknown_x14: VGTE2<u32>,
+    #[wow_data(versioned)]
+    pub unknown_x18: VGTE2<f32>,
+    #[wow_data(versioned)]
+    pub unknown_x1c: VGTE2<u16>,
+    #[wow_data(versioned)]
+    pub unknown_x1e: VGTE2<[u8; 2]>,
 }
