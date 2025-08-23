@@ -10,32 +10,6 @@ use crate::version::M2Version;
 
 use super::animation::M2AnimationTrackData;
 
-bitflags::bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct M2LightFlags: u16 {
-        /// Light is directional (otherwise it's a point light)
-        const DIRECTIONAL = 0x01;
-        /// Unknown flag from Blood Elf "BE_hairSynthesizer.m2"
-        const UNKNOWN_BE_HAIR = 0x02;
-    }
-}
-
-impl WowHeaderR for M2LightFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2LightFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        2
-    }
-}
-
-/// Light type enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M2LightType {
     /// Directional light (like the sun)
@@ -118,10 +92,6 @@ pub struct M2LightHeader {
     pub attenuation_end_animation: M2AnimationTrackHeader<f32>,
     #[wow_data(versioned)]
     pub visibility_animation: M2AnimationTrackHeader<u8>,
-    // /// Light ID
-    // pub id: u32,
-    // /// Light flags
-    // pub flags: M2LightFlags,
 }
 
 #[derive(Debug, Clone, WowDataR)]

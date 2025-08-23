@@ -20,7 +20,7 @@ pub use attachment::{M2Attachment, M2AttachmentId};
 pub use camera::{M2Camera, M2CameraFlags};
 pub use color_animation::M2ColorAnimation;
 pub use event::{M2Event, M2EventIdentifier};
-pub use light::{M2Light, M2LightFlags, M2LightType};
+pub use light::{M2Light, M2LightType};
 pub use particle_emitter::{M2ParticleEmitter, M2ParticleEmitterType, M2ParticleFlags};
 // pub use physics::{
 //     M2PhysicsData, M2PhysicsFlags, M2PhysicsJoint, M2PhysicsShape, M2PhysicsShapeType,
