@@ -1,7 +1,6 @@
 // Re-export main components
 pub mod anim;
 pub mod chunks;
-pub mod converter;
 pub mod error;
 pub mod game_version;
 pub mod header;

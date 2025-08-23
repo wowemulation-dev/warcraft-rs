@@ -42,6 +42,3 @@ default = []
 serde-support = ["serde", "glam/serde"]
 trimmed-debug-output = ["wow-utils/trimmed-debug-output"]
 
-[[bench]]
-name = "parse_bench"
-harness = false
