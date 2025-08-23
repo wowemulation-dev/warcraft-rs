@@ -1,23 +1,16 @@
 use wow_data::error::Result as WDResult;
-use wow_data::types::{MagicStr, WowStructR};
+use wow_data::types::{ChunkHeader, MagicStr, WowStructR};
 use wow_data::{prelude::*, read_chunk_items, v_read_chunk_items};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::M2Error;
 
 use super::version::PhysVersion;
-use super::{body, shape};
+use super::{body, joint, shape};
 
 pub const PHYS: MagicStr = *b"SYHP";
 
-#[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
-pub struct ChunkHeader {
-    pub magic: MagicStr,
-    pub bytes: u32,
-}
-
 #[derive(Debug, Clone)]
-pub enum Chunk {
+pub enum PhysChunk {
     ShapeBox(Vec<shape::ShapeBox>),
     ShapeCapsule(Vec<shape::ShapeCapsule>),
     ShapeSphere(Vec<shape::ShapeSphere>),
@@ -29,6 +22,25 @@ pub enum Chunk {
         version: body::Version,
         items: Vec<body::Body>,
     },
+    Joint(Vec<joint::Joint>),
+    JointDistance(Vec<joint::JointDistance>),
+    JointPrismatic {
+        version: joint::prismatic::Version,
+        items: Vec<joint::JointPrismatic>,
+    },
+    JointRevolute {
+        version: joint::revolute::Version,
+        items: Vec<joint::JointRevolute>,
+    },
+    JointShoulder {
+        version: joint::shoulder::Version,
+        items: Vec<joint::JointShoulder>,
+    },
+    JointSpherical(Vec<joint::JointSpherical>),
+    JointWeld {
+        version: joint::weld::Version,
+        items: Vec<joint::JointWeld>,
+    },
     Unkown(Vec<u8>),
 }
 
@@ -36,7 +48,7 @@ pub enum Chunk {
 pub struct PhysFile {
     pub header: ChunkHeader,
     pub version: PhysVersion,
-    pub chunks: Vec<Chunk>,
+    pub chunks: Vec<PhysChunk>,
 }
 
 impl WowStructR for PhysFile {
@@ -63,28 +75,86 @@ impl WowStructR for PhysFile {
 
             chunks.push(match chunk_header.magic {
                 shape::BOXS => {
-                    Chunk::ShapeBox(read_chunk_items!(reader, chunk_header, shape::ShapeBox))
+                    PhysChunk::ShapeBox(read_chunk_items!(reader, chunk_header, shape::ShapeBox))
                 }
-                shape::CAPS => Chunk::ShapeCapsule(read_chunk_items!(
+                shape::CAPS => PhysChunk::ShapeCapsule(read_chunk_items!(
                     reader,
                     chunk_header,
                     shape::ShapeCapsule
                 )),
-                shape::SPHS => {
-                    Chunk::ShapeSphere(read_chunk_items!(reader, chunk_header, shape::ShapeSphere))
-                }
+                shape::SPHS => PhysChunk::ShapeSphere(read_chunk_items!(
+                    reader,
+                    chunk_header,
+                    shape::ShapeSphere
+                )),
                 shape::SHAP | shape::SHP2 => {
                     let version: shape::Version = chunk_header.magic.try_into()?;
-                    Chunk::Shape {
+                    PhysChunk::Shape {
                         version,
                         items: v_read_chunk_items!(reader, version, chunk_header, shape::Shape),
                     }
                 }
                 body::BODY | body::BDY2 | body::BDY3 | body::BDY4 => {
                     let version: body::Version = chunk_header.magic.try_into()?;
-                    Chunk::Body {
+                    PhysChunk::Body {
                         version,
                         items: v_read_chunk_items!(reader, version, chunk_header, body::Body),
+                    }
+                }
+                joint::JOIN => {
+                    PhysChunk::Joint(read_chunk_items!(reader, chunk_header, joint::Joint))
+                }
+                joint::DSTJ => PhysChunk::JointDistance(read_chunk_items!(
+                    reader,
+                    chunk_header,
+                    joint::JointDistance
+                )),
+                joint::PRSJ | joint::PRS2 => {
+                    let version: joint::prismatic::Version = chunk_header.magic.try_into()?;
+                    PhysChunk::JointPrismatic {
+                        version,
+                        items: v_read_chunk_items!(
+                            reader,
+                            version,
+                            chunk_header,
+                            joint::JointPrismatic
+                        ),
+                    }
+                }
+                joint::REVJ | joint::REV2 => {
+                    let version: joint::revolute::Version = chunk_header.magic.try_into()?;
+                    PhysChunk::JointRevolute {
+                        version,
+                        items: v_read_chunk_items!(
+                            reader,
+                            version,
+                            chunk_header,
+                            joint::JointRevolute
+                        ),
+                    }
+                }
+                joint::SHOJ | joint::SHJ2 => {
+                    let version: joint::shoulder::Version = chunk_header.magic.try_into()?;
+                    PhysChunk::JointShoulder {
+                        version,
+                        items: v_read_chunk_items!(
+                            reader,
+                            version,
+                            chunk_header,
+                            joint::JointShoulder
+                        ),
+                    }
+                }
+                joint::SPHJ => PhysChunk::JointSpherical(read_chunk_items!(
+                    reader,
+                    chunk_header,
+                    joint::JointSpherical
+                )),
+                joint::WELJ | joint::WLJ2 | joint::WLJ3 => {
+                    let version: joint::weld::Version = chunk_header.magic.try_into()?;
+                    PhysChunk::JointWeld {
+                        version,
+                        items: v_read_chunk_items!(reader, version, chunk_header, joint::JointWeld),
                     }
                 }
                 _ => {
@@ -92,7 +162,7 @@ impl WowStructR for PhysFile {
                     for _ in 0..chunk_header.bytes {
                         vec.push(reader.read_u8()?);
                     }
-                    Chunk::Unkown(vec)
+                    PhysChunk::Unkown(vec)
                 }
             });
         }

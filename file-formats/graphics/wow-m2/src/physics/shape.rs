@@ -159,16 +159,16 @@ impl<T: Default + WowHeaderR + WowHeaderW> Default for VGTE2<T> {
 pub struct Shape {
     pub shape_type: ShapeType,
     pub index: i16,
-    pub unknown_x04: [u8; 4],
+    pub _x04: [u8; 4],
     pub friction: f32,
     pub restitution: f32,
     pub density: f32,
     #[wow_data(versioned)]
-    pub unknown_x14: VGTE2<u32>,
+    pub _x14: VGTE2<u32>,
     #[wow_data(versioned)]
-    pub unknown_x18: VGTE2<f32>,
+    pub _x18: VGTE2<f32>,
     #[wow_data(versioned)]
-    pub unknown_x1c: VGTE2<u16>,
+    pub _x1c: VGTE2<u16>,
     #[wow_data(versioned)]
-    pub unknown_x1e: VGTE2<[u8; 2]>,
+    pub _x1e: VGTE2<[u8; 2]>,
 }

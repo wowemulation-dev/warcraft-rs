@@ -1063,6 +1063,12 @@ impl WowHeaderW for Mat3x4 {
     }
 }
 
+#[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
+pub struct ChunkHeader {
+    pub magic: MagicStr,
+    pub bytes: u32,
+}
+
 #[macro_export]
 macro_rules! read_chunk_items {
     ($reader:ident, $chunk_header:ident, $type:ty) => {{

@@ -198,15 +198,15 @@ pub struct Body {
     #[wow_data(versioned)]
     pub shape_count: ShapesBaseCount,
     #[wow_data(versioned)]
-    pub unknown_x1c_1: VE1<[u8; 4]>,
+    pub _x1c_1: VE1<[u8; 4]>,
     #[wow_data(versioned)]
-    pub unknown_x1c_2: VGTE2<f32>,
+    pub _x1c_2: VGTE2<f32>,
     #[wow_data(versioned)]
     pub drag: VGTE3<f32>,
     #[wow_data(versioned)]
-    pub unknown_x24: VGTE3<f32>,
+    pub _x24: VGTE3<f32>,
     #[wow_data(versioned)]
-    pub unknown_x28: VGTE3<f32>,
+    pub _x28: VGTE3<f32>,
     #[wow_data(versioned)]
-    pub unknown_x2c: VGTE4<[u8; 4]>,
+    pub _x2c: VGTE4<[u8; 4]>,
 }
