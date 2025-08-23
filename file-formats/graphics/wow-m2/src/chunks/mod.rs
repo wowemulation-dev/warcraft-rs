@@ -16,7 +16,7 @@ pub mod transparency_animation;
 pub mod vertex;
 
 // Re-export common types
-pub use attachment::{M2Attachment, M2AttachmentType};
+pub use attachment::{M2Attachment, M2AttachmentId};
 pub use camera::{M2Camera, M2CameraFlags};
 pub use color_animation::M2ColorAnimation;
 pub use event::{M2Event, M2EventType};

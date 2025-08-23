@@ -33,7 +33,12 @@ impl TryFrom<u32> for SkinVersion {
             1 => Self::V1,
             2 => Self::V2,
             3 => Self::V3,
-            _ => return Err(M2Error::UnsupportedNumericVersion(value)),
+            _ => {
+                return Err(M2Error::ParseError(format!(
+                    "Invalid skin version: {}",
+                    value
+                )));
+            }
         })
     }
 }
