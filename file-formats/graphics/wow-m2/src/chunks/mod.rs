@@ -19,7 +19,7 @@ pub mod vertex;
 pub use attachment::{M2Attachment, M2AttachmentId};
 pub use camera::{M2Camera, M2CameraFlags};
 pub use color_animation::M2ColorAnimation;
-pub use event::{M2Event, M2EventType};
+pub use event::{M2Event, M2EventIdentifier};
 pub use light::{M2Light, M2LightFlags, M2LightType};
 pub use particle_emitter::{M2ParticleEmitter, M2ParticleEmitterType, M2ParticleFlags};
 // pub use physics::{
