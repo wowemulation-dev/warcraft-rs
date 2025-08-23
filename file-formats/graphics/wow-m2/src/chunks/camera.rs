@@ -109,8 +109,6 @@ pub struct M2CameraHeader {
 
     #[wow_data(versioned)]
     pub fov_animation: M2CameraFovAnimationHeader,
-    // pub id: u32,
-    // pub flags: M2CameraFlags,
 }
 
 #[derive(Debug, Clone, WowDataR)]
