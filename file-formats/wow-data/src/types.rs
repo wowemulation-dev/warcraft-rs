@@ -206,6 +206,24 @@ impl WowHeaderW for u8 {
     }
 }
 
+impl WowHeaderR for [u8; 2] {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok([reader.read_u8()?, reader.read_u8()?])
+    }
+}
+impl WowHeaderW for [u8; 2] {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        for i in 0..2 {
+            writer.write_u8((*self)[i])?;
+        }
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        2
+    }
+}
+
 impl WowHeaderR for [u8; 4] {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         Ok([
@@ -228,6 +246,8 @@ impl WowHeaderW for [u8; 4] {
         4
     }
 }
+
+pub type MagicStr = [u8; 4];
 
 impl WowHeaderR for i8 {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
@@ -788,6 +808,42 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, WowHeaderR, WowHeaderW)]
+pub struct C4Vector {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+impl C4Vector {
+    pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+
+    pub fn to_glam(&self) -> glam::Vec4 {
+        glam::Vec4::new(self.x, self.y, self.z, self.w)
+    }
+
+    pub fn from_glam(v: glam::Vec4) -> Self {
+        Self {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+            w: v.w,
+        }
+    }
+
+    pub fn origin() -> Self {
+        Self {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+            w: 0.,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default, WowHeaderR, WowHeaderW)]
 pub struct C3Vector {
     pub x: f32,
     pub y: f32,
@@ -975,6 +1031,68 @@ impl WowHeaderW for [VectorFp6_9; 2] {
     fn wow_size(&self) -> usize {
         0_u16.wow_size() * 2 * 2
     }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Mat3x4 {
+    pub items: [C4Vector; 3],
+}
+
+impl WowHeaderR for Mat3x4 {
+    fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(Self {
+            items: [
+                C4Vector::wow_read(reader)?,
+                C4Vector::wow_read(reader)?,
+                C4Vector::wow_read(reader)?,
+            ],
+        })
+    }
+}
+
+impl WowHeaderW for Mat3x4 {
+    fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.wow_write(&self.items[0])?;
+        writer.wow_write(&self.items[1])?;
+        writer.wow_write(&self.items[2])?;
+        Ok(())
+    }
+
+    fn wow_size(&self) -> usize {
+        self.items[0].wow_size() * 3
+    }
+}
+
+#[macro_export]
+macro_rules! read_chunk_items {
+    ($reader:ident, $chunk_header:ident, $type:ty) => {{
+        let first: $type = $reader.wow_read()?;
+        let items = $chunk_header.bytes as usize / first.wow_size();
+
+        let mut vec = Vec::<$type>::with_capacity(items);
+        vec.push(first);
+
+        for _ in 1..items {
+            vec.push($reader.wow_read()?);
+        }
+        vec
+    }};
+}
+
+#[macro_export]
+macro_rules! v_read_chunk_items {
+    ($reader:ident, $version:ident, $chunk_header:ident, $type:ty) => {{
+        let first: $type = $reader.wow_read_versioned($version)?;
+        let items = $chunk_header.bytes as usize / first.wow_size();
+
+        let mut vec = Vec::<$type>::with_capacity(items);
+        vec.push(first);
+
+        for _ in 1..items {
+            vec.push($reader.wow_read_versioned($version)?);
+        }
+        vec
+    }};
 }
 
 #[cfg(test)]

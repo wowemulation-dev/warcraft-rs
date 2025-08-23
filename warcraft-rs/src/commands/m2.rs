@@ -6,7 +6,7 @@ use std::{fs::File, path::PathBuf};
 use wow_data::types::{VWowStructR, WowStructR};
 
 use wow_blp::parser::load_blp;
-use wow_m2::{M2Model, Skin, skin::SkinVersion};
+use wow_m2::{M2Model, PhysFile, Skin, skin::SkinVersion};
 
 use crate::utils::{NodeType, TreeNode, TreeOptions, render_tree};
 
@@ -119,6 +119,14 @@ pub enum M2Commands {
         #[arg(short, long)]
         detailed: bool,
     },
+
+    PhysInfo {
+        /// Path to the Phys file
+        file: PathBuf,
+
+        #[arg(short, long)]
+        detailed: bool,
+    },
 }
 
 pub fn execute(cmd: M2Commands) -> Result<()> {
@@ -153,6 +161,7 @@ pub fn execute(cmd: M2Commands) -> Result<()> {
         //     version,
         // } => handle_anim_convert(input, output, version),
         M2Commands::BlpInfo { file, detailed } => handle_blp_info(file, detailed),
+        M2Commands::PhysInfo { file, detailed } => handle_phys_info(file, detailed),
     }
 }
 
@@ -332,6 +341,23 @@ fn handle_blp_info(path: PathBuf, detailed: bool) -> Result<()> {
     if detailed {
         println!("\n=== Detailed Information ===");
         println!("(Detailed information requires additional public API methods)");
+    }
+
+    Ok(())
+}
+
+fn handle_phys_info(path: PathBuf, detailed: bool) -> Result<()> {
+    println!("Loading Phys file: {}", path.display());
+
+    let mut fp = File::open(path)?;
+    let phys = PhysFile::wow_read(&mut fp)?;
+
+    println!("\n=== Phys Information ===");
+    println!("File loaded successfully!");
+
+    if detailed {
+        println!("\n=== Detailed Information ===");
+        println!("{:#?}", &phys);
     }
 
     Ok(())

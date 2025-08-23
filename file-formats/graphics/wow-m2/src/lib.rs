@@ -5,6 +5,7 @@ pub mod error;
 pub mod game_version;
 pub mod header;
 pub mod model;
+pub mod physics;
 pub mod skin;
 pub mod version;
 
@@ -13,6 +14,7 @@ pub mod version;
 // pub use converter::M2Converter;
 pub use error::{M2Error, Result};
 pub use model::M2Model;
+pub use physics::PhysFile;
 pub use skin::Skin;
 pub use version::M2Version;
 
