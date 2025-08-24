@@ -16,14 +16,14 @@ use crate::chunks::{
     M2TransparencyAnimation, M2Vertex,
 };
 use crate::header::{
-    M2Header, M2PlayableAnimationLookup, M2SkinProfiles, M2TextureCombinerCombos,
-    M2TextureFlipbooks,
+    M2PlayableAnimationLookup, M2SkinProfiles, M2TextureCombinerCombos, M2TextureFlipbooks,
+    MD20Header,
 };
 
 /// Main M2 model structure
 #[derive(Debug, Clone, Default)]
-pub struct M2Model {
-    pub header: M2Header,
+pub struct MD20Model {
+    pub header: MD20Header,
     pub name: String,
     pub global_sequences: Vec<u32>,
     #[debug(with = debug::trimmed_collection_fmt)]
@@ -96,9 +96,9 @@ pub struct M2Model {
     pub texture_combiner_combos: M2TextureCombinerCombos,
 }
 
-impl WowStructR for M2Model {
+impl WowStructR for MD20Model {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        let header: M2Header = reader.wow_read()?;
+        let header: MD20Header = reader.wow_read()?;
 
         let color_animations = v_wow_collection!(
             reader,
@@ -252,7 +252,7 @@ impl WowStructR for M2Model {
     }
 }
 
-impl WowStructW for M2Model {
+impl WowStructW for MD20Model {
     fn wow_write<W: Write + Seek>(&self, _writer: &mut W) -> WDResult<()> {
         todo!()
     }

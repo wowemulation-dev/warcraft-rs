@@ -6,7 +6,7 @@ use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::error::Result;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 
 /// Texture animation type enum
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -74,7 +74,7 @@ impl WowHeaderW for M2TextureAnimationType {
 
 /// Texture animation structure
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2TextureAnimation {
     /// Animation type
     pub animation_type: M2TextureAnimationType,

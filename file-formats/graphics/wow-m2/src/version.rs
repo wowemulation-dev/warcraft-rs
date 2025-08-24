@@ -7,7 +7,7 @@ use wow_data::types::{DataVersion, WowHeaderR, WowHeaderW};
 use crate::{M2Error, error::Result};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum M2Version {
+pub enum MD20Version {
     ClassicV1,
     ClassicV2,
     ClassicV3,
@@ -28,7 +28,7 @@ pub enum M2Version {
     BfAPlus,
 }
 
-impl M2Version {
+impl MD20Version {
     pub fn try_from_header_version(version: u32) -> Option<Self> {
         match version {
             0x0100 => Some(Self::ClassicV1),
@@ -80,36 +80,36 @@ impl M2Version {
     }
 }
 
-impl std::fmt::Display for M2Version {
+impl std::fmt::Display for MD20Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl TryFrom<u32> for M2Version {
+impl TryFrom<u32> for MD20Version {
     type Error = M2Error;
 
     fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
-        M2Version::from_header_version(value)
+        MD20Version::from_header_version(value)
     }
 }
 
-impl From<M2Version> for u32 {
-    fn from(value: M2Version) -> Self {
+impl From<MD20Version> for u32 {
+    fn from(value: MD20Version) -> Self {
         value.to_header_version()
     }
 }
 
-impl DataVersion for M2Version {}
+impl DataVersion for MD20Version {}
 
-impl WowHeaderR for M2Version {
+impl WowHeaderR for MD20Version {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
         let version: u32 = reader.wow_read()?;
-        Ok(M2Version::from_header_version(version)?)
+        Ok(MD20Version::from_header_version(version)?)
     }
 }
 
-impl WowHeaderW for M2Version {
+impl WowHeaderW for MD20Version {
     fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
         let version: u32 = (*self).into();
         writer.wow_write(&version)?;

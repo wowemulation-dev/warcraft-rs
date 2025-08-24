@@ -6,7 +6,7 @@ use std::{fs::File, path::PathBuf};
 use wow_data::types::{VWowStructR, WowStructR};
 
 use wow_blp::parser::load_blp;
-use wow_m2::{M2Model, PhysFile, Skin, skin::SkinVersion};
+use wow_m2::{MD20Model, PhysFile, Skin, skin::SkinVersion};
 
 use crate::utils::{NodeType, TreeNode, TreeOptions, render_tree};
 
@@ -169,7 +169,7 @@ fn handle_info(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading M2 model: {}", path.display());
 
     let mut fp = File::open(path)?;
-    let model = M2Model::wow_read(&mut fp)?;
+    let model = MD20Model::wow_read(&mut fp)?;
 
     println!("\n=== M2 Model Information ===");
 
@@ -233,7 +233,7 @@ fn handle_info(path: PathBuf, detailed: bool) -> Result<()> {
 
 fn handle_tree(path: PathBuf, max_depth: usize, _show_size: bool, _show_refs: bool) -> Result<()> {
     let mut fp = File::open(path)?;
-    let _model = M2Model::wow_read(&mut fp)?;
+    let _model = MD20Model::wow_read(&mut fp)?;
 
     let root = TreeNode::new("M2 Model".to_string(), NodeType::Root);
 

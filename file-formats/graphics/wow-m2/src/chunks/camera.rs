@@ -1,5 +1,5 @@
 use crate::chunks::animation::M2AnimationTrackHeader;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::C3Vector;
@@ -36,11 +36,11 @@ impl WowHeaderW for M2CameraFlags {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2CameraFov {
     None,
 
-    #[wow_data(read_if = version < M2Version::Cataclysm)]
+    #[wow_data(read_if = version < MD20Version::Cataclysm)]
     Some(f32),
 }
 
@@ -53,9 +53,9 @@ pub enum M2CameraFovAnimationHeader {
     Some(M2AnimationTrackHeader<M2SplineKey<f32>>),
 }
 
-impl VWowHeaderR<M2Version> for M2CameraFovAnimationHeader {
-    fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
-        Ok(if version >= M2Version::Cataclysm {
+impl VWowHeaderR<MD20Version> for M2CameraFovAnimationHeader {
+    fn wow_read<R: Read + Seek>(reader: &mut R, version: MD20Version) -> WDResult<Self> {
+        Ok(if version >= MD20Version::Cataclysm {
             Self::Some(reader.wow_read_versioned(version)?)
         } else {
             Self::None
@@ -70,7 +70,7 @@ pub enum M2CameraFovAnimation {
     Some(M2AnimationTrackData<M2SplineKey<f32>>),
 }
 
-impl VWowDataR<M2Version, M2CameraFovAnimationHeader> for M2CameraFovAnimation {
+impl VWowDataR<MD20Version, M2CameraFovAnimationHeader> for M2CameraFovAnimation {
     fn new_from_header<R: Read + Seek>(
         reader: &mut R,
         header: &M2CameraFovAnimationHeader,
@@ -86,7 +86,7 @@ impl VWowDataR<M2Version, M2CameraFovAnimationHeader> for M2CameraFovAnimation {
 
 /// Represents a camera in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2CameraHeader {
     pub camera_type: u32,
     /// Field of view (in radians)
@@ -112,7 +112,7 @@ pub struct M2CameraHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2CameraHeader)]
+#[wow_data(version = MD20Version, header = M2CameraHeader)]
 pub struct M2CameraData {
     #[wow_data(versioned)]
     pub position_animation: M2AnimationTrackData<M2SplineKey<C3Vector>>,

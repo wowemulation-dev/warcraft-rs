@@ -1,5 +1,5 @@
 use crate::chunks::animation::M2AnimationTrackHeader;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Color, WowArray};
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
@@ -7,11 +7,11 @@ use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 use super::animation::M2AnimationTrackData;
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2RibbonEmitterRest {
     None,
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Some {
         priority_plane: u16,
         ribbon_color_index: u8,
@@ -21,7 +21,7 @@ pub enum M2RibbonEmitterRest {
 
 /// Represents a ribbon emitter in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2RibbonEmitterHeader {
     pub id: u32,
     pub bone_index: u32,
@@ -50,7 +50,7 @@ pub struct M2RibbonEmitterHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2RibbonEmitterHeader)]
+#[wow_data(version = MD20Version, header = M2RibbonEmitterHeader)]
 pub struct M2RibbonEmitterData {
     pub texture_indices: Vec<u16>,
     pub material_indices: Vec<u16>,

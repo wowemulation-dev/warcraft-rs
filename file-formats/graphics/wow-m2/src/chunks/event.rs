@@ -3,7 +3,7 @@ use wow_data::prelude::*;
 use wow_data::types::C3Vector;
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
-use crate::version::M2Version;
+use crate::version::MD20Version;
 
 use super::animation::{M2AnimationBaseTrackData, M2AnimationBaseTrackHeader};
 
@@ -597,7 +597,7 @@ impl WowHeaderW for M2EventIdentifier {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2EventHeader {
     pub identifier: M2EventIdentifier,
     pub data: u32,
@@ -608,7 +608,7 @@ pub struct M2EventHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2EventHeader)]
+#[wow_data(version = MD20Version, header = M2EventHeader)]
 pub struct M2EventData {
     #[wow_data(versioned)]
     pub enabled: M2AnimationBaseTrackData,

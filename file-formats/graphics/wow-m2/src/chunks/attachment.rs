@@ -4,7 +4,7 @@ use wow_data::types::C3Vector;
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
 use crate::chunks::animation::M2AnimationTrackHeader;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 use crate::{M2Error, Result};
 
 use super::animation::M2AnimationTrackData;
@@ -233,7 +233,7 @@ impl WowHeaderW for M2AttachmentId {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2AttachmentHeader {
     pub id: M2AttachmentId,
     pub bone_index: u16,
@@ -244,7 +244,7 @@ pub struct M2AttachmentHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2AttachmentHeader)]
+#[wow_data(version = MD20Version, header = M2AttachmentHeader)]
 pub struct M2AttachmentData {
     #[wow_data(versioned)]
     pub animate_attached: M2AnimationTrackData<u8>,

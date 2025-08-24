@@ -6,7 +6,7 @@ use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 use crate::M2Error;
 use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::error::Result;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 
 use super::animation::M2AnimationTrackData;
 
@@ -70,7 +70,7 @@ impl WowHeaderW for M2LightType {
 
 /// Represents a light in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2LightHeader {
     pub light_type: M2LightType,
     /// Bone to attach the light to
@@ -95,7 +95,7 @@ pub struct M2LightHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2LightHeader)]
+#[wow_data(version = MD20Version, header = M2LightHeader)]
 pub struct M2LightData {
     #[wow_data(versioned)]
     pub ambient_color_animation: M2AnimationTrackData<Color>,

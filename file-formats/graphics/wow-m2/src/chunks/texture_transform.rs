@@ -6,7 +6,7 @@ use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 use crate::M2Error;
 use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::error::Result;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 
 use super::animation::M2AnimationTrackData;
 
@@ -68,9 +68,9 @@ impl WowHeaderW for M2TextureTransformType {
 }
 
 #[derive(Debug, Clone, Copy, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2TextureTransformIdType {
-    #[wow_data(read_if = version >= M2Version::BfAPlus)]
+    #[wow_data(read_if = version >= MD20Version::BfAPlus)]
     Some {
         id: u32,
         transform_type: M2TextureTransformType,
@@ -79,7 +79,7 @@ pub enum M2TextureTransformIdType {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2TextureTransformHeader {
     #[wow_data(versioned)]
     pub id_type: M2TextureTransformIdType,
@@ -95,7 +95,7 @@ pub struct M2TextureTransformHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2TextureTransformHeader)]
+#[wow_data(version = MD20Version, header = M2TextureTransformHeader)]
 pub struct M2TextureTransformData {
     #[wow_data(versioned)]
     pub translation: M2AnimationTrackData<C3Vector>,

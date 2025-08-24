@@ -35,12 +35,12 @@ pub use vertex::M2Vertex;
 /// Module for converting chunks between different versions
 pub mod converter {
     use crate::error::Result;
-    use crate::version::M2Version;
+    use crate::version::MD20Version;
 
     /// Convert a chunk from one version to another
     pub trait VersionConverter {
         /// Convert self to a specified target version
-        fn convert_to_version(&self, target_version: M2Version) -> Result<Self>
+        fn convert_to_version(&self, target_version: MD20Version) -> Result<Self>
         where
             Self: Sized;
     }

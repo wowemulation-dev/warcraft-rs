@@ -1,4 +1,4 @@
-use crate::M2Version;
+use crate::MD20Version;
 use crate::chunks::animation::M2AnimationTrackHeader;
 use wow_data::prelude::*;
 use wow_data::types::{C2Vector, ColorA, VectorFp6_9, WowArray, WowCharArray};
@@ -101,14 +101,14 @@ impl M2ParticleEmitterType {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2ParticleEmitterBlending {
     Classic {
         blending_type: u16,
         emitter_type: u16,
     },
 
-    #[wow_data(read_if = version >= M2Version::TBCV1)]
+    #[wow_data(read_if = version >= MD20Version::TBCV1)]
     Later {
         blending_type: u8,
         emitter_type: u8,
@@ -117,37 +117,37 @@ pub enum M2ParticleEmitterBlending {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2ParticleEmitterMultiTextureParam {
     PreCata {
         particle_type: u8,
         head_or_tail: u8,
     },
 
-    #[wow_data(read_if = version >= M2Version::Cataclysm)]
+    #[wow_data(read_if = version >= MD20Version::Cataclysm)]
     AfterCata(u8),
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2ParticleEmitterLifespanVary {
     None,
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Some(f32),
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2ParticleEmitterEmissionRateVary {
     None,
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Some(f32),
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2ParticleEmitterColorAnimationHeader {
     UpToTbc {
         mid_point: f32,
@@ -158,7 +158,7 @@ pub enum M2ParticleEmitterColorAnimationHeader {
         tail_decay_uv_animation: [i16; 2],
     },
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Later {
         color_animation: M2FakeAnimationBlockHeader<C3Vector>,
         alpha_animation: M2FakeAnimationBlockHeader<u16>,
@@ -181,7 +181,7 @@ pub enum M2ParticleEmitterColorAnimation {
     },
 }
 
-impl VWowDataR<M2Version, M2ParticleEmitterColorAnimationHeader>
+impl VWowDataR<MD20Version, M2ParticleEmitterColorAnimationHeader>
     for M2ParticleEmitterColorAnimation
 {
     fn new_from_header<R: Read + Seek>(
@@ -216,13 +216,13 @@ impl VWowDataR<M2Version, M2ParticleEmitterColorAnimationHeader>
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2ParticleEmitterSpin {
     UpToTbc {
         spin: f32,
     },
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Later {
         base_spin: f32,
         base_spin_vary: f32,
@@ -233,7 +233,7 @@ pub enum M2ParticleEmitterSpin {
 
 /// Represents a particle emitter in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2ParticleEmitterOldHeader {
     pub id: u32,
     pub flags: M2ParticleFlags,
@@ -296,7 +296,7 @@ pub struct M2ParticleEmitterOldHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2ParticleEmitterOldHeader)]
+#[wow_data(version = MD20Version, header = M2ParticleEmitterOldHeader)]
 pub struct M2ParticleEmitterOldData {
     pub model_filename: String,
     pub recursion_model_filename: String,
@@ -334,7 +334,7 @@ pub struct M2ParticleEmitterOld {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2ParticleEmitterNewHeader {
     #[wow_data(versioned)]
     pub old_particle: M2ParticleEmitterOldHeader,
@@ -343,7 +343,7 @@ pub struct M2ParticleEmitterNewHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2ParticleEmitterNewHeader)]
+#[wow_data(version = MD20Version, header = M2ParticleEmitterNewHeader)]
 pub struct M2ParticleEmitterNewData {
     #[wow_data(versioned)]
     pub old_particle: M2ParticleEmitterOldData,
@@ -358,9 +358,9 @@ pub enum M2ParticleEmitterHeader {
     PostCata(M2ParticleEmitterNewHeader),
 }
 
-impl VWowHeaderR<M2Version> for M2ParticleEmitterHeader {
-    fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
-        Ok(if version >= M2Version::Cataclysm {
+impl VWowHeaderR<MD20Version> for M2ParticleEmitterHeader {
+    fn wow_read<R: Read + Seek>(reader: &mut R, version: MD20Version) -> WDResult<Self> {
+        Ok(if version >= MD20Version::Cataclysm {
             Self::PostCata(reader.wow_read_versioned(version)?)
         } else {
             Self::PreCata(reader.wow_read_versioned(version)?)
@@ -374,7 +374,7 @@ pub enum M2ParticleEmitter {
     PostCata(M2ParticleEmitterNewData),
 }
 
-impl VWowDataR<M2Version, M2ParticleEmitterHeader> for M2ParticleEmitter {
+impl VWowDataR<MD20Version, M2ParticleEmitterHeader> for M2ParticleEmitter {
     fn new_from_header<R: Read + Seek>(
         reader: &mut R,
         header: &M2ParticleEmitterHeader,

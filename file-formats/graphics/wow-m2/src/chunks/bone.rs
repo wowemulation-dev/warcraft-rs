@@ -6,7 +6,7 @@ use wow_data::types::{C3Vector, Quaternion, Quaternion16, VWowDataR, WowArrayV};
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
 use crate::Result;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 
 use super::animation::{M2AnimationTrackData, M2AnimationTrackHeader};
 
@@ -60,9 +60,9 @@ pub enum M2BoneRotationHeader {
     Later(M2AnimationTrackHeader<Quaternion16>),
 }
 
-impl VWowHeaderR<M2Version> for M2BoneRotationHeader {
-    fn wow_read<R: Read + Seek>(reader: &mut R, version: M2Version) -> WDResult<Self> {
-        Ok(if version <= M2Version::ClassicV4 {
+impl VWowHeaderR<MD20Version> for M2BoneRotationHeader {
+    fn wow_read<R: Read + Seek>(reader: &mut R, version: MD20Version) -> WDResult<Self> {
+        Ok(if version <= MD20Version::ClassicV4 {
             Self::Classic(reader.wow_read_versioned(version)?)
         } else {
             Self::Later(reader.wow_read_versioned(version)?)
@@ -76,7 +76,7 @@ pub enum M2BoneRotationData {
     Later(M2AnimationTrackData<Quaternion16>),
 }
 
-impl VWowDataR<M2Version, M2BoneRotationHeader> for M2BoneRotationData {
+impl VWowDataR<MD20Version, M2BoneRotationHeader> for M2BoneRotationData {
     fn new_from_header<R: Read + Seek>(
         reader: &mut R,
         header: &M2BoneRotationHeader,
@@ -91,21 +91,21 @@ impl VWowDataR<M2Version, M2BoneRotationHeader> for M2BoneRotationData {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2BoneCrc {
     None,
 
     /// Unknown use
-    #[wow_data(read_if = version >= M2Version::TBCV1 && version <= M2Version::TBCV4)]
+    #[wow_data(read_if = version >= MD20Version::TBCV1 && version <= MD20Version::TBCV4)]
     TBC([u8; 4]),
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Crc(u32),
 }
 
 /// Represents a bone in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2BoneHeader {
     pub bone_id: i32,
     pub flags: M2BoneFlags,
@@ -127,7 +127,7 @@ pub struct M2BoneHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version=M2Version, header=M2BoneHeader)]
+#[wow_data(version=MD20Version, header=M2BoneHeader)]
 pub struct M2BoneData {
     #[wow_data(versioned)]
     pub position: M2AnimationTrackData<C3Vector>,
@@ -146,12 +146,12 @@ pub struct M2Bone {
 impl M2Bone {
     pub fn read_bone_array<R: Read + Seek>(
         reader: &mut R,
-        bone_header_array: WowArrayV<M2Version, M2BoneHeader>,
-        version: M2Version,
+        bone_header_array: WowArrayV<MD20Version, M2BoneHeader>,
+        version: MD20Version,
     ) -> Result<Vec<M2Bone>> {
         // Special handling for BC item files with 203 bones
-        if version >= M2Version::TBCV1
-            && version <= M2Version::TBCV4
+        if version >= MD20Version::TBCV1
+            && version <= MD20Version::TBCV4
             && bone_header_array.count == 203
         {
             // Check if this might be an item file with bone indices instead of bone structures

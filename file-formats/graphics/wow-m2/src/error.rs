@@ -2,7 +2,7 @@ use std::io;
 use thiserror::Error;
 use wow_data::error::WowDataError;
 
-use crate::M2Version;
+use crate::MD20Version;
 
 /// Error types for M2 model parsing and processing
 #[derive(Error, Debug)]
@@ -28,7 +28,7 @@ pub enum M2Error {
 
     /// Unsupported version conversion
     #[error("Unsupported conversion to version: {0}")]
-    UnsupportedVersionWriting(M2Version),
+    UnsupportedVersionWriting(MD20Version),
 
     /// Error during parsing
     #[error("Parse error: {0}")]

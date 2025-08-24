@@ -11,7 +11,7 @@ use wow_utils::debug;
 
 use crate::M2Error;
 use crate::error::Result;
-use crate::version::M2Version;
+use crate::version::MD20Version;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M2InterpolationType {
@@ -118,20 +118,20 @@ pub struct M2Box {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum TrackArray<T: WowHeaderR + WowHeaderW> {
     Single(WowArray<T>),
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Multiple(WowArray<WowArray<T>>),
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2InterpolationRangeHeader {
     None,
 
-    #[wow_data(read_if = version <= M2Version::TBCV4)]
+    #[wow_data(read_if = version <= MD20Version::TBCV4)]
     Some(WowArray<(u32, u32)>),
 }
 
@@ -142,7 +142,7 @@ pub enum M2InterpolationRange {
     Some(Vec<(u32, u32)>),
 }
 
-impl VWowDataR<M2Version, M2InterpolationRangeHeader> for M2InterpolationRange {
+impl VWowDataR<MD20Version, M2InterpolationRangeHeader> for M2InterpolationRange {
     fn new_from_header<R: Read + Seek>(
         reader: &mut R,
         header: &M2InterpolationRangeHeader,
@@ -155,7 +155,7 @@ impl VWowDataR<M2Version, M2InterpolationRangeHeader> for M2InterpolationRange {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2AnimationBaseTrackHeader {
     pub interpolation_type: M2InterpolationType,
     pub global_sequence: i16,
@@ -166,7 +166,7 @@ pub struct M2AnimationBaseTrackHeader {
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header=M2AnimationBaseTrackHeader)]
+#[wow_data(version = MD20Version, header=M2AnimationBaseTrackHeader)]
 pub struct M2AnimationBaseTrackData {
     #[wow_data(versioned)]
     pub interpolation_ranges: M2InterpolationRange,
@@ -182,7 +182,7 @@ pub struct M2AnimationBaseTrack {
 
 /// An animation track header
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2AnimationTrackHeader<T: WowHeaderR + WowHeaderW> {
     pub interpolation_type: M2InterpolationType,
     pub global_sequence: i16,
@@ -219,7 +219,7 @@ pub enum TrackVec<T> {
     Multiple(Vec<Vec<T>>),
 }
 
-impl<T: WowHeaderR + WowHeaderW> VWowDataR<M2Version, TrackArray<T>> for TrackVec<T> {
+impl<T: WowHeaderR + WowHeaderW> VWowDataR<MD20Version, TrackArray<T>> for TrackVec<T> {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &TrackArray<T>) -> WDResult<Self> {
         Ok(match header {
             TrackArray::Multiple(array) => Self::Multiple(array.wow_read_to_vec_r(reader)?),
@@ -262,7 +262,7 @@ pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt
 }
 
 #[derive(Debug, Clone, WowDataR)]
-#[wow_data(version = M2Version, header = M2AnimationTrackHeader<T>)]
+#[wow_data(version = MD20Version, header = M2AnimationTrackHeader<T>)]
 pub struct M2AnimationTrackData<T: fmt::Debug + WowHeaderR + WowHeaderW> {
     #[wow_data(versioned)]
     pub interpolation_ranges: M2InterpolationRange,
@@ -288,7 +288,7 @@ impl<T: fmt::Debug + WowHeaderR + WowHeaderW> M2AnimationTrackData<T> {
 
 /// Animation block for a specific animation type
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2AnimationBlock<T: WowHeaderR + WowHeaderW> {
     #[wow_data(versioned)]
     pub track: M2AnimationTrackHeader<T>,
@@ -328,26 +328,26 @@ pub struct M2FakeAnimationBlock<T: WowHeaderR + WowHeaderW> {
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2AnimationTiming {
     StartEnd(u32, u32),
 
-    #[wow_data(read_if = version >= M2Version::WotLK)]
+    #[wow_data(read_if = version >= MD20Version::WotLK)]
     Duration(u32),
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub enum M2AnimationBlending {
     Time(u32),
 
-    #[wow_data(read_if = version >= M2Version::BfAPlus)]
+    #[wow_data(read_if = version >= MD20Version::BfAPlus)]
     InOut(u16, u16),
 }
 
 /// Animation data for a model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
-#[wow_data(version = M2Version)]
+#[wow_data(version = MD20Version)]
 pub struct M2Animation {
     pub animation_id: u16,
     pub sub_animation_id: u16,
