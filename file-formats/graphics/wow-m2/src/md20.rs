@@ -98,12 +98,14 @@ pub struct MD20Model {
 
 impl WowStructR for MD20Model {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
+        let offset = reader.stream_position()? - 4;
         let header: MD20Header = reader.wow_read()?;
 
         let color_animations = v_wow_collection!(
             reader,
             header.version,
             header.color_animations,
+            offset,
             |reader, item_header| {
                 M2ColorAnimation {
                     data: reader.v_new_from_header(&item_header)?,
@@ -112,15 +114,18 @@ impl WowStructR for MD20Model {
             }
         );
 
-        let textures = wow_collection!(reader, header.textures, |reader, item_header| M2Texture {
-            data: reader.new_from_header(&item_header)?,
-            header: item_header,
+        let textures = wow_collection!(reader, header.textures, offset, |reader, item_header| {
+            M2Texture {
+                data: reader.new_from_header(&item_header)?,
+                header: item_header,
+            }
         });
 
         let texture_weights = v_wow_collection!(
             reader,
             header.version,
             header.texture_weights,
+            offset,
             |reader, item_header| {
                 M2TransparencyAnimation {
                     data: reader.v_new_from_header(&item_header)?,
@@ -133,6 +138,7 @@ impl WowStructR for MD20Model {
             reader,
             header.version,
             header.texture_transforms,
+            offset,
             |reader, item_header| {
                 M2TextureTransform {
                     data: reader.v_new_from_header(&item_header)?,
@@ -145,6 +151,7 @@ impl WowStructR for MD20Model {
             reader,
             header.version,
             header.attachments,
+            offset,
             |reader, item_header| {
                 M2Attachment {
                     data: reader.v_new_from_header(&item_header)?,
@@ -157,6 +164,7 @@ impl WowStructR for MD20Model {
             reader,
             header.version,
             header.events,
+            offset,
             |reader, item_header| {
                 M2Event {
                     data: reader.v_new_from_header(&item_header)?,
@@ -169,6 +177,7 @@ impl WowStructR for MD20Model {
             reader,
             header.version,
             header.lights,
+            offset,
             |reader, item_header| {
                 M2Light {
                     data: reader.v_new_from_header(&item_header)?,
@@ -181,6 +190,7 @@ impl WowStructR for MD20Model {
             reader,
             header.version,
             header.cameras,
+            offset,
             |reader, item_header| {
                 M2Camera {
                     data: reader.v_new_from_header(&item_header)?,
@@ -193,6 +203,7 @@ impl WowStructR for MD20Model {
             reader,
             header.version,
             header.ribbon_emitters,
+            offset,
             |reader, item_header| {
                 M2RibbonEmitter {
                     data: reader.v_new_from_header(&item_header)?,
@@ -205,6 +216,7 @@ impl WowStructR for MD20Model {
             reader,
             header.version,
             header.particle_emitters,
+            offset,
             |reader, item_header| reader.v_new_from_header(&item_header)?
         );
 
@@ -215,7 +227,7 @@ impl WowStructR for MD20Model {
             animation_lookup: reader.new_from_header(&header.animation_lookup)?,
             playable_animation_lookup: reader
                 .v_new_from_header(&header.playable_animation_lookup)?,
-            bones: M2Bone::read_bone_array(reader, header.bones.clone(), header.version)?,
+            bones: M2Bone::read_bone_array(reader, header.bones.clone(), header.version, offset)?,
             key_bone_lookup: reader.new_from_header(&header.key_bone_lookup)?,
             vertices: header.vertices.wow_read_to_vec(reader)?,
             skin_profiles: reader.v_new_from_header(&header.skin_profiles)?,

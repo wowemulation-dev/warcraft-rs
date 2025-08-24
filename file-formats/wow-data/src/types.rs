@@ -365,10 +365,10 @@ where
     T: WowHeaderR + WowHeaderW,
     R: Read + Seek,
 {
-    pub fn new(reader: &'a mut R, array: WowArray<T>) -> Result<Self> {
+    pub fn new(reader: &'a mut R, root_offset: u64, array: WowArray<T>) -> Result<Self> {
         Ok(Self {
             reader,
-            initial_reader_pos: array.offset as u64,
+            initial_reader_pos: root_offset + array.offset as u64,
             current: 0,
             array,
             item_size: 0,
@@ -460,8 +460,9 @@ where
     pub fn new_iterator<'a, R: Read + Seek>(
         &self,
         reader: &'a mut R,
+        root_offset: u64,
     ) -> Result<WowArrayIter<'a, T, R>> {
-        WowArrayIter::new(reader, self.clone())
+        WowArrayIter::new(reader, root_offset, self.clone())
     }
 }
 
@@ -642,11 +643,16 @@ where
     T: VWowHeaderR<V> + WowHeaderW,
     R: Read + Seek,
 {
-    pub fn new(reader: &'a mut R, version: V, array: WowArrayV<V, T>) -> Result<Self> {
+    pub fn new(
+        reader: &'a mut R,
+        version: V,
+        root_offset: u64,
+        array: WowArrayV<V, T>,
+    ) -> Result<Self> {
         Ok(Self {
             reader,
             version,
-            initial_reader_pos: array.offset as u64,
+            initial_reader_pos: root_offset + array.offset as u64,
             current: 0,
             array,
             item_size: 0,
@@ -725,15 +731,16 @@ where
         &self,
         reader: &'a mut R,
         version: V,
+        root_offset: u64,
     ) -> Result<WowArrayVIter<'a, V, T, R>> {
-        WowArrayVIter::new(reader, version, self.clone())
+        WowArrayVIter::new(reader, version, root_offset, self.clone())
     }
 }
 
 #[macro_export]
 macro_rules! wow_collection {
-    ($reader:ident, $header:expr, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
-        let mut iter = $header.new_iterator($local_reader)?;
+    ($reader:ident, $header:expr, $root_offset:ident, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
+        let mut iter = $header.new_iterator($local_reader, $root_offset)?;
         let mut vec = Vec::with_capacity($header.count as usize);
         loop {
             match iter.next(|$local_reader, temp_header| {
@@ -758,8 +765,8 @@ macro_rules! wow_collection {
 
 #[macro_export]
 macro_rules! v_wow_collection {
-    ($reader:ident, $version:expr, $header:expr, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
-        let mut iter = $header.new_iterator($local_reader, $version)?;
+    ($reader:ident, $version:expr, $header:expr, $root_offset:ident, |$local_reader:ident, $item_header:ident| $constructor:expr) => {{
+        let mut iter = $header.new_iterator($local_reader, $version, $root_offset)?;
         let mut vec = Vec::with_capacity($header.count as usize);
         loop {
             match iter.next(|$local_reader, temp_header| {

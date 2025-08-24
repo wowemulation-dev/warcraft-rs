@@ -1,4 +1,3 @@
-use crate::M2Error;
 use crate::chunks::M2Vertex;
 use crate::chunks::animation::{M2Animation, M2SequenceFallback};
 use crate::chunks::attachment::M2AttachmentHeader;
@@ -22,8 +21,7 @@ use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::version::MD20Version;
 
-/// Magic signature for M2 files ("MD20")
-pub const M2_MAGIC: [u8; 4] = *b"MD20";
+pub const MD20_MAGIC: [u8; 4] = *b"MD20";
 
 bitflags! {
     /// Model flags as defined in the M2 format
@@ -278,8 +276,6 @@ pub enum M2TextureTransforms {
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct MD20Header {
-    /// Magic signature ("MD20")
-    pub magic: [u8; 4],
     pub version: MD20Version,
     pub name: WowCharArray,
     pub flags: M2ModelFlags,
@@ -374,20 +370,9 @@ impl WowHeaderR for MD20Header {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
         let start_position = reader.stream_position()?;
 
-        let magic: [u8; 4] = reader.wow_read()?;
-        let magic_str = String::from_utf8_lossy(&magic);
-        let m2_magic_str = String::from_utf8_lossy(&M2_MAGIC);
-
-        if magic != M2_MAGIC {
-            return Err(M2Error::InvalidMagic {
-                expected: m2_magic_str.into(),
-                actual: magic_str.into(),
-            }
-            .into());
-        }
         let version = MD20Version::from_header_version(reader.wow_read()?)?;
 
-        // rewind reader because the function below reads magic and version again
+        // rewind reader because the function below reads the version again
         reader.seek(SeekFrom::Start(start_position))?;
         Ok(reader.wow_read_versioned(version)?)
     }
@@ -397,7 +382,6 @@ impl MD20Header {
     /// Create a new M2 header for a specific version
     pub fn new(version: MD20Version) -> Self {
         Self {
-            magic: M2_MAGIC.into(),
             version,
             name: WowArray::default(),
             flags: M2ModelFlags::empty(),
