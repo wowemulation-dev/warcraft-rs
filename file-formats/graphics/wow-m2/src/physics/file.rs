@@ -5,7 +5,7 @@ use wow_data::{prelude::*, read_chunk_items, v_read_chunk_items};
 use crate::M2Error;
 
 use super::version::PhysVersion;
-use super::{body, joint, shape};
+use super::{body, joint, phyt, shape};
 
 pub const PHYS: MagicStr = *b"SYHP";
 
@@ -41,7 +41,11 @@ pub enum PhysChunk {
         version: joint::weld::Version,
         items: Vec<joint::JointWeld>,
     },
-    Unkown(Vec<u8>),
+    Phyt(Vec<phyt::Phyt>),
+    Unknown {
+        magic: String,
+        data: Vec<u8>,
+    },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -134,7 +138,8 @@ impl WowStructR for PhysFile {
                     }
                 }
                 joint::SHOJ | joint::SHJ2 => {
-                    let version: joint::shoulder::Version = chunk_header.magic.try_into()?;
+                    let version: joint::shoulder::Version =
+                        (version, chunk_header.magic).try_into()?;
                     PhysChunk::JointShoulder {
                         version,
                         items: v_read_chunk_items!(
@@ -157,12 +162,16 @@ impl WowStructR for PhysFile {
                         items: v_read_chunk_items!(reader, version, chunk_header, joint::JointWeld),
                     }
                 }
+                phyt::PHYT => PhysChunk::Phyt(read_chunk_items!(reader, chunk_header, phyt::Phyt)),
                 _ => {
                     let mut vec = Vec::with_capacity(chunk_header.bytes as usize);
                     for _ in 0..chunk_header.bytes {
                         vec.push(reader.read_u8()?);
                     }
-                    PhysChunk::Unkown(vec)
+                    PhysChunk::Unknown {
+                        magic: String::from_utf8_lossy(&chunk_header.magic).into(),
+                        data: vec,
+                    }
                 }
             });
         }

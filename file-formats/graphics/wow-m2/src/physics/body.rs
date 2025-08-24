@@ -112,7 +112,7 @@ pub enum ShapesBaseCount {
 
     V3 {
         count: i32,
-        unkown: f32,
+        _unknown: f32,
     },
 }
 
@@ -120,7 +120,7 @@ impl Default for ShapesBaseCount {
     fn default() -> Self {
         Self::V3 {
             count: 0,
-            unkown: 0.0,
+            _unknown: 0.0,
         }
     }
 }
@@ -198,9 +198,7 @@ pub struct Body {
     #[wow_data(versioned)]
     pub shape_count: ShapesBaseCount,
     #[wow_data(versioned)]
-    pub _x1c_1: VE1<[u8; 4]>,
-    #[wow_data(versioned)]
-    pub _x1c_2: VGTE2<f32>,
+    pub _x1c: VGTE2<f32>,
     #[wow_data(versioned)]
     pub drag: VGTE3<f32>,
     #[wow_data(versioned)]
