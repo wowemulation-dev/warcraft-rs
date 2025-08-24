@@ -29,12 +29,12 @@ pub struct MD20Model {
     #[debug(with = debug::trimmed_collection_fmt)]
     pub animations: Vec<M2Animation>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub animation_lookup: Vec<u16>,
+    pub animation_lookup: Vec<i16>,
     pub playable_animation_lookup: M2PlayableAnimationLookup,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub bones: Vec<M2Bone>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub key_bone_lookup: Vec<u16>,
+    pub key_bone_lookup: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub vertices: Vec<M2Vertex>,
 
@@ -55,21 +55,21 @@ pub struct MD20Model {
     pub texture_transforms: Vec<M2TextureTransform>,
 
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub replaceable_texture_lookup: Vec<u16>,
+    pub replaceable_texture_lookup: Vec<i16>,
 
     #[debug(with = debug::trimmed_collection_fmt)]
     pub materials: Vec<M2Material>,
 
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub bone_lookup_table: Vec<u16>,
+    pub bone_lookup_table: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub texture_lookup_table: Vec<u16>,
+    pub texture_lookup_table: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub texture_mapping_lookup_table: Vec<u16>,
+    pub texture_mapping_lookup_table: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub transparency_lookup_table: Vec<u16>,
+    pub transparency_lookup_table: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub texture_animation_lookup: Vec<u16>,
+    pub texture_animation_lookup: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub bounding_triangles: Vec<u16>,
     #[debug(with = debug::trimmed_collection_fmt)]
@@ -80,7 +80,7 @@ pub struct MD20Model {
     #[debug(with = debug::trimmed_collection_fmt)]
     pub attachments: Vec<M2Attachment>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub attachment_lookup_table: Vec<u16>,
+    pub attachment_lookup_table: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub events: Vec<M2Event>,
     #[debug(with = debug::trimmed_collection_fmt)]
@@ -88,7 +88,7 @@ pub struct MD20Model {
     #[debug(with = debug::trimmed_collection_fmt)]
     pub cameras: Vec<M2Camera>,
     #[debug(with = debug::trimmed_collection_fmt)]
-    pub camera_lookup_table: Vec<u16>,
+    pub camera_lookup_table: Vec<i16>,
     #[debug(with = debug::trimmed_collection_fmt)]
     pub ribbon_emitters: Vec<M2RibbonEmitter>,
     #[debug(with = debug::trimmed_collection_fmt)]

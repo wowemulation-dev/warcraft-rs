@@ -287,7 +287,7 @@ pub struct MD20Header {
     pub animations: WowArrayV<MD20Version, M2Animation>,
 
     /// Animation lookups (C in Classic)
-    pub animation_lookup: WowArray<u16>,
+    pub animation_lookup: WowArray<i16>,
 
     /// Playable animation lookup - only present in versions <= 263
     #[wow_data(versioned)]
@@ -297,7 +297,7 @@ pub struct MD20Header {
     #[wow_data(versioned)]
     pub bones: WowArrayV<MD20Version, M2BoneHeader>,
 
-    pub key_bone_lookup: WowArray<u16>,
+    pub key_bone_lookup: WowArray<i16>,
 
     // Geometry data
     pub vertices: WowArray<M2Vertex>,
@@ -321,14 +321,14 @@ pub struct MD20Header {
     #[wow_data(versioned)]
     pub texture_transforms: WowArrayV<MD20Version, M2TextureTransformHeader>,
 
-    pub replaceable_texture_lookup: WowArray<u16>,
+    pub replaceable_texture_lookup: WowArray<i16>,
 
     pub materials: WowArray<M2Material>,
-    pub bone_lookup_table: WowArray<u16>,
-    pub texture_lookup_table: WowArray<u16>,
-    pub texture_mapping_lookup_table: WowArray<u16>,
-    pub transparency_lookup_table: WowArray<u16>,
-    pub texture_animation_lookup: WowArray<u16>,
+    pub bone_lookup_table: WowArray<i16>,
+    pub texture_lookup_table: WowArray<i16>,
+    pub texture_mapping_lookup_table: WowArray<i16>,
+    pub transparency_lookup_table: WowArray<i16>,
+    pub texture_animation_lookup: WowArray<i16>,
 
     pub bounding_box: BoundingBox,
     pub bounding_sphere_radius: f32,
@@ -343,14 +343,14 @@ pub struct MD20Header {
     // Attachments and events
     #[wow_data(versioned)]
     pub attachments: WowArrayV<MD20Version, M2AttachmentHeader>,
-    pub attachment_lookup_table: WowArray<u16>,
+    pub attachment_lookup_table: WowArray<i16>,
     #[wow_data(versioned)]
     pub events: WowArrayV<MD20Version, M2EventHeader>,
     #[wow_data(versioned)]
     pub lights: WowArrayV<MD20Version, M2LightHeader>,
     #[wow_data(versioned)]
     pub cameras: WowArrayV<MD20Version, M2CameraHeader>,
-    pub camera_lookup_table: WowArray<u16>,
+    pub camera_lookup_table: WowArray<i16>,
 
     // Particle systems
     #[wow_data(versioned)]
