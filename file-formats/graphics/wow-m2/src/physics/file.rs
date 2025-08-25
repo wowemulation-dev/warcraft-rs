@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use wow_data::error::Result as WDResult;
 use wow_data::types::{ChunkHeader, MagicStr, WowStructR};
+use wow_data::utils::chunk_magic_to_type;
 use wow_data::{prelude::*, read_chunk_items, v_read_chunk_items};
 
 use crate::M2Error;
@@ -42,16 +45,14 @@ pub enum PhysChunk {
         items: Vec<joint::JointWeld>,
     },
     Phyt(Vec<phyt::Phyt>),
-    Unknown {
-        magic: String,
-        data: Vec<u8>,
-    },
+    Unknown(Vec<u8>),
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct PhysFile {
     pub header: ChunkHeader,
     pub version: PhysVersion,
+    pub chunk_index: HashMap<String, usize>,
     pub chunks: Vec<PhysChunk>,
 }
 
@@ -69,6 +70,7 @@ impl WowStructR for PhysFile {
         let version = reader.wow_read()?;
 
         let mut chunks = Vec::new();
+        let mut chunk_index = HashMap::new();
 
         loop {
             let chunk_header: ChunkHeader = if let Ok(chunk_header) = reader.wow_read() {
@@ -77,109 +79,153 @@ impl WowStructR for PhysFile {
                 break;
             };
 
-            chunks.push(match chunk_header.magic {
-                shape::BOXS => {
-                    PhysChunk::ShapeBox(read_chunk_items!(reader, chunk_header, shape::ShapeBox))
-                }
-                shape::CAPS => PhysChunk::ShapeCapsule(read_chunk_items!(
-                    reader,
-                    chunk_header,
-                    shape::ShapeCapsule
-                )),
-                shape::SPHS => PhysChunk::ShapeSphere(read_chunk_items!(
-                    reader,
-                    chunk_header,
-                    shape::ShapeSphere
-                )),
+            let (chunk_type, chunk_vec): (String, PhysChunk) = match chunk_header.magic {
+                shape::BOXS => (
+                    chunk_magic_to_type(&shape::BOXS),
+                    PhysChunk::ShapeBox(read_chunk_items!(reader, chunk_header, shape::ShapeBox)),
+                ),
+                shape::CAPS => (
+                    chunk_magic_to_type(&shape::CAPS),
+                    PhysChunk::ShapeCapsule(read_chunk_items!(
+                        reader,
+                        chunk_header,
+                        shape::ShapeCapsule
+                    )),
+                ),
+                shape::SPHS => (
+                    chunk_magic_to_type(&shape::SPHS),
+                    PhysChunk::ShapeSphere(read_chunk_items!(
+                        reader,
+                        chunk_header,
+                        shape::ShapeSphere
+                    )),
+                ),
                 shape::SHAP | shape::SHP2 => {
                     let version: shape::Version = chunk_header.magic.try_into()?;
-                    PhysChunk::Shape {
-                        version,
-                        items: v_read_chunk_items!(reader, version, chunk_header, shape::Shape),
-                    }
+                    (
+                        chunk_magic_to_type(&shape::SHAP),
+                        PhysChunk::Shape {
+                            version,
+                            items: v_read_chunk_items!(reader, version, chunk_header, shape::Shape),
+                        },
+                    )
                 }
                 body::BODY | body::BDY2 | body::BDY3 | body::BDY4 => {
                     let version: body::Version = chunk_header.magic.try_into()?;
-                    PhysChunk::Body {
-                        version,
-                        items: v_read_chunk_items!(reader, version, chunk_header, body::Body),
-                    }
+                    (
+                        chunk_magic_to_type(&body::BODY),
+                        PhysChunk::Body {
+                            version,
+                            items: v_read_chunk_items!(reader, version, chunk_header, body::Body),
+                        },
+                    )
                 }
-                joint::JOIN => {
-                    PhysChunk::Joint(read_chunk_items!(reader, chunk_header, joint::Joint))
-                }
-                joint::DSTJ => PhysChunk::JointDistance(read_chunk_items!(
-                    reader,
-                    chunk_header,
-                    joint::JointDistance
-                )),
+                joint::JOIN => (
+                    chunk_magic_to_type(&joint::JOIN),
+                    PhysChunk::Joint(read_chunk_items!(reader, chunk_header, joint::Joint)),
+                ),
+                joint::DSTJ => (
+                    chunk_magic_to_type(&joint::DSTJ),
+                    PhysChunk::JointDistance(read_chunk_items!(
+                        reader,
+                        chunk_header,
+                        joint::JointDistance
+                    )),
+                ),
                 joint::PRSJ | joint::PRS2 => {
                     let version: joint::prismatic::Version = chunk_header.magic.try_into()?;
-                    PhysChunk::JointPrismatic {
-                        version,
-                        items: v_read_chunk_items!(
-                            reader,
+                    (
+                        chunk_magic_to_type(&joint::PRSJ),
+                        PhysChunk::JointPrismatic {
                             version,
-                            chunk_header,
-                            joint::JointPrismatic
-                        ),
-                    }
+                            items: v_read_chunk_items!(
+                                reader,
+                                version,
+                                chunk_header,
+                                joint::JointPrismatic
+                            ),
+                        },
+                    )
                 }
                 joint::REVJ | joint::REV2 => {
                     let version: joint::revolute::Version = chunk_header.magic.try_into()?;
-                    PhysChunk::JointRevolute {
-                        version,
-                        items: v_read_chunk_items!(
-                            reader,
+                    (
+                        chunk_magic_to_type(&joint::REVJ),
+                        PhysChunk::JointRevolute {
                             version,
-                            chunk_header,
-                            joint::JointRevolute
-                        ),
-                    }
+                            items: v_read_chunk_items!(
+                                reader,
+                                version,
+                                chunk_header,
+                                joint::JointRevolute
+                            ),
+                        },
+                    )
                 }
                 joint::SHOJ | joint::SHJ2 => {
                     let version: joint::shoulder::Version =
                         (version, chunk_header.magic).try_into()?;
-                    PhysChunk::JointShoulder {
-                        version,
-                        items: v_read_chunk_items!(
-                            reader,
+                    (
+                        chunk_magic_to_type(&joint::SHOJ),
+                        PhysChunk::JointShoulder {
                             version,
-                            chunk_header,
-                            joint::JointShoulder
-                        ),
-                    }
+                            items: v_read_chunk_items!(
+                                reader,
+                                version,
+                                chunk_header,
+                                joint::JointShoulder
+                            ),
+                        },
+                    )
                 }
-                joint::SPHJ => PhysChunk::JointSpherical(read_chunk_items!(
-                    reader,
-                    chunk_header,
-                    joint::JointSpherical
-                )),
+                joint::SPHJ => (
+                    chunk_magic_to_type(&joint::SPHJ),
+                    PhysChunk::JointSpherical(read_chunk_items!(
+                        reader,
+                        chunk_header,
+                        joint::JointSpherical
+                    )),
+                ),
                 joint::WELJ | joint::WLJ2 | joint::WLJ3 => {
                     let version: joint::weld::Version = chunk_header.magic.try_into()?;
-                    PhysChunk::JointWeld {
-                        version,
-                        items: v_read_chunk_items!(reader, version, chunk_header, joint::JointWeld),
-                    }
+                    (
+                        chunk_magic_to_type(&joint::WELJ),
+                        PhysChunk::JointWeld {
+                            version,
+                            items: v_read_chunk_items!(
+                                reader,
+                                version,
+                                chunk_header,
+                                joint::JointWeld
+                            ),
+                        },
+                    )
                 }
-                phyt::PHYT => PhysChunk::Phyt(read_chunk_items!(reader, chunk_header, phyt::Phyt)),
+                phyt::PHYT => (
+                    chunk_magic_to_type(&phyt::PHYT),
+                    PhysChunk::Phyt(read_chunk_items!(reader, chunk_header, phyt::Phyt)),
+                ),
                 _ => {
                     let mut vec = Vec::with_capacity(chunk_header.bytes as usize);
                     for _ in 0..chunk_header.bytes {
                         vec.push(reader.read_u8()?);
                     }
-                    PhysChunk::Unknown {
-                        magic: String::from_utf8_lossy(&chunk_header.magic).into(),
-                        data: vec,
-                    }
+                    (
+                        chunk_magic_to_type(&chunk_header.magic),
+                        PhysChunk::Unknown(vec),
+                    )
                 }
-            });
+            };
+
+            chunks.push(chunk_vec);
+            chunk_index.insert(chunk_type, chunks.len() - 1);
         }
 
         Ok(Self {
             header,
             version,
             chunks,
+            chunk_index,
         })
     }
 }
