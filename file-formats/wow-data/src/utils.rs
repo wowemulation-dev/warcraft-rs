@@ -117,3 +117,7 @@ macro_rules! v_read_chunk_items {
 pub fn chunk_magic_to_type(magic: &MagicStr) -> String {
     String::from_utf8_lossy(magic).into()
 }
+
+pub fn chunk_inverted_magic_to_type(magic: &MagicStr) -> String {
+    String::from_utf8_lossy(magic).chars().rev().collect()
+}
