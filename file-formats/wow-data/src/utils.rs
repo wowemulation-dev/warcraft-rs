@@ -121,3 +121,16 @@ pub fn chunk_magic_to_type(magic: &MagicStr) -> String {
 pub fn chunk_inverted_magic_to_type(magic: &MagicStr) -> String {
     String::from_utf8_lossy(magic).chars().rev().collect()
 }
+
+pub const fn string_to_magic(bytes_vec: &str) -> MagicStr {
+    if bytes_vec.len() != 4 {
+        panic!("magic must have len() == 4")
+    }
+    let ptr = bytes_vec.as_ptr();
+    unsafe { [*ptr, *(ptr.add(1)), *(ptr.add(2)), *(ptr.add(3))] }
+}
+
+pub const fn string_to_inverted_magic(bytes_vec: &str) -> MagicStr {
+    let res = string_to_magic(bytes_vec);
+    [res[3], res[2], res[1], res[0]]
+}

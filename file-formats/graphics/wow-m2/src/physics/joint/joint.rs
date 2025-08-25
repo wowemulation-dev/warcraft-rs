@@ -1,11 +1,11 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::MagicStr;
+use wow_data::{error::Result as WDResult, utils::string_to_inverted_magic};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::{M2Error, Result};
 
-pub const JOIN: MagicStr = *b"NIOJ";
+pub const JOIN: MagicStr = string_to_inverted_magic("JOIN");
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum JointType {

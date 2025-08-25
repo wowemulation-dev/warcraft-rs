@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use wow_data::error::Result as WDResult;
 use wow_data::types::{ChunkHeader, MagicStr, WowStructR};
-use wow_data::utils::chunk_inverted_magic_to_type;
+use wow_data::utils::{chunk_inverted_magic_to_type, string_to_inverted_magic};
 use wow_data::{prelude::*, read_chunk_items, v_read_chunk_items};
 
 use crate::M2Error;
@@ -10,7 +10,7 @@ use crate::M2Error;
 use super::version::PhysVersion;
 use super::{body, joint, phyt, shape};
 
-pub const PHYS: MagicStr = *b"SYHP";
+pub const PHYS: MagicStr = string_to_inverted_magic("PHYS");
 
 #[derive(Debug, Clone)]
 pub enum PhysChunk {

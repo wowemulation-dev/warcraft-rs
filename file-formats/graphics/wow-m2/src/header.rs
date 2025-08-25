@@ -16,12 +16,12 @@ use bitflags::bitflags;
 use std::io::{Read, Seek, SeekFrom, Write};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data::types::{BoundingBox, C3Vector, WowArray, WowArrayV, WowCharArray};
+use wow_data::types::{BoundingBox, C3Vector, MagicStr, WowArray, WowArrayV, WowCharArray};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::version::MD20Version;
 
-pub const MD20_MAGIC: [u8; 4] = *b"MD20";
+pub const MD20_MAGIC: MagicStr = *b"MD20";
 
 bitflags! {
     /// Model flags as defined in the M2 format

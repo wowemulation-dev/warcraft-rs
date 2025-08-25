@@ -1,14 +1,15 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{MagicStr, Mat3x4};
+use wow_data::utils::string_to_inverted_magic;
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::{M2Error, Result};
 
 use super::common::{FrequencyDamping, TorqueMode};
 
-pub const PRSJ: MagicStr = *b"JSRP";
-pub const PRS2: MagicStr = *b"2SRP";
+pub const PRSJ: MagicStr = string_to_inverted_magic("PRSJ");
+pub const PRS2: MagicStr = string_to_inverted_magic("PRS2");
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Version {

@@ -1,6 +1,7 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{MagicStr, Mat3x4};
+use wow_data::utils::string_to_inverted_magic;
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::physics::version::PhysVersion;
@@ -8,8 +9,8 @@ use crate::{M2Error, Result};
 
 use super::common::{FrequencyDamping, TorqueMode};
 
-pub const SHOJ: MagicStr = *b"JOHS";
-pub const SHJ2: MagicStr = *b"2JHS";
+pub const SHOJ: MagicStr = string_to_inverted_magic("SHOJ");
+pub const SHJ2: MagicStr = string_to_inverted_magic("SHJ2");
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Version {

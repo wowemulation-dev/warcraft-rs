@@ -2,7 +2,7 @@ use bitflags::bitflags;
 use custom_debug::Debug;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data::types::{C3Vector, VWowStructR, WowArray, WowStructW};
+use wow_data::types::{C3Vector, MagicStr, VWowStructR, WowArray, WowStructW};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 use wow_utils::debug;
 
@@ -11,7 +11,7 @@ use std::io::Cursor;
 use crate::M2Error;
 use crate::error::Result;
 
-pub const SKIN_MAGIC: [u8; 4] = *b"SKIN";
+pub const SKIN_MAGIC: MagicStr = *b"SKIN";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SkinVersion {

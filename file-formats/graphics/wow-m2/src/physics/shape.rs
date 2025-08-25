@@ -1,15 +1,16 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, MagicStr, Mat3x4};
+use wow_data::utils::string_to_inverted_magic;
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 use crate::{M2Error, Result};
 
-pub const BOXS: MagicStr = *b"SXOB";
-pub const CAPS: MagicStr = *b"SPAC";
-pub const SPHS: MagicStr = *b"SHPS";
-pub const SHAP: MagicStr = *b"PAHS";
-pub const SHP2: MagicStr = *b"2PHS";
+pub const BOXS: MagicStr = string_to_inverted_magic("BOXS");
+pub const CAPS: MagicStr = string_to_inverted_magic("CAPS");
+pub const SPHS: MagicStr = string_to_inverted_magic("SPHS");
+pub const SHAP: MagicStr = string_to_inverted_magic("SHAP");
+pub const SHP2: MagicStr = string_to_inverted_magic("SHP2");
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Version {
