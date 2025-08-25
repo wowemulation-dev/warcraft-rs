@@ -4,7 +4,7 @@ use std::io::{Cursor, SeekFrom};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{ChunkHeader, MagicStr, WowStructR};
-use wow_data::utils::chunk_magic_to_type;
+use wow_data::utils::magic_to_string;
 
 use crate::header::MD20_MAGIC;
 use crate::{M2Error, MD20Model};
@@ -70,10 +70,7 @@ impl WowStructR for M2Model {
                             for _ in 0..chunk_header.bytes {
                                 vec.push(reader.read_u8()?);
                             }
-                            (
-                                chunk_magic_to_type(&chunk_header.magic),
-                                M2Chunk::Unknown(vec),
-                            )
+                            (magic_to_string(&chunk_header.magic), M2Chunk::Unknown(vec))
                         }
                     };
                     chunks.push(chunk_vec);
