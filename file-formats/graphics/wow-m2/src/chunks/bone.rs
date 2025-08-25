@@ -1,8 +1,8 @@
 use std::io::SeekFrom;
 
 use wow_data::error::Result as WDResult;
-use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Quaternion, Quaternion16, VWowDataR, WowArrayV};
+use wow_data::{prelude::*, v_wow_collection};
 use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 
 use crate::Result;

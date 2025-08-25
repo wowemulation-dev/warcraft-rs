@@ -8,6 +8,5 @@ pub mod prelude {
         VWowWriterForHeader, WowDataR, WowHeaderR, WowHeaderW, WowReaderForData,
         WowReaderForHeader, WowVec, WowWriterForHeader, Write,
     };
-    pub use crate::{v_wow_collection, wow_collection};
     pub use byteorder::{ReadBytesExt, WriteBytesExt};
 }

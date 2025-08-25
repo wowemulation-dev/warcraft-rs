@@ -1,5 +1,5 @@
 use wow_data::error::Result as WDResult;
-use wow_data::prelude::*;
+use wow_data::{prelude::*, v_wow_collection, wow_collection};
 
 use custom_debug::Debug;
 use wow_data::types::{C3Vector, WowStructR, WowStructW};
