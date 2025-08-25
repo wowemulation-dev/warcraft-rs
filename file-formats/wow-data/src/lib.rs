@@ -1,5 +1,6 @@
 pub mod error;
 pub mod types;
+pub mod utils;
 
 pub mod prelude {
     pub use crate::types::{

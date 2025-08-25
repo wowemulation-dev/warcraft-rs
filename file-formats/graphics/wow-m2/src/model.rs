@@ -1,36 +1,87 @@
+use std::io::{Cursor, SeekFrom};
+
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data::types::{MagicStr, WowStructR};
+use wow_data::types::{ChunkHeader, MagicStr, WowStructR};
 
 use crate::header::MD20_MAGIC;
 use crate::{M2Error, MD20Model};
 
-pub const MD21_MAGIC: [u8; 4] = *b"MD21";
+pub const MD21_MAGIC: MagicStr = *b"MD21";
 
 #[derive(Debug, Clone)]
-pub enum MD21Chunk {
+pub enum M2Chunk {
     Unknown { magic: String, data: Vec<u8> },
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct M2Model {
     pub magic: MagicStr,
-    pub bytes: usize,
     pub md20: MD20Model,
-    pub chunks: Vec<MD21Chunk>,
+    pub chunks: Vec<M2Chunk>,
 }
 
 impl WowStructR for M2Model {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        let magic: [u8; 4] = reader.wow_read()?;
+        let magic: MagicStr = reader.wow_read()?;
 
         match magic {
             MD21_MAGIC => {
-                unreachable!()
+                let md20_size: u32 = reader.wow_read()?;
+                let pos = reader.stream_position()?;
+
+                let md20_magic: MagicStr = reader.wow_read()?;
+                if md20_magic != MD20_MAGIC {
+                    return Err(M2Error::ParseError(format!(
+                        "Expected {:?}, got {:?}",
+                        MD20_MAGIC, md20_magic
+                    ))
+                    .into());
+                }
+
+                let magic_len = MD20_MAGIC.len() as i64;
+
+                let mut vec = vec![0_u8; md20_size as usize];
+                reader.seek_relative(-magic_len)?;
+                reader.read_exact(&mut vec)?;
+
+                let mut md20_reader = Cursor::new(vec);
+                md20_reader.seek_relative(magic_len)?;
+
+                let md20 = MD20Model::wow_read(&mut md20_reader)?;
+
+                reader.seek(SeekFrom::Start(pos + md20_size as u64))?;
+
+                let mut chunks = Vec::new();
+                loop {
+                    let chunk_header: ChunkHeader = if let Ok(chunk_header) = reader.wow_read() {
+                        chunk_header
+                    } else {
+                        break;
+                    };
+
+                    chunks.push(match chunk_header.magic {
+                        _ => {
+                            let mut vec = Vec::with_capacity(chunk_header.bytes as usize);
+                            for _ in 0..chunk_header.bytes {
+                                vec.push(reader.read_u8()?);
+                            }
+                            M2Chunk::Unknown {
+                                magic: String::from_utf8_lossy(&chunk_header.magic).into(),
+                                data: vec,
+                            }
+                        }
+                    });
+                }
+
+                Ok(Self {
+                    magic,
+                    md20,
+                    chunks,
+                })
             }
             MD20_MAGIC => Ok(Self {
                 magic,
-                bytes: 0,
                 md20: MD20Model::wow_read(reader)?,
                 chunks: Vec::with_capacity(0),
             }),

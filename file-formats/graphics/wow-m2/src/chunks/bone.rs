@@ -148,7 +148,6 @@ impl M2Bone {
         reader: &mut R,
         bone_header_array: WowArrayV<MD20Version, M2BoneHeader>,
         version: MD20Version,
-        root_offset: u64,
     ) -> Result<Vec<M2Bone>> {
         // Special handling for BC item files with 203 bones
         if version >= MD20Version::TBCV1
@@ -177,7 +176,6 @@ impl M2Bone {
             reader,
             version,
             bone_header_array,
-            root_offset,
             |reader, item_header| {
                 M2Bone {
                     data: reader.v_new_from_header(&item_header)?,
