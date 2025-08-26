@@ -4,6 +4,7 @@ pub mod bone;
 pub mod camera;
 pub mod color_animation;
 pub mod event;
+pub mod file_id;
 pub mod light;
 pub mod material;
 pub mod particle_emitter;

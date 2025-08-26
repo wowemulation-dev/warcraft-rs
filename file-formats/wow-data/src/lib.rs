@@ -4,9 +4,10 @@ pub mod utils;
 
 pub mod prelude {
     pub use crate::types::{
-        DataVersion, Read, Seek, VWowDataR, VWowHeaderR, VWowHeaderReader, VWowReaderForData,
-        VWowWriterForHeader, WowDataR, WowHeaderR, WowHeaderW, WowReaderForData,
-        WowReaderForHeader, WowVec, WowWriterForHeader, Write,
+        DataVersion, Read, Seek, VWowChunkR, VWowDataR, VWowHeaderR, VWowReaderForChunk,
+        VWowReaderForData, VWowReaderForHeader, VWowWriterForHeader, WowChunkR, WowDataR,
+        WowHeaderR, WowHeaderW, WowReaderForChunk, WowReaderForData, WowReaderForHeader, WowVec,
+        WowWriterForHeader, Write,
     };
     pub use byteorder::{ReadBytesExt, WriteBytesExt};
 }

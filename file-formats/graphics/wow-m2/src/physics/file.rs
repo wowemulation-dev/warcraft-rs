@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use wow_data::error::Result as WDResult;
-use wow_data::types::{ChunkHeader, MagicStr, WowStructR};
+use wow_data::types::{ChunkHeader, MagicStr, VersionedChunk, WowStructR};
 use wow_data::utils::{magic_to_inverted_string, string_to_inverted_magic};
-use wow_data::{prelude::*, read_chunk_items, v_read_chunk_items};
+use wow_data::{prelude::*, v_read_chunk_items};
 
 use crate::M2Error;
 
@@ -17,10 +17,11 @@ pub enum PhysChunk {
     ShapeBox(Vec<shape::ShapeBox>),
     ShapeCapsule(Vec<shape::ShapeCapsule>),
     ShapeSphere(Vec<shape::ShapeSphere>),
-    Shape {
+    Shape2 {
         version: shape::Version,
         items: Vec<shape::Shape>,
     },
+    Shape(VersionedChunk<shape::Version, shape::Shape>),
     Body {
         version: body::Version,
         items: Vec<body::Body>,
@@ -82,32 +83,21 @@ impl WowStructR for PhysFile {
             let (chunk_magic, chunk_vec): (&MagicStr, PhysChunk) = match chunk_header.magic {
                 shape::BOXS => (
                     &shape::BOXS,
-                    PhysChunk::ShapeBox(read_chunk_items!(reader, chunk_header, shape::ShapeBox)),
+                    PhysChunk::ShapeBox(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
                 shape::CAPS => (
                     &shape::CAPS,
-                    PhysChunk::ShapeCapsule(read_chunk_items!(
-                        reader,
-                        chunk_header,
-                        shape::ShapeCapsule
-                    )),
+                    PhysChunk::ShapeCapsule(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
                 shape::SPHS => (
                     &shape::SPHS,
-                    PhysChunk::ShapeSphere(read_chunk_items!(
-                        reader,
-                        chunk_header,
-                        shape::ShapeSphere
-                    )),
+                    PhysChunk::ShapeSphere(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
                 shape::SHAP | shape::SHP2 => {
                     let version: shape::Version = chunk_header.magic.try_into()?;
                     (
                         &shape::SHAP,
-                        PhysChunk::Shape {
-                            version,
-                            items: v_read_chunk_items!(reader, version, chunk_header, shape::Shape),
-                        },
+                        PhysChunk::Shape(reader.v_wow_read_from_chunk(version, &chunk_header)?),
                     )
                 }
                 body::BODY | body::BDY2 | body::BDY3 | body::BDY4 => {
@@ -122,15 +112,11 @@ impl WowStructR for PhysFile {
                 }
                 joint::JOIN => (
                     &joint::JOIN,
-                    PhysChunk::Joint(read_chunk_items!(reader, chunk_header, joint::Joint)),
+                    PhysChunk::Joint(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
                 joint::DSTJ => (
                     &joint::DSTJ,
-                    PhysChunk::JointDistance(read_chunk_items!(
-                        reader,
-                        chunk_header,
-                        joint::JointDistance
-                    )),
+                    PhysChunk::JointDistance(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
                 joint::PRSJ | joint::PRS2 => {
                     let version: joint::prismatic::Version = chunk_header.magic.try_into()?;
@@ -180,11 +166,7 @@ impl WowStructR for PhysFile {
                 }
                 joint::SPHJ => (
                     &joint::SPHJ,
-                    PhysChunk::JointSpherical(read_chunk_items!(
-                        reader,
-                        chunk_header,
-                        joint::JointSpherical
-                    )),
+                    PhysChunk::JointSpherical(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
                 joint::WELJ | joint::WLJ2 | joint::WLJ3 => {
                     let version: joint::weld::Version = chunk_header.magic.try_into()?;
@@ -203,15 +185,12 @@ impl WowStructR for PhysFile {
                 }
                 phyt::PHYT => (
                     &phyt::PHYT,
-                    PhysChunk::Phyt(read_chunk_items!(reader, chunk_header, phyt::Phyt)),
+                    PhysChunk::Phyt(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
-                _ => {
-                    let mut vec = Vec::with_capacity(chunk_header.bytes as usize);
-                    for _ in 0..chunk_header.bytes {
-                        vec.push(reader.read_u8()?);
-                    }
-                    (&chunk_header.magic, PhysChunk::Unknown(vec))
-                }
+                _ => (
+                    &chunk_header.magic,
+                    PhysChunk::Unknown(reader.wow_read_from_chunk(&chunk_header)?),
+                ),
             };
 
             chunks.push(chunk_vec);

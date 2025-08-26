@@ -2,7 +2,10 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use custom_debug::Debug;
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
-use crate::error::{Result, WowDataError};
+use crate::{
+    error::{Result, WowDataError},
+    v_read_chunk_items,
+};
 pub use std::io::{Read, Seek, SeekFrom, Write};
 
 mod wow_data {
@@ -54,6 +57,78 @@ pub trait VWowStructR<V: DataVersion>: Sized {
 
 pub trait WowStructW {
     fn wow_write<W: Write + Seek>(&self, writer: &mut W) -> Result<()>;
+}
+
+pub trait WowChunkR: Sized {
+    fn wow_read_from_chunk<R: Read + Seek>(
+        reader: &mut R,
+        chunk_header: &ChunkHeader,
+    ) -> Result<Vec<Self>>;
+}
+impl<W> WowChunkR for W
+where
+    W: WowHeaderR + WowHeaderW,
+{
+    fn wow_read_from_chunk<R: Read + Seek>(
+        reader: &mut R,
+        chunk_header: &ChunkHeader,
+    ) -> Result<Vec<Self>> {
+        let first: W = reader.wow_read()?;
+        let item_size = first.wow_size();
+        let items = chunk_header.bytes as usize / item_size;
+
+        let rest = chunk_header.bytes as usize % item_size;
+        if rest > 0 {
+            dbg!(format!(
+                "chunk items size mismatch: chunk={} item_size={}, items={}, rest={}",
+                String::from_utf8_lossy(&chunk_header.magic),
+                item_size,
+                items,
+                rest
+            ));
+        }
+
+        let mut vec = Vec::<W>::with_capacity(items);
+        vec.push(first);
+
+        for _ in 1..items {
+            vec.push(reader.wow_read()?);
+        }
+
+        reader.seek_relative(rest as i64)?;
+
+        Ok(vec)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct VersionedChunk<V: DataVersion, T> {
+    pub version: V,
+    pub items: Vec<T>,
+}
+
+pub trait VWowChunkR<V: DataVersion>: Sized {
+    fn v_wow_read_from_chunk<R: Read + Seek>(
+        reader: &mut R,
+        version: V,
+        chunk_header: &ChunkHeader,
+    ) -> Result<VersionedChunk<V, Self>>;
+}
+impl<V, W> VWowChunkR<V> for W
+where
+    V: DataVersion,
+    W: VWowHeaderR<V> + WowHeaderW,
+{
+    fn v_wow_read_from_chunk<R: Read + Seek>(
+        reader: &mut R,
+        version: V,
+        chunk_header: &ChunkHeader,
+    ) -> Result<VersionedChunk<V, Self>> {
+        Ok(VersionedChunk {
+            version,
+            items: v_read_chunk_items!(reader, version, chunk_header, Self),
+        })
+    }
 }
 
 impl WowHeaderR for u32 {
@@ -306,12 +381,12 @@ pub trait WowReaderForHeader<T: WowHeaderR>: Read + Seek + Sized {
 }
 impl<T: WowHeaderR, R: Read + Seek> WowReaderForHeader<T> for R {}
 
-pub trait VWowHeaderReader<V: DataVersion, T: VWowHeaderR<V>>: Read + Seek + Sized {
+pub trait VWowReaderForHeader<V: DataVersion, T: VWowHeaderR<V>>: Read + Seek + Sized {
     fn wow_read_versioned(&mut self, version: V) -> Result<T> {
         Ok(T::wow_read(self, version)?)
     }
 }
-impl<V: DataVersion, T: VWowHeaderR<V>, R: Read + Seek> VWowHeaderReader<V, T> for R {}
+impl<V: DataVersion, T: VWowHeaderR<V>, R: Read + Seek> VWowReaderForHeader<V, T> for R {}
 
 pub trait WowWriterForHeader<T: WowHeaderW>: Write + Sized {
     fn wow_write(&mut self, value: &T) -> Result<()> {
@@ -336,15 +411,47 @@ pub trait WowReaderForData<H: WowHeaderR, T: WowDataR<H>>: Read + Seek + Sized {
 }
 impl<H: WowHeaderR, T: WowDataR<H>, R: Read + Seek> WowReaderForData<H, T> for R {}
 
-pub trait VWowReaderForData<V: DataVersion, H: VWowHeaderR<V>, T: VWowDataR<V, H>>:
-    Read + Seek + Sized
+pub trait VWowReaderForData<V, H, T>
+where
+    Self: Read + Seek + Sized,
+    V: DataVersion,
+    H: VWowHeaderR<V>,
+    T: VWowDataR<V, H>,
 {
     fn v_new_from_header(&mut self, header: &H) -> Result<T> {
         Ok(T::new_from_header(self, header)?)
     }
 }
-impl<V: DataVersion, H: VWowHeaderR<V>, T: VWowDataR<V, H>, R: Read + Seek>
-    VWowReaderForData<V, H, T> for R
+impl<V, H, T, R> VWowReaderForData<V, H, T> for R
+where
+    V: DataVersion,
+    H: VWowHeaderR<V>,
+    T: VWowDataR<V, H>,
+    R: Read + Seek,
+{
+}
+
+pub trait WowReaderForChunk<T: WowChunkR>: Read + Seek + Sized {
+    fn wow_read_from_chunk(&mut self, chunk_header: &ChunkHeader) -> Result<Vec<T>> {
+        T::wow_read_from_chunk(self, chunk_header)
+    }
+}
+impl<T: WowChunkR, R: Read + Seek> WowReaderForChunk<T> for R {}
+
+pub trait VWowReaderForChunk<V: DataVersion, T: VWowChunkR<V>>: Read + Seek + Sized {
+    fn v_wow_read_from_chunk(
+        &mut self,
+        version: V,
+        chunk_header: &ChunkHeader,
+    ) -> Result<VersionedChunk<V, T>> {
+        T::v_wow_read_from_chunk(self, version, chunk_header)
+    }
+}
+impl<V, T, R> VWowReaderForChunk<V, T> for R
+where
+    V: DataVersion,
+    T: VWowChunkR<V>,
+    R: Read + Seek,
 {
 }
 
