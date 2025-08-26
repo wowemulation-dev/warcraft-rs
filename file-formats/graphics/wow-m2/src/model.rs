@@ -33,12 +33,12 @@ impl WowStructR for M2Model {
                 let md20_size: u32 = reader.wow_read()?;
                 let pos = reader.stream_position()?;
 
-                let md20_magic: MagicStr = reader.wow_read()?;
-                if md20_magic != MD20_MAGIC {
-                    return Err(M2Error::ParseError(format!(
-                        "Expected {:?}, got {:?}",
-                        MD20_MAGIC, md20_magic
-                    ))
+                let read_magic: MagicStr = reader.wow_read()?;
+                if read_magic != MD20_MAGIC {
+                    return Err(M2Error::InvalidMagic {
+                        expected: magic_to_string(&MD20_MAGIC),
+                        actual: magic_to_string(&read_magic),
+                    }
                     .into());
                 }
 
@@ -64,17 +64,17 @@ impl WowStructR for M2Model {
                         break;
                     };
 
-                    let (chunk_type, chunk_vec): (String, M2Chunk) = match chunk_header.magic {
+                    let (chunk_magic, chunk_vec): (&MagicStr, M2Chunk) = match chunk_header.magic {
                         _ => {
                             let mut vec = Vec::with_capacity(chunk_header.bytes as usize);
                             for _ in 0..chunk_header.bytes {
                                 vec.push(reader.read_u8()?);
                             }
-                            (magic_to_string(&chunk_header.magic), M2Chunk::Unknown(vec))
+                            (&chunk_header.magic, M2Chunk::Unknown(vec))
                         }
                     };
                     chunks.push(chunk_vec);
-                    chunk_index.insert(chunk_type, chunks.len() - 1);
+                    chunk_index.insert(magic_to_string(chunk_magic), chunks.len() - 1);
                 }
 
                 Ok(Self {
@@ -92,8 +92,8 @@ impl WowStructR for M2Model {
             }),
             _ => {
                 return Err(M2Error::InvalidMagic {
-                    expected: format!("MD20 or MD21"),
-                    actual: String::from_utf8_lossy(&magic).into(),
+                    expected: "MD20 or MD21".into(),
+                    actual: magic_to_string(&magic),
                 }
                 .into());
             }
