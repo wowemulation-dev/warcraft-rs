@@ -1,4 +1,3 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{MagicStr, Mat3x4};
 use wow_data::utils::string_to_inverted_magic;
@@ -44,25 +43,6 @@ impl From<Version> for MagicStr {
             Version::V1 => REVJ,
             Version::V2 => REV2,
         }
-    }
-}
-
-impl WowHeaderR for Version {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        let version: MagicStr = reader.wow_read()?;
-        Ok(version.try_into()?)
-    }
-}
-
-impl WowHeaderW for Version {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        let version: MagicStr = (*self).into();
-        writer.wow_write(&version)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        4
     }
 }
 
