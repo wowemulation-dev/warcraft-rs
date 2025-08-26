@@ -108,7 +108,7 @@ pub struct VersionedChunk<V: DataVersion, T> {
 }
 
 pub trait VWowChunkR<V: DataVersion>: Sized {
-    fn v_wow_read_from_chunk<R: Read + Seek>(
+    fn wow_read_from_chunk<R: Read + Seek>(
         reader: &mut R,
         version: V,
         chunk_header: &ChunkHeader,
@@ -119,7 +119,7 @@ where
     V: DataVersion,
     W: VWowHeaderR<V> + WowHeaderW,
 {
-    fn v_wow_read_from_chunk<R: Read + Seek>(
+    fn wow_read_from_chunk<R: Read + Seek>(
         reader: &mut R,
         version: V,
         chunk_header: &ChunkHeader,
@@ -444,7 +444,7 @@ pub trait VWowReaderForChunk<V: DataVersion, T: VWowChunkR<V>>: Read + Seek + Si
         version: V,
         chunk_header: &ChunkHeader,
     ) -> Result<VersionedChunk<V, T>> {
-        T::v_wow_read_from_chunk(self, version, chunk_header)
+        T::wow_read_from_chunk(self, version, chunk_header)
     }
 }
 impl<V, T, R> VWowReaderForChunk<V, T> for R
