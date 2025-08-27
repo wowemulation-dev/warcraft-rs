@@ -4,7 +4,7 @@ use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 bitflags::bitflags! {
     /// Render flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
-    #[wow_data(bitflags=u32)]
+    #[wow_data(bitflags=u16)]
     pub struct M2RenderFlags: u16 {
         /// Unlit
         const UNLIT = 0x01;
@@ -36,7 +36,7 @@ bitflags::bitflags! {
 bitflags::bitflags! {
     /// Blend modes as defined in the M2 format
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
-    #[wow_data(bitflags=u32)]
+    #[wow_data(bitflags=u16)]
     pub struct M2BlendMode: u16 {
         /// Blend mode: opaque
         const OPAQUE = 0;

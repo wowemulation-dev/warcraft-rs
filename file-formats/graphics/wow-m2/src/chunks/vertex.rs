@@ -5,7 +5,7 @@ use wow_data_derive::{WowHeaderR, WowHeaderW};
 bitflags::bitflags! {
     /// Vertex flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
-    #[wow_data(bitflags=u32)]
+    #[wow_data(bitflags=u8)]
     pub struct M2VertexFlags: u8 {
         /// Transform using bone 0
         const TRANSFORM_BONE_0 = 0x01;

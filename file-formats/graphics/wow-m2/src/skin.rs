@@ -45,7 +45,7 @@ impl Default for SkinMagic {
 
 bitflags! {
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
-    #[wow_data(bitflags=u32)]
+    #[wow_data(bitflags=u8)]
     /// Usually 0x10(BATCH_SUPPORT) for static textures, and 0 for animated textures
     pub struct M2BatchFlags: u8 {
         const MATERIAL_INVERT = 0x01;

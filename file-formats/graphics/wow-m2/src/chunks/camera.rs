@@ -10,7 +10,7 @@ use super::animation::{M2AnimationTrackData, M2SplineKey};
 bitflags::bitflags! {
     /// Camera flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
-    #[wow_data(bitflags=u32)]
+    #[wow_data(bitflags=u16)]
     pub struct M2CameraFlags: u16 {
         /// Camera uses custom UVs for positioning
         const CUSTOM_UV = 0x01;
