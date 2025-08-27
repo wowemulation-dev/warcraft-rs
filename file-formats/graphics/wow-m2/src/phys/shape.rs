@@ -1,10 +1,7 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, MagicStr, Mat3x4};
 use wow_data::utils::string_to_inverted_magic;
 use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
-
-use crate::{M2Error, Result};
 
 pub const BOXS: MagicStr = string_to_inverted_magic("BOXS");
 pub const CAPS: MagicStr = string_to_inverted_magic("CAPS");
@@ -43,58 +40,18 @@ pub struct ShapeSphere {
     pub radius: f32,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
+#[wow_data(ty=u16)]
 pub enum ShapeType {
     #[default]
+    #[wow_data(lit = 0)]
     Box = 0,
+    #[wow_data(lit = 1)]
     Capsule = 1,
+    #[wow_data(lit = 2)]
     Sphere = 2,
+    #[wow_data(lit = 3)]
     Polytope = 3,
-}
-
-impl TryFrom<u16> for ShapeType {
-    type Error = M2Error;
-
-    fn try_from(value: u16) -> Result<Self> {
-        match value {
-            0 => Ok(Self::Box),
-            1 => Ok(Self::Capsule),
-            2 => Ok(Self::Sphere),
-            3 => Ok(Self::Polytope),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid shape type value: {}",
-                value
-            ))),
-        }
-    }
-}
-
-impl From<ShapeType> for u16 {
-    fn from(value: ShapeType) -> Self {
-        match value {
-            ShapeType::Box => 0,
-            ShapeType::Capsule => 1,
-            ShapeType::Sphere => 2,
-            ShapeType::Polytope => 3,
-        }
-    }
-}
-
-impl WowHeaderR for ShapeType {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(u16::wow_read(reader)?.try_into()?)
-    }
-}
-
-impl WowHeaderW for ShapeType {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        u16::wow_write(&(*self).into(), writer)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        u16::wow_size(&(*self).into())
-    }
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]

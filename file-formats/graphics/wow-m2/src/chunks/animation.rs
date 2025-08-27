@@ -11,7 +11,7 @@ use wow_utils::debug;
 
 use crate::version::MD20Version;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(ty=u16)]
 pub enum M2InterpolationType {
     #[wow_data(lit = 0)]
@@ -22,23 +22,6 @@ pub enum M2InterpolationType {
     Bezier = 2,
     #[wow_data(lit = 3)]
     Hermite = 3,
-}
-
-impl WowHeaderR for M2InterpolationType {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(u16::wow_read(reader)?.try_into()?)
-    }
-}
-
-impl WowHeaderW for M2InterpolationType {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        u16::wow_write(&(*self).into(), writer)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        u16::wow_size(&(*self).into())
-    }
 }
 
 bitflags::bitflags! {

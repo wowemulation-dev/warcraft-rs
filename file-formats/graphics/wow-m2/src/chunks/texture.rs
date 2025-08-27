@@ -1,11 +1,10 @@
-use std::io::{Read, Seek, Write};
 use wow_data::prelude::*;
 use wow_data::types::WowCharArray;
 use wow_data::{error::Result as WDResult, types::WowString};
 use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 /// Texture type enum as defined in the M2 format
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(ty=u32)]
 pub enum M2TextureType {
     /// Texture defined in filename
@@ -70,24 +69,6 @@ pub enum M2TextureType {
     Unknown2 = 25,
     #[wow_data(lit = 26)]
     Unknown3 = 26,
-}
-
-impl WowHeaderR for M2TextureType {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        let value: u32 = reader.wow_read()?;
-        Ok(value.try_into()?)
-    }
-}
-impl WowHeaderW for M2TextureType {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        let value: u32 = (*self).into();
-        writer.wow_write(&value)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        4
-    }
 }
 
 bitflags::bitflags! {

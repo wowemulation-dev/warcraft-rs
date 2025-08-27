@@ -1,4 +1,3 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::C3Vector;
 use wow_data_derive::{WowDataR, WowEnumFrom, WowHeaderR, WowHeaderW};
@@ -8,7 +7,7 @@ use crate::version::MD20Version;
 
 use super::animation::M2AnimationTrackData;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(ty=u32)]
 pub enum M2AttachmentId {
     /// MountMain / ItemVisual0
@@ -134,23 +133,6 @@ pub enum M2AttachmentId {
     Backpack = 57,
     #[wow_data(lit = 58)]
     Unknown = 60,
-}
-
-impl WowHeaderR for M2AttachmentId {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(u32::wow_read(reader)?.try_into()?)
-    }
-}
-
-impl WowHeaderW for M2AttachmentId {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        u32::wow_write(&(*self).into(), writer)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        u32::wow_size(&(*self).into())
-    }
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]

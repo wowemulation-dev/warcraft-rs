@@ -894,7 +894,7 @@ pub struct ChunkHeader {
 
 #[cfg(test)]
 mod tests {
-    use wow_data_derive::{WowHeaderR, WowHeaderW};
+    use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
     use super::*;
     use std::io::Cursor;
@@ -1036,71 +1036,40 @@ mod tests {
         assert_eq!(wowarr, WowArray::<C2Vector>::new(3, 9));
     }
 
-    #[derive(super::Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[derive(
+        super::Debug,
+        Clone,
+        Copy,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        WowEnumFrom,
+        WowHeaderR,
+        WowHeaderW,
+    )]
+    #[wow_data(ty=u32)]
     pub enum M2Version {
+        #[wow_data(lit = 1)]
         Classic,
+        #[wow_data(lit = 2)]
         TBC,
+        #[wow_data(lit = 3)]
         WotLK,
+        #[wow_data(lit = 4)]
         Cataclysm,
+        #[wow_data(lit = 5)]
         MoP,
+        #[wow_data(lit = 6)]
         WoD,
+        #[wow_data(lit = 7)]
         Legion,
+        #[wow_data(lit = 8)]
         BfA,
     }
 
     impl DataVersion for M2Version {}
-
-    impl From<M2Version> for u32 {
-        fn from(value: M2Version) -> Self {
-            match value {
-                M2Version::Classic => 1,
-                M2Version::TBC => 2,
-                M2Version::WotLK => 3,
-                M2Version::Cataclysm => 4,
-                M2Version::MoP => 5,
-                M2Version::WoD => 6,
-                M2Version::Legion => 7,
-                M2Version::BfA => 8,
-            }
-        }
-    }
-
-    impl TryFrom<u32> for M2Version {
-        type Error = WowDataError;
-
-        fn try_from(value: u32) -> Result<Self> {
-            match value {
-                1 => Ok(Self::Classic),
-                2 => Ok(Self::TBC),
-                3 => Ok(Self::WotLK),
-                4 => Ok(Self::Cataclysm),
-                5 => Ok(Self::MoP),
-                6 => Ok(Self::WoD),
-                7 => Ok(Self::Legion),
-                8 => Ok(Self::BfA),
-                _ => Err(WowDataError::UnsupportedNumericVersion(value)),
-            }
-        }
-    }
-
-    impl WowHeaderR for M2Version {
-        fn wow_read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-            let version: u32 = reader.wow_read()?;
-            version.try_into()
-        }
-    }
-
-    impl WowHeaderW for M2Version {
-        fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-            let version: u32 = (*self).into();
-            writer.wow_write(&version)?;
-            Ok(())
-        }
-
-        fn wow_size(&self) -> usize {
-            4
-        }
-    }
 
     #[derive(super::Debug, Clone, Copy, WowHeaderR, WowHeaderW)]
     #[wow_data(version = M2Version)]

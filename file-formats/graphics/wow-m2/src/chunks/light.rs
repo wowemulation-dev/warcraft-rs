@@ -1,4 +1,3 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Color};
 use wow_data_derive::{WowDataR, WowEnumFrom, WowHeaderR, WowHeaderW};
@@ -8,7 +7,7 @@ use crate::version::MD20Version;
 
 use super::animation::M2AnimationTrackData;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(ty=u16)]
 pub enum M2LightType {
     /// Directional light (like the sun)
@@ -23,24 +22,6 @@ pub enum M2LightType {
     /// Ambient light (global illumination)
     #[wow_data(lit = 3)]
     Ambient = 3,
-}
-
-impl WowHeaderR for M2LightType {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        let value: u16 = reader.wow_read()?;
-        Ok(value.try_into()?)
-    }
-}
-impl WowHeaderW for M2LightType {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        let value: u16 = (*self).into();
-        writer.wow_write(&value)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        2
-    }
 }
 
 /// Represents a light in an M2 model

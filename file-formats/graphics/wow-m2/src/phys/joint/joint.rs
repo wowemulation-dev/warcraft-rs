@@ -1,11 +1,11 @@
 use wow_data::prelude::*;
 use wow_data::types::MagicStr;
-use wow_data::{error::Result as WDResult, utils::string_to_inverted_magic};
+use wow_data::utils::string_to_inverted_magic;
 use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 pub const JOIN: MagicStr = string_to_inverted_magic("JOIN");
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(ty=u16)]
 pub enum JointType {
     #[default]
@@ -21,23 +21,6 @@ pub enum JointType {
     Prismatic = 4,
     #[wow_data(lit = 5)]
     Distance = 5,
-}
-
-impl WowHeaderR for JointType {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(u16::wow_read(reader)?.try_into()?)
-    }
-}
-
-impl WowHeaderW for JointType {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        u16::wow_write(&(*self).into(), writer)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        u16::wow_size(&(*self).into())
-    }
 }
 
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]

@@ -1,11 +1,21 @@
-use std::io::{Read, Seek, Write};
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
+use wow_data::types::DataVersion;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
-use wow_data::types::{DataVersion, WowHeaderR, WowHeaderW};
-use wow_data_derive::WowEnumFrom;
-
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    WowEnumFrom,
+    WowHeaderR,
+    WowHeaderW,
+)]
 #[wow_data(ty=u32)]
 pub enum MD20Version {
     #[wow_data(lit = 0x0, default)]
@@ -61,25 +71,6 @@ impl std::fmt::Display for MD20Version {
 }
 
 impl DataVersion for MD20Version {}
-
-impl WowHeaderR for MD20Version {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        let version: u32 = reader.wow_read()?;
-        Ok(MD20Version::try_from(version)?)
-    }
-}
-
-impl WowHeaderW for MD20Version {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        let version: u32 = (*self).into();
-        writer.wow_write(&version)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        4
-    }
-}
 
 #[cfg(test)]
 mod tests {}

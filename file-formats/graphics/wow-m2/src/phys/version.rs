@@ -1,8 +1,20 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data_derive::WowEnumFrom;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    WowEnumFrom,
+    WowHeaderR,
+    WowHeaderW,
+)]
 #[wow_data(ty=u16)]
 pub enum PhysVersion {
     #[wow_data(lit = 0)]
@@ -23,22 +35,3 @@ pub enum PhysVersion {
 }
 
 impl DataVersion for PhysVersion {}
-
-impl WowHeaderR for PhysVersion {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        let version: u16 = reader.wow_read()?;
-        Ok(version.try_into()?)
-    }
-}
-
-impl WowHeaderW for PhysVersion {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        let version: u16 = (*self).into();
-        writer.wow_write(&version)?;
-        Ok(())
-    }
-
-    fn wow_size(&self) -> usize {
-        2
-    }
-}

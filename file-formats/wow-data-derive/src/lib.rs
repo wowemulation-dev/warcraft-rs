@@ -43,6 +43,23 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
                 }
             }
         }
+    } else if let Some(ty) = struct_wow_attrs.ty {
+        let Data::Enum(_) = &input.data else {
+            return syn::Error::new_spanned(
+                &input,
+                "WowHeaderR with wow_data(ty=TYPE) can only be derived for enums.",
+            )
+            .to_compile_error()
+            .into();
+        };
+
+        quote! {
+            impl #impl_generics wow_data::types::WowHeaderR for #struct_name #ty_generics #where_clause {
+                fn wow_read<R: Read + Seek>(reader: &mut R) -> wow_data::error::Result<Self> {
+                    Ok(#ty::wow_read(reader)?.try_into()?)
+                }
+            }
+        }
     } else {
         let reader_body = if let Data::Struct(s) = &input.data {
             generate_header_rv_struct_reader_body(&s.fields)
@@ -258,6 +275,13 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
 pub fn wow_header_w_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
+    let struct_wow_attrs = match parse_wow_data_attrs(&input.attrs) {
+        Ok(value) => value,
+        Err(err) => {
+            return err.to_compile_error().into();
+        }
+    };
+
     let ident = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -266,7 +290,10 @@ pub fn wow_header_w_derive(input: TokenStream) -> TokenStream {
             generate_struct_writer_body(&s.fields),
             generate_struct_size_body(&s.fields),
         ),
-        Data::Enum(e) => (generate_enum_writer_body(e), generate_enum_size_body(e)),
+        Data::Enum(e) => (
+            generate_enum_writer_body(&struct_wow_attrs, e),
+            generate_enum_size_body(&struct_wow_attrs, e),
+        ),
         Data::Union(_) => {
             return syn::Error::new_spanned(&input, "WowHeaderW cannot be derived for unions.")
                 .to_compile_error()
@@ -360,105 +387,124 @@ fn generate_struct_size_body(fields: &Fields) -> syn::Result<proc_macro2::TokenS
     })
 }
 
-fn generate_enum_writer_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::TokenStream> {
-    let arms = data.variants.iter().map(|variant| {
-        let variant_ident = &variant.ident;
+fn generate_enum_writer_body(
+    struct_wow_attrs: &WowDataAttrs,
+    data: &syn::DataEnum,
+) -> syn::Result<proc_macro2::TokenStream> {
+    if let Some(ty) = &struct_wow_attrs.ty {
+        Ok(quote! {
+            #ty::wow_write(&(*self).into(), writer)?;
+            Ok(())
+        })
+    } else {
+        let arms = data.variants.iter().map(|variant| {
+            let variant_ident = &variant.ident;
 
-        match &variant.fields {
-            syn::Fields::Unit => {
-                quote! {
-                    Self::#variant_ident => {}
+            match &variant.fields {
+                syn::Fields::Unit => {
+                    quote! {
+                        Self::#variant_ident => {}
+                    }
                 }
-            }
 
-            syn::Fields::Unnamed(fields) => {
-                let field_bindings = fields
-                    .unnamed
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| format_ident!("v{}", i));
-                let field_bindings_clone = field_bindings.clone();
+                syn::Fields::Unnamed(fields) => {
+                    let field_bindings = fields
+                        .unnamed
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format_ident!("v{}", i));
+                    let field_bindings_clone = field_bindings.clone();
 
-                let write_calls =
-                    field_bindings.map(|binding| quote! { writer.wow_write(#binding)?; });
+                    let write_calls =
+                        field_bindings.map(|binding| quote! { writer.wow_write(#binding)?; });
 
-                quote! {
-                    Self::#variant_ident(#(#field_bindings_clone),*) => {
-                        #(#write_calls)*
+                    quote! {
+                        Self::#variant_ident(#(#field_bindings_clone),*) => {
+                            #(#write_calls)*
+                        }
+                    }
+                }
+
+                syn::Fields::Named(fields) => {
+                    let field_bindings = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
+                    let field_bindings_clone = field_bindings.clone();
+
+                    let write_calls =
+                        field_bindings.map(|binding| quote! { writer.wow_write(#binding)?; });
+
+                    quote! {
+                        Self::#variant_ident { #(#field_bindings_clone),* } => {
+                             #(#write_calls)*
+                        }
                     }
                 }
             }
+        });
 
-            syn::Fields::Named(fields) => {
-                let field_bindings = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
-                let field_bindings_clone = field_bindings.clone();
-
-                let write_calls =
-                    field_bindings.map(|binding| quote! { writer.wow_write(#binding)?; });
-
-                quote! {
-                    Self::#variant_ident { #(#field_bindings_clone),* } => {
-                         #(#write_calls)*
-                    }
-                }
+        Ok(quote! {
+            match self {
+                #(#arms),*
             }
-        }
-    });
-
-    Ok(quote! {
-        match self {
-            #(#arms),*
-        }
-        Ok(())
-    })
+            Ok(())
+        })
+    }
 }
 
-fn generate_enum_size_body(data: &syn::DataEnum) -> syn::Result<proc_macro2::TokenStream> {
-    let arms = data.variants.iter().map(|variant| {
-        let variant_ident = &variant.ident;
+fn generate_enum_size_body(
+    struct_wow_attrs: &WowDataAttrs,
+    data: &syn::DataEnum,
+) -> syn::Result<proc_macro2::TokenStream> {
+    if let Some(ty) = &struct_wow_attrs.ty {
+        Ok(quote! {
+            #ty::wow_size(&(*self).into())
+        })
+    } else {
+        let arms = data.variants.iter().map(|variant| {
+            let variant_ident = &variant.ident;
 
-        match &variant.fields {
-            syn::Fields::Unit => {
-                quote! {
-                    Self::#variant_ident => 0
+            match &variant.fields {
+                syn::Fields::Unit => {
+                    quote! {
+                        Self::#variant_ident => 0
+                    }
                 }
-            }
-            syn::Fields::Unnamed(fields) => {
-                let field_bindings = fields
-                    .unnamed
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| format_ident!("v{}", i));
-                let field_bindings_clone = field_bindings.clone();
+                syn::Fields::Unnamed(fields) => {
+                    let field_bindings = fields
+                        .unnamed
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format_ident!("v{}", i));
+                    let field_bindings_clone = field_bindings.clone();
 
-                let size_calls = field_bindings.map(|binding| quote! { #binding.wow_size() });
+                    let size_calls = field_bindings.map(|binding| quote! { #binding.wow_size() });
 
-                quote! {
-                    Self::#variant_ident(#(#field_bindings_clone),*) => {
-                        0 #(+ #size_calls)*
+                    quote! {
+                        Self::#variant_ident(#(#field_bindings_clone),*) => {
+                            0 #(+ #size_calls)*
+                        }
+                    }
+                }
+                syn::Fields::Named(fields) => {
+                    let field_bindings = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
+                    let field_bindings_clone = field_bindings.clone();
+
+                    let size_calls = field_bindings.map(|binding| quote! { #binding.wow_size() });
+
+                    quote! {
+                        Self::#variant_ident { #(#field_bindings_clone),* } => {
+                            0 #(+ #size_calls)*
+                        }
                     }
                 }
             }
-            syn::Fields::Named(fields) => {
-                let field_bindings = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
-                let field_bindings_clone = field_bindings.clone();
+        });
 
-                let size_calls = field_bindings.map(|binding| quote! { #binding.wow_size() });
-
-                quote! {
-                    Self::#variant_ident { #(#field_bindings_clone),* } => {
-                        0 #(+ #size_calls)*
-                    }
-                }
+        Ok(quote! {
+            match self {
+                #(#arms),*
             }
-        }
-    });
-
-    Ok(quote! {
-        match self {
-            #(#arms),*
-        }
-    })
+        })
+    }
 }
 
 #[proc_macro_derive(WowDataR, attributes(wow_data))]
