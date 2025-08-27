@@ -6,7 +6,7 @@ use wow_data::prelude::*;
 use wow_data::types::{ChunkHeader, MagicStr, WowStructR};
 use wow_data::utils::magic_to_string;
 
-use crate::chunks::file_id;
+use crate::chunks::{file_id, misc};
 use crate::header::MD20_MAGIC;
 use crate::{M2Error, MD20Model};
 
@@ -22,6 +22,7 @@ pub enum M2Chunk {
     RPID(Vec<file_id::FileId>),
     SKID(Vec<file_id::FileId>),
     TXID(Vec<file_id::FileId>),
+    TXAC(Vec<misc::TXACData>),
     Unknown(Vec<u8>),
 }
 
@@ -109,6 +110,10 @@ impl WowStructR for M2Model {
                         file_id::TXID => (
                             &chunk_header.magic,
                             M2Chunk::TXID(reader.wow_read_from_chunk(&chunk_header)?),
+                        ),
+                        misc::TXAC => (
+                            &chunk_header.magic,
+                            M2Chunk::TXAC(reader.wow_read_from_chunk(&chunk_header)?),
                         ),
                         _ => (
                             &chunk_header.magic,

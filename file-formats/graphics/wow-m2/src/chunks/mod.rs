@@ -7,6 +7,7 @@ pub mod event;
 pub mod file_id;
 pub mod light;
 pub mod material;
+pub mod misc;
 pub mod particle_emitter;
 pub mod physics;
 pub mod ribbon_emitter;
