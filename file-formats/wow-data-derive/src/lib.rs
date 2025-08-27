@@ -17,17 +17,14 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let expanded = if let Some(version_ty) = struct_wow_attrs.version {
+    let expanded = if let Some(version_ty) = &struct_wow_attrs.version {
         let reader_body = match &input.data {
-            Data::Struct(s) => generate_header_rv_struct_reader_body(&s.fields),
+            Data::Struct(s) => generate_header_rv_struct_reader_body(&struct_wow_attrs, &s.fields),
             Data::Enum(e) => generate_header_rv_enum_reader_body(e),
             Data::Union(_) => {
-                return syn::Error::new_spanned(
-                    &input,
-                    "VWowHeaderR cannot be derived for unions.",
-                )
-                .to_compile_error()
-                .into();
+                return syn::Error::new_spanned(&input, "WowHeaderR cannot be derived for unions.")
+                    .to_compile_error()
+                    .into();
             }
         };
 
@@ -62,7 +59,7 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
         }
     } else {
         let reader_body = if let Data::Struct(s) = &input.data {
-            generate_header_rv_struct_reader_body(&s.fields)
+            generate_header_rv_struct_reader_body(&struct_wow_attrs, &s.fields)
         } else {
             return syn::Error::new_spanned(&input, "WowHeaderR can only be derived for structs.")
                 .to_compile_error()
@@ -88,46 +85,61 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-fn generate_header_rv_struct_reader_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
-    let named_fields = if let Fields::Named(f) = fields {
-        &f.named
-    } else {
-        return Err(syn::Error::new_spanned(
-            fields,
-            "VWowHeaderR on structs only supports named fields.",
-        ));
-    };
+fn generate_header_rv_struct_reader_body(
+    struct_wow_attrs: &WowDataAttrs,
+    fields: &Fields,
+) -> syn::Result<proc_macro2::TokenStream> {
+    match fields {
+        Fields::Named(f) => {
+            let named_fields = &f.named;
+            let mut read_lines = Vec::new();
+            let mut initializers = Vec::new();
 
-    let mut read_lines = Vec::new();
-    let mut initializers = Vec::new();
+            for field in named_fields {
+                let field_name = field.ident.as_ref().unwrap();
+                let field_ty = &field.ty;
 
-    for field in named_fields {
-        let field_name = field.ident.as_ref().unwrap();
-        let field_ty = &field.ty;
+                let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-        let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
-
-        if let Some(val) = wow_data_attrs.override_read {
-            read_lines.push(quote! { let #field_name = #val; });
-        } else {
-            if wow_data_attrs.versioned {
-                read_lines.push(
+                if let Some(val) = wow_data_attrs.override_read {
+                    read_lines.push(quote! { let #field_name = #val; });
+                } else {
+                    if wow_data_attrs.versioned {
+                        read_lines.push(
                     quote! { let #field_name: #field_ty = reader.wow_read_versioned(version)?; },
                 );
-            } else {
-                read_lines.push(quote! { let #field_name: #field_ty = reader.wow_read()?; });
+                    } else {
+                        read_lines
+                            .push(quote! { let #field_name: #field_ty = reader.wow_read()?; });
+                    }
+                }
+
+                initializers.push(quote! { #field_name });
             }
-        }
 
-        initializers.push(quote! { #field_name });
+            Ok(quote! {{
+                #(#read_lines)*
+                Self {
+                    #(#initializers),*
+                }
+            }})
+        }
+        Fields::Unnamed(_) => {
+            let Some(_) = &struct_wow_attrs.bitflags else {
+                return Err(syn::Error::new_spanned(
+                    fields,
+                    "WowHeaderR on structs with unnamed fields only supports bitflags.",
+                ));
+            };
+            Ok(quote! {Self::from_bits_retain(reader.wow_read()?)})
+        }
+        Fields::Unit => {
+            return Err(syn::Error::new_spanned(
+                fields,
+                "WowHeaderR on structs does't support unit fields.",
+            ));
+        }
     }
-
-    Ok(quote! {{
-        #(#read_lines)*
-        Self {
-            #(#initializers),*
-        }
-    }})
 }
 
 fn generate_header_rv_enum_reader_body(
@@ -200,6 +212,7 @@ struct WowDataAttrs {
     ty: Option<Type>,
     ident: Option<Ident>,
     lit: Option<Lit>,
+    bitflags: Option<Type>,
 }
 
 fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
@@ -213,6 +226,7 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
         ty: None,
         ident: None,
         lit: None,
+        bitflags: None,
     };
 
     for attr in attrs {
@@ -264,6 +278,11 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
                 data_attrs.default = true;
             }
 
+            if meta.path.is_ident("bitflags") {
+                let value = meta.value()?;
+                data_attrs.bitflags = Some(value.parse()?);
+            }
+
             Ok(())
         })?;
     }
@@ -287,8 +306,8 @@ pub fn wow_header_w_derive(input: TokenStream) -> TokenStream {
 
     let (writer_body, sizer_body) = match &input.data {
         Data::Struct(s) => (
-            generate_struct_writer_body(&s.fields),
-            generate_struct_size_body(&s.fields),
+            generate_struct_writer_body(&struct_wow_attrs, &s.fields),
+            generate_struct_size_body(&struct_wow_attrs, &s.fields),
         ),
         Data::Enum(e) => (
             generate_enum_writer_body(&struct_wow_attrs, e),
@@ -326,65 +345,96 @@ pub fn wow_header_w_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-fn generate_struct_writer_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
-    let named_fields = if let Fields::Named(f) = fields {
-        &f.named
-    } else {
-        return Err(syn::Error::new_spanned(
-            fields,
-            "WowHeaderW on structs only supports named fields.",
-        ));
-    };
+fn generate_struct_writer_body(
+    struct_wow_attrs: &WowDataAttrs,
+    fields: &Fields,
+) -> syn::Result<proc_macro2::TokenStream> {
+    match fields {
+        Fields::Named(f) => {
+            let mut write_statements = Vec::new();
 
-    let mut write_statements = Vec::new();
+            for field in &f.named {
+                let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-    for field in named_fields {
-        let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
+                if let Some(_) = wow_data_attrs.override_read {
+                    write_statements.push(quote! {});
+                } else {
+                    let field_name = field.ident.as_ref().unwrap();
+                    write_statements.push(quote! {
+                        writer.wow_write(&self.#field_name)?;
+                    });
+                }
+            }
 
-        if let Some(_) = wow_data_attrs.override_read {
-            write_statements.push(quote! {});
-        } else {
-            let field_name = field.ident.as_ref().unwrap();
-            write_statements.push(quote! {
-                writer.wow_write(&self.#field_name)?;
-            });
+            Ok(quote! {
+                #(#write_statements)*
+                Ok(())
+            })
+        }
+        Fields::Unnamed(_) => {
+            let Some(_) = &struct_wow_attrs.bitflags else {
+                return Err(syn::Error::new_spanned(
+                    fields,
+                    "WowHeaderW on structs with unnamed fields only supports bitflags.",
+                ));
+            };
+            Ok(quote! {
+                writer.wow_write(&self.bits())?;
+                Ok(())
+            })
+        }
+        Fields::Unit => {
+            return Err(syn::Error::new_spanned(
+                fields,
+                "WowHeaderW on structs does't support unit fields.",
+            ));
         }
     }
-
-    Ok(quote! {
-        #(#write_statements)*
-        Ok(())
-    })
 }
 
-fn generate_struct_size_body(fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
-    let named_fields = if let Fields::Named(f) = fields {
-        &f.named
-    } else {
-        return Err(syn::Error::new_spanned(
-            fields,
-            "WowHeaderW on structs only supports named fields.",
-        ));
-    };
+fn generate_struct_size_body(
+    struct_wow_attrs: &WowDataAttrs,
+    fields: &Fields,
+) -> syn::Result<proc_macro2::TokenStream> {
+    match fields {
+        Fields::Named(f) => {
+            let mut size_expressions = Vec::new();
 
-    let mut size_expressions = Vec::new();
+            for field in &f.named {
+                let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-    for field in named_fields {
-        let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
+                if let Some(_) = wow_data_attrs.override_read {
+                    size_expressions.push(quote! {0});
+                } else {
+                    let field_name = field.ident.as_ref().unwrap();
+                    size_expressions.push(quote! {
+                        self.#field_name.wow_size()
+                    });
+                }
+            }
 
-        if let Some(_) = wow_data_attrs.override_read {
-            size_expressions.push(quote! {0});
-        } else {
-            let field_name = field.ident.as_ref().unwrap();
-            size_expressions.push(quote! {
-                self.#field_name.wow_size()
-            });
+            Ok(quote! {
+                0 #(+ #size_expressions)*
+            })
+        }
+        Fields::Unnamed(_) => {
+            let Some(ty) = &struct_wow_attrs.bitflags else {
+                return Err(syn::Error::new_spanned(
+                    fields,
+                    "WowHeaderW on structs with unnamed fields only supports bitflags.",
+                ));
+            };
+            Ok(quote! {
+                #ty::default().wow_size()
+            })
+        }
+        Fields::Unit => {
+            return Err(syn::Error::new_spanned(
+                fields,
+                "WowHeaderW on structs does't support unit fields.",
+            ));
         }
     }
-
-    Ok(quote! {
-        0 #(+ #size_expressions)*
-    })
 }
 
 fn generate_enum_writer_body(

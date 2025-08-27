@@ -1,10 +1,10 @@
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 bitflags::bitflags! {
     /// Render flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2RenderFlags: u16 {
         /// Unlit
         const UNLIT = 0x01;
@@ -33,24 +33,10 @@ bitflags::bitflags! {
     }
 }
 
-impl WowHeaderR for M2RenderFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2RenderFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        2
-    }
-}
-
 bitflags::bitflags! {
     /// Blend modes as defined in the M2 format
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2BlendMode: u16 {
         /// Blend mode: opaque
         const OPAQUE = 0;
@@ -68,21 +54,6 @@ bitflags::bitflags! {
         const MOD2X = 6;
         /// Blend mode for MoP and later: blend add
         const BLEND_ADD = 7;
-    }
-}
-
-impl WowHeaderR for M2BlendMode {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2BlendMode {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        2
     }
 }
 

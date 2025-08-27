@@ -12,7 +12,8 @@ use super::animation::{M2AnimationTrackData, M2AnimationTrackHeader};
 
 bitflags::bitflags! {
     /// Bone flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2BoneFlags: u32 {
         /// Spherical billboard
         const SPHERICAL_BILLBOARD = 0x8;
@@ -36,21 +37,6 @@ bitflags::bitflags! {
         const HAS_PROCEDURAL_ANIMATION = 0x10000;
         /// Has IK (inverse kinematics)
         const HAS_IK = 0x20000;
-    }
-}
-
-impl WowHeaderR for M2BoneFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2BoneFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        4
     }
 }
 

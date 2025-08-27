@@ -1,3 +1,11 @@
+use std::io::SeekFrom;
+
+use bitflags::bitflags;
+use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
+use wow_data::types::{BoundingBox, C3Vector, MagicStr, WowArray, WowArrayV, WowCharArray};
+use wow_data_derive::{WowHeaderR, WowHeaderW};
+
 use crate::chunks::M2Vertex;
 use crate::chunks::animation::{M2Animation, M2SequenceFallback};
 use crate::chunks::attachment::M2AttachmentHeader;
@@ -12,20 +20,14 @@ use crate::chunks::ribbon_emitter::M2RibbonEmitterHeader;
 use crate::chunks::texture::M2TextureHeader;
 use crate::chunks::texture_transform::M2TextureTransformHeader;
 use crate::chunks::transparency_animation::M2TransparencyAnimationHeader;
-use bitflags::bitflags;
-use std::io::{Read, Seek, SeekFrom, Write};
-use wow_data::error::Result as WDResult;
-use wow_data::prelude::*;
-use wow_data::types::{BoundingBox, C3Vector, MagicStr, WowArray, WowArrayV, WowCharArray};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
-
 use crate::version::MD20Version;
 
 pub const MD20_MAGIC: MagicStr = *b"MD20";
 
 bitflags! {
     /// Model flags as defined in the M2 format
-    #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2ModelFlags: u32 {
         /// Tilt on X axis
         const TILT_X = 0x0001;
@@ -91,21 +93,6 @@ bitflags! {
         const UNKNOWN_0x40000000 = 0x40000000;
         /// Unknown
         const UNKNOWN_0x80000000 = 0x80000000;
-    }
-}
-
-impl WowHeaderR for M2ModelFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2ModelFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        4
     }
 }
 

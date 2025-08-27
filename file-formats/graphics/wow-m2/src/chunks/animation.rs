@@ -26,7 +26,8 @@ pub enum M2InterpolationType {
 
 bitflags::bitflags! {
     /// Animation flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2AnimationFlags: u32 {
         /// Animation has translation keyframes
         const HAS_TRANSLATION = 0x1;
@@ -44,21 +45,6 @@ bitflags::bitflags! {
         /// sequence stored in model?
         const UNKNOWN_0x100 = 0x100;
         const BLEND_TIME_IN_OUT = 0x200;
-    }
-}
-
-impl WowHeaderR for M2AnimationFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2AnimationFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        4
     }
 }
 

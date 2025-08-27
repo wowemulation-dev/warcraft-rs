@@ -73,7 +73,8 @@ pub enum M2TextureType {
 
 bitflags::bitflags! {
     /// Texture flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2TextureFlags: u32 {
         /// Texture is wrapped horizontally
         const WRAP_X = 0x01;
@@ -82,21 +83,6 @@ bitflags::bitflags! {
         /// Texture will not be replaced by other textures
         /// (character customization texture replacement)
         const NOT_REPLACEABLE = 0x04;
-    }
-}
-
-impl WowHeaderR for M2TextureFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2TextureFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        4
     }
 }
 

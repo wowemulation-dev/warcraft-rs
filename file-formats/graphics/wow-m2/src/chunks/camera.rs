@@ -9,7 +9,8 @@ use super::animation::{M2AnimationTrackData, M2SplineKey};
 
 bitflags::bitflags! {
     /// Camera flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2CameraFlags: u16 {
         /// Camera uses custom UVs for positioning
         const CUSTOM_UV = 0x01;
@@ -17,21 +18,6 @@ bitflags::bitflags! {
         const AUTO_GENERATED = 0x02;
         /// Camera is at global scene coordinates
         const GLOBAL_POSITION = 0x04;
-    }
-}
-
-impl WowHeaderR for M2CameraFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2CameraFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        2
     }
 }
 

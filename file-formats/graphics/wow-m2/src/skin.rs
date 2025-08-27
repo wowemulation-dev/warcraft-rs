@@ -44,7 +44,8 @@ impl Default for SkinMagic {
 }
 
 bitflags! {
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     /// Usually 0x10(BATCH_SUPPORT) for static textures, and 0 for animated textures
     pub struct M2BatchFlags: u8 {
         const MATERIAL_INVERT = 0x01;
@@ -54,21 +55,6 @@ bitflags! {
         const PROJECTED_2 = 0x20;
         const TRANSPARENCY_SOMETHING = 0x40;
         const UNKNOWN_0x80 = 0x80;
-    }
-}
-
-impl WowHeaderR for M2BatchFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2BatchFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        1
     }
 }
 

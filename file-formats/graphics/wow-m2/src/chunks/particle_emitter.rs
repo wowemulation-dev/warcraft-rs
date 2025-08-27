@@ -11,7 +11,8 @@ use super::animation::{
 
 bitflags::bitflags! {
     /// Particle flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2ParticleFlags: u32 {
         /// Particles are billboarded
         const BILLBOARDED = 0x00000008;
@@ -53,21 +54,6 @@ bitflags::bitflags! {
         const PHYSICS = 0x00200000;
         /// Pinned on the Y axis instead of both XY
         const FIXED_Y = 0x00400000;
-    }
-}
-
-impl WowHeaderR for M2ParticleFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2ParticleFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        4
     }
 }
 

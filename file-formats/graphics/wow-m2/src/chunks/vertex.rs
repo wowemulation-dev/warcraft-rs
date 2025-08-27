@@ -1,12 +1,11 @@
-use std::io::{Read, Seek, Write};
-use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C2Vector, C3Vector};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 bitflags::bitflags! {
     /// Vertex flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
+    #[wow_data(bitflags=u32)]
     pub struct M2VertexFlags: u8 {
         /// Transform using bone 0
         const TRANSFORM_BONE_0 = 0x01;
@@ -24,21 +23,6 @@ bitflags::bitflags! {
         const UNKNOWN_0x40 = 0x40;
         /// Unknown 0x80
         const UNKNOWN_0x80 = 0x80;
-    }
-}
-
-impl WowHeaderR for M2VertexFlags {
-    fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
-        Ok(Self::from_bits_retain(reader.wow_read()?))
-    }
-}
-impl WowHeaderW for M2VertexFlags {
-    fn wow_write<W: Write>(&self, writer: &mut W) -> WDResult<()> {
-        writer.wow_write(&self.bits())?;
-        Ok(())
-    }
-    fn wow_size(&self) -> usize {
-        4
     }
 }
 
