@@ -22,9 +22,12 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
             Data::Struct(s) => generate_header_rv_struct_reader_body(&struct_wow_attrs, &s.fields),
             Data::Enum(e) => generate_header_rv_enum_reader_body(e),
             Data::Union(_) => {
-                return syn::Error::new_spanned(&input, "WowHeaderR cannot be derived for unions.")
-                    .to_compile_error()
-                    .into();
+                return syn::Error::new_spanned(
+                    &struct_name,
+                    "WowHeaderR cannot be derived for unions.",
+                )
+                .to_compile_error()
+                .into();
             }
         };
 
@@ -43,7 +46,7 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
     } else if let Some(ty) = struct_wow_attrs.from_type {
         let Data::Enum(_) = &input.data else {
             return syn::Error::new_spanned(
-                &input,
+                &struct_name,
                 "WowHeaderR with wow_data(from_type=TYPE) can only be derived for enums.",
             )
             .to_compile_error()
@@ -61,9 +64,12 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
         let reader_body = if let Data::Struct(s) = &input.data {
             generate_header_rv_struct_reader_body(&struct_wow_attrs, &s.fields)
         } else {
-            return syn::Error::new_spanned(&input, "WowHeaderR can only be derived for structs.")
-                .to_compile_error()
-                .into();
+            return syn::Error::new_spanned(
+                &struct_name,
+                "WowHeaderR can only be derived for structs.",
+            )
+            .to_compile_error()
+            .into();
         };
 
         let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
@@ -124,10 +130,10 @@ fn generate_header_rv_struct_reader_body(
                 }
             }})
         }
-        Fields::Unnamed(_) => {
+        Fields::Unnamed(f) => {
             let Some(_) = &struct_wow_attrs.bitflags else {
                 return Err(syn::Error::new_spanned(
-                    fields,
+                    f,
                     "WowHeaderR on structs with unnamed fields only supports bitflags.",
                 ));
             };
@@ -323,7 +329,7 @@ pub fn wow_header_w_derive(input: TokenStream) -> TokenStream {
             generate_enum_size_body(&struct_wow_attrs, e),
         ),
         Data::Union(_) => {
-            return syn::Error::new_spanned(&input, "WowHeaderW cannot be derived for unions.")
+            return syn::Error::new_spanned(&ident, "WowHeaderW cannot be derived for unions.")
                 .to_compile_error()
                 .into();
         }
@@ -380,10 +386,10 @@ fn generate_struct_writer_body(
                 Ok(())
             })
         }
-        Fields::Unnamed(_) => {
+        Fields::Unnamed(f) => {
             let Some(_) = &struct_wow_attrs.bitflags else {
                 return Err(syn::Error::new_spanned(
-                    fields,
+                    f,
                     "WowHeaderW on structs with unnamed fields only supports bitflags.",
                 ));
             };
@@ -426,10 +432,10 @@ fn generate_struct_size_body(
                 0 #(+ #size_expressions)*
             })
         }
-        Fields::Unnamed(_) => {
+        Fields::Unnamed(f) => {
             let Some(ty) = &struct_wow_attrs.bitflags else {
                 return Err(syn::Error::new_spanned(
-                    fields,
+                    f,
                     "WowHeaderW on structs with unnamed fields only supports bitflags.",
                 ));
             };
@@ -582,14 +588,14 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
             &f.named
         } else {
             return syn::Error::new_spanned(
-                &s.fields,
+                &struct_name,
                 "WowDataR can only be derived for structs with named fields.",
             )
             .to_compile_error()
             .into();
         }
     } else {
-        return syn::Error::new_spanned(&input, "WowDataR can only be derived for structs.")
+        return syn::Error::new_spanned(&struct_name, "WowDataR can only be derived for structs.")
             .to_compile_error()
             .into();
     };
@@ -620,7 +626,7 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
 
     let Some(header_ty) = struct_wow_data_attrs.header else {
         return syn::Error::new_spanned(
-            &input,
+            &struct_name,
             "WowDataR needs at least #[wow_data(header = H)] definition.",
         )
         .to_compile_error()
@@ -754,19 +760,19 @@ pub fn wow_enum_from_derive(input: TokenStream) -> TokenStream {
         }
     };
 
+    let enum_name = &input.ident;
+
     let Some(ty) = struct_wow_attrs.from_type else {
         return syn::Error::new_spanned(
-            &input,
+            &enum_name,
             "WowEnumFrom requires a wow_data(from_type=TYPE) attribute.",
         )
         .to_compile_error()
         .into();
     };
 
-    let enum_name = &input.ident;
-
     let Data::Enum(enum_data) = &input.data else {
-        return syn::Error::new_spanned(&input, "WowEnumFrom can only be derived for enums.")
+        return syn::Error::new_spanned(&enum_name, "WowEnumFrom can only be derived for enums.")
             .to_compile_error()
             .into();
     };
