@@ -9,7 +9,7 @@ pub const BDY3: MagicStr = string_to_inverted_magic("BDY3");
 pub const BDY4: MagicStr = string_to_inverted_magic("BDY4");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
-#[wow_data(ty=MagicStr)]
+#[wow_data(from_type=MagicStr)]
 pub enum Version {
     #[wow_data(ident=BODY)]
     V1,

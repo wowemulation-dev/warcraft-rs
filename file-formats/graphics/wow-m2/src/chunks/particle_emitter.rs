@@ -57,7 +57,7 @@ bitflags::bitflags! {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
-#[wow_data(ty=u8)]
+#[wow_data(from_type=u8)]
 pub enum M2ParticleEmitterType {
     /// Point emitter (particles spawn from a single point)
     #[wow_data(lit = 0)]

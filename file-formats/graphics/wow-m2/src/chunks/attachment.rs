@@ -8,7 +8,7 @@ use crate::version::MD20Version;
 use super::animation::M2AnimationTrackData;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u32)]
+#[wow_data(from_type=u32)]
 pub enum M2AttachmentId {
     /// MountMain / ItemVisual0
     #[wow_data(lit = 0)]

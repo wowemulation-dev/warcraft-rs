@@ -15,7 +15,7 @@ use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
     WowHeaderR,
     WowHeaderW,
 )]
-#[wow_data(ty=u16)]
+#[wow_data(from_type=u16)]
 pub enum PhysVersion {
     #[wow_data(lit = 0)]
     V0,

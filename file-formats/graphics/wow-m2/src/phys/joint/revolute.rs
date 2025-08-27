@@ -9,7 +9,7 @@ pub const REVJ: MagicStr = string_to_inverted_magic("REVJ");
 pub const REV2: MagicStr = string_to_inverted_magic("REV2");
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
-#[wow_data(ty=MagicStr)]
+#[wow_data(from_type=MagicStr)]
 pub enum Version {
     #[wow_data(ident = REVJ)]
     V1,

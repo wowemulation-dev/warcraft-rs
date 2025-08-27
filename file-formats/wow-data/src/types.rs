@@ -1049,7 +1049,7 @@ mod tests {
         WowHeaderR,
         WowHeaderW,
     )]
-    #[wow_data(ty=u32)]
+    #[wow_data(from_type=u32)]
     pub enum M2Version {
         #[wow_data(lit = 1)]
         Classic,

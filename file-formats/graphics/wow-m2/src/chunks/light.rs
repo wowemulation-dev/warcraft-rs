@@ -8,7 +8,7 @@ use crate::version::MD20Version;
 use super::animation::M2AnimationTrackData;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u16)]
+#[wow_data(from_type=u16)]
 pub enum M2LightType {
     /// Directional light (like the sun)
     #[wow_data(lit = 0)]

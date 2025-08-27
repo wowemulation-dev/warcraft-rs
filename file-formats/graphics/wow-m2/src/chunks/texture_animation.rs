@@ -5,7 +5,7 @@ use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::version::MD20Version;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u16)]
+#[wow_data(from_type=u16)]
 pub enum M2TextureAnimationType {
     /// No animation
     #[default]

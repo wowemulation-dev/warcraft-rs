@@ -40,11 +40,11 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
                 }
             }
         }
-    } else if let Some(ty) = struct_wow_attrs.ty {
+    } else if let Some(ty) = struct_wow_attrs.from_type {
         let Data::Enum(_) = &input.data else {
             return syn::Error::new_spanned(
                 &input,
-                "WowHeaderR with wow_data(ty=TYPE) can only be derived for enums.",
+                "WowHeaderR with wow_data(from_type=TYPE) can only be derived for enums.",
             )
             .to_compile_error()
             .into();
@@ -209,7 +209,7 @@ struct WowDataAttrs {
     header: Option<Type>,
     read_if: Option<Expr>,
     override_read: Option<Expr>,
-    ty: Option<Type>,
+    from_type: Option<Type>,
     ident: Option<Ident>,
     lit: Option<Lit>,
     bitflags: Option<Type>,
@@ -223,7 +223,7 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
         header: None,
         read_if: None,
         override_read: None,
-        ty: None,
+        from_type: None,
         ident: None,
         lit: None,
         bitflags: None,
@@ -259,9 +259,9 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
                 data_attrs.override_read = Some(value.parse()?);
             }
 
-            if meta.path.is_ident("ty") {
+            if meta.path.is_ident("from_type") {
                 let value = meta.value()?;
-                data_attrs.ty = Some(value.parse()?);
+                data_attrs.from_type = Some(value.parse()?);
             }
 
             if meta.path.is_ident("ident") {
@@ -441,7 +441,7 @@ fn generate_enum_writer_body(
     struct_wow_attrs: &WowDataAttrs,
     data: &syn::DataEnum,
 ) -> syn::Result<proc_macro2::TokenStream> {
-    if let Some(ty) = &struct_wow_attrs.ty {
+    if let Some(ty) = &struct_wow_attrs.from_type {
         Ok(quote! {
             #ty::wow_write(&(*self).into(), writer)?;
             Ok(())
@@ -504,7 +504,7 @@ fn generate_enum_size_body(
     struct_wow_attrs: &WowDataAttrs,
     data: &syn::DataEnum,
 ) -> syn::Result<proc_macro2::TokenStream> {
-    if let Some(ty) = &struct_wow_attrs.ty {
+    if let Some(ty) = &struct_wow_attrs.from_type {
         Ok(quote! {
             #ty::wow_size(&(*self).into())
         })
@@ -760,10 +760,10 @@ pub fn wow_enum_from_derive(input: TokenStream) -> TokenStream {
         }
     };
 
-    let Some(ty) = struct_wow_attrs.ty else {
+    let Some(ty) = struct_wow_attrs.from_type else {
         return syn::Error::new_spanned(
             &input,
-            "WowEnumFrom requires a wow_data(ty=TYPE) attribute.",
+            "WowEnumFrom requires a wow_data(from_type=TYPE) attribute.",
         )
         .to_compile_error()
         .into();

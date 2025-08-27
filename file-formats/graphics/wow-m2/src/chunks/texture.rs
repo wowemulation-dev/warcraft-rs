@@ -4,7 +4,7 @@ use wow_data::{error::Result as WDResult, types::WowString};
 use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u32)]
+#[wow_data(from_type=u32)]
 pub enum M2TextureType {
     /// Texture defined in filename
     #[default]

@@ -37,7 +37,7 @@ bitflags::bitflags! {
 
 /// Material texture uv transformations
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u16)]
+#[wow_data(from_type=u16)]
 pub enum M2TexTransformType {
     #[default]
     #[wow_data(lit = 0)]

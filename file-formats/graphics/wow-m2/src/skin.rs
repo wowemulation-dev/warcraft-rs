@@ -13,7 +13,7 @@ use crate::error::Result;
 pub const SKIN_MAGIC: MagicStr = *b"SKIN";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
-#[wow_data(ty=u32)]
+#[wow_data(from_type=u32)]
 pub enum SkinVersion {
     /// Used up to WotLK
     #[wow_data(lit = 1)]

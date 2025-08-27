@@ -12,7 +12,7 @@ use wow_utils::debug;
 use crate::version::MD20Version;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u16)]
+#[wow_data(from_type=u16)]
 pub enum M2InterpolationType {
     #[wow_data(lit = 0)]
     None = 0,

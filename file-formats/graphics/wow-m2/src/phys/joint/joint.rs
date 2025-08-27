@@ -6,7 +6,7 @@ use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 pub const JOIN: MagicStr = string_to_inverted_magic("JOIN");
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u16)]
+#[wow_data(from_type=u16)]
 pub enum JointType {
     #[default]
     #[wow_data(lit = 0)]

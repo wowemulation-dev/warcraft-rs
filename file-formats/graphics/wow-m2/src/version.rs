@@ -16,7 +16,7 @@ use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
     WowHeaderR,
     WowHeaderW,
 )]
-#[wow_data(ty=u32)]
+#[wow_data(from_type=u32)]
 pub enum MD20Version {
     #[wow_data(lit = 0x0, default)]
     Unknown,

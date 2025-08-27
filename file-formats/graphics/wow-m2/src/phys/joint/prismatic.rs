@@ -9,7 +9,7 @@ pub const PRSJ: MagicStr = string_to_inverted_magic("PRSJ");
 pub const PRS2: MagicStr = string_to_inverted_magic("PRS2");
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
-#[wow_data(ty=MagicStr)]
+#[wow_data(from_type=MagicStr)]
 pub enum Version {
     #[wow_data(ident = PRSJ)]
     V1,

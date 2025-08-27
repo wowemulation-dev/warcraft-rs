@@ -10,7 +10,7 @@ pub const SHAP: MagicStr = string_to_inverted_magic("SHAP");
 pub const SHP2: MagicStr = string_to_inverted_magic("SHP2");
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
-#[wow_data(ty=MagicStr)]
+#[wow_data(from_type=MagicStr)]
 pub enum Version {
     #[wow_data(ident=SHAP)]
     V1,
@@ -41,7 +41,7 @@ pub struct ShapeSphere {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
-#[wow_data(ty=u16)]
+#[wow_data(from_type=u16)]
 pub enum ShapeType {
     #[default]
     #[wow_data(lit = 0)]
