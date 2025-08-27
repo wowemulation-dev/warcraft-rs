@@ -1,4 +1,4 @@
-use wow_data::error::Result as WDResult;
+use wow_data::error::{Result as WDResult, WowDataError};
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, MagicStr, Mat3x4};
 use wow_data::utils::string_to_inverted_magic;
@@ -22,18 +22,15 @@ pub enum Version {
 impl DataVersion for Version {}
 
 impl TryFrom<MagicStr> for Version {
-    type Error = M2Error;
+    type Error = WowDataError;
 
-    fn try_from(value: MagicStr) -> Result<Self> {
+    fn try_from(value: MagicStr) -> WDResult<Self> {
         Ok(match value {
             SHAP => Self::V1,
             SHP2 => Self::V2,
 
             _ => {
-                return Err(M2Error::ParseError(format!(
-                    "Invalid body magic: {:?}",
-                    value
-                )));
+                return Err(M2Error::ParseError(format!("Invalid body magic: {:?}", value)).into());
             }
         })
     }

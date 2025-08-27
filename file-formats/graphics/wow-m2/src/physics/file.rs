@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use wow_data::error::Result as WDResult;
+use wow_data::prelude::*;
 use wow_data::types::{ChunkHeader, MagicStr, VersionedChunk, WowStructR};
 use wow_data::utils::{magic_to_inverted_string, string_to_inverted_magic};
-use wow_data::{prelude::*, v_read_chunk_items};
 
 use crate::M2Error;
 
@@ -17,34 +17,15 @@ pub enum PhysChunk {
     ShapeBox(Vec<shape::ShapeBox>),
     ShapeCapsule(Vec<shape::ShapeCapsule>),
     ShapeSphere(Vec<shape::ShapeSphere>),
-    Shape2 {
-        version: shape::Version,
-        items: Vec<shape::Shape>,
-    },
     Shape(VersionedChunk<shape::Version, shape::Shape>),
-    Body {
-        version: body::Version,
-        items: Vec<body::Body>,
-    },
+    Body(VersionedChunk<body::Version, body::Body>),
     Joint(Vec<joint::Joint>),
     JointDistance(Vec<joint::JointDistance>),
-    JointPrismatic {
-        version: joint::prismatic::Version,
-        items: Vec<joint::JointPrismatic>,
-    },
-    JointRevolute {
-        version: joint::revolute::Version,
-        items: Vec<joint::JointRevolute>,
-    },
-    JointShoulder {
-        version: joint::shoulder::Version,
-        items: Vec<joint::JointShoulder>,
-    },
+    JointPrismatic(VersionedChunk<joint::prismatic::Version, joint::JointPrismatic>),
+    JointRevolute(VersionedChunk<joint::revolute::Version, joint::JointRevolute>),
+    JointShoulder(VersionedChunk<joint::shoulder::Version, joint::JointShoulder>),
     JointSpherical(Vec<joint::JointSpherical>),
-    JointWeld {
-        version: joint::weld::Version,
-        items: Vec<joint::JointWeld>,
-    },
+    JointWeld(VersionedChunk<joint::weld::Version, joint::JointWeld>),
     Phyt(Vec<phyt::Phyt>),
     Unknown(Vec<u8>),
 }
@@ -93,23 +74,14 @@ impl WowStructR for PhysFile {
                     &shape::SPHS,
                     PhysChunk::ShapeSphere(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
-                shape::SHAP | shape::SHP2 => {
-                    let version: shape::Version = chunk_header.magic.try_into()?;
-                    (
-                        &shape::SHAP,
-                        PhysChunk::Shape(reader.v_wow_read_from_chunk(version, &chunk_header)?),
-                    )
-                }
-                body::BODY | body::BDY2 | body::BDY3 | body::BDY4 => {
-                    let version: body::Version = chunk_header.magic.try_into()?;
-                    (
-                        &body::BODY,
-                        PhysChunk::Body {
-                            version,
-                            items: v_read_chunk_items!(reader, version, chunk_header, body::Body),
-                        },
-                    )
-                }
+                shape::SHAP | shape::SHP2 => (
+                    &shape::SHAP,
+                    PhysChunk::Shape(reader.v_wow_read_from_chunk(&chunk_header)?),
+                ),
+                body::BODY | body::BDY2 | body::BDY3 | body::BDY4 => (
+                    &body::BODY,
+                    PhysChunk::Body(reader.v_wow_read_from_chunk(&chunk_header)?),
+                ),
                 joint::JOIN => (
                     &joint::JOIN,
                     PhysChunk::Joint(reader.wow_read_from_chunk(&chunk_header)?),
@@ -118,71 +90,30 @@ impl WowStructR for PhysFile {
                     &joint::DSTJ,
                     PhysChunk::JointDistance(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
-                joint::PRSJ | joint::PRS2 => {
-                    let version: joint::prismatic::Version = chunk_header.magic.try_into()?;
-                    (
-                        &joint::PRSJ,
-                        PhysChunk::JointPrismatic {
-                            version,
-                            items: v_read_chunk_items!(
-                                reader,
-                                version,
-                                chunk_header,
-                                joint::JointPrismatic
-                            ),
-                        },
-                    )
-                }
-                joint::REVJ | joint::REV2 => {
-                    let version: joint::revolute::Version = chunk_header.magic.try_into()?;
-                    (
-                        &joint::REVJ,
-                        PhysChunk::JointRevolute {
-                            version,
-                            items: v_read_chunk_items!(
-                                reader,
-                                version,
-                                chunk_header,
-                                joint::JointRevolute
-                            ),
-                        },
-                    )
-                }
-                joint::SHOJ | joint::SHJ2 => {
-                    let version: joint::shoulder::Version =
-                        (version, chunk_header.magic).try_into()?;
-                    (
-                        &joint::SHOJ,
-                        PhysChunk::JointShoulder {
-                            version,
-                            items: v_read_chunk_items!(
-                                reader,
-                                version,
-                                chunk_header,
-                                joint::JointShoulder
-                            ),
-                        },
-                    )
-                }
+                joint::PRSJ | joint::PRS2 => (
+                    &joint::PRSJ,
+                    PhysChunk::JointPrismatic(reader.v_wow_read_from_chunk(&chunk_header)?),
+                ),
+                joint::REVJ | joint::REV2 => (
+                    &joint::REVJ,
+                    PhysChunk::JointRevolute(reader.v_wow_read_from_chunk(&chunk_header)?),
+                ),
+                joint::SHOJ | joint::SHJ2 => (
+                    &joint::SHOJ,
+                    PhysChunk::JointShoulder(joint::JointShoulder::wow_read_from_chunk(
+                        reader,
+                        version,
+                        &chunk_header,
+                    )?),
+                ),
                 joint::SPHJ => (
                     &joint::SPHJ,
                     PhysChunk::JointSpherical(reader.wow_read_from_chunk(&chunk_header)?),
                 ),
-                joint::WELJ | joint::WLJ2 | joint::WLJ3 => {
-                    let version: joint::weld::Version = chunk_header.magic.try_into()?;
-                    (
-                        &joint::WELJ,
-                        PhysChunk::JointWeld {
-                            version,
-                            items: v_read_chunk_items!(
-                                reader,
-                                version,
-                                chunk_header,
-                                joint::JointWeld
-                            ),
-                        },
-                    )
-                }
+                joint::WELJ | joint::WLJ2 | joint::WLJ3 => (
+                    &joint::WELJ,
+                    PhysChunk::JointWeld(reader.v_wow_read_from_chunk(&chunk_header)?),
+                ),
                 phyt::PHYT => (
                     &phyt::PHYT,
                     PhysChunk::Phyt(reader.wow_read_from_chunk(&chunk_header)?),

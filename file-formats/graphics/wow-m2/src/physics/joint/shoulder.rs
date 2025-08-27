@@ -1,10 +1,11 @@
-use wow_data::prelude::*;
-use wow_data::types::{MagicStr, Mat3x4};
+use wow_data::error::{Result as WDResult, WowDataError};
+use wow_data::types::{ChunkHeader, MagicStr, Mat3x4, VersionedChunk};
 use wow_data::utils::string_to_inverted_magic;
+use wow_data::{prelude::*, v_read_chunk_items};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
+use crate::M2Error;
 use crate::physics::version::PhysVersion;
-use crate::{M2Error, Result};
 
 use super::common::{FrequencyDamping, TorqueMode};
 
@@ -22,9 +23,9 @@ pub enum Version {
 impl DataVersion for Version {}
 
 impl TryFrom<(PhysVersion, MagicStr)> for Version {
-    type Error = M2Error;
+    type Error = WowDataError;
 
-    fn try_from(value: (PhysVersion, MagicStr)) -> Result<Self> {
+    fn try_from(value: (PhysVersion, MagicStr)) -> WDResult<Self> {
         Ok(if value.0 <= PhysVersion::V1 {
             match value.1 {
                 SHOJ => Self::V1,
@@ -34,7 +35,8 @@ impl TryFrom<(PhysVersion, MagicStr)> for Version {
                     return Err(M2Error::ParseError(format!(
                         "Invalid shoulder joint magic: {:?}",
                         value
-                    )));
+                    ))
+                    .into());
                 }
             }
         } else {
@@ -46,7 +48,8 @@ impl TryFrom<(PhysVersion, MagicStr)> for Version {
                     return Err(M2Error::ParseError(format!(
                         "Invalid shoulder joint magic: {:?}",
                         value
-                    )));
+                    ))
+                    .into());
                 }
             }
         })
@@ -105,4 +108,19 @@ pub struct JointShoulder {
     pub motor_tm: VGTE2<TorqueMode>,
     #[wow_data(versioned)]
     pub motor_fd: VGTE3<FrequencyDamping>,
+}
+
+impl JointShoulder {
+    pub fn wow_read_from_chunk<R: Read + Seek>(
+        reader: &mut R,
+        phys_version: PhysVersion,
+        chunk_header: &ChunkHeader,
+    ) -> WDResult<VersionedChunk<Version, Self>> {
+        let version: Version = (phys_version, chunk_header.magic).try_into()?;
+
+        Ok(VersionedChunk {
+            version,
+            items: v_read_chunk_items!(reader, version, chunk_header, Self),
+        })
+    }
 }

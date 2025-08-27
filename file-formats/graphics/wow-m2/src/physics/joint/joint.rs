@@ -1,9 +1,10 @@
+use wow_data::error::WowDataError;
 use wow_data::prelude::*;
 use wow_data::types::MagicStr;
 use wow_data::{error::Result as WDResult, utils::string_to_inverted_magic};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
-use crate::{M2Error, Result};
+use crate::M2Error;
 
 pub const JOIN: MagicStr = string_to_inverted_magic("JOIN");
 
@@ -19,9 +20,9 @@ pub enum JointType {
 }
 
 impl TryFrom<u16> for JointType {
-    type Error = M2Error;
+    type Error = WowDataError;
 
-    fn try_from(value: u16) -> Result<Self> {
+    fn try_from(value: u16) -> WDResult<Self> {
         match value {
             0 => Ok(Self::Spherical),
             1 => Ok(Self::Shoulder),
@@ -29,10 +30,7 @@ impl TryFrom<u16> for JointType {
             3 => Ok(Self::Revolute),
             4 => Ok(Self::Prismatic),
             5 => Ok(Self::Distance),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid joint type value: {}",
-                value
-            ))),
+            _ => Err(M2Error::ParseError(format!("Invalid joint type value: {}", value)).into()),
         }
     }
 }

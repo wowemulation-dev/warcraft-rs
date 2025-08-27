@@ -1,9 +1,10 @@
+use wow_data::error::{Result as WDResult, WowDataError};
 use wow_data::prelude::*;
 use wow_data::types::{MagicStr, Mat3x4};
 use wow_data::utils::string_to_inverted_magic;
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
-use crate::{M2Error, Result};
+use crate::M2Error;
 
 use super::common::{FrequencyDamping, TorqueMode};
 
@@ -20,9 +21,9 @@ pub enum Version {
 impl DataVersion for Version {}
 
 impl TryFrom<MagicStr> for Version {
-    type Error = M2Error;
+    type Error = WowDataError;
 
-    fn try_from(value: MagicStr) -> Result<Self> {
+    fn try_from(value: MagicStr) -> WDResult<Self> {
         Ok(match value {
             REVJ => Self::V1,
             REV2 => Self::V2,
@@ -31,7 +32,8 @@ impl TryFrom<MagicStr> for Version {
                 return Err(M2Error::ParseError(format!(
                     "Invalid revolute joint magic: {:?}",
                     value
-                )));
+                ))
+                .into());
             }
         })
     }

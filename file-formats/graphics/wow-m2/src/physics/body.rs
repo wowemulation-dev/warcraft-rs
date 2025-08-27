@@ -1,9 +1,10 @@
+use wow_data::error::{Result as WDResult, WowDataError};
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, MagicStr};
 use wow_data::utils::string_to_inverted_magic;
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
-use crate::{M2Error, Result};
+use crate::M2Error;
 
 pub const BODY: MagicStr = string_to_inverted_magic("BODY");
 pub const BDY2: MagicStr = string_to_inverted_magic("BDY2");
@@ -22,9 +23,9 @@ pub enum Version {
 impl DataVersion for Version {}
 
 impl TryFrom<MagicStr> for Version {
-    type Error = M2Error;
+    type Error = WowDataError;
 
-    fn try_from(value: MagicStr) -> Result<Self> {
+    fn try_from(value: MagicStr) -> WDResult<Self> {
         Ok(match value {
             BODY => Self::V1,
             BDY2 => Self::V2,
@@ -32,10 +33,7 @@ impl TryFrom<MagicStr> for Version {
             BDY4 => Self::V4,
 
             _ => {
-                return Err(M2Error::ParseError(format!(
-                    "Invalid body magic: {:?}",
-                    value
-                )));
+                return Err(M2Error::ParseError(format!("Invalid body magic: {:?}", value)).into());
             }
         })
     }
