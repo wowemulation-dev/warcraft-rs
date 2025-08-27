@@ -79,7 +79,7 @@ pub enum M2ParticleEmitterType {
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub enum M2ParticleEmitterBlending {
-    Classic {
+    Vanilla {
         blending_type: u16,
         emitter_type: u16,
     },

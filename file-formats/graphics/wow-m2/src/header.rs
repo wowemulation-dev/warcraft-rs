@@ -239,7 +239,7 @@ pub struct MD20Header {
     #[wow_data(versioned)]
     pub animations: WowArrayV<MD20Version, M2Animation>,
 
-    /// Animation lookups (C in Classic)
+    /// Animation lookups (C in Vanilla)
     pub animation_lookup: WowArray<i16>,
 
     /// Playable animation lookup - only present in versions <= 263

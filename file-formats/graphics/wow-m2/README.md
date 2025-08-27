@@ -12,7 +12,7 @@ A Rust library for parsing, validating, and converting World of Warcraft M2 mode
 
 ## Overview
 
-`wow-m2` provides comprehensive support for M2 model files across all World of Warcraft expansions from Classic (1.12.1) through The War Within (11.x). The library handles:
+`wow-m2` provides comprehensive support for M2 model files across all World of Warcraft expansions from Vanilla (1.12.1) through The War Within (11.x). The library handles:
 
 - **M2 Models** (`.m2`/`.mdx`) - 3D character, creature, and object models
 - **Skin Files** (`.skin`) - Level-of-detail and submesh information
@@ -104,7 +104,7 @@ let version = M2Version::from_expansion_name("MoP")?;
 
 | Expansion | Version Range | Support |
 |-----------|---------------|---------|
-| Classic | 1.12.x | ✅ Full |
+| Vanilla | 1.12.x | ✅ Full |
 | TBC | 2.4.x | ✅ Full |
 | WotLK | 3.3.x | ✅ Full |
 | Cataclysm | 4.3.x | ✅ Full |

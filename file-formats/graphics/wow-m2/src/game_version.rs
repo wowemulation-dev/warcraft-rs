@@ -2,7 +2,7 @@ use crate::error::Result;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GameVersion {
-    Classic,
+    Vanilla,
     TBC,
     WotLK,
     Cataclysm,
@@ -33,7 +33,7 @@ impl GameVersion {
         })?;
 
         Ok(match major {
-            1 => GameVersion::Classic,
+            1 => GameVersion::Vanilla,
             2 => GameVersion::TBC,
             3 => GameVersion::WotLK,
             4 => GameVersion::Cataclysm,
@@ -57,7 +57,7 @@ impl GameVersion {
     pub fn from_expansion_name(s: &str) -> Result<Self> {
         // First try parsing as a short name
         match s.to_lowercase().as_str() {
-            "vanilla" | "classic" => Ok(GameVersion::Classic),
+            "vanilla" | "classic" => Ok(GameVersion::Vanilla),
             "tbc" | "bc" | "burningcrusade" | "burning_crusade" => Ok(GameVersion::TBC),
             "wotlk" | "wrath" | "lichking" | "lich_king" | "wlk" => Ok(GameVersion::WotLK),
             "cata" | "cataclysm" => Ok(GameVersion::Cataclysm),
@@ -79,7 +79,7 @@ impl GameVersion {
 
     pub fn expansion_name(&self) -> &'static str {
         match self {
-            Self::Classic => "Classic",
+            Self::Vanilla => "Vanilla",
             Self::TBC => "The Burning Crusade",
             Self::WotLK => "Wrath of the Lich King",
             Self::Cataclysm => "Cataclysm",
@@ -95,7 +95,7 @@ impl GameVersion {
 
     pub fn to_version_string(&self) -> &'static str {
         match self {
-            Self::Classic => "1.12.1",
+            Self::Vanilla => "1.12.1",
             Self::TBC => "2.4.3",
             Self::WotLK => "3.3.5a",
             Self::Cataclysm => "4.3.4",
@@ -129,7 +129,7 @@ mod tests {
     fn test_version_from_string() {
         assert_eq!(
             GameVersion::from_string("1.12.1").unwrap(),
-            GameVersion::Classic
+            GameVersion::Vanilla
         );
         assert_eq!(GameVersion::from_string("2.4.3").unwrap(), GameVersion::TBC);
         assert_eq!(
@@ -147,7 +147,7 @@ mod tests {
     fn test_version_from_expansion_name() {
         assert_eq!(
             GameVersion::from_expansion_name("classic").unwrap(),
-            GameVersion::Classic
+            GameVersion::Vanilla
         );
         assert_eq!(
             GameVersion::from_expansion_name("TBC").unwrap(),

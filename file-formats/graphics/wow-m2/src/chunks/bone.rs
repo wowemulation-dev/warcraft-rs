@@ -32,14 +32,14 @@ bitflags::bitflags! {
 
 #[derive(Debug, Clone, WowHeaderW)]
 pub enum M2BoneRotationHeader {
-    Classic(M2AnimationTrackHeader<Quaternion>),
+    Vanilla(M2AnimationTrackHeader<Quaternion>),
     Later(M2AnimationTrackHeader<Quaternion16>),
 }
 
 impl VWowHeaderR<MD20Version> for M2BoneRotationHeader {
     fn wow_read<R: Read + Seek>(reader: &mut R, version: MD20Version) -> WDResult<Self> {
-        Ok(if version <= MD20Version::ClassicV4 {
-            Self::Classic(reader.wow_read_versioned(version)?)
+        Ok(if version <= MD20Version::VanillaV4 {
+            Self::Vanilla(reader.wow_read_versioned(version)?)
         } else {
             Self::Later(reader.wow_read_versioned(version)?)
         })
@@ -48,7 +48,7 @@ impl VWowHeaderR<MD20Version> for M2BoneRotationHeader {
 
 #[derive(Debug, Clone)]
 pub enum M2BoneRotationData {
-    Classic(M2AnimationTrackData<Quaternion>),
+    Vanilla(M2AnimationTrackData<Quaternion>),
     Later(M2AnimationTrackData<Quaternion16>),
 }
 
@@ -58,8 +58,8 @@ impl VWowDataR<MD20Version, M2BoneRotationHeader> for M2BoneRotationData {
         header: &M2BoneRotationHeader,
     ) -> WDResult<Self> {
         match header {
-            M2BoneRotationHeader::Classic(classic) => {
-                Ok(Self::Classic(reader.v_new_from_header(classic)?))
+            M2BoneRotationHeader::Vanilla(classic) => {
+                Ok(Self::Vanilla(reader.v_new_from_header(classic)?))
             }
             M2BoneRotationHeader::Later(later) => Ok(Self::Later(reader.v_new_from_header(later)?)),
         }

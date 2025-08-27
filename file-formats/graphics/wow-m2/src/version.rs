@@ -22,13 +22,13 @@ pub enum MD20Version {
     Unknown,
 
     #[wow_data(expr = 0x0100)]
-    ClassicV1,
+    VanillaV1,
     #[wow_data(expr = 0x0101)]
-    ClassicV2,
+    VanillaV2,
     #[wow_data(expr = 0x0102)]
-    ClassicV3,
+    VanillaV3,
     #[wow_data(expr = 0x0103)]
-    ClassicV4,
+    VanillaV4,
 
     #[wow_data(expr = 0x0104)]
     TBCV1,
