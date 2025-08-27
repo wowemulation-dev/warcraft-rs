@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Expr, Fields, Ident, Type, parse_macro_input};
+use syn::{Arm, Data, DeriveInput, Expr, Fields, Ident, LitStr, Type, parse_macro_input};
 
 #[proc_macro_derive(WowHeaderR, attributes(wow_data))]
 pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
@@ -211,19 +211,23 @@ struct WowDataAttrs {
     override_read: Option<Expr>,
     from_type: Option<Type>,
     expr: Option<Expr>,
+    from_arm: Option<Arm>,
+    to_arm: Option<Arm>,
     bitflags: Option<Type>,
 }
 
 fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
     let mut data_attrs = WowDataAttrs {
-        default: false,
         versioned: false,
+        default: false,
         version: None,
         header: None,
         read_if: None,
         override_read: None,
         from_type: None,
         expr: None,
+        from_arm: None,
+        to_arm: None,
         bitflags: None,
     };
 
@@ -235,6 +239,10 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("versioned") {
                 data_attrs.versioned = true;
+            }
+
+            if meta.path.is_ident("default") {
+                data_attrs.default = true;
             }
 
             if meta.path.is_ident("version") {
@@ -267,8 +275,16 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
                 data_attrs.expr = Some(value.parse()?);
             }
 
-            if meta.path.is_ident("default") {
-                data_attrs.default = true;
+            if meta.path.is_ident("from_arm") {
+                let value = meta.value()?;
+                let expr_str: LitStr = value.parse()?;
+                data_attrs.from_arm = Some(syn::parse_str(&expr_str.value())?);
+            }
+
+            if meta.path.is_ident("to_arm") {
+                let value = meta.value()?;
+                let expr_str: LitStr = value.parse()?;
+                data_attrs.to_arm = Some(syn::parse_str(&expr_str.value())?);
             }
 
             if meta.path.is_ident("bitflags") {
@@ -646,13 +662,13 @@ fn generate_wow_enum_from_value_lines(
         let variant_ident = &variant.ident;
         let wow_data_attrs = parse_wow_data_attrs(&variant.attrs)?;
 
-        if wow_data_attrs.default {
-            has_default = Some(quote! {
-                _ => Self::#variant_ident,
-            });
-        }
-
         if let Some(expr) = wow_data_attrs.expr {
+            if wow_data_attrs.default {
+                has_default = Some(quote! {
+                    _ => Self::#variant_ident,
+                });
+            }
+
             match &variant.fields {
                 syn::Fields::Unit => {
                     lines.push(quote! { #expr => Self::#variant_ident, });
@@ -664,10 +680,17 @@ fn generate_wow_enum_from_value_lines(
                     ));
                 }
             }
+        } else if let Some(from_arm) = wow_data_attrs.from_arm {
+            let arm = quote! { #from_arm, };
+            if wow_data_attrs.default {
+                has_default = Some(arm);
+            } else {
+                lines.push(arm);
+            }
         } else {
             return Err(syn::Error::new_spanned(
                 variant,
-                "WowEnumFrom requires a wow_data(expr=EXPR) attribute for each variant",
+                "WowEnumFrom requires a wow_data(expr=EXPR | from_arm=ARM_STR) attribute for each variant",
             ));
         };
     }
@@ -707,10 +730,12 @@ fn generate_wow_enum_to_value_lines(
                     ));
                 }
             }
+        } else if let Some(to_arm) = wow_data_attrs.to_arm {
+            lines.push(quote! { #to_arm, });
         } else {
             return Err(syn::Error::new_spanned(
                 variant,
-                "WowEnumFrom requires a wow_data(expr=EXPR) attribute for each variant",
+                "WowEnumFrom requires a wow_data(expr=EXPR | to_arm=ARM_STR) attribute for each variant",
             ));
         };
     }
