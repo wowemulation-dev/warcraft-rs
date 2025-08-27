@@ -4,8 +4,8 @@ use wow_data::utils::string_to_inverted_magic;
 use wow_data::{prelude::*, v_read_chunk_items};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
+use super::super::version::PhysVersion;
 use crate::M2Error;
-use crate::physics::version::PhysVersion;
 
 use super::common::{FrequencyDamping, TorqueMode};
 

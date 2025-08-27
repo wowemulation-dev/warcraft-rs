@@ -49,19 +49,17 @@ impl WowStructR for PhysFile {
             .into());
         }
 
-        let version = reader.wow_read()?;
+        let phys_version = reader.wow_read()?;
 
         let mut chunks = Vec::new();
         let mut chunk_index = HashMap::new();
 
         loop {
-            let chunk_header: ChunkHeader = if let Ok(chunk_header) = reader.wow_read() {
-                chunk_header
-            } else {
+            let Ok(chunk_header) = ChunkHeader::wow_read(reader) else {
                 break;
             };
 
-            let (chunk_magic, chunk_vec): (&MagicStr, PhysChunk) = match chunk_header.magic {
+            let (chunk_magic, chunk_data): (&MagicStr, PhysChunk) = match chunk_header.magic {
                 shape::BOXS => (
                     &shape::BOXS,
                     PhysChunk::ShapeBox(reader.wow_read_from_chunk(&chunk_header)?),
@@ -102,7 +100,7 @@ impl WowStructR for PhysFile {
                     &joint::SHOJ,
                     PhysChunk::JointShoulder(joint::JointShoulder::wow_read_from_chunk(
                         reader,
-                        version,
+                        phys_version,
                         &chunk_header,
                     )?),
                 ),
@@ -124,13 +122,13 @@ impl WowStructR for PhysFile {
                 ),
             };
 
-            chunks.push(chunk_vec);
+            chunks.push(chunk_data);
             chunk_index.insert(magic_to_inverted_string(chunk_magic), chunks.len() - 1);
         }
 
         Ok(Self {
             header,
-            version,
+            version: phys_version,
             chunks,
             chunk_index,
         })

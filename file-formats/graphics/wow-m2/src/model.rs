@@ -53,27 +53,27 @@ impl WowStructR for M2Model {
 
                 let magic_len = MD20_MAGIC.len() as i64;
 
-                let mut vec = vec![0_u8; md20_size as usize];
+                let mut md20_data = vec![0_u8; md20_size as usize];
                 reader.seek_relative(-magic_len)?;
-                reader.read_exact(&mut vec)?;
+                reader.read_exact(&mut md20_data)?;
 
-                let mut md20_reader = Cursor::new(vec);
+                let mut md20_reader = Cursor::new(md20_data);
                 md20_reader.seek_relative(magic_len)?;
 
                 let md20 = MD20Model::wow_read(&mut md20_reader)?;
 
+                // go to start of other chunks
                 reader.seek(SeekFrom::Start(pos + md20_size as u64))?;
 
                 let mut chunks = Vec::new();
                 let mut chunk_index = HashMap::new();
+
                 loop {
-                    let chunk_header: ChunkHeader = if let Ok(chunk_header) = reader.wow_read() {
-                        chunk_header
-                    } else {
+                    let Ok(chunk_header) = ChunkHeader::wow_read(reader) else {
                         break;
                     };
 
-                    let (chunk_magic, chunk_vec): (&MagicStr, M2Chunk) = match chunk_header.magic {
+                    let (chunk_magic, chunk_data): (&MagicStr, M2Chunk) = match chunk_header.magic {
                         file_id::AFID => (
                             &chunk_header.magic,
                             M2Chunk::AFID(reader.wow_read_from_chunk(&chunk_header)?),
@@ -115,7 +115,7 @@ impl WowStructR for M2Model {
                             M2Chunk::Unknown(reader.wow_read_from_chunk(&chunk_header)?),
                         ),
                     };
-                    chunks.push(chunk_vec);
+                    chunks.push(chunk_data);
                     chunk_index.insert(magic_to_string(chunk_magic), chunks.len() - 1);
                 }
 
