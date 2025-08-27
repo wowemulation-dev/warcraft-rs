@@ -14,13 +14,13 @@ use crate::version::MD20Version;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(from_type=u16)]
 pub enum M2InterpolationType {
-    #[wow_data(lit = 0)]
+    #[wow_data(expr = 0)]
     None = 0,
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     Linear = 1,
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     Bezier = 2,
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     Hermite = 3,
 }
 

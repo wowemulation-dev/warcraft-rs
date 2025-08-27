@@ -12,12 +12,12 @@ pub const WLJ3: MagicStr = string_to_inverted_magic("WLJ3");
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
 #[wow_data(from_type=MagicStr)]
 pub enum Version {
-    #[wow_data(ident = WELJ)]
+    #[wow_data(expr = WELJ)]
     V1,
-    #[wow_data(ident = WLJ2)]
+    #[wow_data(expr = WLJ2)]
     V2,
     #[default]
-    #[wow_data(ident = WLJ3)]
+    #[wow_data(expr = WLJ3)]
     V3,
 }
 

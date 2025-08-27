@@ -40,17 +40,17 @@ bitflags::bitflags! {
 #[wow_data(from_type=u16)]
 pub enum M2TexTransformType {
     #[default]
-    #[wow_data(lit = 0)]
+    #[wow_data(expr = 0)]
     None = 0,
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     Scroll = 1,
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     Rotate = 2,
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     Scale = 3,
-    #[wow_data(lit = 4)]
+    #[wow_data(expr = 4)]
     Stretch = 4,
-    #[wow_data(lit = 5)]
+    #[wow_data(expr = 5)]
     Camera = 5,
 }
 

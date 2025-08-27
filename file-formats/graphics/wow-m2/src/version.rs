@@ -18,38 +18,38 @@ use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 )]
 #[wow_data(from_type=u32)]
 pub enum MD20Version {
-    #[wow_data(lit = 0x0, default)]
+    #[wow_data(expr = 0x0, default)]
     Unknown,
 
-    #[wow_data(lit = 0x0100)]
+    #[wow_data(expr = 0x0100)]
     ClassicV1,
-    #[wow_data(lit = 0x0101)]
+    #[wow_data(expr = 0x0101)]
     ClassicV2,
-    #[wow_data(lit = 0x0102)]
+    #[wow_data(expr = 0x0102)]
     ClassicV3,
-    #[wow_data(lit = 0x0103)]
+    #[wow_data(expr = 0x0103)]
     ClassicV4,
 
-    #[wow_data(lit = 0x0104)]
+    #[wow_data(expr = 0x0104)]
     TBCV1,
-    #[wow_data(lit = 0x0105)]
+    #[wow_data(expr = 0x0105)]
     TBCV2,
-    #[wow_data(lit = 0x0106)]
+    #[wow_data(expr = 0x0106)]
     TBCV3,
-    #[wow_data(lit = 0x0107)]
+    #[wow_data(expr = 0x0107)]
     TBCV4,
 
-    #[wow_data(lit = 0x0108)]
+    #[wow_data(expr = 0x0108)]
     WotLK,
 
-    #[wow_data(lit = 0x0109)]
+    #[wow_data(expr = 0x0109)]
     Cataclysm,
 
-    #[wow_data(lit = 0x0110)]
+    #[wow_data(expr = 0x0110)]
     MoPPlus,
 
     #[default]
-    #[wow_data(lit = 0x0112)]
+    #[wow_data(expr = 0x0112)]
     BfAPlus,
 }
 

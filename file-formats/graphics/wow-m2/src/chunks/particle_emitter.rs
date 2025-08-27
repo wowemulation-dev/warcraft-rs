@@ -60,19 +60,19 @@ bitflags::bitflags! {
 #[wow_data(from_type=u8)]
 pub enum M2ParticleEmitterType {
     /// Point emitter (particles spawn from a single point)
-    #[wow_data(lit = 0)]
+    #[wow_data(expr = 0)]
     Point = 0,
     /// Plane emitter (particles spawn within a 2D plane)
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     Plane = 1,
     /// Sphere emitter (particles spawn within a 3D sphere)
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     Sphere = 2,
     /// Spline emitter (particles follow a spline path)
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     Spline = 3,
     /// Bone emitter (particles spawn from a bone)
-    #[wow_data(lit = 4)]
+    #[wow_data(expr = 4)]
     Bone = 4,
 }
 

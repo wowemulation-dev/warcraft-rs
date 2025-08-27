@@ -1051,21 +1051,21 @@ mod tests {
     )]
     #[wow_data(from_type=u32)]
     pub enum M2Version {
-        #[wow_data(lit = 1)]
+        #[wow_data(expr = 1)]
         Classic,
-        #[wow_data(lit = 2)]
+        #[wow_data(expr = 2)]
         TBC,
-        #[wow_data(lit = 3)]
+        #[wow_data(expr = 3)]
         WotLK,
-        #[wow_data(lit = 4)]
+        #[wow_data(expr = 4)]
         Cataclysm,
-        #[wow_data(lit = 5)]
+        #[wow_data(expr = 5)]
         MoP,
-        #[wow_data(lit = 6)]
+        #[wow_data(expr = 6)]
         WoD,
-        #[wow_data(lit = 7)]
+        #[wow_data(expr = 7)]
         Legion,
-        #[wow_data(lit = 8)]
+        #[wow_data(expr = 8)]
         BfA,
     }
 

@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Expr, Fields, Ident, Lit, Type, parse_macro_input};
+use syn::{Data, DeriveInput, Expr, Fields, Ident, Type, parse_macro_input};
 
 #[proc_macro_derive(WowHeaderR, attributes(wow_data))]
 pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
@@ -210,8 +210,7 @@ struct WowDataAttrs {
     read_if: Option<Expr>,
     override_read: Option<Expr>,
     from_type: Option<Type>,
-    ident: Option<Ident>,
-    lit: Option<Lit>,
+    expr: Option<Expr>,
     bitflags: Option<Type>,
 }
 
@@ -224,8 +223,7 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
         read_if: None,
         override_read: None,
         from_type: None,
-        ident: None,
-        lit: None,
+        expr: None,
         bitflags: None,
     };
 
@@ -264,14 +262,9 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
                 data_attrs.from_type = Some(value.parse()?);
             }
 
-            if meta.path.is_ident("ident") {
+            if meta.path.is_ident("expr") {
                 let value = meta.value()?;
-                data_attrs.ident = Some(value.parse()?);
-            }
-
-            if meta.path.is_ident("lit") {
-                let value = meta.value()?;
-                data_attrs.lit = Some(value.parse()?);
+                data_attrs.expr = Some(value.parse()?);
             }
 
             if meta.path.is_ident("default") {
@@ -659,22 +652,10 @@ fn generate_wow_enum_from_value_lines(
             });
         }
 
-        if let Some(ident) = wow_data_attrs.ident {
+        if let Some(expr) = wow_data_attrs.expr {
             match &variant.fields {
                 syn::Fields::Unit => {
-                    lines.push(quote! { #ident => Self::#variant_ident, });
-                }
-                _ => {
-                    return Err(syn::Error::new_spanned(
-                        &variant,
-                        "WowEnumFrom only supports unit variants.",
-                    ));
-                }
-            }
-        } else if let Some(lit) = wow_data_attrs.lit {
-            match &variant.fields {
-                syn::Fields::Unit => {
-                    lines.push(quote! { #lit => Self::#variant_ident, });
+                    lines.push(quote! { #expr => Self::#variant_ident, });
                 }
                 _ => {
                     return Err(syn::Error::new_spanned(
@@ -686,7 +667,7 @@ fn generate_wow_enum_from_value_lines(
         } else {
             return Err(syn::Error::new_spanned(
                 variant,
-                "WowEnumFrom requires a wow_data(ident=IDENT | lit=LITERAL) attribute for each variant",
+                "WowEnumFrom requires a wow_data(expr=EXPR) attribute for each variant",
             ));
         };
     }
@@ -714,22 +695,10 @@ fn generate_wow_enum_to_value_lines(
         let variant_ident = &variant.ident;
 
         let wow_data_attrs = parse_wow_data_attrs(&variant.attrs)?;
-        if let Some(ident) = wow_data_attrs.ident {
+        if let Some(expr) = wow_data_attrs.expr {
             match &variant.fields {
                 syn::Fields::Unit => {
-                    lines.push(quote! { #struct_name::#variant_ident => #ident });
-                }
-                _ => {
-                    return Err(syn::Error::new_spanned(
-                        &variant,
-                        "WowEnumFrom only supports unit variants.",
-                    ));
-                }
-            }
-        } else if let Some(lit) = wow_data_attrs.lit {
-            match &variant.fields {
-                syn::Fields::Unit => {
-                    lines.push(quote! { #struct_name::#variant_ident => #lit });
+                    lines.push(quote! { #struct_name::#variant_ident => #expr });
                 }
                 _ => {
                     return Err(syn::Error::new_spanned(
@@ -741,7 +710,7 @@ fn generate_wow_enum_to_value_lines(
         } else {
             return Err(syn::Error::new_spanned(
                 variant,
-                "WowEnumFrom requires a wow_data(ident=IDENT | lit=LITERAL) attribute for each variant",
+                "WowEnumFrom requires a wow_data(expr=EXPR) attribute for each variant",
             ));
         };
     }

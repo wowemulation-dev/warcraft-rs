@@ -16,13 +16,13 @@ pub const SKIN_MAGIC: MagicStr = *b"SKIN";
 #[wow_data(from_type=u32)]
 pub enum SkinVersion {
     /// Used up to WotLK
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     V1,
     /// Used in WotLK
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     V2,
     /// Used in Cataclysm and later
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     V3,
 }
 

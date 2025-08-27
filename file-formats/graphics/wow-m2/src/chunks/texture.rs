@@ -8,65 +8,65 @@ use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 pub enum M2TextureType {
     /// Texture defined in filename
     #[default]
-    #[wow_data(lit = 0)]
+    #[wow_data(expr = 0)]
     Hardcoded = 0,
     /// Body + clothes
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     Body = 1,
     /// Item, capes
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     Item = 2,
     /// Weapon blade
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     WeaponBlade = 3,
     /// Weapon handle
-    #[wow_data(lit = 4)]
+    #[wow_data(expr = 4)]
     WeaponHandle = 4,
     /// Environment
-    #[wow_data(lit = 5)]
+    #[wow_data(expr = 5)]
     Environment = 5,
     /// Hair, beard
-    #[wow_data(lit = 6)]
+    #[wow_data(expr = 6)]
     Hair = 6,
-    #[wow_data(lit = 7)]
+    #[wow_data(expr = 7)]
     FacialHair = 7,
-    #[wow_data(lit = 8)]
+    #[wow_data(expr = 8)]
     SkinExtra = 8,
-    #[wow_data(lit = 9)]
+    #[wow_data(expr = 9)]
     UISkin = 9,
-    #[wow_data(lit = 10)]
+    #[wow_data(expr = 10)]
     TaurenMane = 10,
-    #[wow_data(lit = 11)]
+    #[wow_data(expr = 11)]
     Monster1 = 11,
-    #[wow_data(lit = 12)]
+    #[wow_data(expr = 12)]
     Monster2 = 12,
-    #[wow_data(lit = 13)]
+    #[wow_data(expr = 13)]
     Monster3 = 13,
-    #[wow_data(lit = 14)]
+    #[wow_data(expr = 14)]
     ItemIcon = 14,
-    #[wow_data(lit = 15)]
+    #[wow_data(expr = 15)]
     GuildBgColor = 15,
-    #[wow_data(lit = 16)]
+    #[wow_data(expr = 16)]
     GuildEmblemColor = 16,
-    #[wow_data(lit = 17)]
+    #[wow_data(expr = 17)]
     GuildBorderColor = 17,
-    #[wow_data(lit = 18)]
+    #[wow_data(expr = 18)]
     GuildEmblem = 18,
-    #[wow_data(lit = 19)]
+    #[wow_data(expr = 19)]
     CharacterEyes = 19,
-    #[wow_data(lit = 20)]
+    #[wow_data(expr = 20)]
     CharacterAccessory = 20,
-    #[wow_data(lit = 21)]
+    #[wow_data(expr = 21)]
     CharacterSecondarySkin = 21,
-    #[wow_data(lit = 22)]
+    #[wow_data(expr = 22)]
     CharacterSecondaryHair = 22,
-    #[wow_data(lit = 23)]
+    #[wow_data(expr = 23)]
     CharacterSecondaryArmor = 23,
-    #[wow_data(lit = 24)]
+    #[wow_data(expr = 24)]
     Unknown1 = 24,
-    #[wow_data(lit = 25)]
+    #[wow_data(expr = 25)]
     Unknown2 = 25,
-    #[wow_data(lit = 26)]
+    #[wow_data(expr = 26)]
     Unknown3 = 26,
 }
 

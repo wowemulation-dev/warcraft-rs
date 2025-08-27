@@ -10,15 +10,15 @@ use super::animation::M2AnimationTrackData;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(from_type=u16)]
 pub enum M2TextureTransformType {
-    #[wow_data(lit = 0)]
+    #[wow_data(expr = 0)]
     None = 0,
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     Scroll = 1,
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     Rotate = 2,
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     Scale = 3,
-    #[wow_data(lit = 4)]
+    #[wow_data(expr = 4)]
     Matrix = 4,
 }
 

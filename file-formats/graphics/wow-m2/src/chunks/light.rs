@@ -11,16 +11,16 @@ use super::animation::M2AnimationTrackData;
 #[wow_data(from_type=u16)]
 pub enum M2LightType {
     /// Directional light (like the sun)
-    #[wow_data(lit = 0)]
+    #[wow_data(expr = 0)]
     Directional = 0,
     /// Point light (emits light in all directions)
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     Point = 1,
     /// Spot light (emits light in a cone)
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     Spot = 2,
     /// Ambient light (global illumination)
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     Ambient = 3,
 }
 

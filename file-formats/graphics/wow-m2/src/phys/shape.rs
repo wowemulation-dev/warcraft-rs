@@ -12,10 +12,10 @@ pub const SHP2: MagicStr = string_to_inverted_magic("SHP2");
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
 #[wow_data(from_type=MagicStr)]
 pub enum Version {
-    #[wow_data(ident=SHAP)]
+    #[wow_data(expr=SHAP)]
     V1,
     #[default]
-    #[wow_data(ident=SHP2)]
+    #[wow_data(expr=SHP2)]
     V2,
 }
 
@@ -44,13 +44,13 @@ pub struct ShapeSphere {
 #[wow_data(from_type=u16)]
 pub enum ShapeType {
     #[default]
-    #[wow_data(lit = 0)]
+    #[wow_data(expr = 0)]
     Box = 0,
-    #[wow_data(lit = 1)]
+    #[wow_data(expr = 1)]
     Capsule = 1,
-    #[wow_data(lit = 2)]
+    #[wow_data(expr = 2)]
     Sphere = 2,
-    #[wow_data(lit = 3)]
+    #[wow_data(expr = 3)]
     Polytope = 3,
 }
 

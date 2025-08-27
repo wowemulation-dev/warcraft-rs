@@ -11,13 +11,13 @@ pub const BDY4: MagicStr = string_to_inverted_magic("BDY4");
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
 #[wow_data(from_type=MagicStr)]
 pub enum Version {
-    #[wow_data(ident=BODY)]
+    #[wow_data(expr=BODY)]
     V1,
-    #[wow_data(ident=BDY2)]
+    #[wow_data(expr=BDY2)]
     V2,
-    #[wow_data(ident=BDY3)]
+    #[wow_data(expr=BDY3)]
     V3,
-    #[wow_data(ident=BDY4)]
+    #[wow_data(expr=BDY4)]
     V4,
 }
 
