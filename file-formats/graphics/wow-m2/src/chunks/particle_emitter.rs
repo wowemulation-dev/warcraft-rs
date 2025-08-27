@@ -10,7 +10,6 @@ use super::animation::{
 };
 
 bitflags::bitflags! {
-    /// Particle flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
     #[wow_data(bitflags=u32)]
     pub struct M2ParticleFlags: u32 {
@@ -57,7 +56,6 @@ bitflags::bitflags! {
     }
 }
 
-/// Particle emitter type enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
 #[wow_data(ty=u8)]
 pub enum M2ParticleEmitterType {

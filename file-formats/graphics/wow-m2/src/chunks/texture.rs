@@ -3,7 +3,6 @@ use wow_data::types::WowCharArray;
 use wow_data::{error::Result as WDResult, types::WowString};
 use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
-/// Texture type enum as defined in the M2 format
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(ty=u32)]
 pub enum M2TextureType {
@@ -72,7 +71,6 @@ pub enum M2TextureType {
 }
 
 bitflags::bitflags! {
-    /// Texture flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowHeaderR, WowHeaderW)]
     #[wow_data(bitflags=u32)]
     pub struct M2TextureFlags: u32 {
@@ -86,19 +84,14 @@ bitflags::bitflags! {
     }
 }
 
-/// Represents a texture in an M2 model
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 pub struct M2TextureHeader {
-    /// Type of the texture
     pub texture_type: M2TextureType,
-    /// Flags for this texture
     pub flags: M2TextureFlags,
-    /// Filename of the texture
     pub filename: WowCharArray,
 }
 
 impl M2TextureHeader {
-    /// Create a new texture with the given type and filename
     pub fn new(texture_type: M2TextureType, filename: WowCharArray) -> Self {
         Self {
             texture_type,

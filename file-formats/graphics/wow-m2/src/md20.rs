@@ -20,7 +20,6 @@ use crate::header::{
     MD20Header,
 };
 
-/// Main M2 model structure
 #[derive(Debug, Clone, Default)]
 pub struct MD20Model {
     pub header: MD20Header,

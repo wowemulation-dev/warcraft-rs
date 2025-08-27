@@ -24,7 +24,6 @@ pub enum M2LightType {
     Ambient = 3,
 }
 
-/// Represents a light in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct M2LightHeader {

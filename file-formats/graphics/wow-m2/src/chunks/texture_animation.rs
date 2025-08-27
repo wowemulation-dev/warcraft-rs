@@ -4,7 +4,6 @@ use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 use crate::chunks::animation::M2AnimationTrackHeader;
 use crate::version::MD20Version;
 
-/// Texture animation type enum
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom, WowHeaderR, WowHeaderW)]
 #[wow_data(ty=u16)]
 pub enum M2TextureAnimationType {
@@ -12,25 +11,19 @@ pub enum M2TextureAnimationType {
     #[default]
     #[wow_data(lit = 0)]
     None = 0,
-    /// Scroll animation
     #[wow_data(lit = 1)]
     Scroll = 1,
-    /// Rotate animation
     #[wow_data(lit = 2)]
     Rotate = 2,
-    /// Scale animation
     #[wow_data(lit = 3)]
     Scale = 3,
-    /// Key frame animation
     #[wow_data(lit = 4)]
     KeyFrame = 4,
 }
 
-/// Texture animation structure
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct M2TextureAnimation {
-    /// Animation type
     pub animation_type: M2TextureAnimationType,
     /// Animation for U coordinate
     #[wow_data(versioned)]
@@ -38,13 +31,10 @@ pub struct M2TextureAnimation {
     /// Animation for V coordinate
     #[wow_data(versioned)]
     pub translation_v: M2AnimationTrackHeader<f32>,
-    /// Rotation animation
     #[wow_data(versioned)]
     pub rotation: M2AnimationTrackHeader<f32>,
-    /// Scale U animation
     #[wow_data(versioned)]
     pub scale_u: M2AnimationTrackHeader<f32>,
-    /// Scale V animation
     #[wow_data(versioned)]
     pub scale_v: M2AnimationTrackHeader<f32>,
 }

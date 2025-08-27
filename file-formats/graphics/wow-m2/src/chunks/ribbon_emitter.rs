@@ -19,7 +19,6 @@ pub enum M2RibbonEmitterRest {
     },
 }
 
-/// Represents a ribbon emitter in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct M2RibbonEmitterHeader {

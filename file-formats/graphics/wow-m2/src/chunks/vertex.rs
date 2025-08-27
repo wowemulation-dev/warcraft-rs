@@ -3,25 +3,16 @@ use wow_data::types::{C2Vector, C3Vector};
 use wow_data_derive::{WowHeaderR, WowHeaderW};
 
 bitflags::bitflags! {
-    /// Vertex flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
     #[wow_data(bitflags=u8)]
     pub struct M2VertexFlags: u8 {
-        /// Transform using bone 0
         const TRANSFORM_BONE_0 = 0x01;
-        /// Transform using bone 1
         const TRANSFORM_BONE_1 = 0x02;
-        /// Transform using bone 2
         const TRANSFORM_BONE_2 = 0x04;
-        /// Transform using bone 3
         const TRANSFORM_BONE_3 = 0x08;
-        /// Normal compressed
         const NORMAL_COMPRESSED = 0x10;
-        /// Unknown 0x20
         const UNKNOWN_0x20 = 0x20;
-        /// Unknown 0x40
         const UNKNOWN_0x40 = 0x40;
-        /// Unknown 0x80
         const UNKNOWN_0x80 = 0x80;
     }
 }

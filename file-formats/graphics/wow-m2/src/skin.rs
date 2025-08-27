@@ -143,7 +143,6 @@ impl SkinShadowBatches {
     }
 }
 
-/// OldSkin file header
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 #[wow_data(version = SkinVersion)]
 pub struct SkinHeader {
@@ -161,7 +160,6 @@ pub struct SkinHeader {
     pub shadow_batches: SkinShadowBatchesHeader,
 }
 
-/// Submesh structure
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 pub struct SkinSubmesh {
     pub id: u16,

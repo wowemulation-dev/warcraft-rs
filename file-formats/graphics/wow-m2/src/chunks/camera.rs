@@ -8,7 +8,6 @@ use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
 use super::animation::{M2AnimationTrackData, M2SplineKey};
 
 bitflags::bitflags! {
-    /// Camera flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
     #[wow_data(bitflags=u16)]
     pub struct M2CameraFlags: u16 {
@@ -70,7 +69,6 @@ impl VWowDataR<MD20Version, M2CameraFovAnimationHeader> for M2CameraFovAnimation
     }
 }
 
-/// Represents a camera in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct M2CameraHeader {

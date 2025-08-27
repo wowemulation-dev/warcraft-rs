@@ -11,29 +11,19 @@ use crate::version::MD20Version;
 use super::animation::{M2AnimationTrackData, M2AnimationTrackHeader};
 
 bitflags::bitflags! {
-    /// Bone flags as defined in the M2 format
     #[derive(Debug, Clone, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
     #[wow_data(bitflags=u32)]
     pub struct M2BoneFlags: u32 {
-        /// Spherical billboard
         const SPHERICAL_BILLBOARD = 0x8;
-        /// Cylindrical billboard lock X
         const CYLINDRICAL_BILLBOARD_LOCK_X = 0x10;
-        /// Cylindrical billboard lock Y
         const CYLINDRICAL_BILLBOARD_LOCK_Y = 0x20;
-        /// Cylindrical billboard lock Z
         const CYLINDRICAL_BILLBOARD_LOCK_Z = 0x40;
-        /// Transformed
         const TRANSFORMED = 0x200;
         /// Kinematic bone (requires physics)
         const KINEMATIC_BONE = 0x400;
-        /// Helper bone
         const HELPER_BONE = 0x1000;
-        /// Has animation
         const HAS_ANIMATION = 0x4000;
-        /// Has multiple animations at higher LODs
         const ANIMATED_AT_HIGHER_LODS = 0x8000;
-        /// Has procedural animation
         const HAS_PROCEDURAL_ANIMATION = 0x10000;
         /// Has IK (inverse kinematics)
         const HAS_IK = 0x20000;
@@ -89,7 +79,6 @@ pub enum M2BoneCrc {
     Crc(u32),
 }
 
-/// Represents a bone in an M2 model
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct M2BoneHeader {

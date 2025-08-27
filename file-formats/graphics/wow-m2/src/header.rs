@@ -25,73 +25,40 @@ use crate::version::MD20Version;
 pub const MD20_MAGIC: MagicStr = *b"MD20";
 
 bitflags! {
-    /// Model flags as defined in the M2 format
     #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, WowHeaderR, WowHeaderW)]
     #[wow_data(bitflags=u32)]
     pub struct M2ModelFlags: u32 {
-        /// Tilt on X axis
         const TILT_X = 0x0001;
-        /// Tilt on Y axis
         const TILT_Y = 0x0002;
-        /// Add a back-reference to the model
         const ADD_BACK_REFERENCE = 0x0004;
-        /// Use texture combiners
         const USE_TEXTURE_COMBINERS = 0x0008;
-        /// Is it a camera?
         const IS_CAMERA = 0x0010;
-        /// Unused flag
         const UNUSED = 0x0020;
-        /// No particle trails
         const NO_PARTICLE_TRAILS = 0x0040;
-        /// Unknown
         const UNKNOWN_0x80 = 0x0080;
-        /// Load phys data
         const LOAD_PHYS_DATA = 0x0100;
-        /// Unknown
         const UNKNOWN_0x200 = 0x0200;
-        /// Has bones
         const HAS_BONES = 0x0400;
-        /// Unused 0x800
         const UNUSED_0x800 = 0x0800;
-        /// Unknown
         const UNKNOWN_0x1000 = 0x1000;
-        /// Use texture IDs
         const USE_TEXTURE_IDS = 0x2000;
-        /// Camera can be modified
         const CAMERA_MODIFIABLE = 0x4000;
-        /// New particle system
         const NEW_PARTICLE_SYSTEM = 0x8000;
-        /// Unknown
         const UNKNOWN_0x10000 = 0x10000;
-        /// Unknown
         const UNKNOWN_0x20000 = 0x20000;
-        /// Unknown
         const UNKNOWN_0x40000 = 0x40000;
-        /// Unknown
         const UNKNOWN_0x80000 = 0x80000;
-        /// Unknown
         const UNKNOWN_0x100000 = 0x100000;
-        /// Unknown
         const UNKNOWN_0x200000 = 0x200000;
-        /// Unknown
         const UNKNOWN_0x400000 = 0x400000;
-        /// Unknown
         const UNKNOWN_0x800000 = 0x800000;
-        /// Unknown
         const UNKNOWN_0x1000000 = 0x1000000;
-        /// Unknown
         const UNKNOWN_0x2000000 = 0x2000000;
-        /// Unknown
         const UNKNOWN_0x4000000 = 0x4000000;
-        /// Unknown
         const UNKNOWN_0x8000000 = 0x8000000;
-        /// Unknown
         const UNKNOWN_0x10000000 = 0x10000000;
-        /// Unknown
         const UNKNOWN_0x20000000 = 0x20000000;
-        /// Unknown
         const UNKNOWN_0x40000000 = 0x40000000;
-        /// Unknown
         const UNKNOWN_0x80000000 = 0x80000000;
     }
 }
@@ -258,7 +225,6 @@ pub enum M2TextureTransforms {
     Some(WowArray<u32>),
 }
 
-/// M2 model header structure
 /// Based on: <https://wowdev.wiki/M2#Header>
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]

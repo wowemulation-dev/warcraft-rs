@@ -7,7 +7,6 @@ use crate::version::MD20Version;
 
 use super::animation::M2AnimationTrackData;
 
-/// Color animation structure
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct M2ColorAnimationHeader {
