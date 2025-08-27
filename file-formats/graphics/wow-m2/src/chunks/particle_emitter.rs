@@ -3,7 +3,7 @@ use crate::chunks::animation::M2AnimationTrackHeader;
 use wow_data::prelude::*;
 use wow_data::types::{C2Vector, ColorA, VectorFp6_9, WowArray, WowCharArray};
 use wow_data::{error::Result as WDResult, types::C3Vector};
-use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowEnumFrom, WowHeaderR, WowHeaderW};
 
 use super::animation::{
     M2AnimationTrackData, M2Box, M2FakeAnimationBlockData, M2FakeAnimationBlockHeader, M2Range,
@@ -72,32 +72,24 @@ impl WowHeaderW for M2ParticleFlags {
 }
 
 /// Particle emitter type enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u8)]
 pub enum M2ParticleEmitterType {
     /// Point emitter (particles spawn from a single point)
+    #[wow_data(lit = 0)]
     Point = 0,
     /// Plane emitter (particles spawn within a 2D plane)
+    #[wow_data(lit = 1)]
     Plane = 1,
     /// Sphere emitter (particles spawn within a 3D sphere)
+    #[wow_data(lit = 2)]
     Sphere = 2,
     /// Spline emitter (particles follow a spline path)
+    #[wow_data(lit = 3)]
     Spline = 3,
     /// Bone emitter (particles spawn from a bone)
+    #[wow_data(lit = 4)]
     Bone = 4,
-}
-
-impl M2ParticleEmitterType {
-    /// Parse from integer value
-    pub fn from_u8(value: u8) -> Option<Self> {
-        match value {
-            0 => Some(Self::Point),
-            1 => Some(Self::Plane),
-            2 => Some(Self::Sphere),
-            3 => Some(Self::Spline),
-            4 => Some(Self::Bone),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]

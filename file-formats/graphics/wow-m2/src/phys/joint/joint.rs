@@ -1,51 +1,26 @@
-use wow_data::error::WowDataError;
 use wow_data::prelude::*;
 use wow_data::types::MagicStr;
 use wow_data::{error::Result as WDResult, utils::string_to_inverted_magic};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
-
-use crate::M2Error;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 pub const JOIN: MagicStr = string_to_inverted_magic("JOIN");
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u16)]
 pub enum JointType {
     #[default]
+    #[wow_data(lit = 0)]
     Spherical = 0,
+    #[wow_data(lit = 1)]
     Shoulder = 1,
+    #[wow_data(lit = 2)]
     Weld = 2,
+    #[wow_data(lit = 3)]
     Revolute = 3,
+    #[wow_data(lit = 4)]
     Prismatic = 4,
+    #[wow_data(lit = 5)]
     Distance = 5,
-}
-
-impl TryFrom<u16> for JointType {
-    type Error = WowDataError;
-
-    fn try_from(value: u16) -> WDResult<Self> {
-        match value {
-            0 => Ok(Self::Spherical),
-            1 => Ok(Self::Shoulder),
-            2 => Ok(Self::Weld),
-            3 => Ok(Self::Revolute),
-            4 => Ok(Self::Prismatic),
-            5 => Ok(Self::Distance),
-            _ => Err(M2Error::ParseError(format!("Invalid joint type value: {}", value)).into()),
-        }
-    }
-}
-
-impl From<JointType> for u16 {
-    fn from(value: JointType) -> Self {
-        match value {
-            JointType::Spherical => 0,
-            JointType::Shoulder => 1,
-            JointType::Weld => 2,
-            JointType::Revolute => 3,
-            JointType::Prismatic => 4,
-            JointType::Distance => 5,
-        }
-    }
 }
 
 impl WowHeaderR for JointType {

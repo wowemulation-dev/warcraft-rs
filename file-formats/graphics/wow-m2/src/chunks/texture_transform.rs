@@ -1,52 +1,26 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Quaternion};
-use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowEnumFrom, WowHeaderR, WowHeaderW};
 
-use crate::M2Error;
 use crate::chunks::animation::M2AnimationTrackHeader;
-use crate::error::Result;
 use crate::version::MD20Version;
 
 use super::animation::M2AnimationTrackData;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u16)]
 pub enum M2TextureTransformType {
+    #[wow_data(lit = 0)]
     None = 0,
+    #[wow_data(lit = 1)]
     Scroll = 1,
+    #[wow_data(lit = 2)]
     Rotate = 2,
+    #[wow_data(lit = 3)]
     Scale = 3,
+    #[wow_data(lit = 4)]
     Matrix = 4,
-}
-
-impl TryFrom<u16> for M2TextureTransformType {
-    type Error = M2Error;
-
-    fn try_from(value: u16) -> Result<Self> {
-        match value {
-            0 => Ok(Self::None),
-            1 => Ok(Self::Scroll),
-            2 => Ok(Self::Rotate),
-            3 => Ok(Self::Scale),
-            4 => Ok(Self::Matrix),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid texture transform type value: {}",
-                value
-            ))),
-        }
-    }
-}
-
-impl From<M2TextureTransformType> for u16 {
-    fn from(value: M2TextureTransformType) -> Self {
-        match value {
-            M2TextureTransformType::None => 0,
-            M2TextureTransformType::Scroll => 1,
-            M2TextureTransformType::Rotate => 2,
-            M2TextureTransformType::Scale => 3,
-            M2TextureTransformType::Matrix => 4,
-        }
-    }
 }
 
 impl WowHeaderR for M2TextureTransformType {

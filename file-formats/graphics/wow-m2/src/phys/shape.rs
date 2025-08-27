@@ -1,8 +1,8 @@
-use wow_data::error::{Result as WDResult, WowDataError};
+use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, MagicStr, Mat3x4};
 use wow_data::utils::string_to_inverted_magic;
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 use crate::{M2Error, Result};
 
@@ -12,38 +12,17 @@ pub const SPHS: MagicStr = string_to_inverted_magic("SPHS");
 pub const SHAP: MagicStr = string_to_inverted_magic("SHAP");
 pub const SHP2: MagicStr = string_to_inverted_magic("SHP2");
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[wow_data(ty=MagicStr)]
 pub enum Version {
+    #[wow_data(ident=SHAP)]
     V1,
     #[default]
+    #[wow_data(ident=SHP2)]
     V2,
 }
 
 impl DataVersion for Version {}
-
-impl TryFrom<MagicStr> for Version {
-    type Error = WowDataError;
-
-    fn try_from(value: MagicStr) -> WDResult<Self> {
-        Ok(match value {
-            SHAP => Self::V1,
-            SHP2 => Self::V2,
-
-            _ => {
-                return Err(M2Error::ParseError(format!("Invalid body magic: {:?}", value)).into());
-            }
-        })
-    }
-}
-
-impl From<Version> for MagicStr {
-    fn from(value: Version) -> Self {
-        match value {
-            Version::V1 => SHAP,
-            Version::V2 => SHP2,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 pub struct ShapeBox {

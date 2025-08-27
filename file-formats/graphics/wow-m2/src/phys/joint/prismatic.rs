@@ -1,52 +1,24 @@
-use wow_data::error::{Result as WDResult, WowDataError};
 use wow_data::prelude::*;
 use wow_data::types::{MagicStr, Mat3x4};
 use wow_data::utils::string_to_inverted_magic;
-use wow_data_derive::{WowHeaderR, WowHeaderW};
-
-use crate::M2Error;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 use super::common::{FrequencyDamping, TorqueMode};
 
 pub const PRSJ: MagicStr = string_to_inverted_magic("PRSJ");
 pub const PRS2: MagicStr = string_to_inverted_magic("PRS2");
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[wow_data(ty=MagicStr)]
 pub enum Version {
+    #[wow_data(ident = PRSJ)]
     V1,
     #[default]
+    #[wow_data(ident = PRS2)]
     V2,
 }
 
 impl DataVersion for Version {}
-
-impl TryFrom<MagicStr> for Version {
-    type Error = WowDataError;
-
-    fn try_from(value: MagicStr) -> WDResult<Self> {
-        Ok(match value {
-            PRSJ => Self::V1,
-            PRS2 => Self::V2,
-
-            _ => {
-                return Err(M2Error::ParseError(format!(
-                    "Invalid prismatic joint magic: {:?}",
-                    value
-                ))
-                .into());
-            }
-        })
-    }
-}
-
-impl From<Version> for MagicStr {
-    fn from(value: Version) -> Self {
-        match value {
-            Version::V1 => PRSJ,
-            Version::V2 => PRS2,
-        }
-    }
-}
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = Version)]

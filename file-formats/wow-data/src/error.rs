@@ -15,6 +15,9 @@ pub enum WowDataError {
 
     #[error("Generic error: {0}")]
     GenericError(String),
+
+    #[error("Invalid value when trying to parse WowEnumFrom: {0} to {1}")]
+    InvalidEnumParsedValue(String, String),
 }
 
 pub type Result<T> = std::result::Result<T, WowDataError>;

@@ -1,54 +1,27 @@
-use wow_data::error::{Result as WDResult, WowDataError};
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, MagicStr};
 use wow_data::utils::string_to_inverted_magic;
-use wow_data_derive::{WowHeaderR, WowHeaderW};
-
-use crate::M2Error;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 pub const BODY: MagicStr = string_to_inverted_magic("BODY");
 pub const BDY2: MagicStr = string_to_inverted_magic("BDY2");
 pub const BDY3: MagicStr = string_to_inverted_magic("BDY3");
 pub const BDY4: MagicStr = string_to_inverted_magic("BDY4");
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[wow_data(ty=MagicStr)]
 pub enum Version {
+    #[wow_data(ident=BODY)]
     V1,
+    #[wow_data(ident=BDY2)]
     V2,
+    #[wow_data(ident=BDY3)]
     V3,
-    #[default]
+    #[wow_data(ident=BDY4)]
     V4,
 }
 
 impl DataVersion for Version {}
-
-impl TryFrom<MagicStr> for Version {
-    type Error = WowDataError;
-
-    fn try_from(value: MagicStr) -> WDResult<Self> {
-        Ok(match value {
-            BODY => Self::V1,
-            BDY2 => Self::V2,
-            BDY3 => Self::V3,
-            BDY4 => Self::V4,
-
-            _ => {
-                return Err(M2Error::ParseError(format!("Invalid body magic: {:?}", value)).into());
-            }
-        })
-    }
-}
-
-impl From<Version> for MagicStr {
-    fn from(value: Version) -> Self {
-        match value {
-            Version::V1 => BODY,
-            Version::V2 => BDY2,
-            Version::V3 => BDY3,
-            Version::V4 => BDY4,
-        }
-    }
-}
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = Version)]

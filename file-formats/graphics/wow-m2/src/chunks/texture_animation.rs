@@ -1,57 +1,31 @@
-use crate::M2Error;
 use std::io::{Read, Seek, Write};
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 use crate::chunks::animation::M2AnimationTrackHeader;
-use crate::error::Result;
 use crate::version::MD20Version;
 
 /// Texture animation type enum
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u16)]
 pub enum M2TextureAnimationType {
     /// No animation
     #[default]
+    #[wow_data(lit = 0)]
     None = 0,
     /// Scroll animation
+    #[wow_data(lit = 1)]
     Scroll = 1,
     /// Rotate animation
+    #[wow_data(lit = 2)]
     Rotate = 2,
     /// Scale animation
+    #[wow_data(lit = 3)]
     Scale = 3,
     /// Key frame animation
+    #[wow_data(lit = 4)]
     KeyFrame = 4,
-}
-
-impl TryFrom<u16> for M2TextureAnimationType {
-    type Error = M2Error;
-
-    fn try_from(value: u16) -> Result<Self> {
-        match value {
-            0 => Ok(Self::None),
-            1 => Ok(Self::Scroll),
-            2 => Ok(Self::Rotate),
-            3 => Ok(Self::Scale),
-            4 => Ok(Self::KeyFrame),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid texture animation type value: {}",
-                value
-            ))),
-        }
-    }
-}
-
-impl From<M2TextureAnimationType> for u16 {
-    fn from(value: M2TextureAnimationType) -> Self {
-        match value {
-            M2TextureAnimationType::None => 0,
-            M2TextureAnimationType::Scroll => 1,
-            M2TextureAnimationType::Rotate => 2,
-            M2TextureAnimationType::Scale => 3,
-            M2TextureAnimationType::KeyFrame => 4,
-        }
-    }
 }
 
 impl WowHeaderR for M2TextureAnimationType {

@@ -5,48 +5,23 @@ use std::fmt;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{BoundingBox, C3Vector, VWowDataR, WowArray};
-use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowEnumFrom, WowHeaderR, WowHeaderW};
 #[cfg(feature = "trimmed-debug-output")]
 use wow_utils::debug;
 
-use crate::M2Error;
-use crate::error::Result;
 use crate::version::MD20Version;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u16)]
 pub enum M2InterpolationType {
+    #[wow_data(lit = 0)]
     None = 0,
+    #[wow_data(lit = 1)]
     Linear = 1,
+    #[wow_data(lit = 2)]
     Bezier = 2,
+    #[wow_data(lit = 3)]
     Hermite = 3,
-}
-
-impl TryFrom<u16> for M2InterpolationType {
-    type Error = M2Error;
-
-    fn try_from(value: u16) -> Result<Self> {
-        match value {
-            0 => Ok(Self::None),
-            1 => Ok(Self::Linear),
-            2 => Ok(Self::Bezier),
-            3 => Ok(Self::Hermite),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid interpolation value: {}",
-                value
-            ))),
-        }
-    }
-}
-
-impl From<M2InterpolationType> for u16 {
-    fn from(value: M2InterpolationType) -> Self {
-        match value {
-            M2InterpolationType::None => 0,
-            M2InterpolationType::Linear => 1,
-            M2InterpolationType::Bezier => 2,
-            M2InterpolationType::Hermite => 3,
-        }
-    }
 }
 
 impl WowHeaderR for M2InterpolationType {
@@ -68,7 +43,7 @@ impl WowHeaderW for M2InterpolationType {
 
 bitflags::bitflags! {
     /// Animation flags as defined in the M2 format
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct M2AnimationFlags: u32 {
         /// Animation has translation keyframes
         const HAS_TRANSLATION = 0x1;
@@ -105,7 +80,7 @@ impl WowHeaderW for M2AnimationFlags {
 }
 
 /// Animation value ranges
-#[derive(Debug, Clone, PartialEq, WowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, Default, PartialEq, WowHeaderR, WowHeaderW)]
 pub struct M2Range {
     pub minimum: f32,
     pub maximum: f32,
@@ -336,6 +311,12 @@ pub enum M2AnimationTiming {
     Duration(u32),
 }
 
+impl Default for M2AnimationTiming {
+    fn default() -> Self {
+        Self::Duration(0)
+    }
+}
+
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub enum M2AnimationBlending {
@@ -345,8 +326,14 @@ pub enum M2AnimationBlending {
     InOut(u16, u16),
 }
 
+impl Default for M2AnimationBlending {
+    fn default() -> Self {
+        Self::InOut(0, 0)
+    }
+}
+
 /// Animation data for a model
-#[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
+#[derive(Debug, Clone, Default, WowHeaderR, WowHeaderW)]
 #[wow_data(version = MD20Version)]
 pub struct M2Animation {
     pub animation_id: u16,

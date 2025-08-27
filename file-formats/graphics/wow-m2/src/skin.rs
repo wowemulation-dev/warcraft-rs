@@ -3,45 +3,30 @@ use custom_debug::Debug;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, MagicStr, VWowStructR, WowArray, WowStructW};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 use wow_utils::debug;
 
 use std::io::Cursor;
 
-use crate::M2Error;
 use crate::error::Result;
 
 pub const SKIN_MAGIC: MagicStr = *b"SKIN";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[wow_data(ty=u32)]
 pub enum SkinVersion {
     /// Used up to WotLK
+    #[wow_data(lit = 1)]
     V1,
     /// Used in WotLK
+    #[wow_data(lit = 2)]
     V2,
     /// Used in Cataclysm and later
+    #[wow_data(lit = 3)]
     V3,
 }
 
 impl DataVersion for SkinVersion {}
-
-impl TryFrom<u32> for SkinVersion {
-    type Error = M2Error;
-
-    fn try_from(value: u32) -> Result<Self> {
-        Ok(match value {
-            1 => Self::V1,
-            2 => Self::V2,
-            3 => Self::V3,
-            _ => {
-                return Err(M2Error::ParseError(format!(
-                    "Invalid skin version: {}",
-                    value
-                )));
-            }
-        })
-    }
-}
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = SkinVersion)]

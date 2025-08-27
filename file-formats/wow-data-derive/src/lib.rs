@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Expr, Fields, Type, parse_macro_input};
+use syn::{Data, DeriveInput, Expr, Fields, Ident, Lit, Type, parse_macro_input};
 
 #[proc_macro_derive(WowHeaderR, attributes(wow_data))]
 pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
@@ -175,19 +175,27 @@ fn generate_header_rv_enum_reader_body(
 #[derive(Debug)]
 struct WowDataAttrs {
     versioned: bool,
+    default: bool,
     version: Option<Type>,
     header: Option<Type>,
     read_if: Option<Expr>,
     override_read: Option<Expr>,
+    ty: Option<Type>,
+    ident: Option<Ident>,
+    lit: Option<Lit>,
 }
 
 fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
     let mut data_attrs = WowDataAttrs {
+        default: false,
         versioned: false,
         version: None,
         header: None,
         read_if: None,
         override_read: None,
+        ty: None,
+        ident: None,
+        lit: None,
     };
 
     for attr in attrs {
@@ -218,6 +226,25 @@ fn parse_wow_data_attrs(attrs: &[syn::Attribute]) -> syn::Result<WowDataAttrs> {
             if meta.path.is_ident("override_read") {
                 let value = meta.value()?;
                 data_attrs.override_read = Some(value.parse()?);
+            }
+
+            if meta.path.is_ident("ty") {
+                let value = meta.value()?;
+                data_attrs.ty = Some(value.parse()?);
+            }
+
+            if meta.path.is_ident("ident") {
+                let value = meta.value()?;
+                data_attrs.ident = Some(value.parse()?);
+            }
+
+            if meta.path.is_ident("lit") {
+                let value = meta.value()?;
+                data_attrs.lit = Some(value.parse()?);
+            }
+
+            if meta.path.is_ident("default") {
+                data_attrs.default = true;
             }
 
             Ok(())
@@ -517,4 +544,174 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
             }
         }
     })
+}
+
+fn generate_wow_enum_from_value_lines(
+    data: &syn::DataEnum,
+) -> syn::Result<Vec<proc_macro2::TokenStream>> {
+    let mut lines = Vec::new();
+
+    let mut has_default = None;
+
+    for variant in &data.variants {
+        let variant_ident = &variant.ident;
+        let wow_data_attrs = parse_wow_data_attrs(&variant.attrs)?;
+
+        if wow_data_attrs.default {
+            has_default = Some(quote! {
+                _ => Self::#variant_ident,
+            });
+        }
+
+        if let Some(ident) = wow_data_attrs.ident {
+            match &variant.fields {
+                syn::Fields::Unit => {
+                    lines.push(quote! { #ident => Self::#variant_ident, });
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &variant,
+                        "WowEnumFrom only supports unit variants.",
+                    ));
+                }
+            }
+        } else if let Some(lit) = wow_data_attrs.lit {
+            match &variant.fields {
+                syn::Fields::Unit => {
+                    lines.push(quote! { #lit => Self::#variant_ident, });
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &variant,
+                        "WowEnumFrom only supports unit variants.",
+                    ));
+                }
+            }
+        } else {
+            return Err(syn::Error::new_spanned(
+                variant,
+                "WowEnumFrom requires a wow_data(ident=IDENT | lit=LITERAL) attribute for each variant",
+            ));
+        };
+    }
+
+    lines.push(if let Some(has_default) = has_default {
+        has_default
+    }else {
+        quote! {
+            _ => {
+                return Err(wow_data::error::WowDataError::InvalidEnumParsedValue("".into(), "".into()).into());
+            }
+        }
+    });
+
+    Ok(lines)
+}
+
+fn generate_wow_enum_to_value_lines(
+    struct_name: &Ident,
+    data: &syn::DataEnum,
+) -> syn::Result<Vec<proc_macro2::TokenStream>> {
+    let mut lines = Vec::new();
+
+    for variant in &data.variants {
+        let variant_ident = &variant.ident;
+
+        let wow_data_attrs = parse_wow_data_attrs(&variant.attrs)?;
+        if let Some(ident) = wow_data_attrs.ident {
+            match &variant.fields {
+                syn::Fields::Unit => {
+                    lines.push(quote! { #struct_name::#variant_ident => #ident });
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &variant,
+                        "WowEnumFrom only supports unit variants.",
+                    ));
+                }
+            }
+        } else if let Some(lit) = wow_data_attrs.lit {
+            match &variant.fields {
+                syn::Fields::Unit => {
+                    lines.push(quote! { #struct_name::#variant_ident => #lit });
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &variant,
+                        "WowEnumFrom only supports unit variants.",
+                    ));
+                }
+            }
+        } else {
+            return Err(syn::Error::new_spanned(
+                variant,
+                "WowEnumFrom requires a wow_data(ident=IDENT | lit=LITERAL) attribute for each variant",
+            ));
+        };
+    }
+
+    Ok(lines)
+}
+
+#[proc_macro_derive(WowEnumFrom, attributes(wow_data))]
+pub fn wow_enum_from_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let struct_wow_attrs = match parse_wow_data_attrs(&input.attrs) {
+        Ok(value) => value,
+        Err(err) => {
+            return err.to_compile_error().into();
+        }
+    };
+
+    let Some(ty) = struct_wow_attrs.ty else {
+        return syn::Error::new_spanned(
+            &input,
+            "WowEnumFrom requires a wow_data(ty=TYPE) attribute.",
+        )
+        .to_compile_error()
+        .into();
+    };
+
+    let enum_name = &input.ident;
+
+    let Data::Enum(enum_data) = &input.data else {
+        return syn::Error::new_spanned(&input, "WowEnumFrom can only be derived for enums.")
+            .to_compile_error()
+            .into();
+    };
+
+    let from_value_lines = match generate_wow_enum_from_value_lines(&enum_data) {
+        Ok(body) => body,
+        Err(e) => return e.to_compile_error().into(),
+    };
+
+    let to_value_lines = match generate_wow_enum_to_value_lines(&enum_name, &enum_data) {
+        Ok(body) => body,
+        Err(e) => return e.to_compile_error().into(),
+    };
+
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let expanded = quote! {
+        impl #impl_generics TryFrom<#ty> for #enum_name #ty_generics #where_clause {
+            type Error = wow_data::error::WowDataError;
+
+            fn try_from(value: #ty) -> wow_data::error::Result<Self> {
+                Ok(match value {
+                    #(#from_value_lines)*
+                })
+            }
+        }
+
+        impl #impl_generics From<#enum_name #ty_generics> for #ty #where_clause {
+            fn from(value: #enum_name) -> Self {
+                match value {
+                    #(#to_value_lines),*
+                }
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
 }

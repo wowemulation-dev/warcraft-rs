@@ -1,57 +1,28 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
+use wow_data_derive::WowEnumFrom;
 
-use crate::{M2Error, Result};
-
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[wow_data(ty=u16)]
 pub enum PhysVersion {
+    #[wow_data(lit = 0)]
     V0,
+    #[wow_data(lit = 1)]
     V1,
+    #[wow_data(lit = 2)]
     V2,
+    #[wow_data(lit = 3)]
     V3,
+    #[wow_data(lit = 4)]
     V4,
+    #[wow_data(lit = 5)]
     V5,
     #[default]
+    #[wow_data(lit = 6)]
     V6,
 }
 
 impl DataVersion for PhysVersion {}
-
-impl TryFrom<u16> for PhysVersion {
-    type Error = M2Error;
-
-    fn try_from(value: u16) -> Result<Self> {
-        Ok(match value {
-            0 => Self::V0,
-            1 => Self::V1,
-            2 => Self::V2,
-            3 => Self::V3,
-            4 => Self::V4,
-            5 => Self::V5,
-            6 => Self::V6,
-            _ => {
-                return Err(M2Error::ParseError(format!(
-                    "Invalid phys version: {}",
-                    value
-                )));
-            }
-        })
-    }
-}
-
-impl From<PhysVersion> for u16 {
-    fn from(value: PhysVersion) -> Self {
-        match value {
-            PhysVersion::V0 => 0,
-            PhysVersion::V1 => 1,
-            PhysVersion::V2 => 2,
-            PhysVersion::V3 => 3,
-            PhysVersion::V4 => 4,
-            PhysVersion::V5 => 5,
-            PhysVersion::V6 => 6,
-        }
-    }
-}
 
 impl WowHeaderR for PhysVersion {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {

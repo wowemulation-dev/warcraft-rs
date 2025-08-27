@@ -370,7 +370,8 @@ impl WowHeaderR for MD20Header {
     fn wow_read<R: Read + Seek>(reader: &mut R) -> WDResult<Self> {
         let start_position = reader.stream_position()?;
 
-        let version = MD20Version::from_header_version(reader.wow_read()?)?;
+        let version_val: u32 = reader.wow_read()?;
+        let version = MD20Version::try_from(version_val)?;
 
         // rewind reader because the function below reads the version again
         reader.seek(SeekFrom::Start(start_position))?;

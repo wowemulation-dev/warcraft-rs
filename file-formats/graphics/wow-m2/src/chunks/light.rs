@@ -1,53 +1,28 @@
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{C3Vector, Color};
-use wow_data_derive::{WowDataR, WowHeaderR, WowHeaderW};
+use wow_data_derive::{WowDataR, WowEnumFrom, WowHeaderR, WowHeaderW};
 
-use crate::M2Error;
 use crate::chunks::animation::M2AnimationTrackHeader;
-use crate::error::Result;
 use crate::version::MD20Version;
 
 use super::animation::M2AnimationTrackData;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u16)]
 pub enum M2LightType {
     /// Directional light (like the sun)
+    #[wow_data(lit = 0)]
     Directional = 0,
     /// Point light (emits light in all directions)
+    #[wow_data(lit = 1)]
     Point = 1,
     /// Spot light (emits light in a cone)
+    #[wow_data(lit = 2)]
     Spot = 2,
     /// Ambient light (global illumination)
+    #[wow_data(lit = 3)]
     Ambient = 3,
-}
-
-impl TryFrom<u16> for M2LightType {
-    type Error = M2Error;
-
-    fn try_from(value: u16) -> Result<Self> {
-        match value {
-            0 => Ok(Self::Directional),
-            1 => Ok(Self::Point),
-            2 => Ok(Self::Spot),
-            3 => Ok(Self::Ambient),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid light type value: {}",
-                value
-            ))),
-        }
-    }
-}
-
-impl From<M2LightType> for u16 {
-    fn from(value: M2LightType) -> Self {
-        match value {
-            M2LightType::Directional => 0,
-            M2LightType::Point => 1,
-            M2LightType::Spot => 2,
-            M2LightType::Ambient => 3,
-        }
-    }
 }
 
 impl WowHeaderR for M2LightType {

@@ -1,10 +1,7 @@
-use wow_data::error::{Result as WDResult, WowDataError};
 use wow_data::prelude::*;
 use wow_data::types::{MagicStr, Mat3x4};
 use wow_data::utils::string_to_inverted_magic;
-use wow_data_derive::{WowHeaderR, WowHeaderW};
-
-use crate::M2Error;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 use super::common::FrequencyDamping;
 
@@ -12,43 +9,19 @@ pub const WELJ: MagicStr = string_to_inverted_magic("WELJ");
 pub const WLJ2: MagicStr = string_to_inverted_magic("WLJ2");
 pub const WLJ3: MagicStr = string_to_inverted_magic("WLJ3");
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WowEnumFrom)]
+#[wow_data(ty=MagicStr)]
 pub enum Version {
+    #[wow_data(ident = WELJ)]
     V1,
+    #[wow_data(ident = WLJ2)]
     V2,
     #[default]
+    #[wow_data(ident = WLJ3)]
     V3,
 }
 
 impl DataVersion for Version {}
-
-impl TryFrom<MagicStr> for Version {
-    type Error = WowDataError;
-
-    fn try_from(value: MagicStr) -> WDResult<Self> {
-        Ok(match value {
-            WELJ => Self::V1,
-            WLJ2 => Self::V2,
-            WLJ3 => Self::V3,
-
-            _ => {
-                return Err(
-                    M2Error::ParseError(format!("Invalid weld joint magic: {:?}", value)).into(),
-                );
-            }
-        })
-    }
-}
-
-impl From<Version> for MagicStr {
-    fn from(value: Version) -> Self {
-        match value {
-            Version::V1 => WELJ,
-            Version::V2 => WLJ2,
-            Version::V3 => WLJ3,
-        }
-    }
-}
 
 #[derive(Debug, Clone, WowHeaderR, WowHeaderW)]
 #[wow_data(version = Version)]

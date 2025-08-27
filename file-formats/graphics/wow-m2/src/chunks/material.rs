@@ -1,9 +1,6 @@
-use crate::M2Error;
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
-use wow_data_derive::{WowHeaderR, WowHeaderW};
-
-use crate::error::Result;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 bitflags::bitflags! {
     /// Render flags as defined in the M2 format
@@ -90,53 +87,28 @@ impl WowHeaderW for M2BlendMode {
 }
 
 /// Material texture transformations
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u16)]
 pub enum M2TexTransformType {
     /// No texture transform
     #[default]
+    #[wow_data(lit = 0)]
     None = 0,
     /// Scroll texture
+    #[wow_data(lit = 1)]
     Scroll = 1,
     /// Rotate texture
+    #[wow_data(lit = 2)]
     Rotate = 2,
     /// Scale texture
+    #[wow_data(lit = 3)]
     Scale = 3,
     /// Stretch texture based on time
+    #[wow_data(lit = 4)]
     Stretch = 4,
     /// Transform texture based on camera
+    #[wow_data(lit = 5)]
     Camera = 5,
-}
-
-impl TryFrom<u16> for M2TexTransformType {
-    type Error = M2Error;
-
-    fn try_from(value: u16) -> Result<Self> {
-        match value {
-            0 => Ok(Self::None),
-            1 => Ok(Self::Scroll),
-            2 => Ok(Self::Rotate),
-            3 => Ok(Self::Scale),
-            4 => Ok(Self::Stretch),
-            5 => Ok(Self::Camera),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid tex transform type value: {}",
-                value
-            ))),
-        }
-    }
-}
-
-impl From<M2TexTransformType> for u16 {
-    fn from(value: M2TexTransformType) -> Self {
-        match value {
-            M2TexTransformType::None => 0,
-            M2TexTransformType::Scroll => 1,
-            M2TexTransformType::Rotate => 2,
-            M2TexTransformType::Scale => 3,
-            M2TexTransformType::Stretch => 4,
-            M2TexTransformType::Camera => 4,
-        }
-    }
 }
 
 impl WowHeaderR for M2TexTransformType {

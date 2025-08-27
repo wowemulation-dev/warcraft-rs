@@ -1,124 +1,75 @@
-use crate::M2Error;
 use std::io::{Read, Seek, Write};
 use wow_data::prelude::*;
 use wow_data::types::WowCharArray;
 use wow_data::{error::Result as WDResult, types::WowString};
-use wow_data_derive::{WowHeaderR, WowHeaderW};
-
-use crate::error::Result;
+use wow_data_derive::{WowEnumFrom, WowHeaderR, WowHeaderW};
 
 /// Texture type enum as defined in the M2 format
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, WowEnumFrom)]
+#[wow_data(ty=u32)]
 pub enum M2TextureType {
     /// Texture defined in filename
     #[default]
+    #[wow_data(lit = 0)]
     Hardcoded = 0,
     /// Body + clothes
+    #[wow_data(lit = 1)]
     Body = 1,
     /// Item, capes
+    #[wow_data(lit = 2)]
     Item = 2,
     /// Weapon blade
+    #[wow_data(lit = 3)]
     WeaponBlade = 3,
     /// Weapon handle
+    #[wow_data(lit = 4)]
     WeaponHandle = 4,
     /// Environment
+    #[wow_data(lit = 5)]
     Environment = 5,
     /// Hair, beard
+    #[wow_data(lit = 6)]
     Hair = 6,
+    #[wow_data(lit = 7)]
     FacialHair = 7,
+    #[wow_data(lit = 8)]
     SkinExtra = 8,
+    #[wow_data(lit = 9)]
     UISkin = 9,
+    #[wow_data(lit = 10)]
     TaurenMane = 10,
+    #[wow_data(lit = 11)]
     Monster1 = 11,
+    #[wow_data(lit = 12)]
     Monster2 = 12,
+    #[wow_data(lit = 13)]
     Monster3 = 13,
+    #[wow_data(lit = 14)]
     ItemIcon = 14,
+    #[wow_data(lit = 15)]
     GuildBgColor = 15,
+    #[wow_data(lit = 16)]
     GuildEmblemColor = 16,
+    #[wow_data(lit = 17)]
     GuildBorderColor = 17,
+    #[wow_data(lit = 18)]
     GuildEmblem = 18,
+    #[wow_data(lit = 19)]
     CharacterEyes = 19,
+    #[wow_data(lit = 20)]
     CharacterAccessory = 20,
+    #[wow_data(lit = 21)]
     CharacterSecondarySkin = 21,
+    #[wow_data(lit = 22)]
     CharacterSecondaryHair = 22,
+    #[wow_data(lit = 23)]
     CharacterSecondaryArmor = 23,
+    #[wow_data(lit = 24)]
     Unknown1 = 24,
+    #[wow_data(lit = 25)]
     Unknown2 = 25,
+    #[wow_data(lit = 26)]
     Unknown3 = 26,
-}
-
-impl TryFrom<u32> for M2TextureType {
-    type Error = M2Error;
-
-    fn try_from(value: u32) -> Result<Self> {
-        match value {
-            0 => Ok(Self::Hardcoded),
-            1 => Ok(Self::Body),
-            2 => Ok(Self::Item),
-            3 => Ok(Self::WeaponBlade),
-            4 => Ok(Self::WeaponHandle),
-            5 => Ok(Self::Environment),
-            6 => Ok(Self::Hair),
-            7 => Ok(Self::FacialHair),
-            8 => Ok(Self::SkinExtra),
-            9 => Ok(Self::UISkin),
-            10 => Ok(Self::TaurenMane),
-            11 => Ok(Self::Monster1),
-            12 => Ok(Self::Monster2),
-            13 => Ok(Self::Monster3),
-            14 => Ok(Self::ItemIcon),
-            15 => Ok(Self::GuildBgColor),
-            16 => Ok(Self::GuildEmblemColor),
-            17 => Ok(Self::GuildBorderColor),
-            18 => Ok(Self::GuildEmblem),
-            19 => Ok(Self::CharacterEyes),
-            20 => Ok(Self::CharacterAccessory),
-            21 => Ok(Self::CharacterSecondarySkin),
-            22 => Ok(Self::CharacterSecondaryHair),
-            23 => Ok(Self::CharacterSecondaryArmor),
-            24 => Ok(Self::Unknown1),
-            25 => Ok(Self::Unknown2),
-            26 => Ok(Self::Unknown3),
-            _ => Err(M2Error::ParseError(format!(
-                "Invalid texture type value: {}",
-                value
-            ))),
-        }
-    }
-}
-
-impl From<M2TextureType> for u32 {
-    fn from(value: M2TextureType) -> Self {
-        match value {
-            M2TextureType::Hardcoded => 0,
-            M2TextureType::Body => 1,
-            M2TextureType::Item => 2,
-            M2TextureType::WeaponBlade => 3,
-            M2TextureType::WeaponHandle => 4,
-            M2TextureType::Environment => 5,
-            M2TextureType::Hair => 6,
-            M2TextureType::FacialHair => 7,
-            M2TextureType::SkinExtra => 8,
-            M2TextureType::UISkin => 9,
-            M2TextureType::TaurenMane => 10,
-            M2TextureType::Monster1 => 11,
-            M2TextureType::Monster2 => 12,
-            M2TextureType::Monster3 => 13,
-            M2TextureType::ItemIcon => 14,
-            M2TextureType::GuildBgColor => 15,
-            M2TextureType::GuildEmblemColor => 16,
-            M2TextureType::GuildBorderColor => 17,
-            M2TextureType::GuildEmblem => 18,
-            M2TextureType::CharacterEyes => 19,
-            M2TextureType::CharacterAccessory => 20,
-            M2TextureType::CharacterSecondarySkin => 21,
-            M2TextureType::CharacterSecondaryHair => 22,
-            M2TextureType::CharacterSecondaryArmor => 23,
-            M2TextureType::Unknown1 => 24,
-            M2TextureType::Unknown2 => 25,
-            M2TextureType::Unknown3 => 26,
-        }
-    }
 }
 
 impl WowHeaderR for M2TextureType {
