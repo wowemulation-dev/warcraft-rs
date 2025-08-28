@@ -138,11 +138,11 @@ impl WowStructR for M2Model {
                 chunks: Vec::with_capacity(0),
             }),
             _ => {
-                return Err(M2Error::InvalidMagic {
+                Err(M2Error::InvalidMagic {
                     expected: "MD20 or MD21".into(),
                     actual: magic_to_string(&magic),
                 }
-                .into());
+                .into())
             }
         }
     }

@@ -247,7 +247,7 @@ impl WowHeaderW for [f32; 3] {
 
 impl WowHeaderW for String {
     fn wow_write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.wow_write(self.into())?;
+        writer.wow_write(self)?;
         // write null terminator
         writer.wow_write(&0_u8)?;
         Ok(())
@@ -302,6 +302,6 @@ where
     T: WowHeaderR + WowHeaderW,
 {
     fn new_from_header<R: Read + Seek>(reader: &mut R, header: &WowArray<T>) -> Result<Self> {
-        Ok(header.wow_read_to_vec(reader)?)
+        header.wow_read_to_vec(reader)
     }
 }

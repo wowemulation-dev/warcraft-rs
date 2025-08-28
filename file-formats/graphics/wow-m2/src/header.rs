@@ -328,7 +328,7 @@ impl WowHeaderR for MD20Header {
 
         // rewind reader because the function below reads the version again
         reader.seek(SeekFrom::Start(start_position))?;
-        Ok(reader.wow_read_versioned(version)?)
+        reader.wow_read_versioned(version)
     }
 }
 

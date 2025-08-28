@@ -138,6 +138,12 @@ pub struct M2AnimationTrackHeader<T: WowHeaderR + WowHeaderW> {
     pub values: TrackArray<T>,
 }
 
+impl<T: WowHeaderR + WowHeaderW> Default for M2AnimationTrackHeader<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: WowHeaderR + WowHeaderW> M2AnimationTrackHeader<T> {
     pub fn new() -> Self {
         Self {
@@ -218,6 +224,12 @@ pub struct M2AnimationTrackData<T: fmt::Debug + WowHeaderR + WowHeaderW> {
     #[debug(with = trimmed_trackvec_fmt)]
     #[wow_data(versioned)]
     pub values: TrackVec<T>,
+}
+
+impl<T: fmt::Debug + WowHeaderR + WowHeaderW> Default for M2AnimationTrackData<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T: fmt::Debug + WowHeaderR + WowHeaderW> M2AnimationTrackData<T> {

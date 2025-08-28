@@ -23,7 +23,7 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
             Data::Enum(e) => generate_header_rv_enum_reader_body(e),
             Data::Union(_) => {
                 return syn::Error::new_spanned(
-                    &struct_name,
+                    struct_name,
                     "WowHeaderR cannot be derived for unions.",
                 )
                 .to_compile_error()
@@ -46,7 +46,7 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
     } else if let Some(ty) = struct_wow_attrs.from_type {
         let Data::Enum(_) = &input.data else {
             return syn::Error::new_spanned(
-                &struct_name,
+                struct_name,
                 "WowHeaderR with wow_data(from_type=TYPE) can only be derived for enums.",
             )
             .to_compile_error()
@@ -56,7 +56,7 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
         quote! {
             impl #impl_generics wow_data::types::WowHeaderR for #struct_name #ty_generics #where_clause {
                 fn wow_read<R: Read + Seek>(reader: &mut R) -> wow_data::error::Result<Self> {
-                    Ok(#ty::wow_read(reader)?.try_into()?)
+                    #ty::wow_read(reader)?.try_into()
                 }
             }
         }
@@ -65,7 +65,7 @@ pub fn wow_header_r_derive(input: TokenStream) -> TokenStream {
             generate_header_rv_struct_reader_body(&struct_wow_attrs, &s.fields)
         } else {
             return syn::Error::new_spanned(
-                &struct_name,
+                struct_name,
                 "WowHeaderR can only be derived for structs.",
             )
             .to_compile_error()
@@ -109,8 +109,7 @@ fn generate_header_rv_struct_reader_body(
 
                 if let Some(val) = wow_data_attrs.override_read {
                     read_lines.push(quote! { let #field_name = #val; });
-                } else {
-                    if wow_data_attrs.versioned {
+                } else if wow_data_attrs.versioned {
                         read_lines.push(
                     quote! { let #field_name: #field_ty = reader.wow_read_versioned(version)?; },
                 );
@@ -118,7 +117,6 @@ fn generate_header_rv_struct_reader_body(
                         read_lines
                             .push(quote! { let #field_name: #field_ty = reader.wow_read()?; });
                     }
-                }
 
                 initializers.push(quote! { #field_name });
             }
@@ -140,10 +138,10 @@ fn generate_header_rv_struct_reader_body(
             Ok(quote! {Self::from_bits_retain(reader.wow_read()?)})
         }
         Fields::Unit => {
-            return Err(syn::Error::new_spanned(
+            Err(syn::Error::new_spanned(
                 fields,
                 "WowHeaderR on structs does't support unit fields.",
-            ));
+            ))
         }
     }
 }
@@ -329,7 +327,7 @@ pub fn wow_header_w_derive(input: TokenStream) -> TokenStream {
             generate_enum_size_body(&struct_wow_attrs, e),
         ),
         Data::Union(_) => {
-            return syn::Error::new_spanned(&ident, "WowHeaderW cannot be derived for unions.")
+            return syn::Error::new_spanned(ident, "WowHeaderW cannot be derived for unions.")
                 .to_compile_error()
                 .into();
         }
@@ -399,10 +397,10 @@ fn generate_struct_writer_body(
             })
         }
         Fields::Unit => {
-            return Err(syn::Error::new_spanned(
+            Err(syn::Error::new_spanned(
                 fields,
                 "WowHeaderW on structs does't support unit fields.",
-            ));
+            ))
         }
     }
 }
@@ -444,10 +442,10 @@ fn generate_struct_size_body(
             })
         }
         Fields::Unit => {
-            return Err(syn::Error::new_spanned(
+            Err(syn::Error::new_spanned(
                 fields,
                 "WowHeaderW on structs does't support unit fields.",
-            ));
+            ))
         }
     }
 }
@@ -588,14 +586,14 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
             &f.named
         } else {
             return syn::Error::new_spanned(
-                &struct_name,
+                struct_name,
                 "WowDataR can only be derived for structs with named fields.",
             )
             .to_compile_error()
             .into();
         }
     } else {
-        return syn::Error::new_spanned(&struct_name, "WowDataR can only be derived for structs.")
+        return syn::Error::new_spanned(struct_name, "WowDataR can only be derived for structs.")
             .to_compile_error()
             .into();
     };
@@ -611,14 +609,12 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
 
         if let Some(expr) = wow_data_attrs.override_read {
             initializers.push(quote! { #field_name: #expr });
+        } else if wow_data_attrs.versioned {
+            initializers
+                .push(quote! { #field_name: reader.v_new_from_header(&header.#field_name)? });
         } else {
-            if wow_data_attrs.versioned {
-                initializers
-                    .push(quote! { #field_name: reader.v_new_from_header(&header.#field_name)? });
-            } else {
-                initializers
-                    .push(quote! { #field_name: reader.new_from_header(&header.#field_name)? });
-            }
+            initializers
+                .push(quote! { #field_name: reader.new_from_header(&header.#field_name)? });
         }
     }
 
@@ -626,7 +622,7 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
 
     let Some(header_ty) = struct_wow_data_attrs.header else {
         return syn::Error::new_spanned(
-            &struct_name,
+            struct_name,
             "WowDataR needs at least #[wow_data(header = H)] definition.",
         )
         .to_compile_error()
@@ -681,7 +677,7 @@ fn generate_wow_enum_from_value_lines(
                 }
                 _ => {
                     return Err(syn::Error::new_spanned(
-                        &variant,
+                        variant,
                         "WowEnumFrom only supports unit variants.",
                     ));
                 }
@@ -731,7 +727,7 @@ fn generate_wow_enum_to_value_lines(
                 }
                 _ => {
                     return Err(syn::Error::new_spanned(
-                        &variant,
+                        variant,
                         "WowEnumFrom only supports unit variants.",
                     ));
                 }
@@ -764,7 +760,7 @@ pub fn wow_enum_from_derive(input: TokenStream) -> TokenStream {
 
     let Some(ty) = struct_wow_attrs.from_type else {
         return syn::Error::new_spanned(
-            &enum_name,
+            enum_name,
             "WowEnumFrom requires a wow_data(from_type=TYPE) attribute.",
         )
         .to_compile_error()
@@ -772,17 +768,17 @@ pub fn wow_enum_from_derive(input: TokenStream) -> TokenStream {
     };
 
     let Data::Enum(enum_data) = &input.data else {
-        return syn::Error::new_spanned(&enum_name, "WowEnumFrom can only be derived for enums.")
+        return syn::Error::new_spanned(enum_name, "WowEnumFrom can only be derived for enums.")
             .to_compile_error()
             .into();
     };
 
-    let from_value_lines = match generate_wow_enum_from_value_lines(&enum_data) {
+    let from_value_lines = match generate_wow_enum_from_value_lines(enum_data) {
         Ok(body) => body,
         Err(e) => return e.to_compile_error().into(),
     };
 
-    let to_value_lines = match generate_wow_enum_to_value_lines(&enum_name, &enum_data) {
+    let to_value_lines = match generate_wow_enum_to_value_lines(enum_name, enum_data) {
         Ok(body) => body,
         Err(e) => return e.to_compile_error().into(),
     };

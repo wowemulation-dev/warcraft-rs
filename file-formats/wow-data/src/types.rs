@@ -23,7 +23,7 @@ where
     T: WowHeaderR,
 {
     fn wow_read(&mut self) -> Result<T> {
-        Ok(T::wow_read(self)?)
+        T::wow_read(self)
     }
 }
 impl<T, R> WowReaderForHeader<T> for R
@@ -46,7 +46,7 @@ where
     T: VWowHeaderR<V>,
 {
     fn wow_read_versioned(&mut self, version: V) -> Result<T> {
-        Ok(T::wow_read(self, version)?)
+        T::wow_read(self, version)
     }
 }
 impl<V, T, R> VWowReaderForHeader<V, T> for R
@@ -121,7 +121,7 @@ where
     T: WowDataR<H>,
 {
     fn new_from_header(&mut self, header: &H) -> Result<T> {
-        Ok(T::new_from_header(self, header)?)
+        T::new_from_header(self, header)
     }
 }
 impl<H, T, R> WowReaderForData<H, T> for R
@@ -149,7 +149,7 @@ where
     T: VWowDataR<V, H>,
 {
     fn v_new_from_header(&mut self, header: &H) -> Result<T> {
-        Ok(T::new_from_header(self, header)?)
+        T::new_from_header(self, header)
     }
 }
 impl<V, H, T, R> VWowReaderForData<V, H, T> for R
@@ -342,7 +342,7 @@ where
             None
         };
 
-        match f(&mut self.reader, item) {
+        match f(self.reader, item) {
             Ok(_) => Ok(true),
             Err(err) => Err(err),
         }
@@ -580,7 +580,7 @@ where
             None
         };
 
-        match f(&mut self.reader, item) {
+        match f(self.reader, item) {
             Ok(_) => Ok(true),
             Err(err) => Err(err),
         }
@@ -1229,7 +1229,7 @@ mod tests {
                 _version: self._version,
                 crc: self.crc,
                 vectors: WowArray::default(),
-                versioned_data: self.versioned_data.clone(),
+                versioned_data: self.versioned_data,
                 bounding_box: self.bounding_box.clone(),
                 up_to_mop: self.up_to_mop,
                 after_mop: self.after_mop,
@@ -1306,7 +1306,7 @@ mod tests {
                     _version: to_version,
                     crc: self.crc,
                     versioned_data: if self._version <= M2Version::TBC {
-                        self.versioned_data.clone()
+                        self.versioned_data
                     } else {
                         ExampleVersioned::UpToTBC(0, 2.0)
                     },
@@ -1327,17 +1327,15 @@ mod tests {
                             versioned_data: if self._version <= M2Version::TBC {
                                 ExampleVersioned::Others(0x49)
                             } else {
-                                self.versioned_data.clone()
+                                self.versioned_data
                             },
                             bounding_box: self.bounding_box.clone(),
                             up_to_mop: if to_version > M2Version::MoP {
                                 OptionUpToMoP::None
+                            } else if self._version <= M2Version::MoP {
+                                self.up_to_mop
                             } else {
-                                if self._version <= M2Version::MoP {
-                                    self.up_to_mop
-                                } else {
-                                    OptionUpToMoP::Some(0)
-                                }
+                                OptionUpToMoP::Some(0)
                             },
                             after_mop: if to_version > M2Version::MoP {
                                 if self._version > M2Version::MoP {
