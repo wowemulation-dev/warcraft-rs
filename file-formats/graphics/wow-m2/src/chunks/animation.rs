@@ -1,13 +1,11 @@
-use custom_debug::Debug;
-#[cfg(feature = "trimmed-debug-output")]
-use std::cmp;
 use std::fmt;
+
+use custom_debug::Debug;
+
 use wow_data::error::Result as WDResult;
 use wow_data::prelude::*;
 use wow_data::types::{BoundingBox, C3Vector, VWowDataR, WowArray};
 use wow_data_derive::{WowDataR, WowEnumFrom, WowHeaderR, WowHeaderW};
-#[cfg(feature = "trimmed-debug-output")]
-use wow_utils::debug;
 
 use crate::version::MD20Version;
 
@@ -180,6 +178,8 @@ impl<T: WowHeaderR + WowHeaderW> VWowDataR<MD20Version, TrackArray<T>> for Track
 
 #[cfg(feature = "trimmed-debug-output")]
 pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &TrackVec<T>, f: &mut fmt::Formatter) -> fmt::Result {
+    use std::cmp;
+    use wow_utils::debug;
     match n {
         TrackVec::Single(single) => debug::trimmed_collection_fmt(single, f),
         TrackVec::Multiple(multiple) => {
@@ -189,12 +189,10 @@ pub fn trimmed_trackvec_fmt<T: fmt::Debug>(n: &TrackVec<T>, f: &mut fmt::Formatt
 
             write!(f, "[")?;
 
-            let items_len = first_three.len();
-            for i in 0..items_len {
+            for (i, item) in first_three.iter().enumerate() {
                 if i > 0 {
                     write!(f, ", ")?;
                 }
-                let item = &first_three[i];
                 debug::trimmed_collection_fmt(item, f)?;
             }
 

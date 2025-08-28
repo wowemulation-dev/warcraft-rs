@@ -110,13 +110,12 @@ fn generate_header_rv_struct_reader_body(
                 if let Some(val) = wow_data_attrs.override_read {
                     read_lines.push(quote! { let #field_name = #val; });
                 } else if wow_data_attrs.versioned {
-                        read_lines.push(
+                    read_lines.push(
                     quote! { let #field_name: #field_ty = reader.wow_read_versioned(version)?; },
                 );
-                    } else {
-                        read_lines
-                            .push(quote! { let #field_name: #field_ty = reader.wow_read()?; });
-                    }
+                } else {
+                    read_lines.push(quote! { let #field_name: #field_ty = reader.wow_read()?; });
+                }
 
                 initializers.push(quote! { #field_name });
             }
@@ -137,12 +136,10 @@ fn generate_header_rv_struct_reader_body(
             };
             Ok(quote! {Self::from_bits_retain(reader.wow_read()?)})
         }
-        Fields::Unit => {
-            Err(syn::Error::new_spanned(
-                fields,
-                "WowHeaderR on structs does't support unit fields.",
-            ))
-        }
+        Fields::Unit => Err(syn::Error::new_spanned(
+            fields,
+            "WowHeaderR on structs does't support unit fields.",
+        )),
     }
 }
 
@@ -369,7 +366,7 @@ fn generate_struct_writer_body(
             for field in &f.named {
                 let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-                if let Some(_) = wow_data_attrs.override_read {
+                if wow_data_attrs.override_read.is_some() {
                     write_statements.push(quote! {});
                 } else {
                     let field_name = field.ident.as_ref().unwrap();
@@ -396,12 +393,10 @@ fn generate_struct_writer_body(
                 Ok(())
             })
         }
-        Fields::Unit => {
-            Err(syn::Error::new_spanned(
-                fields,
-                "WowHeaderW on structs does't support unit fields.",
-            ))
-        }
+        Fields::Unit => Err(syn::Error::new_spanned(
+            fields,
+            "WowHeaderW on structs does't support unit fields.",
+        )),
     }
 }
 
@@ -416,7 +411,7 @@ fn generate_struct_size_body(
             for field in &f.named {
                 let wow_data_attrs = parse_wow_data_attrs(&field.attrs)?;
 
-                if let Some(_) = wow_data_attrs.override_read {
+                if wow_data_attrs.override_read.is_some() {
                     size_expressions.push(quote! {0});
                 } else {
                     let field_name = field.ident.as_ref().unwrap();
@@ -441,12 +436,10 @@ fn generate_struct_size_body(
                 #ty::default().wow_size()
             })
         }
-        Fields::Unit => {
-            Err(syn::Error::new_spanned(
-                fields,
-                "WowHeaderW on structs does't support unit fields.",
-            ))
-        }
+        Fields::Unit => Err(syn::Error::new_spanned(
+            fields,
+            "WowHeaderW on structs does't support unit fields.",
+        )),
     }
 }
 
@@ -613,8 +606,7 @@ pub fn wow_data_r_derive(input: TokenStream) -> TokenStream {
             initializers
                 .push(quote! { #field_name: reader.v_new_from_header(&header.#field_name)? });
         } else {
-            initializers
-                .push(quote! { #field_name: reader.new_from_header(&header.#field_name)? });
+            initializers.push(quote! { #field_name: reader.new_from_header(&header.#field_name)? });
         }
     }
 
