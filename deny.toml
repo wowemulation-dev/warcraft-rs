@@ -6,6 +6,12 @@ targets = []
 [advisories]
 version = 2
 yanked = "deny"
+# Exception for RSA timing vulnerability - This is used only for signature verification
+# of MPQ archives, not for private key operations, so the timing attack risk is minimal
+ignore = [
+    "RUSTSEC-2023-0071", # RSA timing sidechannel - limited impact in our use case
+    "RUSTSEC-2024-0436", # paste unmaintained - comes from rav1e dependency
+]
 
 [licenses]
 version = 2
