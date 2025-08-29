@@ -3,9 +3,33 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- Enhanced clippy linting with stricter rules (all, pedantic, nursery, cargo groups)
+- Comprehensive QA script adapted from cascette-rs for better code quality assurance
+- Improved dependency security audit configuration with documented exceptions
+
+### Fixed
+
+- **CI/CD**: Skip CLI tests requiring MPQ test files in CI environment
+- **Clippy**: Resolved needless borrow warning in test code
+- **Clippy**: Fixed needless match warning for improved code clarity  
+- **Testing**: Handle different target directories in CLI tests for code coverage
+- **Dependencies**: Updated slab from 0.4.10 to 0.4.11 to fix security vulnerability
+- **Performance**: Optimized MPQ bulk extraction performance
+- **Code Quality**: Removed unused PatchChain import and variables in tests
+
+### Changed
+
+- Applied rustfmt formatting consistently across codebase
+- Enhanced code documentation and removed redundant comments
+- Improved dependency audit configuration with security advisory exceptions
+- Updated deny.toml to handle RSA timing vulnerability (limited impact) and unmaintained dependencies
 
 ## [0.3.1] - 2025-08-12
 
@@ -20,9 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-blp**: Extracted duplicate bounds checking logic into reusable
   module
 - **wow-wmo**: Simplified error handling patterns in chunk reading code
-- **wow-m2**: Fixed ribbon emitter parsing for Cataclysm/MoP using numeric version comparison
+- **wow-m2**: Fixed ribbon emitter parsing for Cataclysm/MoP using numeric
+  version comparison
 - **wow-mpq**: Fixed HET table creation to handle attributes files correctly
-- **wow-mpq**: Fixed sector offset validation preventing false positive truncation errors
+- **wow-mpq**: Fixed sector offset validation preventing false positive
+  truncation errors
 
 ### Added
 
@@ -33,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-wmo**: MCVP chunk support for Cataclysm+ transport collision
   volumes
 
-### Changed
+### Changed (0.3.0)
 
 - Applied rustfmt formatting fixes across all crates
 - Removed 29 development test files (5,800+ lines) for cleaner codebase
@@ -47,39 +73,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-- **wow-adt**: MFBO chunk structure changed from 8 bytes to 36 bytes (2 planes × 9 int16 coordinates)
-- **wow-wdt**: MWMO chunk handling changed for Cataclysm+ compatibility (only WMO-only maps include MWMO)
+- **wow-adt**: MFBO chunk structure changed from 8 bytes to 36 bytes
+  (2 planes × 9 int16 coordinates)
+- **wow-wdt**: MWMO chunk handling changed for Cataclysm+ compatibility
+  (only WMO-only maps include MWMO)
 - **wow-adt**: Version detection API enhanced with chunk-based detection methods
 
-### Added
+### Added (0.3.0)
 
-- **wow-adt**: Complete WoW version support (Vanilla through Mists of Pandaria) with automatic detection
-- **wow-adt**: Split ADT file support for Cataclysm+ (_tex0, _obj0, _obj1, _lod files) with merge functionality
-- **wow-adt**: MAMP chunk parser for 4-byte texture amplifier values (Cataclysm+)
-- **wow-adt**: MTXP chunk parser for texture parameters with 16-byte entries (MoP+)
+- **wow-adt**: Complete WoW version support (Vanilla through Mists of
+  Pandaria) with automatic detection
+- **wow-adt**: Split ADT file support for Cataclysm+ (`_tex0`, `_obj0`,
+  `_obj1`, `_lod` files) with merge functionality
+- **wow-adt**: MAMP chunk parser for 4-byte texture amplifier values
+  (Cataclysm+)
+- **wow-adt**: MTXP chunk parser for texture parameters with 16-byte
+  entries (MoP+)
 - **wow-wdt**: Enhanced version detection across all WoW expansions
 - **wow-wdt**: Map type detection distinguishing terrain maps from WMO-only maps
-- **wow-wdl**: Enhanced chunk support for all documented chunks (MAOF, MAOH, MAHO, MWID, MWMO, MODF, ML)
-- **wow-mpq**: MutableArchive methods: read_file(), list(), find_file(), verify_signature(), load_attributes()
-- **wow-mpq**: Complete compact() method implementation for archive defragmentation
-- **wow-mpq**: Attributes file parsing handles both self-inclusive and self-exclusive cases
+- **wow-wdl**: Enhanced chunk support for all documented chunks (MAOF, MAOH,
+  MAHO, MWID, MWMO, MODF, ML)
+- **wow-mpq**: MutableArchive methods: read_file(), list(), find_file(),
+  verify_signature(), load_attributes()
+- **wow-mpq**: Complete compact() method implementation for archive
+  defragmentation
+- **wow-mpq**: Attributes file parsing handles both self-inclusive and
+  self-exclusive cases
 - **wow-m2**: WotLK M2 model and skin format support
 - **wow-m2**: Texture filename parsing functionality
 - **wow-m2**: Old skin format support
 - **warcraft-rs**: cargo-deny configuration for dependency security scanning
 
-### Fixed
+### Fixed (0.3.0)
 
-- **wow-adt**: MFBO flight boundaries now use correct structure matching TrinityCore server
-- **wow-wdt**: MWMO chunk writing uses version-aware logic for Cataclysm+ compatibility
-- **wow-mpq**: Huffman decompression algorithm matches StormLib linked list approach
+- **wow-adt**: MFBO flight boundaries now use correct structure matching
+  TrinityCore server
+- **wow-wdt**: MWMO chunk writing uses version-aware logic for Cataclysm+
+  compatibility
+- **wow-mpq**: Huffman decompression algorithm matches StormLib linked
+  list approach
 - **wow-mpq**: IMPLODE compression handling for Warcraft III MPQ archives
-- **wow-mpq**: Attributes file parsing handles varying block counts across implementations
+- **wow-mpq**: Attributes file parsing handles varying block counts
+  across implementations
 - **wow-m2**: BLP texture parsing with correct header field order and data types
 
 ### Changed
 
-- **wow-mpq**: Enhanced attributes file block count detection with automatic fallback logic
+- **wow-mpq**: Enhanced attributes file block count detection with
+  automatic fallback logic
 - **wow-m2**: Replaced custom BLP implementation with wow-blp crate dependency
 - **wow-m2**: BlpTexture now re-exports wow_blp::BlpImage for compatibility
 
@@ -90,33 +131,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2025-06-28
 
-### Added
+### Added (0.2.0)
 
 - **wow-mpq**: Complete parallel processing support with ParallelArchive struct
-- **wow-mpq**: Multi-threaded functions: extract_from_multiple_archives(), search_in_multiple_archives(), process_archives_parallel(), validate_archives_parallel()
+- **wow-mpq**: Multi-threaded functions: extract_from_multiple_archives(),
+  search_in_multiple_archives(), process_archives_parallel(),
+  validate_archives_parallel()
 - **wow-mpq**: Thread-safe file handle cloning strategy for concurrent access
-- **wow-mpq**: Parallel patch chain loading with from_archives_parallel() and add_archives_parallel()
+- **wow-mpq**: Parallel patch chain loading with from_archives_parallel()
+  and add_archives_parallel()
 - **wow-mpq**: Buffer pre-allocation optimizations for sector reading
 - **wow-mpq**: Hash table mask caching for improved file lookup
 - **wow-mpq**: Public list_files() and read_file_with_new_handle() methods
 - **wow-mpq**: Rayon integration for CPU-optimal work distribution
-- **wow-mpq**: SQLite database support for persistent filename hash storage and resolution
-- **wow-mpq**: Database import functionality supporting listfiles, MPQ archives, and directory scanning
-- **wow-mpq**: Automatic filename resolution through database lookup during archive operations
+- **wow-mpq**: SQLite database support for persistent filename hash storage
+  and resolution
+- **wow-mpq**: Database import functionality supporting listfiles, MPQ
+  archives, and directory scanning
+- **wow-mpq**: Automatic filename resolution through database lookup
+  during archive operations
 - **storm-ffi**: Complete archive modification support through C FFI
-- **storm-ffi**: File operations: add, remove, rename with SFileAddFile, SFileRemoveFile, SFileRenameFile
-- **storm-ffi**: Archive operations: create, flush, compact with SFileCreateArchive, SFileFlushArchive, SFileCompactArchive
-- **storm-ffi**: File finding functionality with SFileFindFirstFile/NextFile/Close
+- **storm-ffi**: File operations: add, remove, rename with SFileAddFile,
+  SFileRemoveFile, SFileRenameFile
+- **storm-ffi**: Archive operations: create, flush, compact with
+  SFileCreateArchive, SFileFlushArchive, SFileCompactArchive
+- **storm-ffi**: File finding functionality with
+  SFileFindFirstFile/NextFile/Close
 - **storm-ffi**: File and archive attributes API support
 - **warcraft-rs**: CLI with mpq subcommands: list, extract, info, verify
-- **warcraft-rs**: mpq db subcommand with status, import, analyze, lookup, export, list operations
-- **warcraft-rs**: Parallel processing enabled by default with --threads parameter
+- **warcraft-rs**: mpq db subcommand with status, import, analyze, lookup,
+  export, list operations
+- **warcraft-rs**: Parallel processing enabled by default with --threads
+  parameter
 - **warcraft-rs**: --patch parameter for patch chain support in extract command
-- **warcraft-rs**: BLP commands: convert, info, validate with mipmap generation and DXT compression
-- **warcraft-rs**: ADT commands: info, validate, convert, tree with expansion name support
+- **warcraft-rs**: BLP commands: convert, info, validate with mipmap
+  generation and DXT compression
+- **warcraft-rs**: ADT commands: info, validate, convert, tree with
+  expansion name support
 - **warcraft-rs**: WDT commands: info, validate, convert, tiles
 - **warcraft-rs**: WDL commands: validate, convert, info
-- **warcraft-rs**: Tree visualization for all formats with emoji icons and color support
+- **warcraft-rs**: Tree visualization for all formats with emoji icons
+  and color support
 - **wow-blp**: Complete BLP texture format support (BLP0, BLP1, BLP2)
 - **wow-blp**: All compression formats: JPEG, RAW1 (palettized), RAW3, DXT1/3/5
 - **wow-blp**: Mipmap support for internal and external mipmaps
@@ -133,7 +188,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-adt**: ADT terrain file parsing for all chunk types
 - **wow-adt**: Height maps, texture layers, doodad and WMO placement data
 - **wow-adt**: Liquid information, vertex shading, shadow maps, alpha maps
-- **wow-adt**: Version conversion between Classic, TBC, WotLK, and Cataclysm formats
+- **wow-adt**: Version conversion between Classic, TBC, WotLK, and
+  Cataclysm formats
 - **wow-wdt**: WDT file support with MPHD header and MAIN chunk parsing
 - **wow-wdt**: MAID chunk support for file data IDs (Legion+)
 - **wow-wdt**: WMO-only world support with map metadata
@@ -142,11 +198,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-cdbc**: Client database (DBC) file parsing with DBD schema support
 - **wow-cdbc**: Localized string support and row-based data access
 
-### Fixed
+### Fixed (0.2.0)
 
 - **wow-mpq**: Critical sector reading bug truncating large files
 - **wow-mpq**: Archive modification to properly update listfile and attributes
-- **wow-mpq**: V3 archive compatibility issues with StormLib attributes file reading
+- **wow-mpq**: V3 archive compatibility issues with StormLib attributes
+  file reading
 - **wow-mpq**: V4 malloc crash by checking hi-block table necessity
 - **wow-mpq**: ADPCM decompression overflow when bit shift value exceeds 31
 - **wow-mpq**: SINGLE_UNIT file compression method detection
@@ -159,50 +216,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wow-adt**: MH2O water chunk parsing for incomplete water data
 - **wow-adt**: MFBO chunk handling for variable sizes between expansions
 
-### Changed
+### Changed (0.2.0)
 
 - **wow-mpq**: Parallel processing as default behavior for all CLI operations
 - **wow-mpq**: Enhanced thread safety architecture for concurrent operations
 - **wow-mpq**: Attributes files use StormLib-compatible 149-byte format
-- **storm-ffi**: Renamed from storm to storm-ffi while retaining libstorm library name
+- **storm-ffi**: Renamed from storm to storm-ffi while retaining
+  libstorm library name
 - **storm-ffi**: Archive handles support both read-only and mutable operations
-- **Project-wide**: Comprehensive test reorganization with component, integration, scenarios, compliance directories
+- **Project-wide**: Comprehensive test reorganization with component,
+  integration, scenarios, compliance directories
 - **Project-wide**: Consolidated examples from 50+ to 15 focused demonstrations
 - **All crates**: Replaced byteorder crate with native Rust byte order functions
-- **Documentation**: Fixed API discrepancies between documentation and implementation
+- **Documentation**: Fixed API discrepancies between documentation and
+  implementation
 - **Documentation**: Updated all code examples to compile correctly
 
-### Performance
+### Performance (0.2.0)
 
-- Up to 6x performance improvement for multi-archive operations through parallel processing
+- Up to 6x performance improvement for multi-archive operations through
+  parallel processing
 - Optimized sector reading with buffer pre-allocation strategies
 - Enhanced file lookup performance through hash table mask caching
 - CPU-optimal work distribution using rayon thread pools
 
-### Removed
+### Removed (0.2.0)
 
-- **wow-mpq**: Redundant create_het_table() method replaced by create_het_table_with_hash_table()
+- **wow-mpq**: Redundant create_het_table() method replaced by
+  create_het_table_with_hash_table()
 - **warcraft-rs**: --parallel and --sequential flags (parallel now default)
 - **warcraft-rs**: --batch-size option (automatically optimized)
 - **wow-mpq**: Redundant examples consolidated into comprehensive demonstrations
 
 ## [0.1.0] - 2025-06-13
 
-### Added
+### Added (0.1.0)
 
 - **wow-mpq**: Complete archive modification API with MutableArchive
 - **wow-mpq**: Automatic listfile and attributes updates during modifications
-- **wow-mpq**: StormLib bidirectional compatibility for created/modified archives
+- **wow-mpq**: StormLib bidirectional compatibility for
+  created/modified archives
 - **wow-mpq**: Support for WoW versions 1.12.1 through 5.4.8
-- **wow-mpq**: Support for MPQ format versions (V1, V2, V3 with HET/BET, V4 with advanced HET/BET)
-- **wow-mpq**: Portable WoW data discovery using environment variables and common paths
+- **wow-mpq**: Support for MPQ format versions (V1, V2, V3 with HET/BET,
+  V4 with advanced HET/BET)
+- **wow-mpq**: Portable WoW data discovery using environment variables
+  and common paths
 - **wow-mpq**: test-utils feature for examples requiring WoW game data
-- **wow-mpq**: Cross-platform path separator conversion (forward slash to backslash)
+- **wow-mpq**: Cross-platform path separator conversion (forward slash
+  to backslash)
 - **wow-mpq**: Graceful handling of Blizzard's 28-byte attributes file deviation
-- **wow-mpq**: HET/BET table generation for V3+ archives with attributes file indexing
-- **wow-mpq**: V4 archive creation with corrected hi-block table size calculation
+- **wow-mpq**: HET/BET table generation for V3+ archives with attributes
+  file indexing
+- **wow-mpq**: V4 archive creation with corrected hi-block table size
+  calculation
 - **wow-mpq**: ADPCM audio compression support with overflow protection
-- **wow-mpq**: Support for all compression formats (ZLIB, BZIP2, ADPCM, Huffman, Sparse, LZMA)
+- **wow-mpq**: Support for all compression formats (ZLIB, BZIP2, ADPCM,
+  Huffman, Sparse, LZMA)
 - **wow-mpq**: Encryption/decryption support with hash and block table parsing
 - **wow-mpq**: Extended attributes and HET/BET table support
 - **wow-mpq**: Patch archive support with proper file resolution
@@ -211,17 +280,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rust 2024 edition support with MSRV 1.86
 - Comprehensive test organization (unit, integration, compliance, scenarios)
 
-### Fixed
+### Fixed (0.1.0)
 
 - **wow-mpq**: V3 archive compatibility with StormLib attributes file reading
 - **wow-mpq**: V4 malloc crash by proper hi-block table necessity checking
 - **wow-mpq**: HET table creation to properly index attributes files
 - **wow-mpq**: ADPCM decompression overflow protection
-- **wow-mpq**: Sector reading validation preventing false positive truncation errors
+- **wow-mpq**: Sector reading validation preventing false positive
+  truncation errors
 
-### Changed
+### Changed (0.1.0)
 
-- **wow-mpq**: Attributes files use full StormLib-compatible format (CRC32+MD5+timestamp) instead of CRC32-only
+- **wow-mpq**: Attributes files use full StormLib-compatible format
+  (CRC32+MD5+timestamp) instead of CRC32-only
 
 [0.3.1]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.2.0...v0.3.0
