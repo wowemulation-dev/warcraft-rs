@@ -10,7 +10,7 @@ pub fn generate_mipmaps(
     loop {
         let width = current_image.width();
         let height = current_image.height();
-        if (width == 1 && height == 1) || mipmaps.len() >= 16 {
+        if (width <= 1 || height <= 1 || mipmaps.len() >= 16) {
             break;
         }
         let new_width = width >> 1;
