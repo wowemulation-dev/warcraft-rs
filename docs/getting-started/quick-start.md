@@ -1,4 +1,4 @@
-# 🚀 Quick Start Guide
+# Quick Start Guide
 
 Get started with `warcraft-rs` in just a few minutes!
 
@@ -73,4 +73,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - Check the [API documentation](https://docs.rs/warcraft-rs)
 - Visit our [GitHub repository](https://github.com/wowemulation-dev/warcraft-rs)
-- Read the [troubleshooting guide](troubleshooting.md)
+- Read troubleshooting documentation

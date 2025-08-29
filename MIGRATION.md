@@ -1,27 +1,34 @@
 # Migration Guide: warcraft-rs v0.3.0
 
-This guide helps you migrate from previous versions to warcraft-rs v0.3.0, which includes significant improvements to ADT, WDT, and WDL parsing with comprehensive World of Warcraft version support.
+This guide helps you migrate from previous versions to warcraft-rs v0.3.0,
+which includes significant improvements to ADT, WDT, and WDL parsing with
+comprehensive World of Warcraft version support.
 
 ## Summary of Changes
 
 ### Version 0.3.0 - Breaking Changes Release
 
-This is a **MINOR VERSION BUMP** (0.2.1 → 0.3.0) due to breaking API changes. In pre-1.0 releases, minor version bumps indicate breaking changes.
+This is a **MINOR VERSION BUMP** (0.2.1 → 0.3.0) due to breaking API
+changes. In pre-1.0 releases, minor version bumps indicate breaking changes.
 
 ### Major Improvements ✅
+
 - **Complete WoW version support** - Vanilla through Mists of Pandaria
 - **Automatic version detection** - No manual version specification needed
-- **Split ADT file support** - Cataclysm+ `_tex0`, `_obj0`, `_obj1`, `_lod` files  
+- **Split ADT file support** - Cataclysm+ `_tex0`, `_obj0`, `_obj1`, `_lod`
+  files
 - **TrinityCore compliance** - Validated against server implementation
 - **Enhanced chunk parsing** - MFBO, MAMP, MTXP, MH2O improvements
 
 ### Breaking Changes 🔄 (Requires Code Updates)
+
 - **MFBO chunk structure** - Changed from 8 bytes to 36 bytes (correct format)
 - **Version detection API** - Enhanced methods for chunk-based detection
 - **WDT conditional chunks** - MWMO handling for Cataclysm+ compatibility
 - **API reorganization** - Some internal structures moved/renamed
 
 ### Semantic Versioning Note
+
 Since warcraft-rs is pre-1.0, we follow the convention that:
 - **PATCH** (0.2.X) = Bug fixes, no breaking changes
 - **MINOR** (0.X.0) = New features, **may include breaking changes**

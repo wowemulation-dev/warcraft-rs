@@ -5,9 +5,9 @@ formats supported by `warcraft-rs`.
 
 ## Categories
 
-### 📦 [Archives](archives/)
+### Archives
 
-Archive formats for storing and compressing game assets.
+[Archive formats](archives/) for storing and compressing game assets.
 
 - **[MPQ](archives/mpq.md)** - Blizzard's main archive format
 
