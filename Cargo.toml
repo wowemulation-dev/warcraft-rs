@@ -25,7 +25,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Daniel S. Reichenbach <daniel@kogito.network>"]
 edition = "2024"
 rust-version = "1.86"
@@ -74,3 +74,29 @@ proptest = "1.7"
 assert_cmd = "2.0"
 predicates = "3.1"
 test-case = "3.3"
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+# Only the truly necessary allows
+module_name_repetitions = "allow"        # wow_mpq::mpq is reasonable
+multiple_crate_versions = "allow"        # Dependencies may pull in multiple versions
+missing_errors_doc = "allow"             # Error types are self-documenting via thiserror
+missing_const_for_fn = "allow"           # Not all functions can be const in practice
+must_use_candidate = "allow"             # Not every pure function needs #[must_use]
+missing_panics_doc = "allow"             # Panics are often unreachable in practice
+too_many_lines = "allow"                 # Long functions are sometimes necessary
+cast_sign_loss = "allow"                 # Binary format parsing requires unsigned casts
+cast_possible_truncation = "allow"       # Binary format parsing requires size conversions
+option_if_let_else = "allow"             # Match can be clearer than map_or
+explicit_iter_loop = "allow"             # .iter() is sometimes more explicit
+type_complexity = "allow"                # Complex types sometimes needed for async
+cast_lossless = "allow"                  # as casts are fine for numeric conversions
+uninlined_format_args = "allow"          # Format args don't always need inlining
+single_match_else = "allow"              # Sometimes match is clearer than if let
+unused_self = "allow"                    # &self can be for consistency even if unused
