@@ -11,8 +11,7 @@ zero or more group files that contain geometry data.
 - **Magic**: Chunk-based format with 4-character identifiers (reversed in file)
 - **Purpose**: Large static world geometry with interior/exterior areas
 - **Components**: Root file + multiple group files
-- **Features**: Portal-based visibility, BSP trees, integrated lighting, multiple
-  LODs
+- **Features**: Portal data ⚠️ **Parsing Only**, BSP trees ⚠️ **Parsing Only**, lighting data ⚠️ **Parsing Only**, multiple LODs ⚠️ **Format Specification**
 - **Use Cases**: Buildings, dungeons, caves, large structures, instances
 
 ## Key Characteristics
@@ -20,10 +19,10 @@ zero or more group files that contain geometry data.
 - **Chunk-based format**: Similar to other Blizzard formats, using 4-character
   chunk identifiers
 - **Multi-file structure**: Root file + group files (numbered _000.wmo to_999.wmo)
-- **Portal-based visibility**: Interior spaces use portals for occlusion culling
-- **BSP trees**: Used for collision detection and ray casting
-- **Multiple LOD support**: Different detail levels for rendering optimization
-- **Integrated lighting**: Baked vertex lighting and dynamic light references
+- **Portal data**: ⚠️ **Format Specification Only** - Portal vertices and normals parsed, visibility culling not implemented
+- **BSP trees**: ⚠️ **Format Specification Only** - Node structure parsed, collision detection not implemented  
+- **Multiple LOD support**: ⚠️ **Format Specification Only** - LOD data parsed, rendering optimization not implemented
+- **Lighting data**: ⚠️ **Format Specification Only** - Light parameters parsed, lighting calculations not implemented
 
 ## Version History
 
@@ -1033,285 +1032,50 @@ pub fn calculate_vertex_lighting(
 }
 ```
 
-## Collision Detection
+## References
 
-BSP trees enable efficient collision detection:
+1. [WoWDev Wiki - WMO Format](https://wowdev.wiki/WMO)
+2. [WoWDev Wiki - WMO/v17](https://wowdev.wiki/WMO/v17)
+3. [Ladislav Zezula's WMO Documentation](http://www.zezula.net/en/wow/wmo.html)
+4. [libwarcraft WMO Implementation](https://github.com/WowDevTools/libwarcraft)
+5. [Neo (WoW Model Viewer) Source](https://bitbucket.org/siliconknight/neo)
+6. [WoWMapViewer Source Code](https://github.com/Marlamin/WoWMapViewer)
+7. [PyWoW WMO Module](https://github.com/wowdev/pywowlib)
 
-```rust
-pub struct BSPTree {
-    nodes: Vec<MOBNNode>,
-    face_indices: Vec<u16>,
-}
+## Key Findings from Empirical Analysis
 
-impl BSPTree {
-    /// Ray-BSP intersection test
-    pub fn ray_intersect(
-        &self,
-        ray_origin: &[f32; 3],
-        ray_dir: &[f32; 3],
-        faces: &[[u16; 3]],
-        vertices: &[[f32; 3]],
-    ) -> Option<f32> {
-        self.ray_intersect_node(0, ray_origin, ray_dir, 0.0, f32::MAX, faces, vertices)
-    }
+### Format Stability
+- **Version Consistency**: All WMO files from 1.12.1 through 3.3.5a use version 17
+- **Chunk Order**: The 17 core chunks always appear in the same order
+- **Backward Compatibility**: No breaking changes detected between versions
+- **Extension Model**: New features added via optional chunks, not format changes
 
-    fn ray_intersect_node(
-        &self,
-        node_idx: usize,
-        ray_origin: &[f32; 3],
-        ray_dir: &[f32; 3],
-        t_min: f32,
-        t_max: f32,
-        faces: &[[u16; 3]],
-        vertices: &[[f32; 3]],
-    ) -> Option<f32> {
-        let node = &self.nodes[node_idx];
+### Common Patterns
+- **Empty Chunks**: MOVV and MOVB frequently have 0 size (no visibility blocking)
+- **Single Doodad Set**: Most WMOs have just one doodad set (32 bytes)
+- **Skybox**: Usually empty (4 bytes of zeros) for indoor WMOs
+- **Consistent Sizes**: MOHD always 64 bytes, MVER always 4 bytes
 
-        if node.flags & MOBNNode::FLAG_LEAF != 0 {
-            // Leaf node - test faces
-            let mut closest_t = None;
+### Implementation Priority
+Based on chunk frequency and importance:
+1. **Essential**: MVER, MOHD, MOTX, MOMT, MOGI, MOGN (basic structure)
+2. **Important**: MODD, MODN, MODS (doodad placement)
+3. **Lighting**: MOLT, MFOG (visual quality)
+4. **Advanced**: MOPV, MOPT, MOPR (portal culling)
+5. **Optional**: MOVV, MOVB (rarely used)
 
-            for i in 0..node.face_count as usize {
-                let face_idx = self.face_indices[node.face_start as usize + i] as usize;
-                let face = &faces[face_idx];
+### File Size Distribution
+- **Root files**: Typically 50KB - 500KB
+- **Group files**: Typically 100KB - 2MB per group
+- **Texture paths**: Average 500-5000 bytes
+- **Doodad data**: Can be 80KB+ for complex WMOs
 
-                if let Some(t) = ray_triangle_intersect(
-                    ray_origin,
-                    ray_dir,
-                    &vertices[face[0] as usize],
-                    &vertices[face[1] as usize],
-                    &vertices[face[2] as usize],
-                ) {
-                    if t >= t_min && t <= t_max {
-                        closest_t = Some(closest_t.map_or(t, |ct| ct.min(t)));
-                    }
-                }
-            }
+## See Also
 
-            closest_t
-        } else {
-            // Branch node - traverse children
-            let axis = (node.flags & MOBNNode::FLAG_AXIS_MASK) as usize;
-            let split_pos = node.plane_dist;
-
-            let t_split = (split_pos - ray_origin[axis]) / ray_dir[axis];
-
-            let first_child = if ray_dir[axis] >= 0.0 {
-                node.neg_child
-            } else {
-                node.pos_child
-            };
-            let second_child = if ray_dir[axis] >= 0.0 {
-                node.pos_child
-            } else {
-                node.neg_child
-            };
-
-            if t_split > t_max || t_split < 0.0 {
-                // Only traverse near side
-                if first_child >= 0 {
-                    self.ray_intersect_node(
-                        first_child as usize,
-                        ray_origin,
-                        ray_dir,
-                        t_min,
-                        t_max,
-                        faces,
-                        vertices,
-                    )
-                } else {
-                    None
-                }
-            } else if t_split < t_min {
-                // Only traverse far side
-                if second_child >= 0 {
-                    self.ray_intersect_node(
-                        second_child as usize,
-                        ray_origin,
-                        ray_dir,
-                        t_min,
-                        t_max,
-                        faces,
-                        vertices,
-                    )
-                } else {
-                    None
-                }
-            } else {
-                // Traverse both sides
-                let mut result = None;
-
-                if first_child >= 0 {
-                    result = self.ray_intersect_node(
-                        first_child as usize,
-                        ray_origin,
-                        ray_dir,
-                        t_min,
-                        t_split,
-                        faces,
-                        vertices,
-                    );
-                }
-
-                if second_child >= 0 {
-                    let far_result = self.ray_intersect_node(
-                        second_child as usize,
-                        ray_origin,
-                        ray_dir,
-                        t_split,
-                        result.unwrap_or(t_max),
-                        faces,
-                        vertices,
-                    );
-
-                    if let Some(t) = far_result {
-                        result = Some(result.map_or(t, |rt| rt.min(t)));
-                    }
-                }
-
-                result
-            }
-        }
-    }
-}
-
-/// Ray-triangle intersection using Möller-Trumbore algorithm
-fn ray_triangle_intersect(
-    ray_origin: &[f32; 3],
-    ray_dir: &[f32; 3],
-    v0: &[f32; 3],
-    v1: &[f32; 3],
-    v2: &[f32; 3],
-) -> Option<f32> {
-    const EPSILON: f32 = 0.000001;
-
-    let edge1 = sub_vec3(v1, v0);
-    let edge2 = sub_vec3(v2, v0);
-
-    let h = cross_product(ray_dir, &edge2);
-    let a = dot_product(&edge1, &h);
-
-    if a > -EPSILON && a < EPSILON {
-        return None; // Ray parallel to triangle
-    }
-
-    let f = 1.0 / a;
-    let s = sub_vec3(ray_origin, v0);
-    let u = f * dot_product(&s, &h);
-
-    if u < 0.0 || u > 1.0 {
-        return None;
-    }
-
-    let q = cross_product(&s, &edge1);
-    let v = f * dot_product(ray_dir, &q);
-
-    if v < 0.0 || u + v > 1.0 {
-        return None;
-    }
-
-    let t = f * dot_product(&edge2, &q);
-
-    if t > EPSILON {
-        Some(t)
-    } else {
-        None
-    }
-}
-```
-
-## Implementation Examples
-
-### Complete WMO Reader
-
-```rust
-use std::io::{self, Read, Seek, SeekFrom};
-use std::collections::HashMap;
-use std::io::Read;
-
-pub struct WMORoot {
-    pub version: u32,
-    pub header: MOHDChunk,
-    pub textures: Vec<String>,
-    pub materials: Vec<MOMTEntry>,
-    pub group_names: Vec<String>,
-    pub group_info: Vec<MOGIEntry>,
-    pub portals: Vec<Portal>,
-    pub lights: Vec<MOLTEntry>,
-    pub doodad_sets: Vec<MODSEntry>,
-    pub doodad_names: Vec<String>,
-    pub doodad_defs: Vec<MODDEntry>,
-    pub fog: Vec<MFOGEntry>,
-}
-
-impl WMORoot {
-    pub fn read<R: Read + Seek>(reader: &mut R) -> io::Result<Self> {
-        let mut wmo = WMORoot {
-            version: 0,
-            header: unsafe { std::mem::zeroed() },
-            textures: Vec::new(),
-            materials: Vec::new(),
-            group_names: Vec::new(),
-            group_info: Vec::new(),
-            portals: Vec::new(),
-            lights: Vec::new(),
-            doodad_sets: Vec::new(),
-            doodad_names: Vec::new(),
-            doodad_defs: Vec::new(),
-            fog: Vec::new(),
-        };
-
-        // Read chunks until EOF
-        loop {
-            let chunk = match Chunk::read(reader) {
-                Ok(c) => c,
-                Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
-                Err(e) => return Err(e),
-            };
-
-            match chunk.header.id_string().as_str() {
-                "MVER" => {
-                    wmo.version = (&chunk.data[..]).read_u32::<LittleEndian>()?;
-                }
-                "MOHD" => {
-                    wmo.header = read_struct(&chunk.data)?;
-                }
-                "MOTX" => {
-                    wmo.textures = parse_motx(&chunk.data);
-                }
-                "MOMT" => {
-                    wmo.materials = read_array(&chunk.data)?;
-                }
-                "MOGN" => {
-                    wmo.group_names = parse_mogn(&chunk.data);
-                }
-                "MOGI" => {
-                    wmo.group_info = read_array(&chunk.data)?;
-                }
-                "MOPV" => {
-                    let vertices: Vec<MOPVEntry> = read_array(&chunk.data)?;
-                    // Process with MOPT to create portals
-                }
-                "MOLT" => {
-                    wmo.lights = read_array(&chunk.data)?;
-                }
-                "MODS" => {
-                    wmo.doodad_sets = read_array(&chunk.data)?;
-                }
-                "MODN" => {
-                    wmo.doodad_names = parse_modn(&chunk.data);
-                }
-                "MODD" => {
-                    wmo.doodad_defs = read_array(&chunk.data)?;
-                }
-                "MFOG" => {
-                    wmo.fog = read_array(&chunk.data)?;
-                }
-                _ => {
-                    // Unknown chunk, skip
-                }
-            }
-        }
+- [BLP Format](blp.md) - Texture format used by WMO
+- [M2 Format](m2.md) - Doodads placed in WMO
+- [ADT Format](../world-data/adt.md) - Terrain that WMOs sit on
+- [WMO Rendering Guide](../../guides/wmo-rendering.md)
 
         Ok(wmo)
     }

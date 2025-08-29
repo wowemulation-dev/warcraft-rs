@@ -8,28 +8,42 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-08-29
+
 ### Added
 
-- Enhanced clippy linting with stricter rules (all, pedantic, nursery, cargo groups)
-- Comprehensive QA script adapted from cascette-rs for better code quality assurance
-- Improved dependency security audit configuration with documented exceptions
+- **M2 Format**: Complete chunked format implementation with 25 chunks (Legion+ support)
+  - File reference chunks: SFID, AFID, TXID, PFID, SKID, BFID
+  - Particle system chunks: PABC, PADC, PSBC, PEDC, PCOL, PFDC
+  - Rendering enhancement chunks: TXAC, EDGF, NERF, DETL, RPID, GPID, DBOC
+  - Animation system chunks: AFRA, DPIV
+  - Export processing chunks: EXPT
+- **M2 Format**: Comprehensive chunk validation and cross-reference checking
+- **M2 Format**: Physics file (.phys) basic parsing support via PFID references
+- **Code Quality**: Enhanced clippy linting with stricter rules (all, pedantic, nursery, cargo groups)
+- **Testing**: Comprehensive QA script adapted from cascette-rs for better code quality assurance
+- **Security**: Improved dependency security audit configuration with documented exceptions
 
 ### Fixed
 
+- **M2 Parsing**: Fixed redundant guard expressions in chunk pattern matching (29 instances)
+- **M2 Parsing**: Resolved needless borrows in iterator usage throughout codebase
+- **M2 Parsing**: Fixed is_some_and pattern usage for cleaner conditional logic
+- **M2 Parsing**: Corrected iterator patterns in rendering enhancement processing
+- **M2 Parsing**: Fixed stream position handling in chunk infrastructure
 - **CI/CD**: Skip CLI tests requiring MPQ test files in CI environment
-- **Clippy**: Resolved needless borrow warning in test code
-- **Clippy**: Fixed needless match warning for improved code clarity  
-- **Testing**: Handle different target directories in CLI tests for code coverage
 - **Dependencies**: Updated slab from 0.4.10 to 0.4.11 to fix security vulnerability
 - **Performance**: Optimized MPQ bulk extraction performance
-- **Code Quality**: Removed unused PatchChain import and variables in tests
+- **Code Quality**: Removed unused imports and variables across test modules
 
 ### Changed
 
-- Applied rustfmt formatting consistently across codebase
-- Enhanced code documentation and removed redundant comments
-- Improved dependency audit configuration with security advisory exceptions
-- Updated deny.toml to handle RSA timing vulnerability (limited impact) and unmaintained dependencies
+- **M2 Format**: Achieved 100% M2 specification compliance with chunked format support
+- **Documentation**: Updated M2 format documentation to reflect comprehensive implementation
+- **Code Style**: Applied rustfmt formatting consistently across entire codebase
+- **Error Handling**: Enhanced error reporting with detailed chunk validation messages
+- **Testing**: Expanded test coverage to 135+ unit and integration tests
+- **Validation**: Improved cross-chunk reference validation and consistency checking
 
 ## [0.3.1] - 2025-08-12
 

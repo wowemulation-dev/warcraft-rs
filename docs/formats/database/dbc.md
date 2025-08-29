@@ -8,12 +8,12 @@ many other game elements.
 ## Overview
 
 - **Extension**: `.dbc`
-- **Magic**: `WDBC` (0x43424457 in little-endian)
+- **Magic**: `WDBC` (0x43424457 in little-endian) - ✅ Implemented
 - **Purpose**: Client-side database tables for game data
-- **Structure**: Fixed-size records with defined schemas
-- **Encoding**: Little-endian binary format
-- **String Storage**: Separate string block with offset references
-- **Localization**: Built-in support for multiple languages
+- **Structure**: Fixed-size records with defined schemas - ✅ Implemented
+- **Encoding**: Little-endian binary format - ✅ Implemented
+- **String Storage**: Separate string block with offset references - ✅ Implemented  
+- **Localization**: Built-in support for multiple languages - ⚠️ Partial - Multiple language support available but not all localizations tested
 
 ## Key Characteristics
 
@@ -492,123 +492,38 @@ struct AreaTableRecord {
 4. Read string block
 5. Build any necessary indices
 
-### Implementation Example
+### Implementation Example - ✅ Implemented
 
 ```rust
 use std::fs::File;
-use std::io::{Read, BufReader};
-use std::collections::HashMap;
+use std::io::BufReader;
+use wow_cdbc::{DbcParser, FieldType, Schema, SchemaField};
 
-#[derive(Debug)]
-pub enum DbcError {
-    Io(std::io::Error),
-    InvalidHeader,
-    InvalidStringRef(u32),
-    UnterminatedString,
-    InvalidUtf8,
-}
+// Open a DBC file  
+let file = File::open("SpellItemEnchantment.dbc")?;
+let mut reader = BufReader::new(file);
 
-pub struct DbcFile {
-    header: DbcHeader,
-    records: Vec<DbcRecord>,
-    string_block: Vec<u8>,
-    record_index: HashMap<u32, usize>, // ID -> record index
-}
+// Parse the DBC file
+let parser = DbcParser::parse(&mut reader)?;
 
-impl DbcFile {
-    /// Read a DBC file from disk
-    pub fn read_file(path: &str) -> Result<Self, DbcError> {
-        let file = File::open(path).map_err(DbcError::Io)?;
-        let mut reader = BufReader::new(file);
+// Print header information
+let header = parser.header();
+println!("Record Count: {}", header.record_count);
+println!("Field Count: {}", header.field_count);
 
-        // Read header
-        let mut header_bytes = [0u8; 20];
-        reader.read_exact(&mut header_bytes).map_err(DbcError::Io)?;
+// Define a schema for SpellItemEnchantment.dbc
+let mut schema = Schema::new("SpellItemEnchantment");
+schema.add_field(SchemaField::new("ID", FieldType::UInt32));
+schema.add_field(SchemaField::new("Charges", FieldType::UInt32));
+schema.add_field(SchemaField::new("Description", FieldType::String));
+schema.set_key_field("ID");
 
-        let header = DbcHeader {
-            magic: [header_bytes[0], header_bytes[1], header_bytes[2], header_bytes[3]],
-            record_count: u32::from_le_bytes([header_bytes[4], header_bytes[5], header_bytes[6], header_bytes[7]]),
-            field_count: u32::from_le_bytes([header_bytes[8], header_bytes[9], header_bytes[10], header_bytes[11]]),
-            record_size: u32::from_le_bytes([header_bytes[12], header_bytes[13], header_bytes[14], header_bytes[15]]),
-            string_block_size: u32::from_le_bytes([header_bytes[16], header_bytes[17], header_bytes[18], header_bytes[19]]),
-        };
-
-        // Validate header
-        if !header.is_valid() {
-            return Err(DbcError::InvalidHeader);
-        }
-
-        // Read records
-        let mut records = Vec::with_capacity(header.record_count as usize);
-        let mut record_index = HashMap::new();
-
-        for i in 0..header.record_count {
-            let mut record_data = vec![0u8; header.record_size as usize];
-            reader.read_exact(&mut record_data).map_err(DbcError::Io)?;
-
-            let record = DbcRecord { data: record_data };
-
-            // Assume first field is ID (common pattern)
-            let id = record.get_u32(0);
-            record_index.insert(id, i as usize);
-
-            records.push(record);
-        }
-
-        // Read string block
-        let mut string_block = vec![0u8; header.string_block_size as usize];
-        reader.read_exact(&mut string_block).map_err(DbcError::Io)?;
-
-        Ok(DbcFile {
-            header,
-            records,
-            string_block,
-            record_index,
-        })
-    }
-
-    /// Get a record by ID
-    pub fn get_record(&self, id: u32) -> Option<&DbcRecord> {
-        self.record_index.get(&id)
-            .and_then(|&index| self.records.get(index))
-    }
-
-    /// Get a string from the string block
-    pub fn get_string(&self, string_ref: StringRef) -> Result<&str, DbcError> {
-        get_string(&self.string_block, string_ref)
-    }
-
-    /// Iterate over all records
-    pub fn iter_records(&self) -> impl Iterator<Item = &DbcRecord> {
-        self.records.iter()
-    }
-}
-
-/// Example: Read spell names from Spell.dbc
-fn read_spell_names(dbc_path: &str) -> Result<HashMap<u32, String>, DbcError> {
-    let dbc = DbcFile::read_file(dbc_path)?;
-    let mut spell_names = HashMap::new();
-
-    // Field offsets for Spell.dbc
-    const SPELL_ID_FIELD: usize = 0;
-    const SPELL_NAME_FIELD_START: usize = 127; // Start of LocalizedString
-
-    for record in dbc.iter_records() {
-        let spell_id = record.get_u32(SPELL_ID_FIELD);
-
-        // Get enUS name (first locale)
-        let name_ref = record.get_u32(SPELL_NAME_FIELD_START);
-        if name_ref != 0 {
-            let name = dbc.get_string(name_ref)?.to_string();
-            spell_names.insert(spell_id, name);
-        }
-    }
-
-    Ok(spell_names)
-}
+// Apply the schema and parse records
+let parser = parser.with_schema(schema)?;
+let record_set = parser.parse_records()?;
 ```
 
-## Writing DBC Files
+## Writing DBC Files - ❌ Not Implemented
 
 ### Algorithm
 
@@ -618,19 +533,13 @@ fn read_spell_names(dbc_path: &str) -> Result<HashMap<u32, String>, DbcError> {
 4. Write records with updated string references
 5. Write string block
 
-### Implementation Example
+DBC writing functionality is not currently implemented in the `wow-cdbc` crate.
 
-```rust
-use std::io::{Write, BufWriter};
+## Performance Considerations - ✅ Implemented
 
-pub struct DbcBuilder {
-    field_count: u32,
-    records: Vec<Vec<u32>>,
-    strings: HashMap<String, u32>, // String -> offset
-    string_data: Vec<u8>,
-}
+### Memory Mapping
 
-impl DbcBuilder {
+For large DBC files, consider memory mapping:
     /// Create a new DBC builder
     pub fn new(field_count: u32) -> Self {
         let mut builder = DbcBuilder {

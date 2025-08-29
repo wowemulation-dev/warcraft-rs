@@ -757,64 +757,50 @@ pub fn position_to_chunk(x: f32, y: f32) -> (usize, usize) {
 
 ## Usage Examples
 
-### Loading and Parsing ADT
+### Loading and Parsing ADT (Current Implementation)
+
+**Implementation Status:** ⚠️ **Basic Parsing Only** - Advanced terrain processing not implemented
 
 ```rust
-use warcraft_rs::adt::{Adt, ChunkHeader};
+use wow_adt::{Adt, AdtVersion};
 
-// Load ADT file
-let adt = Adt::open("World/Maps/Azeroth/Azeroth_32_48.adt")?;
+// ✅ Load ADT file with correct API
+let adt = Adt::from_path("World/Maps/Azeroth/Azeroth_32_48.adt")?;
 
-// Access terrain chunks
-for (index, chunk) in adt.chunks.iter().enumerate() {
-    let x = index % 16;
-    let y = index / 16;
-    println!("Chunk ({}, {})", x, y);
+// ✅ Check detected version
+println!("Detected version: {}", adt.version());
 
-    // Get height at specific position
-    let height = chunk.get_height(16.67, 16.67);
-
-    // Get texture layers
-    for layer in &chunk.layers {
-        println!("  Texture: {}", adt.textures[layer.texture_id as usize]);
-    }
+// ✅ Access terrain chunk data
+println!("MCNK chunks: {}", adt.mcnk_chunks.len());
+if adt.mfbo.is_some() {
+    println!("Has flight boundaries (TBC+)");
+}
+if adt.mh2o.is_some() {
+    println!("Has water data (WotLK+)");
 }
 
-// Export heightmap
-let heightmap = adt.export_heightmap();
-heightmap.save("terrain_height.png")?;
-
-// Find all doodads (M2 models)
-for doodad in &adt.doodads {
-    let model_name = &adt.models[doodad.model_id as usize];
-    println!("Model: {} at {:?}", model_name, doodad.position);
-}
+// ❌ Height interpolation algorithms not implemented
+// ❌ export_heightmap() method does not exist
+// ❌ High-level texture/doodad access APIs not implemented
+// ❌ Advanced terrain processing not available
 ```
 
-### Texture Blending
+### Texture Blending (Format Specification)
 
-```rust
-/// Apply alpha maps to create final texture
-pub fn blend_textures(
-    textures: &[Texture],
-    alpha_maps: &[AlphaMap],
-    u: f32,  // Texture coordinate 0-1
-    v: f32,  // Texture coordinate 0-1
-) -> Color {
-    // Start with base texture
-    let mut color = textures[0].sample(u, v);
+**Implementation Status:** ⚠️ **Format Specification Only** - Mathematical blending approach documented
 
-    // Blend additional layers
-    for i in 1..textures.len() {
-        let alpha = alpha_maps[i - 1].sample(u, v);
-        let layer_color = textures[i].sample(u, v);
+ADT files support up to 4 texture layers per chunk with alpha map blending. The official format specification describes a complex blending algorithm involving:
 
-        // Blend using alpha
-        color = color.lerp(layer_color, alpha);
-    }
+1. **Layer Weight Calculation** - Based on alpha map values
+2. **Height-based Scaling** - Terrain height influences blending
+3. **Vertex Color Integration** - MCCV chunk data affects final output
 
-    color
-}
+```text
+// From Legion terrain shader (format specification):
+// layer_pct = layer_pct / vec4(sum(layer_pct));
+// 
+// Current implementation provides access to raw texture and alpha data
+// through parsed MCNK chunks, but blending logic must be implemented separately
 ```
 
 ### Liquid Rendering
@@ -845,26 +831,6 @@ if let Some(liquid) = &chunk.liquid {
 }
 ```
 
-### Streaming Large Worlds
-
-```rust
-use warcraft_rs::adt::AdtManager;
-
-let mut manager = AdtManager::new("World/Maps/Azeroth")?;
-manager.set_view_distance(3); // Load 3x3 ADTs around player
-
-// Update based on player position
-manager.update_position(player_x, player_y);
-
-// Get loaded ADTs
-for adt in manager.loaded_adts() {
-    // Render terrain
-    render_adt(&adt);
-}
-
-// Unload distant ADTs
-manager.cleanup_distant_adts();
-```
 
 ## Implementation Notes
 

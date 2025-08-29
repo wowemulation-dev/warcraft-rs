@@ -48,7 +48,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load the model
     println!("Loading model from: {input_path}");
-    let model = M2Model::load(input_path)?;
+    let m2_format = M2Model::load(input_path)?;
+    let model = m2_format.model();
     let source_version = model.header.version();
 
     println!("Source version: {source_version:?}");
@@ -64,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let converter = M2Converter::new();
 
     println!("\nConverting model...");
-    let converted_model = converter.convert(&model, target_version)?;
+    let converted_model = converter.convert(model, target_version)?;
 
     // Save the converted model
     println!("Saving converted model to: {output_path}");

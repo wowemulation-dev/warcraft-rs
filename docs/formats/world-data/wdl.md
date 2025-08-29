@@ -7,12 +7,12 @@ and supporting world map generation.
 
 ## Overview
 
-- **Extension**: `.wdl`
-- **Purpose**: Low-resolution terrain for distant viewing and world maps
-- **Coverage**: Entire continent in one file
-- **Resolution**: 17x17 height values per ADT tile
-- **Use Case**: Map view, flight paths, distant terrain, minimap generation
-- **Format**: Chunk-based binary format (similar to other Blizzard formats)
+- **Extension**: `.wdl` - ✅ Implemented
+- **Purpose**: Low-resolution terrain for distant viewing and world maps - ✅ Implemented
+- **Coverage**: Entire continent in one file - ✅ Implemented
+- **Resolution**: 17x17 height values per ADT tile - ✅ Implemented
+- **Use Case**: Map view, flight paths, distant terrain, minimap generation - ⚠️ Parsing Implemented, Rendering Not Implemented
+- **Format**: Chunk-based binary format (similar to other Blizzard formats) - ✅ Implemented
 
 ## Version History
 
@@ -279,7 +279,7 @@ WDT (World Directory Table)
 3. **Minimap Support**: Low-resolution data for minimap rendering
 4. **Memory Optimization**: Allows unloading high-detail ADT data when not needed
 
-## Usage Example
+## Usage Example - ✅ Implemented
 
 ```rust
 use std::fs::File;
@@ -477,7 +477,7 @@ fn check_continent_coverage(wdl_file: &WdlFile) {
 }
 ```
 
-## Implementation Considerations
+## Implementation Considerations - ✅ Implemented
 
 ### Error Handling
 

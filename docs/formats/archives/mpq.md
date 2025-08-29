@@ -16,7 +16,7 @@ to support larger files and improved security.
   - v2: Extended format with large file support (The Burning Crusade)
   - v3: HET/BET tables support (Cataclysm beta)
   - v4: Enhanced security with MD5 hashes (Cataclysm)
-- **StormLib Compatibility**: 100% compatible with the reference implementation
+- **StormLib Compatibility**: ⚠️ Compatible via separate `storm-ffi` crate
 - **Blizzard Compatibility**: Full support for all official WoW archives (1.12.1 - 5.4.8)
 
 ## File Layout
@@ -629,13 +629,14 @@ fn encrypt_example(data: &mut [u8], key: u32) {
 ## Usage Example
 
 ```rust
-use wow_mpq::{Archive, ArchiveBuilder, FormatVersion, MutableArchive};
+use wow_mpq::{Archive, ArchiveBuilder, FormatVersion};
+use std::path::Path;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Open an existing MPQ archive
-    let mut archive = Archive::open("Data/patch.mpq")?;
+    // ✅ Open an existing MPQ archive
+    let mut archive = Archive::open(Path::new("Data/patch.mpq"))?;
 
-    // Search for a file
+    // ✅ Search for a file
     if let Some(file_info) = archive.find_file("Interface\\Glues\\Models\\UI_Human\\UI_Human.m2")? {
         println!("File found:");
         println!("  Offset: 0x{:08X}", file_info.file_pos);
@@ -643,12 +644,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Compressed: {} bytes", file_info.compressed_size);
         println!("  Encrypted: {}", file_info.is_encrypted());
 
-        // Extract the file
+        // ✅ Extract the file
         let data = archive.read_file("Interface\\Glues\\Models\\UI_Human\\UI_Human.m2")?;
         std::fs::write("UI_Human.m2", data)?;
     }
 
-    // List all files (requires listfile)
+    // ✅ List all files (requires listfile)
     match archive.list() {
         Ok(entries) => {
             for entry in entries {
@@ -658,7 +659,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(_) => println!("No (listfile) found - cannot enumerate files"),
     }
 
-    // Create a new MPQ archive
+    // ✅ Create a new MPQ archive
     ArchiveBuilder::new()
         .version(FormatVersion::V2)
         .add_file_data(b"Hello, MPQ!".to_vec(), "readme.txt")
@@ -671,7 +672,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Archive Modification
 
-The `MutableArchive` type allows modifying existing MPQ archives:
+**Implementation Status:** ⚠️ **Partial** - File addition not fully implemented
+
+The `MutableArchive` type provides an API for modifying existing MPQ archives:
 
 ```rust
 use wow_mpq::{MutableArchive, AddFileOptions, compression::CompressionMethod};
@@ -680,36 +683,26 @@ fn modify_archive_example() -> Result<(), Box<dyn std::error::Error>> {
     // Open an archive for modification
     let mut archive = MutableArchive::open("my_archive.mpq")?;
 
-    // Add a file with default options (zlib compression)
-    archive.add_file("new_file.txt", "data/new_file.txt", AddFileOptions::new())?;
+    // ❌ File addition not yet implemented
+    // This will return an error: "In-place file addition not yet implemented"
+    // archive.add_file("new_file.txt", "data/new_file.txt", AddFileOptions::new())?;
 
-    // Add a file with custom compression
-    let options = AddFileOptions::new()
-        .compression(CompressionMethod::BZip2)
-        .encrypt()
-        .replace_existing(true);
-    archive.add_file("source.dat", "encrypted.dat", options)?;
+    // ⚠️ Other operations may depend on add_file functionality
+    // archive.remove_file("old_file.txt")?;
+    // archive.rename_file("readme.txt", "README.TXT")?;
 
-    // Remove a file
-    archive.remove_file("old_file.txt")?;
-
-    // Rename a file
-    archive.rename_file("readme.txt", "README.TXT")?;
-
-    // Read files from a mutable archive
+    // ✅ Read files from a mutable archive
     let data = archive.read_file("some_file.txt")?;
     
-    // List files (convenience method)
+    // ✅ List files (convenience method)
     let files = archive.list()?;
     for entry in files {
         println!("{}: {} bytes", entry.name, entry.size);
     }
 
-    // Flush changes to disk
-    archive.flush()?;
-
-    // Compact the archive to remove deleted files and reclaim space
-    archive.compact()?;
+    // ⚠️ Flush and compact depend on modification functionality
+    // archive.flush()?;
+    // archive.compact()?;
 
     Ok(())
 }

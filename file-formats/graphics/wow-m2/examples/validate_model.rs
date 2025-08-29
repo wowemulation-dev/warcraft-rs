@@ -119,20 +119,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load the model
     println!("Loading model from: {path}");
-    let model = match M2Model::load(path) {
-        Ok(model) => model,
+    let m2_format = match M2Model::load(path) {
+        Ok(format) => format,
         Err(e) => {
             eprintln!("Failed to load model: {e}");
             std::process::exit(1);
         }
     };
+    let model = m2_format.model();
 
     println!("Model loaded successfully!");
+    println!(
+        "Format: {}",
+        if m2_format.is_chunked() {
+            "Chunked (MD21)"
+        } else {
+            "Legacy (MD20)"
+        }
+    );
     println!("Version: {:?}", model.header.version());
 
     // Validate the model
     println!("\nValidating model...");
-    let issues = validate_model(&model);
+    let issues = validate_model(model);
 
     if issues.is_empty() {
         println!("✅ Model validation passed! No issues found.");

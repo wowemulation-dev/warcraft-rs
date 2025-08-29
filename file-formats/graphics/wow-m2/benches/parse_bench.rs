@@ -21,6 +21,33 @@ fn create_test_model() -> M2Model {
         textures: vec![],
         materials: vec![],
         raw_data: Default::default(),
+        // File reference fields
+        skin_file_ids: None,
+        animation_file_ids: None,
+        texture_file_ids: None,
+        physics_file_id: None,
+        skeleton_file_id: None,
+        bone_file_ids: None,
+        lod_data: None,
+        // Rendering enhancement fields
+        extended_particle_data: None,
+        parent_animation_blacklist: None,
+        parent_animation_data: None,
+        waterfall_effect: None,
+        edge_fade_data: None,
+        model_alpha_data: None,
+        lighting_details: None,
+        recursive_particle_ids: None,
+        geometry_particle_ids: None,
+        texture_animation_chunk: None,
+        particle_geoset_data: None,
+        dboc_chunk: None,
+        afra_chunk: None,
+        dpiv_chunk: None,
+        parent_sequence_bounds: None,
+        parent_event_data: None,
+        collision_mesh_data: None,
+        physics_file_data: None,
     }
 }
 

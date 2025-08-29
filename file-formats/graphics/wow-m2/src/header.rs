@@ -6,8 +6,14 @@ use crate::common::M2Array;
 use crate::error::{M2Error, Result};
 use crate::version::M2Version;
 
-/// Magic signature for M2 files ("MD20")
-pub const M2_MAGIC: [u8; 4] = *b"MD20";
+/// Magic signature for legacy M2 files ("MD20")
+pub const M2_MAGIC_LEGACY: [u8; 4] = *b"MD20";
+
+/// Magic signature for chunked M2 files ("MD21")
+pub const M2_MAGIC_CHUNKED: [u8; 4] = *b"MD21";
+
+/// Legacy magic signature for compatibility ("MD20")
+pub const M2_MAGIC: [u8; 4] = M2_MAGIC_LEGACY;
 
 bitflags! {
     /// Model flags as defined in the M2 format
@@ -211,9 +217,9 @@ impl M2Header {
         let mut magic = [0u8; 4];
         reader.read_exact(&mut magic)?;
 
-        if magic != M2_MAGIC {
+        if magic != M2_MAGIC_LEGACY {
             return Err(M2Error::InvalidMagic {
-                expected: String::from_utf8_lossy(&M2_MAGIC).to_string(),
+                expected: String::from_utf8_lossy(&M2_MAGIC_LEGACY).to_string(),
                 actual: String::from_utf8_lossy(&magic).to_string(),
             });
         }
@@ -549,7 +555,7 @@ impl M2Header {
         let num_skin_profiles = if version_num > 263 { Some(0) } else { None };
 
         Self {
-            magic: M2_MAGIC,
+            magic: M2_MAGIC_LEGACY,
             version: version_num,
             name: M2Array::new(0, 0),
             flags: M2ModelFlags::empty(),
@@ -644,7 +650,7 @@ mod tests {
         let mut data = Vec::new();
 
         // Magic "MD20"
-        data.extend_from_slice(&M2_MAGIC);
+        data.extend_from_slice(&M2_MAGIC_LEGACY);
 
         // Version
         data.extend_from_slice(&version.to_header_version().to_le_bytes());
@@ -678,7 +684,7 @@ mod tests {
 
         let header = M2Header::parse(&mut cursor).unwrap();
 
-        assert_eq!(header.magic, M2_MAGIC);
+        assert_eq!(header.magic, M2_MAGIC_LEGACY);
         assert_eq!(header.version, M2Version::Classic.to_header_version());
         assert_eq!(header.texture_combiner_combos, None);
         assert_eq!(header.texture_transforms, None);
@@ -691,7 +697,7 @@ mod tests {
 
         let header = M2Header::parse(&mut cursor).unwrap();
 
-        assert_eq!(header.magic, M2_MAGIC);
+        assert_eq!(header.magic, M2_MAGIC_LEGACY);
         assert_eq!(header.version, M2Version::Cataclysm.to_header_version());
         assert!(header.texture_combiner_combos.is_some());
         assert_eq!(header.texture_transforms, None);
@@ -704,7 +710,7 @@ mod tests {
 
         let header = M2Header::parse(&mut cursor).unwrap();
 
-        assert_eq!(header.magic, M2_MAGIC);
+        assert_eq!(header.magic, M2_MAGIC_LEGACY);
         assert_eq!(header.version, M2Version::Legion.to_header_version());
         assert!(header.texture_combiner_combos.is_some());
         assert!(header.texture_transforms.is_some());

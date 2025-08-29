@@ -7,7 +7,7 @@ BLP (Blizzard Picture) is Blizzard's proprietary texture format used for all tex
 - **Extension**: `.blp`
 - **Purpose**: Compressed texture storage optimized for game engines
 - **Versions**: BLP0 (Warcraft III Beta), BLP1 (Warcraft III), BLP2 (World of Warcraft)
-- **Compression**: JPEG (non-standard BGRA), RAW1 (palettized), RAW3 (uncompressed BGRA), DXT1/3/5 (S3TC)
+- **Compression**: JPEG (BLP0/BLP1 only), RAW1 (palettized), RAW3 (uncompressed BGRA), DXT1/3/5 (S3TC)
 - **Features**: Up to 16 mipmaps, alpha channels with variable bit depth, GPU-friendly formats
 - **Endianness**: Little-endian for all multi-byte values
 
@@ -269,15 +269,15 @@ use wow_blp::{parser::load_blp, convert::blp_to_image, encode::save_blp};
 use wow_blp::convert::{image_to_blp, BlpTarget, Blp2Format, DxtAlgorithm};
 use image::imageops::FilterType;
 
-// Load BLP texture
+// ✅ Load BLP texture
 let blp = load_blp("texture.blp")?;
 
-// Get texture information
+// ✅ Get texture information
 println!("Size: {}x{}", blp.header.width, blp.header.height);
 println!("Version: {:?}", blp.header.version);
 println!("Has mipmaps: {}", blp.header.has_mipmaps());
 
-// Convert to standard format
+// ✅ Convert to standard format
 let image = blp_to_image(&blp, 0)?; // mipmap level 0
 image.save("texture.png")?;
 
@@ -615,9 +615,13 @@ All textures use power-of-2 dimensions exclusively:
 ### Compression Characteristics
 
 #### JPEG (BLP0/BLP1, rarely BLP2)
+
+**Implementation Status:** ⚠️ **Partial** - BLP2 JPEG explicitly rejected
+
 - Non-standard BGRA compression
-- Can cause color bleeding at block boundaries
+- Can cause color bleeding at block boundaries  
 - Alpha stored as separate channel
+- **Note:** While JPEG is part of the BLP format specification, BLP2 JPEG files are explicitly rejected in the current implementation
 
 #### RAW1 (Palettized)
 - Limited to 256 colors

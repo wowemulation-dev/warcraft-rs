@@ -1,6 +1,6 @@
 [package]
 name = "wow-m2"
-version = "0.3.2"
+version = "0.4.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -22,7 +22,7 @@ memchr = { workspace = true }
 bitflags = { workspace = true }
 glam = { workspace = true }
 anyhow = { workspace = true }
-wow-blp = { path = "../wow-blp", version = "0.3.2" }
+wow-blp = { path = "../wow-blp", version = "0.4.0" }
 
 [dev-dependencies]
 criterion = { workspace = true }

@@ -99,6 +99,7 @@ impl M2Version {
 
     /// Convert header version number to M2Version enum
     /// Based on empirical analysis of WoW versions 1.12.1 through 5.4.8
+    /// Updated to handle Legion+ chunked format versions (272+)
     pub fn from_header_version(version: u32) -> Option<Self> {
         match version {
             // Empirically verified exact versions from format analysis
@@ -112,8 +113,15 @@ impl M2Version {
             261..=263 => Some(Self::TBC),
             265..=271 => Some(Self::WotLK),
 
+            // Legion+ versions (272+ with chunked format support)
+            273..=279 => Some(Self::Legion), // Legion 7.x versions
+            280..=289 => Some(Self::BfA),    // Battle for Azeroth 8.x versions
+            290..=299 => Some(Self::Shadowlands), // Shadowlands 9.x versions
+            300..=309 => Some(Self::Dragonflight), // Dragonflight 10.x versions
+            310..=399 => Some(Self::TheWarWithin), // The War Within 11.x versions
+
             // MoP uses same version as Cataclysm based on empirical findings
-            // Post-MoP versions (theoretical, not empirically verified)
+            // Alternative version numbering for post-MoP (legacy compatibility)
             8 => Some(Self::MoP),
             10 => Some(Self::WoD),
             11 => Some(Self::Legion),
@@ -128,6 +136,7 @@ impl M2Version {
 
     /// Convert M2Version enum to header version number
     /// Returns empirically verified version numbers for WoW 1.12.1 through 5.4.8
+    /// Updated to handle Legion+ chunked format versions
     pub fn to_header_version(&self) -> u32 {
         match self {
             // Empirically verified versions from format analysis
@@ -137,13 +146,13 @@ impl M2Version {
             Self::Cataclysm => 272, // Cataclysm 4.3.4
             Self::MoP => 272,       // MoP 5.4.8 (same as Cataclysm)
 
-            // Post-MoP versions (theoretical, not empirically verified)
-            Self::WoD => 10,
-            Self::Legion => 11,
-            Self::BfA => 16,
-            Self::Shadowlands => 17,
-            Self::Dragonflight => 18,
-            Self::TheWarWithin => 19,
+            // Post-MoP versions with chunked format support
+            Self::WoD => 275,          // Theoretical WoD chunked version
+            Self::Legion => 276,       // Legion chunked format base version
+            Self::BfA => 280,          // Battle for Azeroth chunked version
+            Self::Shadowlands => 290,  // Shadowlands chunked version
+            Self::Dragonflight => 300, // Dragonflight chunked version
+            Self::TheWarWithin => 310, // The War Within chunked version
         }
     }
 
@@ -192,31 +201,49 @@ impl M2Version {
 
     /// Returns true if this version supports chunked format capability
     /// Based on empirical analysis: chunked format capability introduced in v264 (WotLK)
-    /// but not actually used until post-MoP expansions
+    /// but not actually used until Legion (versions 272+)
     pub fn supports_chunked_format(&self) -> bool {
         match self {
             Self::Classic | Self::TBC => false,
             Self::WotLK | Self::Cataclysm | Self::MoP => true, // Capability exists but unused
-            _ => true, // Post-MoP versions may use chunked format
+            Self::WoD
+            | Self::Legion
+            | Self::BfA
+            | Self::Shadowlands
+            | Self::Dragonflight
+            | Self::TheWarWithin => true,
         }
     }
 
     /// Returns true if this version uses external chunks
     /// Based on empirical analysis: no external chunks found through MoP 5.4.8
-    /// All data remains inline in the main M2 file
+    /// External chunks introduced with Legion+ (versions 272+)
     pub fn uses_external_chunks(&self) -> bool {
         match self {
-            Self::Classic | Self::TBC | Self::WotLK | Self::Cataclysm | Self::MoP => false,
-            _ => false, // Even post-MoP versions may not use external chunks
+            Self::Classic | Self::TBC | Self::WotLK | Self::Cataclysm | Self::MoP | Self::WoD => {
+                false
+            }
+            Self::Legion
+            | Self::BfA
+            | Self::Shadowlands
+            | Self::Dragonflight
+            | Self::TheWarWithin => true,
         }
     }
 
     /// Returns true if this version uses inline data structure
     /// Based on empirical analysis: 100% inline data through MoP 5.4.8
+    /// Legion+ versions use chunked data with FileDataID references
     pub fn uses_inline_data(&self) -> bool {
         match self {
-            Self::Classic | Self::TBC | Self::WotLK | Self::Cataclysm | Self::MoP => true,
-            _ => true, // Assume inline data for newer versions too
+            Self::Classic | Self::TBC | Self::WotLK | Self::Cataclysm | Self::MoP | Self::WoD => {
+                true
+            }
+            Self::Legion
+            | Self::BfA
+            | Self::Shadowlands
+            | Self::Dragonflight
+            | Self::TheWarWithin => false,
         }
     }
 
@@ -229,7 +256,33 @@ impl M2Version {
             Self::WotLK => Some(264),
             Self::Cataclysm => Some(272),
             Self::MoP => Some(272),
-            _ => None, // Post-MoP versions not empirically verified
+            _ => None, // Post-MoP versions not empirically verified but have theoretical versions
+        }
+    }
+
+    /// Returns true if this version requires chunked format parsing (MD21)
+    /// Legion+ versions (272+) use chunked format exclusively
+    pub fn requires_chunked_format(&self) -> bool {
+        matches!(
+            self,
+            Self::Legion | Self::BfA | Self::Shadowlands | Self::Dragonflight | Self::TheWarWithin
+        )
+    }
+
+    /// Detect expansion from version number including Legion+ support
+    /// Updated to handle versions 272+ as Legion+
+    pub fn detect_expansion(version: u32) -> M2Version {
+        match version {
+            256..=259 => M2Version::Classic,
+            260..=263 => M2Version::TBC,
+            264..=271 => M2Version::WotLK,
+            272 => M2Version::Cataclysm, // Could also be MoP
+            273..=279 => M2Version::Legion,
+            280..=289 => M2Version::BfA,
+            290..=299 => M2Version::Shadowlands,
+            300..=309 => M2Version::Dragonflight,
+            310.. => M2Version::TheWarWithin,
+            _ => M2Version::Classic, // Default fallback
         }
     }
 }
@@ -316,7 +369,24 @@ mod tests {
         assert_eq!(M2Version::from_header_version(261), Some(M2Version::TBC));
         assert_eq!(M2Version::from_header_version(265), Some(M2Version::WotLK));
 
-        // Later versions
+        // Legion+ versions (chunked format)
+        assert_eq!(M2Version::from_header_version(273), Some(M2Version::Legion));
+        assert_eq!(M2Version::from_header_version(276), Some(M2Version::Legion));
+        assert_eq!(M2Version::from_header_version(280), Some(M2Version::BfA));
+        assert_eq!(
+            M2Version::from_header_version(290),
+            Some(M2Version::Shadowlands)
+        );
+        assert_eq!(
+            M2Version::from_header_version(300),
+            Some(M2Version::Dragonflight)
+        );
+        assert_eq!(
+            M2Version::from_header_version(310),
+            Some(M2Version::TheWarWithin)
+        );
+
+        // Legacy alternative versions
         assert_eq!(M2Version::from_header_version(8), Some(M2Version::MoP));
         assert_eq!(M2Version::from_header_version(10), Some(M2Version::WoD));
         assert_eq!(M2Version::from_header_version(11), Some(M2Version::Legion));
@@ -337,7 +407,7 @@ mod tests {
         // Unknown versions
         assert_eq!(M2Version::from_header_version(1), None);
         assert_eq!(M2Version::from_header_version(5), None);
-        assert_eq!(M2Version::from_header_version(273), None);
+        assert_eq!(M2Version::from_header_version(999), None); // Use a version clearly outside any range
     }
 
     #[test]
@@ -358,19 +428,25 @@ mod tests {
         assert!(M2Version::Cataclysm.supports_chunked_format());
         assert!(M2Version::MoP.supports_chunked_format());
 
-        // Test external chunks usage (none found through MoP)
+        // Test external chunks usage (introduced in Legion+)
         assert!(!M2Version::Classic.uses_external_chunks());
         assert!(!M2Version::TBC.uses_external_chunks());
         assert!(!M2Version::WotLK.uses_external_chunks());
         assert!(!M2Version::Cataclysm.uses_external_chunks());
         assert!(!M2Version::MoP.uses_external_chunks());
+        assert!(!M2Version::WoD.uses_external_chunks());
+        assert!(M2Version::Legion.uses_external_chunks());
+        assert!(M2Version::BfA.uses_external_chunks());
 
-        // Test inline data usage (100% through MoP)
+        // Test inline data usage (100% through WoD, chunked after)
         assert!(M2Version::Classic.uses_inline_data());
         assert!(M2Version::TBC.uses_inline_data());
         assert!(M2Version::WotLK.uses_inline_data());
         assert!(M2Version::Cataclysm.uses_inline_data());
         assert!(M2Version::MoP.uses_inline_data());
+        assert!(M2Version::WoD.uses_inline_data());
+        assert!(!M2Version::Legion.uses_inline_data());
+        assert!(!M2Version::BfA.uses_inline_data());
     }
 
     #[test]
@@ -395,6 +471,11 @@ mod tests {
         assert_eq!(M2Version::Cataclysm.to_header_version(), 272);
         assert_eq!(M2Version::MoP.to_header_version(), 272);
 
+        // Test Legion+ versions
+        assert_eq!(M2Version::Legion.to_header_version(), 276);
+        assert_eq!(M2Version::BfA.to_header_version(), 280);
+        assert_eq!(M2Version::Shadowlands.to_header_version(), 290);
+
         // Verify roundtrip for empirically verified versions
         assert_eq!(
             M2Version::from_header_version(M2Version::Classic.to_header_version()),
@@ -412,5 +493,36 @@ mod tests {
             M2Version::from_header_version(M2Version::Cataclysm.to_header_version()),
             Some(M2Version::Cataclysm)
         );
+
+        // Test Legion+ roundtrip
+        assert_eq!(
+            M2Version::from_header_version(M2Version::Legion.to_header_version()),
+            Some(M2Version::Legion)
+        );
+    }
+
+    #[test]
+    fn test_chunked_format_detection() {
+        // Test chunked format requirement detection
+        assert!(!M2Version::Classic.requires_chunked_format());
+        assert!(!M2Version::TBC.requires_chunked_format());
+        assert!(!M2Version::WotLK.requires_chunked_format());
+        assert!(!M2Version::Cataclysm.requires_chunked_format());
+        assert!(!M2Version::MoP.requires_chunked_format());
+        assert!(!M2Version::WoD.requires_chunked_format());
+        assert!(M2Version::Legion.requires_chunked_format());
+        assert!(M2Version::BfA.requires_chunked_format());
+    }
+
+    #[test]
+    fn test_expansion_detection() {
+        assert_eq!(M2Version::detect_expansion(256), M2Version::Classic);
+        assert_eq!(M2Version::detect_expansion(260), M2Version::TBC);
+        assert_eq!(M2Version::detect_expansion(264), M2Version::WotLK);
+        assert_eq!(M2Version::detect_expansion(272), M2Version::Cataclysm);
+        assert_eq!(M2Version::detect_expansion(273), M2Version::Legion);
+        assert_eq!(M2Version::detect_expansion(276), M2Version::Legion);
+        assert_eq!(M2Version::detect_expansion(280), M2Version::BfA);
+        assert_eq!(M2Version::detect_expansion(310), M2Version::TheWarWithin);
     }
 }

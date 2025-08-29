@@ -18,10 +18,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load the model
     println!("Loading model from: {path}");
-    let model = M2Model::load(path)?;
+    let m2_format = M2Model::load(path)?;
+    let model = m2_format.model();
 
     // Print basic information
     println!("\n=== Model Information ===");
+    println!(
+        "Format: {}",
+        if m2_format.is_chunked() {
+            "Chunked (MD21)"
+        } else {
+            "Legacy (MD20)"
+        }
+    );
     println!("Name: {:?}", model.name);
     println!("Version: {:?}", model.header.version());
     println!("Magic: {:?}", std::str::from_utf8(&model.header.magic)?);

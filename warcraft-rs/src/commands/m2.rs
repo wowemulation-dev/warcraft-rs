@@ -43,7 +43,7 @@ pub enum M2Commands {
         output: PathBuf,
 
         /// Target version (e.g., "3.3.5a", "WotLK", "MoP")
-        #[arg(short, long)]
+        #[arg(long)]
         version: String,
     },
 
@@ -88,7 +88,7 @@ pub enum M2Commands {
         output: PathBuf,
 
         /// Target version (e.g., "3.3.5a", "WotLK", "MoP")
-        #[arg(short, long)]
+        #[arg(long)]
         version: String,
     },
 
@@ -111,7 +111,7 @@ pub enum M2Commands {
         output: PathBuf,
 
         /// Target version (e.g., "3.3.5a", "WotLK", "MoP")
-        #[arg(short, long)]
+        #[arg(long)]
         version: String,
     },
 
@@ -191,8 +191,9 @@ fn handle_info(path: PathBuf, detailed: bool) -> Result<()> {
 fn handle_convert(input: PathBuf, output: PathBuf, version_str: String) -> Result<()> {
     println!("Loading M2 model: {}", input.display());
 
-    let model = M2Model::load(&input)
+    let m2_format = M2Model::load(&input)
         .with_context(|| format!("Failed to load M2 model from {}", input.display()))?;
+    let model = m2_format.model();
 
     let target_version = M2Version::from_expansion_name(&version_str)
         .with_context(|| format!("Invalid target version: {version_str}"))?;
@@ -201,7 +202,7 @@ fn handle_convert(input: PathBuf, output: PathBuf, version_str: String) -> Resul
 
     let converter = M2Converter::new();
     let converted = converter
-        .convert(&model, target_version)
+        .convert(model, target_version)
         .with_context(|| "Failed to convert model")?;
 
     println!("Saving converted model to: {}", output.display());
@@ -216,8 +217,9 @@ fn handle_convert(input: PathBuf, output: PathBuf, version_str: String) -> Resul
 fn handle_validate(path: PathBuf, show_warnings: bool) -> Result<()> {
     println!("Validating M2 model: {}", path.display());
 
-    let model = M2Model::load(&path)
+    let m2_format = M2Model::load(&path)
         .with_context(|| format!("Failed to load M2 model from {}", path.display()))?;
+    let model = m2_format.model();
 
     // Validate the model
     match model.validate() {
@@ -299,15 +301,80 @@ fn handle_skin_convert(input: PathBuf, output: PathBuf, version_str: String) -> 
 fn handle_anim_info(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading ANIM file: {}", path.display());
 
-    let _anim = AnimFile::load(&path)
+    let anim = AnimFile::load(&path)
         .with_context(|| format!("Failed to load ANIM file from {}", path.display()))?;
 
     println!("\n=== ANIM Information ===");
-    println!("File loaded successfully!");
+    println!("Format: {:?}", anim.format);
+    println!("Animation Sections: {}", anim.animation_count());
+
+    if anim.is_legacy_format() {
+        println!("Legacy Format: True");
+    } else {
+        println!("Modern Format: True");
+    }
+
+    // Show memory usage stats
+    let usage = anim.memory_usage();
+    println!("Total Keyframes: {}", usage.total_keyframes());
+    println!("Memory Usage: ~{} bytes", usage.approximate_bytes);
 
     if detailed {
         println!("\n=== Detailed Information ===");
-        println!("(Detailed information requires additional public API methods)");
+
+        // Show format-specific metadata
+        match &anim.metadata {
+            wow_m2::AnimMetadata::Legacy {
+                file_size,
+                animation_count,
+                structure_hints,
+            } => {
+                println!("File Size: {} bytes", file_size);
+                println!("Animation Count (metadata): {}", animation_count);
+                println!("Structure Valid: {}", structure_hints.appears_valid);
+                println!("Estimated Blocks: {}", structure_hints.estimated_blocks);
+                println!("Has Timestamps: {}", structure_hints.has_timestamps);
+            }
+            wow_m2::AnimMetadata::Modern { header, entries } => {
+                println!("ANIM Version: {}", header.version);
+                println!("ID Count: {}", header.id_count);
+                println!("Entry Offset: {}", header.anim_entry_offset);
+                println!("Entry Count: {}", entries.len());
+
+                if !entries.is_empty() {
+                    println!("\n=== Animation Entries ===");
+                    for (i, entry) in entries.iter().enumerate() {
+                        println!(
+                            "Entry {}: ID={}, Offset={}, Size={}",
+                            i, entry.id, entry.offset, entry.size
+                        );
+                    }
+                }
+            }
+        }
+
+        // Show memory breakdown
+        println!("\n=== Memory Usage Breakdown ===");
+        println!("Sections: {}", usage.sections);
+        println!("Bone Animations: {}", usage.bone_animations);
+        println!("Translation Keyframes: {}", usage.translation_keyframes);
+        println!("Rotation Keyframes: {}", usage.rotation_keyframes);
+        println!("Scaling Keyframes: {}", usage.scaling_keyframes);
+
+        // Show sections summary
+        if !anim.sections.is_empty() {
+            println!("\n=== Animation Sections ===");
+            for (i, section) in anim.sections.iter().enumerate() {
+                println!(
+                    "Section {}: ID={}, Start={}, End={}, Bones={}",
+                    i,
+                    section.header.id,
+                    section.header.start,
+                    section.header.end,
+                    section.bone_animations.len()
+                );
+            }
+        }
     }
 
     Ok(())
@@ -322,10 +389,19 @@ fn handle_anim_convert(input: PathBuf, output: PathBuf, version_str: String) -> 
     let target_version = M2Version::from_expansion_name(&version_str)
         .with_context(|| format!("Invalid target version: {version_str}"))?;
 
+    println!("Source Format: {:?}", anim.format);
     println!("Converting to {target_version:?}");
 
+    let converted = anim.convert(target_version);
+    println!("Target Format: {:?}", converted.format);
+
+    if converted.format == anim.format {
+        println!("Note: No format conversion needed - same format for target version");
+    }
+
     println!("Saving converted ANIM file to: {}", output.display());
-    anim.save(&output)
+    converted
+        .save(&output)
         .with_context(|| format!("Failed to save converted ANIM file to {}", output.display()))?;
 
     println!("Conversion complete!");
