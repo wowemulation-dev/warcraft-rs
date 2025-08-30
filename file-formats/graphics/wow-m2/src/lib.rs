@@ -57,6 +57,7 @@ pub mod anim;
 pub mod chunks;
 pub mod common;
 pub mod converter;
+pub mod embedded_skin;
 pub mod error;
 pub mod file_resolver;
 pub mod header;

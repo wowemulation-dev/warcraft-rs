@@ -42,6 +42,68 @@ pub fn parse_skin<R: Read + Seek>(reader: &mut R) -> Result<SkinFile> {
     }
 }
 
+/// Parse embedded skin data from pre-WotLK M2 models (no SKIN magic)
+pub fn parse_embedded_skin<R: Read + Seek>(reader: &mut R) -> Result<SkinFile> {
+    // Parse the header without expecting SKIN magic
+    let header = OldSkinHeader::parse_embedded(reader)?;
+
+    // Parse indices
+    let mut indices = Vec::with_capacity(header.indices.count as usize);
+    if header.indices.count > 0 && header.indices.offset > 0 {
+        reader.seek(SeekFrom::Start(header.indices.offset as u64))?;
+        for _ in 0..header.indices.count {
+            indices.push(reader.read_u16_le()?);
+        }
+    }
+
+    // Parse triangles
+    let mut triangles = Vec::with_capacity(header.triangles.count as usize);
+    if header.triangles.count > 0 && header.triangles.offset > 0 {
+        reader.seek(SeekFrom::Start(header.triangles.offset as u64))?;
+        for _ in 0..header.triangles.count {
+            triangles.push(reader.read_u16_le()?);
+        }
+    }
+
+    // Parse bone indices
+    let mut bone_indices = Vec::with_capacity(header.bone_indices.count as usize);
+    if header.bone_indices.count > 0 && header.bone_indices.offset > 0 {
+        reader.seek(SeekFrom::Start(header.bone_indices.offset as u64))?;
+        for _ in 0..header.bone_indices.count {
+            bone_indices.push(reader.read_u8()?);
+        }
+    }
+
+    // Parse submeshes
+    let mut submeshes = Vec::with_capacity(header.submeshes.count as usize);
+    if header.submeshes.count > 0 && header.submeshes.offset > 0 {
+        reader.seek(SeekFrom::Start(header.submeshes.offset as u64))?;
+        for _ in 0..header.submeshes.count {
+            submeshes.push(SkinSubmesh::parse(reader)?);
+        }
+    }
+
+    // Parse material lookup
+    let mut material_lookup = Vec::with_capacity(header.material_lookup.count as usize);
+    if header.material_lookup.count > 0 && header.material_lookup.offset > 0 {
+        reader.seek(SeekFrom::Start(header.material_lookup.offset as u64))?;
+        for _ in 0..header.material_lookup.count {
+            material_lookup.push(reader.read_u16_le()?);
+        }
+    }
+
+    let skin = SkinG::<OldSkinHeader> {
+        header,
+        indices,
+        triangles,
+        bone_indices,
+        submeshes,
+        material_lookup,
+    };
+
+    Ok(SkinFile::Old(skin))
+}
+
 /// Load a SKIN file from a path with automatic format detection
 pub fn load_skin<P: AsRef<Path>>(path: P) -> Result<SkinFile> {
     let mut file = File::open(path)?;
@@ -349,6 +411,28 @@ pub struct OldSkinHeader {
     pub submeshes: M2Array<SkinSubmesh>,
     /// Material lookup table
     pub material_lookup: M2Array<u16>,
+}
+
+impl OldSkinHeader {
+    /// Parse embedded skin data from pre-WotLK M2 models (no SKIN magic)
+    pub fn parse_embedded<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        // Embedded skins don't have the SKIN magic signature
+        // They start directly with the array references
+        let indices = M2Array::parse(reader)?;
+        let triangles = M2Array::parse(reader)?;
+        let bone_indices = M2Array::parse(reader)?;
+        let submeshes = M2Array::parse(reader)?;
+        let material_lookup = M2Array::parse(reader)?;
+
+        Ok(Self {
+            magic: SKIN_MAGIC, // Set magic for compatibility
+            indices,
+            triangles,
+            bone_indices,
+            submeshes,
+            material_lookup,
+        })
+    }
 }
 
 impl SkinHeaderT for OldSkinHeader {
@@ -860,6 +944,14 @@ impl SkinFile {
         match self {
             SkinFile::New(skin) => &skin.indices,
             SkinFile::Old(skin) => &skin.indices,
+        }
+    }
+
+    /// Get triangles regardless of format
+    pub fn triangles(&self) -> &Vec<u16> {
+        match self {
+            SkinFile::New(skin) => &skin.triangles,
+            SkinFile::Old(skin) => &skin.triangles,
         }
     }
 
