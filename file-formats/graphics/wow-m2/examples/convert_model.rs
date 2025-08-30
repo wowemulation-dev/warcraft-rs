@@ -9,7 +9,7 @@ use wow_m2::{M2Converter, M2Model, M2Version};
 
 fn parse_version(version_str: &str) -> Result<M2Version, String> {
     match version_str.to_lowercase().as_str() {
-        "classic" | "vanilla" | "tbc" | "wrath" | "wotlk" => Ok(M2Version::Classic),
+        "classic" | "vanilla" | "tbc" | "wrath" | "wotlk" => Ok(M2Version::Vanilla),
         "cata" | "cataclysm" => Ok(M2Version::Cataclysm),
         "mop" => Ok(M2Version::MoP),
         "wod" => Ok(M2Version::WoD),

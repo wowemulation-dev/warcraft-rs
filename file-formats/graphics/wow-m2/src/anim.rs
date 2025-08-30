@@ -13,11 +13,11 @@ pub const ANIM_MAGIC: [u8; 4] = *b"MAOF";
 /// ANIM file format types
 ///
 /// ANIM files evolved significantly between World of Warcraft expansions:
-/// - Legacy format was used from Classic through Warlords of Draenor
+/// - Legacy format was used from Vanilla through Warlords of Draenor
 /// - Modern format was introduced in Legion and continues through current versions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AnimFormat {
-    /// Legacy format (Classic through Warlords of Draenor)
+    /// Legacy format (Vanilla through Warlords of Draenor)
     ///
     /// Features:
     /// - Raw binary data without magic headers
@@ -86,7 +86,7 @@ impl AnimFormatDetector {
     pub fn detect_format_by_version(version: M2Version) -> AnimFormat {
         match version {
             // Pre-Legion versions use legacy format
-            M2Version::Classic
+            M2Version::Vanilla
             | M2Version::TBC
             | M2Version::WotLK
             | M2Version::Cataclysm
@@ -1285,7 +1285,7 @@ mod tests {
     fn test_format_detection_by_version() {
         // Test version-based format detection
         assert_eq!(
-            AnimFormatDetector::detect_format_by_version(M2Version::Classic),
+            AnimFormatDetector::detect_format_by_version(M2Version::Vanilla),
             AnimFormat::Legacy
         );
         assert_eq!(

@@ -18,6 +18,11 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
+/// Generate a generic filename for files without known names
+fn generate_anonymous_filename(hash: u32) -> String {
+    format!("File{:08X}.unknown", hash)
+}
+
 /// Options for adding files to an archive
 #[derive(Debug, Clone)]
 pub struct AddFileOptions {
@@ -604,7 +609,9 @@ impl MutableArchive {
 
                         let filename = filename.unwrap_or_else(|| {
                             // Generate placeholder name if not found in listfile
-                            format!("file_{:08X}_{:08X}", entry.name_1, entry.name_2)
+                            generate_anonymous_filename(
+                                ((entry.name_1 as u64) << 32 | entry.name_2 as u64) as u32,
+                            )
                         });
 
                         files_to_copy.push((hash_idx, block_idx, filename, *entry, *block));
@@ -736,6 +743,9 @@ impl MutableArchive {
                     version: Attributes::EXPECTED_VERSION,
                     flags: AttributeFlags::new(AttributeFlags::CRC32 | AttributeFlags::FILETIME),
                     file_attributes: vec![FileAttributes::new(); block_count],
+                    crc32: None,    // Phase 1 placeholder
+                    md5: None,      // Phase 1 placeholder
+                    filetime: None, // Phase 1 placeholder
                 }
             }
         };
@@ -1365,7 +1375,7 @@ impl MutableArchive {
         for entry in hash_table.entries() {
             if !entry.is_empty() {
                 // Reconstruct filename from hash (this is an approximation)
-                let filename = format!("file_{file_index}"); // Placeholder - in real implementation we'd need to track filenames
+                let filename = generate_anonymous_filename(file_index); // Optimized filename generation
 
                 let hash_bits = 8;
                 let (hash, name_hash1) = het_hash(&filename, hash_bits);
@@ -1501,7 +1511,7 @@ impl MutableArchive {
             result.extend_from_slice(&entry.compressed_size.to_le_bytes());
 
             // Generate a hash for this file (placeholder)
-            let hash = jenkins_hash(&format!("file_{i}"));
+            let hash = jenkins_hash(&generate_anonymous_filename(i as u32));
             result.extend_from_slice(&hash.to_le_bytes());
         }
 

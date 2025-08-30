@@ -1,7 +1,21 @@
 //! I/O abstractions for MPQ archives
 
+#[cfg(feature = "async")]
+pub mod async_reader;
+pub mod memory_map;
+
 use crate::Result;
 use std::io::{Read, Seek, SeekFrom};
+
+#[cfg(feature = "async")]
+pub use async_reader::{
+    AsyncArchiveReader, AsyncConfig, AsyncDecompressionMonitor, AsyncMetrics, AsyncOperationStats,
+};
+
+pub use memory_map::{MemoryMapConfig, MemoryMapStats};
+
+#[cfg(feature = "mmap")]
+pub use memory_map::{MemoryMapManager, MemoryMappedArchive};
 
 /// Trait for reading from MPQ archives
 pub trait MpqRead: Read + Seek {

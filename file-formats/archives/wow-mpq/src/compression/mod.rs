@@ -7,8 +7,11 @@ mod methods;
 
 // Re-export the main public API
 pub use compress::compress;
-pub use decompress::decompress;
+pub use decompress::{decompress, decompress_secure};
 pub use methods::{CompressionMethod, flags};
+
+// Re-export security types for public use
+pub use crate::security::{DecompressionMonitor, SecurityLimits, SessionTracker};
 
 /// Error conversion helpers for compression algorithms
 pub(crate) mod error_helpers {

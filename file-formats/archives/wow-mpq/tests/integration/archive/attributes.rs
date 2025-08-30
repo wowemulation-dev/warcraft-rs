@@ -131,6 +131,9 @@ fn test_attributes_roundtrip() {
         version: 100,
         flags: AttributeFlags::new(AttributeFlags::ALL),
         file_attributes: file_attrs,
+        crc32: None,    // Phase 1 stub
+        md5: None,      // Phase 1 stub
+        filetime: None, // Phase 1 stub
     };
 
     // Convert to bytes

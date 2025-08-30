@@ -143,8 +143,11 @@ mod tests {
         // Test through our wrapper API
         let compressed = compress(original, flags::LZMA).expect("Compression failed");
 
+        #[cfg(debug_assertions)]
         println!("Original size: {}", original.len());
+        #[cfg(debug_assertions)]
         println!("Compressed size: {}", compressed.len());
+        #[cfg(debug_assertions)]
         println!(
             "First few bytes: {:02X?}",
             &compressed[..10.min(compressed.len())]
@@ -153,6 +156,7 @@ mod tests {
         // Check if compression was beneficial
         if compressed == original {
             // No compression applied
+            #[cfg(debug_assertions)]
             println!("Compression not beneficial, data unchanged");
         } else {
             // Should have compression byte prefix

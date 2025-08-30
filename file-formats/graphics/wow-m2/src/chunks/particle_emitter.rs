@@ -349,7 +349,7 @@ impl M2ParticleEmitter {
                 (None, blend, emitter, particle, head, None, None, None, None)
             }
         } else {
-            // Default to Classic format
+            // Default to Vanilla format
             let blend = reader.read_u8()?;
             let emitter = M2ParticleEmitterType::from_u8(reader.read_u8()?)
                 .unwrap_or(M2ParticleEmitterType::Point);
@@ -633,7 +633,7 @@ impl M2ParticleEmitter {
                 writer.write_u8(self.head_or_tail)?;
             }
         } else {
-            // Default to Classic format
+            // Default to Vanilla format
             writer.write_u8(self.blending_type)?;
             writer.write_u8(self.emitter_type as u8)?;
             writer.write_u8(self.particle_type)?;

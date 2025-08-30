@@ -195,7 +195,7 @@ impl M2Animation {
 
         // Version differences: Classic (256) vs BC+ (260+)
         if version <= 256 {
-            // Classic format
+            // Vanilla format
             let start_timestamp = reader.read_u32_le()?;
             let end_timestamp = reader.read_u32_le()?;
             let movement_speed = reader.read_f32_le()?;
@@ -268,7 +268,7 @@ impl M2Animation {
         writer.write_u16_le(self.sub_animation_id)?;
 
         if version <= 256 {
-            // Classic format
+            // Vanilla format
             writer.write_u32_le(self.start_timestamp)?;
             writer.write_u32_le(self.end_timestamp.unwrap_or(self.start_timestamp + 1000))?;
             writer.write_f32_le(self.movement_speed)?;

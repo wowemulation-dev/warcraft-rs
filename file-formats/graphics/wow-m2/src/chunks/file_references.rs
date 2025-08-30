@@ -46,7 +46,7 @@ impl SkinFileIds {
     }
 
     /// Iterate over all skin file IDs
-    pub fn iter(&self) -> std::slice::Iter<u32> {
+    pub fn iter(&self) -> std::slice::Iter<'_, u32> {
         self.ids.iter()
     }
 }
@@ -88,7 +88,7 @@ impl AnimationFileIds {
     }
 
     /// Iterate over all animation file IDs
-    pub fn iter(&self) -> std::slice::Iter<u32> {
+    pub fn iter(&self) -> std::slice::Iter<'_, u32> {
         self.ids.iter()
     }
 }
@@ -263,7 +263,7 @@ impl TextureFileIds {
     }
 
     /// Iterate over all texture file IDs
-    pub fn iter(&self) -> std::slice::Iter<u32> {
+    pub fn iter(&self) -> std::slice::Iter<'_, u32> {
         self.ids.iter()
     }
 }
@@ -327,7 +327,7 @@ impl BoneFileIds {
     }
 
     /// Iterate over all bone file IDs
-    pub fn iter(&self) -> std::slice::Iter<u32> {
+    pub fn iter(&self) -> std::slice::Iter<'_, u32> {
         self.ids.iter()
     }
 }

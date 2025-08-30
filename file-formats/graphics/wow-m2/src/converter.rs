@@ -63,7 +63,7 @@ impl M2Converter {
     fn build_conversion_paths(&mut self) {
         // Define a list of all versions in order
         let versions = [
-            M2Version::Classic,
+            M2Version::Vanilla,
             M2Version::TBC,
             M2Version::WotLK,
             M2Version::Cataclysm,
@@ -138,7 +138,7 @@ mod tests {
 
         // Path from Classic to Cataclysm (goes through TBC and WotLK)
         let path = converter
-            .get_conversion_path(M2Version::Classic, M2Version::Cataclysm)
+            .get_conversion_path(M2Version::Vanilla, M2Version::Cataclysm)
             .unwrap();
         assert_eq!(
             path,
@@ -147,7 +147,7 @@ mod tests {
 
         // Path from Classic to MoP
         let path = converter
-            .get_conversion_path(M2Version::Classic, M2Version::MoP)
+            .get_conversion_path(M2Version::Vanilla, M2Version::MoP)
             .unwrap();
         assert_eq!(
             path,
@@ -161,13 +161,13 @@ mod tests {
 
         // Path from TheWarWithin to Classic
         let path = converter
-            .get_conversion_path(M2Version::TheWarWithin, M2Version::Classic)
+            .get_conversion_path(M2Version::TheWarWithin, M2Version::Vanilla)
             .unwrap();
         assert!(path.len() > 1); // Multiple steps to go back
 
         // Ensure we have a path for every version pair
         let versions = [
-            M2Version::Classic,
+            M2Version::Vanilla,
             M2Version::TBC,
             M2Version::WotLK,
             M2Version::Cataclysm,

@@ -152,7 +152,7 @@ mod tests {
             .seek(SeekFrom::Start((filename_str.len() + dummy.len()) as u64))
             .unwrap();
         let texture =
-            M2Texture::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
+            M2Texture::parse(&mut cursor, M2Version::Vanilla.to_header_version()).unwrap();
 
         assert_eq!(texture.texture_type, M2TextureType::Body);
         assert_eq!(

@@ -43,7 +43,7 @@ pub fn parse_skin<R: Read + Seek>(reader: &mut R) -> Result<SkinFile> {
 }
 
 /// Parse embedded skin data from pre-WotLK M2 models (no SKIN magic)
-pub fn parse_embedded_skin<R: Read + Seek>(reader: &mut R) -> Result<SkinFile> {
+pub fn parse_embedded_skin<R: Read + Seek>(reader: &mut R, m2_version: u32) -> Result<SkinFile> {
     // Parse the header without expecting SKIN magic
     let header = OldSkinHeader::parse_embedded(reader)?;
 
@@ -79,7 +79,7 @@ pub fn parse_embedded_skin<R: Read + Seek>(reader: &mut R) -> Result<SkinFile> {
     if header.submeshes.count > 0 && header.submeshes.offset > 0 {
         reader.seek(SeekFrom::Start(header.submeshes.offset as u64))?;
         for _ in 0..header.submeshes.count {
-            submeshes.push(SkinSubmesh::parse(reader)?);
+            submeshes.push(SkinSubmesh::parse_with_version(reader, m2_version)?);
         }
     }
 
@@ -183,7 +183,7 @@ impl SkinHeaderT for SkinHeader {
 
         // Create the appropriate version
         let _m2_version = match version {
-            0 => M2Version::Classic,
+            0 => M2Version::Vanilla,
             1 => M2Version::Cataclysm,
             2 => M2Version::MoP,
             3 => M2Version::WoD,
@@ -338,7 +338,7 @@ impl SkinHeader {
     /// Get the M2 version for this skin
     pub fn get_m2_version(&self) -> Option<M2Version> {
         match self.version {
-            0 => Some(M2Version::Classic),
+            0 => Some(M2Version::Vanilla),
             1 => Some(M2Version::Cataclysm),
             2 => Some(M2Version::MoP),
             3 => Some(M2Version::WoD),
@@ -357,7 +357,7 @@ impl SkinHeader {
     /// Create a new Skin header for a specific version
     pub fn new(m2_version: M2Version) -> Self {
         let version = match m2_version {
-            M2Version::Classic | M2Version::TBC | M2Version::WotLK => 0,
+            M2Version::Vanilla | M2Version::TBC | M2Version::WotLK => 0,
             M2Version::Cataclysm => 1,
             M2Version::MoP => 2,
             M2Version::WoD => 3,
@@ -577,6 +577,53 @@ pub struct SkinSubmesh {
 }
 
 impl SkinSubmesh {
+    /// Parse a submesh from a reader with version-aware structure size
+    pub fn parse_with_version<R: Read>(reader: &mut R, m2_version: u32) -> Result<Self> {
+        if m2_version < 260 {
+            // Vanilla/classic format: 32-byte aligned structure
+            Self::parse_vanilla(reader)
+        } else {
+            // Modern format: full 48-byte structure
+            Self::parse(reader)
+        }
+    }
+
+    /// Parse a vanilla submesh (32-byte structure) - empirically validated
+    pub fn parse_vanilla<R: Read>(reader: &mut R) -> Result<Self> {
+        let id = reader.read_u16_le()?;
+        let level = reader.read_u16_le()?;
+        let vertex_start = reader.read_u16_le()?;
+        let vertex_count = reader.read_u16_le()?;
+        let triangle_start = reader.read_u16_le()?;
+        let triangle_count = reader.read_u16_le()?;
+        let bone_count = reader.read_u16_le()?;
+        let bone_start = reader.read_u16_le()?;
+
+        // Read 4 float32 values (16 bytes) - structure verified by Python parser
+        let float1 = reader.read_f32_le()?;
+        let float2 = reader.read_f32_le()?;
+        let float3 = reader.read_f32_le()?;
+        let float4 = reader.read_f32_le()?;
+
+        // Map the 4 floats to center coordinates (first 3) and use defaults for the rest
+        let center = [float1, float2, float3];
+
+        Ok(Self {
+            id,
+            level,
+            vertex_start,
+            vertex_count,
+            triangle_start,
+            triangle_count,
+            bone_count,
+            bone_start,
+            bone_influence: 0, // Default for vanilla
+            center,
+            sort_center: [0.0, 0.0, 0.0], // Default for vanilla
+            bounding_radius: float4,      // Use 4th float as bounding radius
+        })
+    }
+
     /// Parse a submesh from a reader
     pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
         let id = reader.read_u16_le()?;
@@ -941,44 +988,26 @@ impl SkinFile {
 
     /// Get resolved vertex indices for rendering
     ///
-    /// For external .skin files (WotLK+), this applies the two-level indirection:
-    /// - The triangles array contains indices into the indices array (lookup table)
-    /// - The final vertex index = indices[triangles[i]]
+    /// CRITICAL CORRECTION: After empirical analysis, the triangles array already contains
+    /// the final vertex indices for rendering. The previous assumption about two-level
+    /// indirection was incorrect.
     ///
-    /// For embedded skins (pre-WotLK), the indices are already direct vertex indices.
+    /// For both embedded skins (pre-WotLK) and external .skin files (WotLK+):
+    /// - The triangles array contains the direct vertex indices for mesh connectivity
+    /// - No additional indirection is needed
+    /// - Values like [76, 21, 23] are the actual vertex indices to use for triangles
     pub fn get_resolved_indices(&self) -> Vec<u16> {
-        match self {
-            SkinFile::Old(_) => {
-                // Embedded/old format: indices are already direct vertex indices
-                self.indices().clone()
-            }
-            SkinFile::New(_) => {
-                // External/new format: apply two-level indirection
-                let indices = self.indices();
-                let triangles = self.triangles();
-
-                // Resolve: final_index = indices[triangles[i]]
-                triangles
-                    .iter()
-                    .map(|&tri_idx| {
-                        if (tri_idx as usize) < indices.len() {
-                            indices[tri_idx as usize]
-                        } else {
-                            // Handle out-of-bounds gracefully
-                            0
-                        }
-                    })
-                    .collect()
-            }
-        }
+        // FIXED: triangles array already contains the correct vertex indices
+        // No two-level indirection needed - triangles are ready for rendering
+        self.triangles().clone()
     }
 
-    /// Get raw indices array (vertex lookup table)
+    /// Get raw indices array (vertex mapping/lookup table)
     ///
-    /// Note: For rendering, use `get_resolved_indices()` instead.
-    /// This method returns the raw array which has different meanings:
-    /// - Embedded skins: Direct vertex indices
-    /// - External skins: Vertex lookup table
+    /// Note: For triangle rendering, use `get_resolved_indices()` instead.
+    /// This method returns the indices array which serves as a vertex mapping table.
+    /// In practice, this array typically contains sequential values [0,1,2,3...]
+    /// and is used internally by the M2 format for vertex organization.
     pub fn indices(&self) -> &Vec<u16> {
         match self {
             SkinFile::New(skin) => &skin.indices,

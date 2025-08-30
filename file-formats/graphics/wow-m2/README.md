@@ -23,6 +23,7 @@ A Rust library for parsing, validating, and converting World of Warcraft M2 mode
 
 - ✅ Parse and validate M2 models from all WoW versions
 - ✅ Convert models between different game versions
+- ✅ **Coordinate system transformations** for Blender, Unity, Unreal Engine
 - ✅ Support for all chunk types (bones, animations, textures, etc.)
 - ✅ Comprehensive error handling with detailed context
 - ✅ Zero-copy parsing where possible for performance
@@ -85,6 +86,31 @@ for submesh in &skin.submeshes {
 }
 ```
 
+### Coordinate System Transformations
+
+Transform WoW models for use in common 3D applications:
+
+```rust
+use wow_m2::{M2Model, CoordinateSystem, CoordinateTransformer, transform_position};
+
+// Load a model
+let model = M2Model::load("character.m2")?;
+
+// Transform for Blender (right-handed: X=right, Y=forward, Z=up)
+let transformer = CoordinateTransformer::new(CoordinateSystem::Blender);
+for vertex in &model.vertices {
+    let blender_pos = transformer.transform_position(vertex.position);
+    println!("WoW: {:?} → Blender: {:?}", vertex.position, blender_pos);
+}
+
+// Or transform individual coordinates
+let wow_pos = model.vertices[0].position;
+let unity_pos = transform_position(wow_pos, CoordinateSystem::Unity);
+let unreal_pos = transform_position(wow_pos, CoordinateSystem::UnrealEngine);
+```
+
+**Why coordinate transformation is needed:** WoW uses X=North, Y=West, Z=Up, which differs from standard 3D applications. Without transformation, models appear rotated or mirrored.
+
 ### Version Support
 
 The library supports parsing versions by both numeric format and expansion names:
@@ -123,6 +149,11 @@ See the `examples/` directory for more detailed examples:
 - `convert_model.rs` - Convert models between versions
 - `analyze_model.rs` - Analyze model structure and contents
 - `validate_model.rs` - Validate model integrity
+
+## Documentation
+
+- **[Coordinate Systems Guide](../../../docs/COORDINATE_SYSTEMS.md)** - Comprehensive guide to WoW coordinate systems and transformations
+- **[API Documentation](https://docs.rs/wow-m2)** - Complete API reference
 
 ## License
 

@@ -16,6 +16,8 @@
 //! - Digital signature support (verification and generation)
 //! - Strong security with signature verification
 //! - Comprehensive error handling
+//! - Optional memory-mapped files for high-performance access
+//! - SIMD-accelerated operations for maximum performance
 //!
 //! ## Examples
 //!
@@ -37,6 +39,28 @@
 //! let data = archive.read_file("war3map.j")?;
 //! # Ok(())
 //! # }
+//! ```
+//!
+//! ### Memory-Mapped High Performance Access
+//!
+//! ```no_run,ignore
+//! # #[cfg(feature = "mmap")]
+//! use wow_mpq::{Archive, OpenOptions};
+//!
+//! # #[cfg(feature = "mmap")]
+//! # fn main() -> Result<(), wow_mpq::Error> {
+//! // Open archive with memory mapping enabled for better performance
+//! let mut archive = OpenOptions::new()
+//!     .enable_memory_mapping()
+//!     .open("large_archive.mpq")?;
+//!
+//! // High-performance file reading using memory mapping
+//! let data = archive.read_file_mapped("large_file.m2")?;
+//! println!("Read {} bytes using memory mapping", data.len());
+//! # Ok(())
+//! # }
+//! # #[cfg(not(feature = "mmap"))]
+//! # fn main() {}
 //! ```
 //!
 //! ### Digital Signatures
@@ -63,6 +87,31 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ### SIMD-Accelerated Operations
+//!
+//! ```no_run,ignore
+//! # #[cfg(feature = "simd")]
+//! use wow_mpq::simd::SimdOps;
+//!
+//! # #[cfg(feature = "simd")]
+//! # fn main() -> Result<(), wow_mpq::Error> {
+//! // Create SIMD operations with runtime CPU detection
+//! let simd = SimdOps::new();
+//!
+//! // Hardware-accelerated CRC32 calculation
+//! let crc = simd.crc32(b"test data", 0);
+//!
+//! // SIMD-accelerated hash for large batch operations
+//! let hash = simd.hash_string_simd(b"filename.mdx", 0);
+//!
+//! // Check available SIMD features
+//! println!("SIMD support available: {}", simd.has_simd_support());
+//! # Ok(())
+//! # }
+//! # #[cfg(not(feature = "simd"))]
+//! # fn main() {}
+//! ```
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
@@ -73,6 +122,7 @@
 )]
 
 pub mod archive;
+pub mod buffer_pool;
 pub mod builder;
 pub mod compare;
 pub mod compression;
@@ -86,9 +136,15 @@ pub mod parallel;
 pub mod patch_chain;
 pub mod path;
 pub mod rebuild;
+pub mod security;
 pub mod single_archive_parallel;
 pub mod special_files;
 pub mod tables;
+
+// SIMD optimizations (optional feature)
+#[cfg(feature = "simd")]
+#[cfg_attr(docsrs, doc(cfg(feature = "simd")))]
+pub mod simd;
 
 #[cfg(any(test, feature = "test-utils", doc))]
 pub mod test_utils;
@@ -100,6 +156,7 @@ pub use archive::{
     Archive, ArchiveInfo, FileEntry, FileInfo, Md5Status, OpenOptions, SignatureStatus, TableInfo,
     UserDataInfo,
 };
+pub use buffer_pool::{BufferPool, BufferSize, PoolConfig, PoolStatistics};
 pub use builder::{ArchiveBuilder, AttributesOption, ListfileOption};
 pub use compare::{
     CompareOptions, ComparisonResult, ComparisonSummary, FileComparison, MetadataComparison,
@@ -122,6 +179,26 @@ pub use compression::{compress, decompress};
 
 // Re-export decryption for testing
 pub use archive::decrypt_file_data;
+
+// Re-export async types when async feature is enabled
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub use io::{
+    AsyncArchiveReader, AsyncConfig, AsyncDecompressionMonitor, AsyncMetrics, AsyncOperationStats,
+};
+
+// Re-export memory mapping types when mmap feature is enabled
+#[cfg(feature = "mmap")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mmap")))]
+pub use io::{MemoryMapConfig, MemoryMapManager, MemoryMapStats, MemoryMappedArchive};
+
+// Re-export SIMD types when simd feature is enabled
+#[cfg(feature = "simd")]
+#[cfg_attr(docsrs, doc(cfg(feature = "simd")))]
+pub use simd::{CpuFeatures, SimdOps};
+
+// Re-export security types for configuration
+pub use security::{DecompressionMonitor, SecurityLimits, SessionTracker};
 
 /// MPQ signature constants
 pub mod signatures {
@@ -310,5 +387,31 @@ mod tests {
         // StarCraft II: Can use larger sectors for HD assets
         let sc2_sector_size = calculate_sector_size(9);
         assert_eq!(sc2_sector_size, 262144); // 256 KB
+    }
+
+    #[test]
+    #[cfg(feature = "mmap")]
+    fn test_memory_mapping_config_availability() {
+        // Test that memory mapping types are available when feature is enabled
+        let _config = MemoryMapConfig::default();
+        let _stats = MemoryMapStats::default();
+    }
+
+    #[test]
+    #[cfg(feature = "simd")]
+    fn test_simd_ops_availability() {
+        // Test that SIMD types are available when feature is enabled
+        let simd = SimdOps::new();
+        let _features = simd.features();
+
+        // Should not panic during CPU feature detection
+        let _has_support = simd.has_simd_support();
+    }
+
+    #[test]
+    fn test_security_limits_availability() {
+        // Security types should always be available
+        let _limits = SecurityLimits::default();
+        let _tracker = SessionTracker::new();
     }
 }

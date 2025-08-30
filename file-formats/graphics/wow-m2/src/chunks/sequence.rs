@@ -217,7 +217,7 @@ mod tests {
         // Read back
         let mut cursor = Cursor::new(buffer);
         let parsed =
-            M2Sequence::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
+            M2Sequence::parse(&mut cursor, M2Version::Vanilla.to_header_version()).unwrap();
 
         // Verify
         assert_eq!(parsed.animation_id, 1);

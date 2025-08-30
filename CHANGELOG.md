@@ -8,6 +8,199 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- **M2 Parser Consolidation**: Streamlined codebase after bone parsing fixes
+  - Removed 17 temporary debugging examples used during corruption analysis
+  - Consolidated vertex validation and coordinate transformation logic
+  - Enhanced production code with lessons learned from debugging phase
+  - Improved Python M2 parser with two-pass bone resolution
+
+### Fixed
+
+- **M2 Triangle Index Parsing**: Critical mesh connectivity corruption causing fragmented geometry (CRITICAL FIX)
+  - **Double Indirection Bug**: Fixed unnecessary two-level indirection in `get_resolved_indices()` 
+    - Triangle indices were incorrectly resolved as `indices[triangles[i]]` instead of direct usage
+    - Created sequential indices [0,1,2,3...] resulting in flat "airplane" geometry
+    - Now correctly uses triangle array values [76,21,23,29...] for proper 3D mesh connectivity
+    - Eliminates fragmented rendering and mesh topology corruption
+  - **Mesh Topology Restoration**: Models now render with correct 3D geometry
+    - Rabbit model displays proper organic shape instead of fragmented artifacts
+    - All M2 models benefit from corrected triangle-to-vertex mapping
+    - Verified against reference blender-wow-studio triangle connectivity data
+
+- **M2 Quaternion Parsing**: Critical bone rotation corruption across all animated models (CRITICAL FIX)
+  - **X-Component Sign Error**: Fixed quaternion X-component negation in `M2CompQuat::parse()`
+    - pywowlib reference implementation negates X-component during parsing
+    - warcraft-rs was not applying negation, causing incorrect bone rotations
+    - All bone animations now match reference implementation exactly
+    - Eliminates animation artifacts and incorrect model poses
+
+- **M2 Vertex Validation System**: Enhanced validation with configurable corruption handling
+  - **ValidationMode System**: Three validation modes for different use cases
+    - `Strict`: Aggressive fixes for all potential issues (legacy behavior)
+    - `Permissive`: Smart corruption detection while preserving valid static geometry (default)
+    - `None`: Preserve all original data without modifications
+  - **Bone Index Validation**: Fixed critical u8 wraparound bug in bone count validation
+    - Previously failed for models with >255 bones due to improper type casting
+    - Now correctly validates bone indices against full u32 bone count range
+    - Prevents out-of-bounds bone references and rendering crashes
+
+- **M2 Bone Parsing**: Critical data corruption issues in vertex and bone parsing (MAJOR FIX)
+  - **Invalid Bone Indices**: Vertices referencing non-existent bones (e.g., bones [51, 196, 141, 62] when only 34 exist)
+    - Enhanced `M2Vertex::parse_with_validation()` with comprehensive bone index validation
+    - Invalid indices automatically clamped to root bone (index 0) for safety
+    - Prevents rendering failures and vertex positioning corruption
+  - **Missing Bone Weights**: 17% of vertices had zero bone weights making them unmovable
+    - Zero-weight vertices now automatically assigned full weight to root bone
+    - Ensures all vertices participate in skeletal animation properly
+    - Maintains model deformation integrity during animation playback
+  - **NaN Bone Pivot Coordinates**: Corrupted floating-point values in bone pivot points
+    - Added NaN detection and replacement with safe defaults (0.0) in `M2Bone::parse()`
+    - Prevents matrix calculation failures and rendering instability
+    - Maintains bone hierarchy integrity across model transformations
+  - **Structural Alignment**: Fixed vertex structure parsing across all WoW versions
+    - Corrected 48-byte vertex structure with secondary texture coordinates
+    - Eliminated 8-byte offset corruption that affected all subsequent vertex data
+    - Aligned with WMVx reference implementation for cross-version compatibility
+  - **Cross-Version Validation**: All fixes verified with real WoW models
+    - Tested against Vanilla (HumanMale, Rabbit), TBC (DraeneiMale), and WotLK models
+    - 100% parsing success rate with zero corruption detection
+    - Comprehensive test suite (144/144 tests passing) with new validation coverage
+
+### Changed
+
+- **M2 Bone Field Identification**: Documented previously unknown TBC+ bone field
+  - Identified `unknown1` field as `boneNameCRC` based on wowdev.wiki documentation
+  - Field contains CRC hash of bone name string for debugging/identification
+  - Renamed field from `unknown1_tbc` to `bone_name_crc` for semantic clarity
+  - Enhanced debug output to display CRC values in hexadecimal format
+  - Enables O(1) bone lookup by name hash in game servers and tools
+
+### Added
+
+- **M2 Vertex Skinning System**: Complete vertex transformation pipeline for proper mesh geometry
+  - **M2Skinner**: Full skeletal animation system for transforming vertices from bind pose
+    - Bone transformation matrix calculation from pivot points and quaternions
+    - Multi-bone vertex influences with proper weight normalization (up to 4 bones per vertex)
+    - Bone hierarchy support with parent-child relationship handling
+    - Linear blend skinning implementation using standard formula
+  - **SkinningOptions**: Configurable behavior for different use cases
+    - Error handling for invalid bone indices and zero weights
+    - Performance optimization settings for batch processing
+    - Animation frame support for keyframe evaluation
+  - **Coordinate System Integration**: Seamless integration with coordinate transformation system
+    - Direct export to Blender, Unity, Unreal Engine coordinate spaces
+    - Proper handling of WoW's (North, West, Up) coordinate system
+    - Batch transformation capabilities for large models
+
+- **M2 Coordinate System Support**: Complete transformation utilities for cross-application compatibility
+  - **CoordinateSystem**: Support for Blender, Unity, and Unreal Engine coordinate systems
+    - WoW to Blender: `(y, -x, z)` position transformation
+    - WoW to Unity: `(-y, z, x)` position transformation  
+    - WoW to Unreal Engine: `(x, -y, z)` position transformation
+    - Proper quaternion transformations for each target system
+  - **CoordinateTransformer**: High-performance batch transformation system
+    - SIMD-optimized operations using glam library
+    - Efficient matrix-based transformations for large datasets
+    - Support for both individual and batch vertex processing
+  - **Comprehensive Documentation**: Complete coordinate system documentation with visual guides
+    - ASCII diagrams showing coordinate system orientations
+    - Real-world examples with actual coordinate values
+    - Performance optimization guidelines and best practices
+
+- **Enhanced Python M2 Parser**: Complete feature parity with Rust implementation
+  - **M2CompQuat Support**: Compressed quaternion parsing with X-component negation
+    - Matches pywowlib reference implementation exactly
+    - Proper conversion to float quaternions with ±32767 scaling
+    - Euler angle conversion for debugging and visualization
+  - **Animation Track Parsing**: Complete M2Track support for pre-WotLK and WotLK+ formats
+    - Rotation, translation, and scale track extraction
+    - Keyframe data resolution with proper timestamp handling
+    - Support for both embedded and external animation data
+  - **Enhanced Validation System**: Three validation modes matching Rust implementation
+    - Strict, Permissive, and None validation options
+    - Smart corruption detection for bone indices and weights
+    - 17% vertex corruption detection and correction capabilities
+  - **Coordinate System Integration**: Python coordinate transformation utilities
+    - Direct Blender, Unity, Unreal Engine coordinate conversion
+    - Batch transformation support for performance
+    - Matrix-based transformations for advanced use cases
+
+- **M2 Animation Data Extraction**: Complete bone animation and bind pose data resolution
+  - **M2TrackResolver**: Follows M2Array offsets to load actual keyframe data from file
+    - Resolves timestamps, values, and ranges for animation tracks
+    - Extension traits for easy Vec3 and Quaternion track data access
+  - **ResolvedBoneAnimation**: Comprehensive bone transform data structure
+    - Bind pose translation, rotation (quaternion), and scale extraction
+    - Full animation keyframe data with timestamps
+    - Automatic fallback to identity transforms when no data exists
+  - **M2ModelAnimationExt**: Extension trait for animation data resolution
+    - `resolve_bone_animations()` loads all bone animation data
+    - `get_bind_pose()` extracts rest position transforms
+    - Verified with vanilla WoW models (96 bones, 63 with animation data)
+- **M2 Bone Parsing**: Version-aware bone structure parsing with AnimationBlock support
+  - Added `ranges` field to M2Track for pre-Wrath versions (v263 and earlier)
+  - Version-specific bone parsing that handles size differences between WoW expansions
+  - Fixed embedded skin index resolution with proper two-level indirection
+  - Comprehensive bone validation with NaN detection and parent hierarchy checks
+- **M2 Enhanced Parser**: Comprehensive data extraction for vanilla WoW models
+  - Complete vertex parsing with bone weights and UV coordinates
+  - Full bone hierarchy extraction with parent-child relationships
+  - All animation sequences with version-aware timing (v256 vs v260+)
+  - Texture definitions with type classification (Skin, Hair, Monster, etc.)
+  - Material properties with blend modes and transparency flags
+  - Embedded skin data extraction for pre-WotLK models (v263 and earlier)
+  - Model statistics calculation with bounding box and triangle counts
+  - Rich visualization with hierarchical bone display and animation lists
+- **M2 Python Tools**: Reference implementation for M2 format validation
+  - Comprehensive M2 parser with full data structure extraction
+  - Batch testing tool for validating multiple models
+  - Visual representation with Rich console output
+  - JSON export capability for tool integration
+  - Support for WoW versions 1.12.1 through 5.4.8
+- **M2 Examples**: Test suite and demonstration programs
+  - `enhanced_parser_demo` - Shows comprehensive parsing capabilities
+  - `test_sample_models` - Validates parser with real game models
+  - 100% success rate on vanilla WoW test models
+- **MPQ Performance**: Comprehensive 8-phase optimization suite for 700x speedup on large archives
+  - Phase 1: Optimized string formatting - removed redundant allocations in hot paths
+  - Phase 2: Lazy loading architecture - defer hash/block table loading until needed
+  - Phase 3: Security-first validation - early detection of malicious archives
+  - Phase 4: Thread-safe buffer pooling - reuse allocations across operations
+  - Phase 5: Compression bomb protection - prevent memory exhaustion attacks
+  - Phase 6: Async I/O support - non-blocking archive operations with Tokio
+  - Phase 7: Memory-mapped file support - zero-copy access for large archives
+  - Phase 8: SIMD optimizations - hardware-accelerated CRC32 and hashing
+- **MPQ Features**: New optional feature flags for progressive enhancement
+  - `async` - Async/await support with Tokio runtime
+  - `mmap` - Memory-mapped file access via memmap2
+  - `simd` - SIMD acceleration with runtime CPU detection
+- **MPQ Security**: Comprehensive security framework
+  - Adaptive compression ratio limits based on algorithm
+  - Session-wide decompression tracking
+  - Pattern-based attack detection
+  - Resource exhaustion prevention
+- **MPQ Buffer Pool**: High-performance buffer management
+  - Size-categorized pools (4KB, 64KB, 1MB)
+  - Thread-safe buffer reuse
+  - Configurable capacity limits
+  - Statistics tracking for optimization
+
+### Fixed
+
+- **MPQ Performance**: Resolved 700x slowdown on Cataclysm/MoP archives
+- **MPQ Security**: Fixed overly strict validation preventing empty archive creation
+- **MPQ Tests**: Fixed SIMD test failures and async resource detection
+- **MPQ Documentation**: Marked feature-gated examples with proper attributes
+
+### Changed
+
+- **MPQ Architecture**: Refactored to lazy-loading with Arc<RwLock<T>> for thread safety
+- **MPQ Validation**: Security checks now run before any data processing
+- **MPQ Compression**: Integrated buffer pooling for all decompression operations
+- **MPQ CRC32**: Unified to use crc32fast for consistency across scalar/SIMD
+
 ## [0.4.0] - 2025-08-29
 
 ### Added

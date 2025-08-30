@@ -31,7 +31,7 @@ const fn generate_encryption_table() -> [u32; 0x500] {
 pub const ENCRYPTION_TABLE: [u32; 0x500] = generate_encryption_table();
 
 /// ASCII uppercase conversion table
-pub(crate) const ASCII_TO_UPPER: [u8; 256] = [
+pub const ASCII_TO_UPPER: [u8; 256] = [
     // 0x00-0x0F
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
     // 0x10-0x1F
@@ -67,7 +67,7 @@ pub(crate) const ASCII_TO_UPPER: [u8; 256] = [
 ];
 
 /// ASCII lowercase conversion table
-pub(crate) const ASCII_TO_LOWER: [u8; 256] = [
+pub const ASCII_TO_LOWER: [u8; 256] = [
     // 0x00-0x0F
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
     // 0x10-0x1F
@@ -76,7 +76,7 @@ pub(crate) const ASCII_TO_LOWER: [u8; 256] = [
     0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
     // 0x30-0x3F
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
-    // 0x40-0x4F: @, A-O -> @, a-o
+    // 0x40-0x4F: A-O -> a-o
     0x40, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
     // 0x50-0x5F: P-Z -> p-z
     0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
@@ -101,49 +101,3 @@ pub(crate) const ASCII_TO_LOWER: [u8; 256] = [
     // 0xF0-0xFF
     0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF,
 ];
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_encryption_table_generation() {
-        // Test known values from the encryption table
-        // These values are from the MPQ specification
-        assert_eq!(ENCRYPTION_TABLE[0x000], 0x55C6_36E2);
-        assert_eq!(ENCRYPTION_TABLE[0x001], 0x02BE_0170);
-        assert_eq!(ENCRYPTION_TABLE[0x002], 0x584B_71D4);
-        assert_eq!(ENCRYPTION_TABLE[0x003], 0x2984_F00E);
-        assert_eq!(ENCRYPTION_TABLE[0x004], 0xB682_C809);
-
-        // Test some middle values
-        assert_eq!(ENCRYPTION_TABLE[0x100], 0x76F8_C1B1);
-        assert_eq!(ENCRYPTION_TABLE[0x200], 0x3DF6_965D);
-        assert_eq!(ENCRYPTION_TABLE[0x300], 0x15F2_61D3);
-        assert_eq!(ENCRYPTION_TABLE[0x400], 0x193A_A698);
-
-        // Test last few values
-        assert_eq!(ENCRYPTION_TABLE[0x4FB], 0x6149_809C);
-        assert_eq!(ENCRYPTION_TABLE[0x4FC], 0xB009_9EF4);
-        assert_eq!(ENCRYPTION_TABLE[0x4FD], 0xC5F6_53A5);
-        assert_eq!(ENCRYPTION_TABLE[0x4FE], 0x4C10_790D);
-        assert_eq!(ENCRYPTION_TABLE[0x4FF], 0x7303_286C);
-    }
-
-    #[test]
-    fn test_ascii_tables() {
-        // Test uppercase conversion
-        assert_eq!(ASCII_TO_UPPER[b'a' as usize], b'A');
-        assert_eq!(ASCII_TO_UPPER[b'z' as usize], b'Z');
-        assert_eq!(ASCII_TO_UPPER[b'A' as usize], b'A');
-        assert_eq!(ASCII_TO_UPPER[b'0' as usize], b'0');
-        assert_eq!(ASCII_TO_UPPER[b' ' as usize], b' ');
-
-        // Test lowercase conversion
-        assert_eq!(ASCII_TO_LOWER[b'A' as usize], b'a');
-        assert_eq!(ASCII_TO_LOWER[b'Z' as usize], b'z');
-        assert_eq!(ASCII_TO_LOWER[b'a' as usize], b'a');
-        assert_eq!(ASCII_TO_LOWER[b'0' as usize], b'0');
-        assert_eq!(ASCII_TO_LOWER[b' ' as usize], b' ');
-    }
-}

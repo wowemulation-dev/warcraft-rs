@@ -25,3 +25,6 @@ Thumbs.db
 *.wdt
 *.m2
 *.wmo
+
+__pycache__
+.ruff-cache

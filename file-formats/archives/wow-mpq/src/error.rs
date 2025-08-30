@@ -108,6 +108,43 @@ pub enum Error {
     /// Feature not yet implemented
     #[error("Not implemented: {0}")]
     NotImplemented(&'static str),
+
+    /// Security validation failed
+    #[error("Security validation failed: {0}")]
+    SecurityViolation(String),
+
+    /// Potential malicious content detected
+    #[error("Malicious content detected: {0}")]
+    MaliciousContent(String),
+
+    /// Resource exhaustion attempt detected
+    #[error("Resource exhaustion attempt: {0}")]
+    ResourceExhaustion(String),
+
+    /// Directory traversal attempt detected
+    #[error("Directory traversal attempt: {0}")]
+    DirectoryTraversal(String),
+
+    /// Compression bomb detected
+    #[error("Compression bomb detected: ratio {ratio}:1 exceeds limit of {limit}:1")]
+    CompressionBomb {
+        /// Actual compression ratio
+        ratio: u64,
+        /// Maximum allowed ratio
+        limit: u64,
+    },
+
+    /// Invalid bounds access
+    #[error("Invalid bounds access: {0}")]
+    InvalidBounds(String),
+
+    /// Unsupported feature
+    #[error("Unsupported feature: {0}")]
+    UnsupportedFeature(String),
+
+    /// Decompression error
+    #[error("Decompression error: {0}")]
+    Decompression(String),
 }
 
 impl Error {
@@ -136,6 +173,51 @@ impl Error {
         Error::BlockTable(msg.into())
     }
 
+    /// Create a new SecurityViolation error
+    pub fn security_violation<S: Into<String>>(msg: S) -> Self {
+        Error::SecurityViolation(msg.into())
+    }
+
+    /// Create a new MaliciousContent error
+    pub fn malicious_content<S: Into<String>>(msg: S) -> Self {
+        Error::MaliciousContent(msg.into())
+    }
+
+    /// Create a new ResourceExhaustion error
+    pub fn resource_exhaustion<S: Into<String>>(msg: S) -> Self {
+        Error::ResourceExhaustion(msg.into())
+    }
+
+    /// Create a new DirectoryTraversal error
+    pub fn directory_traversal<S: Into<String>>(msg: S) -> Self {
+        Error::DirectoryTraversal(msg.into())
+    }
+
+    /// Create a new CompressionBomb error
+    pub fn compression_bomb(ratio: u64, limit: u64) -> Self {
+        Error::CompressionBomb { ratio, limit }
+    }
+
+    /// Create a new InvalidBounds error
+    pub fn invalid_bounds<S: Into<String>>(msg: S) -> Self {
+        Error::InvalidBounds(msg.into())
+    }
+
+    /// Create a new UnsupportedFeature error
+    pub fn unsupported_feature<S: Into<String>>(msg: S) -> Self {
+        Error::UnsupportedFeature(msg.into())
+    }
+
+    /// Create a new I/O error
+    pub fn io_error<S: Into<String>>(msg: S) -> Self {
+        Error::Io(io::Error::new(io::ErrorKind::Other, msg.into()))
+    }
+
+    /// Create a new Decompression error
+    pub fn decompression<S: Into<String>>(msg: S) -> Self {
+        Error::Decompression(msg.into())
+    }
+
     /// Check if this error indicates the archive is corrupted
     pub fn is_corruption(&self) -> bool {
         matches!(
@@ -148,12 +230,24 @@ impl Error {
         )
     }
 
+    /// Check if this error indicates a security threat
+    pub fn is_security_threat(&self) -> bool {
+        matches!(
+            self,
+            Error::SecurityViolation(_)
+                | Error::MaliciousContent(_)
+                | Error::ResourceExhaustion(_)
+                | Error::DirectoryTraversal(_)
+                | Error::CompressionBomb { .. }
+        )
+    }
+
     /// Check if this error is recoverable
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
             Error::FileNotFound(_) | Error::ReadOnly | Error::OperationNotSupported { .. }
-        )
+        ) && !self.is_security_threat() // Security threats are never recoverable
     }
 }
 
@@ -183,5 +277,20 @@ mod tests {
         let recoverable_err = Error::FileNotFound("missing.txt".to_string());
         assert!(!recoverable_err.is_corruption());
         assert!(recoverable_err.is_recoverable());
+    }
+
+    #[test]
+    fn test_memory_mapping_errors() {
+        let err = Error::unsupported_feature("Memory mapping not available");
+        assert_eq!(
+            err.to_string(),
+            "Unsupported feature: Memory mapping not available"
+        );
+
+        let err = Error::invalid_bounds("Read beyond file end");
+        assert_eq!(
+            err.to_string(),
+            "Invalid bounds access: Read beyond file end"
+        );
     }
 }

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Extended M2 parser validation to The Burning Crusade (2.4.3) models
+- Created comprehensive TBC model test suite with Blood Elf and Draenei support
+- Added version-specific documentation for vanilla (v256) vs TBC (v260) differences
+- Implemented batch testing framework for multi-version model validation
+
+### Fixed
+
+- Fixed vanilla M2 embedded skin submesh parsing to use correct 32-byte alignment (empirically validated)
+- Added version-aware submesh parsing to handle vanilla (32-byte) vs modern (48-byte) submesh structures
+- Updated `SkinSubmesh::parse_with_version()` to correctly parse vanilla submeshes with 8×u16 + 4×f32 layout
+- Enhanced `parse_embedded_skin()` to accept M2 version parameter for proper submesh structure detection
+
+### Validated
+
+- Successfully tested TBC (v260) models: HumanMale, BloodElfMale, DraeneiMale (100% success rate)
+- Confirmed embedded skin support for TBC models (v260-263 cutoff validated)
+- Verified increased model complexity in TBC: more bones (140 vs 96) and larger file sizes
+
 ## [0.3.0] - 2025-08-07
 
 ### Changed

@@ -1,5 +1,6 @@
 //! MPQ header structures and parsing
 
+use crate::security::{SecurityLimits, validate_header_security};
 use crate::{Error, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
@@ -134,8 +135,16 @@ pub struct MpqHeaderV4Data {
 }
 
 impl MpqHeader {
-    /// Read an MPQ header from the given reader
+    /// Read an MPQ header from the given reader with security validation
     pub fn read<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Self::read_with_limits(reader, &SecurityLimits::default())
+    }
+
+    /// Read an MPQ header with custom security limits
+    pub fn read_with_limits<R: Read + Seek>(
+        reader: &mut R,
+        limits: &SecurityLimits,
+    ) -> Result<Self> {
         // Read the signature
         let signature = reader.read_u32::<LittleEndian>()?;
         if signature != MPQ_HEADER_SIGNATURE {
@@ -157,6 +166,20 @@ impl MpqHeader {
 
         let format_version = FormatVersion::from_raw(format_version_raw)
             .ok_or(Error::UnsupportedVersion(format_version_raw))?;
+
+        // Security validation - validate header before proceeding
+        validate_header_security(
+            signature,
+            header_size,
+            archive_size,
+            format_version_raw,
+            block_size,
+            hash_table_pos,
+            block_table_pos,
+            hash_table_size,
+            block_table_size,
+            limits,
+        )?;
 
         // Validate header size
         if header_size < format_version.header_size() {
@@ -274,6 +297,14 @@ impl MpqHeader {
 pub fn find_header<R: Read + Seek>(
     reader: &mut R,
 ) -> Result<(u64, Option<UserDataHeader>, MpqHeader)> {
+    find_header_with_limits(reader, &SecurityLimits::default())
+}
+
+/// Find MPQ header with custom security limits
+pub fn find_header_with_limits<R: Read + Seek>(
+    reader: &mut R,
+    limits: &SecurityLimits,
+) -> Result<(u64, Option<UserDataHeader>, MpqHeader)> {
     let mut offset = 0u64;
     let file_size = reader.seek(SeekFrom::End(0))?;
     reader.seek(SeekFrom::Start(0))?;
@@ -298,7 +329,7 @@ pub fn find_header<R: Read + Seek>(
             MPQ_HEADER_SIGNATURE => {
                 // Found standard MPQ header
                 reader.seek(SeekFrom::Start(offset))?;
-                let header = MpqHeader::read(reader)?;
+                let header = MpqHeader::read_with_limits(reader, limits)?;
                 return Ok((offset, None, header));
             }
             MPQ_USERDATA_SIGNATURE => {
@@ -322,7 +353,7 @@ pub fn find_header<R: Read + Seek>(
                     let mpq_sig = reader.read_u32::<LittleEndian>()?;
                     if mpq_sig == MPQ_HEADER_SIGNATURE {
                         reader.seek(SeekFrom::Start(mpq_offset))?;
-                        let header = MpqHeader::read(reader)?;
+                        let header = MpqHeader::read_with_limits(reader, limits)?;
                         return Ok((mpq_offset, Some(user_data), header));
                     }
                 }

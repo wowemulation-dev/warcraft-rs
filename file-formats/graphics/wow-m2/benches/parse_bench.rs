@@ -7,7 +7,7 @@ use wow_m2::version::M2Version;
 
 fn create_test_model() -> M2Model {
     // Create a simple model for testing
-    let header = M2Header::new(M2Version::Classic);
+    let header = M2Header::new(M2Version::Vanilla);
 
     M2Model {
         header,

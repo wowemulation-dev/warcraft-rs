@@ -426,14 +426,16 @@ mod tests {
         write_sample(&mut input, -5000);
 
         let compressed = compress_mono(&input, 5).unwrap();
+        #[cfg(debug_assertions)]
         println!("Compressed: {compressed:?}");
 
         let decompressed = decompress_mono(&compressed, input.len()).unwrap();
 
         for i in 0..5 {
-            let original = read_sample(&input, i).unwrap();
-            let decoded = read_sample(&decompressed, i).unwrap();
-            println!("Sample {i}: {original} -> {decoded}");
+            let _original = read_sample(&input, i).unwrap();
+            let _decoded = read_sample(&decompressed, i).unwrap();
+            #[cfg(debug_assertions)]
+            println!("Sample {i}: {_original} -> {_decoded}");
         }
     }
 

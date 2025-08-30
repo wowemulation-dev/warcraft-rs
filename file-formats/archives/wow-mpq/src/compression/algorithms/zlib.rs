@@ -72,6 +72,7 @@ mod tests {
         let compressed = compress(original).expect("Compression failed");
 
         // Note: Small data might not compress well due to compression headers
+        #[cfg(debug_assertions)]
         println!(
             "Original size: {}, Compressed size: {}",
             original.len(),

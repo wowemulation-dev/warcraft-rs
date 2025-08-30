@@ -167,13 +167,13 @@ mod tests {
         // Test write
         let mut data = Vec::new();
         attachment
-            .write(&mut data, M2Version::Classic.to_header_version())
+            .write(&mut data, M2Version::Vanilla.to_header_version())
             .unwrap();
 
         // Test parse
         let mut cursor = Cursor::new(data);
         let parsed =
-            M2Attachment::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
+            M2Attachment::parse(&mut cursor, M2Version::Vanilla.to_header_version()).unwrap();
 
         assert_eq!(parsed.id, 1);
         assert_eq!(parsed.bone_index, 2);

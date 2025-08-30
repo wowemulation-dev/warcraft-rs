@@ -71,6 +71,7 @@ mod tests {
 
         let compressed = compress(original).expect("Compression failed");
 
+        #[cfg(debug_assertions)]
         println!(
             "LZMA - Original size: {}, Compressed size: {}",
             original.len(),

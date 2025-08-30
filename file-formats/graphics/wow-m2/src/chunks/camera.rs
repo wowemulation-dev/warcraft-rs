@@ -141,12 +141,12 @@ mod tests {
         // Test write
         let mut data = Vec::new();
         camera
-            .write(&mut data, M2Version::Classic.to_header_version())
+            .write(&mut data, M2Version::Vanilla.to_header_version())
             .unwrap();
 
         // Test parse
         let mut cursor = Cursor::new(data);
-        let parsed = M2Camera::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
+        let parsed = M2Camera::parse(&mut cursor, M2Version::Vanilla.to_header_version()).unwrap();
 
         assert_eq!(parsed.camera_type, 0);
         assert_eq!(parsed.id, 1);

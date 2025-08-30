@@ -1211,9 +1211,16 @@ impl M2Model {
         let key_bone_lookup =
             read_array(reader, &header.key_bone_lookup, |r| Ok(r.read_u16_le()?))?;
 
-        // Parse vertices
+        // Parse vertices with bone index validation
+        let bone_count = header.bones.count;
         let vertices = read_array(reader, &header.vertices.convert(), |r| {
-            M2Vertex::parse(r, header.version)
+            // CRITICAL FIX: Use validated parsing to prevent out-of-bounds bone references
+            M2Vertex::parse_with_validation(
+                r,
+                header.version,
+                Some(bone_count),
+                crate::chunks::vertex::ValidationMode::default(),
+            )
         })?;
 
         // Parse textures
@@ -1440,7 +1447,7 @@ impl M2Model {
             header.vertices = M2Array::new(self.vertices.len() as u32, current_offset);
 
             let vertex_size =
-                if self.header.version().unwrap_or(M2Version::Classic) >= M2Version::Cataclysm {
+                if self.header.version().unwrap_or(M2Version::Vanilla) >= M2Version::Cataclysm {
                     // Cataclysm and later have secondary texture coordinates
                     44
                 } else {
@@ -1534,7 +1541,7 @@ impl M2Model {
                 data_section.extend_from_slice(&material_data);
             }
 
-            let material_size = match self.header.version().unwrap_or(M2Version::Classic) {
+            let material_size = match self.header.version().unwrap_or(M2Version::Vanilla) {
                 v if v >= M2Version::WoD => 18, // WoD and later have color animation lookup
                 v if v >= M2Version::Cataclysm => 16, // Cataclysm and later have shader ID and secondary texture unit
                 _ => 12,                              // Classic to WotLK
@@ -1696,7 +1703,7 @@ impl M2Model {
 
     /// Calculate the size of the header for this model version
     fn calculate_header_size(&self) -> usize {
-        let version = self.header.version().unwrap_or(M2Version::Classic);
+        let version = self.header.version().unwrap_or(M2Version::Vanilla);
 
         let mut size = 4 + 4; // Magic + version
 
@@ -2304,7 +2311,7 @@ mod tests {
 
         // Create a test model
         let mut test_model = M2Model {
-            header: M2Header::new(M2Version::Classic),
+            header: M2Header::new(M2Version::Vanilla),
             name: Some("test".to_string()),
             global_sequences: Vec::new(),
             animations: Vec::new(),
@@ -2527,7 +2534,7 @@ mod tests {
         };
 
         let model = M2Model {
-            header: M2Header::new(M2Version::Classic),
+            header: M2Header::new(M2Version::Vanilla),
             name: Some("legacy_model".to_string()),
             global_sequences: Vec::new(),
             animations: Vec::new(),

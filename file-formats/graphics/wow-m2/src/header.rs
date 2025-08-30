@@ -240,8 +240,9 @@ impl M2Header {
         let animations = M2Array::parse(reader)?;
         let animation_lookup = M2Array::parse(reader)?;
 
-        // Vanilla/TBC versions have playable animation lookup
-        let playable_animation_lookup = if version <= 263 {
+        // FIXED: Vanilla (256) DOES have playable animation lookup, contrary to previous assumption
+        // This field exists in vanilla, BC, and was removed in Wrath (264+)
+        let playable_animation_lookup = if (256..=263).contains(&version) {
             Some(M2Array::parse(reader)?)
         } else {
             None
@@ -679,13 +680,13 @@ mod tests {
 
     #[test]
     fn test_header_parse_classic() {
-        let data = create_test_header(M2Version::Classic);
+        let data = create_test_header(M2Version::Vanilla);
         let mut cursor = Cursor::new(data);
 
         let header = M2Header::parse(&mut cursor).unwrap();
 
         assert_eq!(header.magic, M2_MAGIC_LEGACY);
-        assert_eq!(header.version, M2Version::Classic.to_header_version());
+        assert_eq!(header.version, M2Version::Vanilla.to_header_version());
         assert_eq!(header.texture_combiner_combos, None);
         assert_eq!(header.texture_transforms, None);
     }
@@ -718,7 +719,7 @@ mod tests {
 
     #[test]
     fn test_header_conversion() {
-        let classic_header = M2Header::new(M2Version::Classic);
+        let classic_header = M2Header::new(M2Version::Vanilla);
 
         // Convert Classic to Cataclysm
         let cataclysm_header = classic_header.convert(M2Version::Cataclysm).unwrap();
@@ -736,10 +737,10 @@ mod tests {
         assert!(legion_header.texture_transforms.is_some());
 
         // Convert Legion back to Classic
-        let classic_header_2 = legion_header.convert(M2Version::Classic).unwrap();
+        let classic_header_2 = legion_header.convert(M2Version::Vanilla).unwrap();
         assert_eq!(
             classic_header_2.version,
-            M2Version::Classic.to_header_version()
+            M2Version::Vanilla.to_header_version()
         );
         assert_eq!(classic_header_2.texture_combiner_combos, None);
         assert_eq!(classic_header_2.texture_transforms, None);

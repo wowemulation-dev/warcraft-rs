@@ -7,6 +7,8 @@ pub mod event;
 pub mod file_references;
 pub mod infrastructure;
 pub mod light;
+pub mod m2_track;
+pub mod m2_track_resolver;
 pub mod material;
 pub mod particle_emitter;
 pub mod physics;
@@ -20,17 +22,23 @@ pub mod transparency_animation;
 pub mod vertex;
 
 // Re-export common types
+pub use animation::M2InterpolationType;
 pub use attachment::{M2Attachment, M2AttachmentType};
 pub use camera::{M2Camera, M2CameraFlags};
 pub use color_animation::{M2Color, M2ColorAnimation};
 pub use event::{M2Event, M2EventType};
 pub use file_references::{
-    AnimationFileIds, AnimationTrack, BoneData, BoneFileIds, BoneNode, CollisionMesh,
-    InterpolationType, LodData, LodLevel, PhysicsData, PhysicsFileId, PhysicsMaterial,
-    SkeletonData, SkeletonFileId, SkinFileIds, TextureFileIds,
+    AnimationFileIds, AnimationTrack, BoneData, BoneFileIds, BoneNode, CollisionMesh, LodData,
+    LodLevel, PhysicsData, PhysicsFileId, PhysicsMaterial, SkeletonData, SkeletonFileId,
+    SkinFileIds, TextureFileIds,
 };
 pub use infrastructure::{ChunkHeader, ChunkReader};
 pub use light::{M2Light, M2LightFlags, M2LightType};
+pub use m2_track::{
+    M2CompQuat, M2Track, M2TrackBase, M2TrackFloat, M2TrackQuat, M2TrackUint16, M2TrackVec3,
+    M2TrackWithRanges,
+};
+pub use m2_track_resolver::{M2TrackQuatExt, M2TrackResolver, M2TrackVec3Ext};
 pub use particle_emitter::{M2ParticleEmitter, M2ParticleEmitterType, M2ParticleFlags};
 pub use physics::{
     M2PhysicsData, M2PhysicsFlags, M2PhysicsJoint, M2PhysicsShape, M2PhysicsShapeType,

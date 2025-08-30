@@ -158,7 +158,7 @@ mod tests {
 
         let mut cursor = Cursor::new(data);
         let material =
-            M2Material::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
+            M2Material::parse(&mut cursor, M2Version::Vanilla.to_header_version()).unwrap();
 
         assert_eq!(
             material.flags,
@@ -176,7 +176,7 @@ mod tests {
 
         let mut data = Vec::new();
         material
-            .write(&mut data, M2Version::Classic.to_header_version())
+            .write(&mut data, M2Version::Vanilla.to_header_version())
             .unwrap();
 
         // Should be 4 bytes total
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_material_size() {
-        assert_eq!(M2Material::size_in_bytes(M2Version::Classic), 4);
+        assert_eq!(M2Material::size_in_bytes(M2Version::Vanilla), 4);
         assert_eq!(M2Material::size_in_bytes(M2Version::Cataclysm), 4);
         assert_eq!(M2Material::size_in_bytes(M2Version::WoD), 4);
     }

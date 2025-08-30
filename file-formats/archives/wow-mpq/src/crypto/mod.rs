@@ -90,6 +90,6 @@ pub use signature::{
 pub use types::hash_type;
 
 // Re-export constants that might be needed elsewhere
-pub use keys::ENCRYPTION_TABLE;
+pub use keys::{ASCII_TO_LOWER, ASCII_TO_UPPER, ENCRYPTION_TABLE};
 
 // Internal-only exports

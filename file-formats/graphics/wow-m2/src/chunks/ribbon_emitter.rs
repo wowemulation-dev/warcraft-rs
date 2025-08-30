@@ -247,13 +247,13 @@ mod tests {
         // Test write
         let mut data = Vec::new();
         ribbon
-            .write(&mut data, M2Version::Classic.to_header_version())
+            .write(&mut data, M2Version::Vanilla.to_header_version())
             .unwrap();
 
         // Test parse
         let mut cursor = Cursor::new(data);
         let parsed =
-            M2RibbonEmitter::parse(&mut cursor, M2Version::Classic.to_header_version()).unwrap();
+            M2RibbonEmitter::parse(&mut cursor, M2Version::Vanilla.to_header_version()).unwrap();
 
         assert_eq!(parsed.bone_index, 1);
         assert_eq!(parsed.position.x, 1.0);
@@ -405,7 +405,7 @@ mod tests {
         assert!(mop_ribbon.variation.is_some());
 
         // Convert back to Classic
-        let classic_ribbon2 = mop_ribbon.convert(M2Version::Classic);
+        let classic_ribbon2 = mop_ribbon.convert(M2Version::Vanilla);
 
         // Should not have texture slice and variation
         assert!(classic_ribbon2.texture_slice.is_none());

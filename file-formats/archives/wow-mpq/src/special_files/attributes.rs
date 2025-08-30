@@ -95,6 +95,12 @@ pub struct Attributes {
     pub flags: AttributeFlags,
     /// Attributes for each file in the block table
     pub file_attributes: Vec<FileAttributes>,
+    /// CRC32 checksum (Phase 1 stub)
+    pub crc32: Option<u32>,
+    /// MD5 checksum (Phase 1 stub)  
+    pub md5: Option<[u8; 16]>,
+    /// File time (Phase 1 stub)
+    pub filetime: Option<u64>,
 }
 
 impl Attributes {
@@ -264,6 +270,9 @@ impl Attributes {
             version,
             flags,
             file_attributes,
+            crc32: None,    // Phase 1 stub
+            md5: None,      // Phase 1 stub
+            filetime: None, // Phase 1 stub
         })
     }
 
@@ -406,6 +415,9 @@ mod tests {
             version: 100,
             flags: AttributeFlags::new(AttributeFlags::ALL),
             file_attributes: file_attrs,
+            crc32: None,    // Phase 1 stub
+            md5: None,      // Phase 1 stub
+            filetime: None, // Phase 1 stub
         };
 
         // Convert to bytes and back

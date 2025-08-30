@@ -1404,6 +1404,9 @@ impl ArchiveBuilder {
             version: Attributes::EXPECTED_VERSION,
             flags: AttributeFlags::new(flags),
             file_attributes,
+            crc32: None,    // Phase 1 stub
+            md5: None,      // Phase 1 stub
+            filetime: None, // Phase 1 stub
         };
 
         // Convert to bytes
