@@ -75,7 +75,57 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("  Triangles: {}", triangles.len());
                     println!("  Submeshes: {}", submeshes.len());
 
-                    // Display submesh details
+                    // Verify triangle indices contain actual mesh data
+                    if indices.len() >= 12 {
+                        println!("\n  Triangle Indices (first 12): {:?}", &indices[..12]);
+
+                        // Check if they're sequential (0,1,2,3...) which would indicate bad data
+                        let sequential = (0..12).map(|i| i as u16).collect::<Vec<_>>();
+                        if indices[..12] == sequential {
+                            println!(
+                                "  ❌ ERROR: Indices are sequential - geometry will be broken!"
+                            );
+                            println!(
+                                "     This indicates the embedded skin data is not being parsed correctly."
+                            );
+                        } else {
+                            println!("  ✅ Indices contain proper triangle data (non-sequential)");
+
+                            // Analyze the triangle pattern
+                            let mut unique_verts = std::collections::HashSet::new();
+                            for idx in &indices[..indices.len().min(30)] {
+                                unique_verts.insert(*idx);
+                            }
+                            println!(
+                                "     First 30 indices reference {} unique vertices",
+                                unique_verts.len()
+                            );
+
+                            // Check for reasonable vertex index range
+                            let max_idx = indices.iter().max().copied().unwrap_or(0);
+                            let min_idx = indices.iter().min().copied().unwrap_or(0);
+                            println!(
+                                "     Index range: {} to {} (model has {} vertices)",
+                                min_idx,
+                                max_idx,
+                                model.vertices.len()
+                            );
+
+                            if max_idx as usize >= model.vertices.len() {
+                                println!("  ⚠️  WARNING: Some indices exceed vertex count!");
+                            }
+                        }
+                    }
+
+                    // Check triangles array (vertex references)
+                    if triangles.len() >= 12 {
+                        println!(
+                            "\n  Triangles/Vertex refs (first 12): {:?}",
+                            &triangles[..12]
+                        );
+                    }
+
+                    // Display submesh details with triangle validation
                     if !submeshes.is_empty() {
                         println!("\n  Submesh Details:");
                         for (j, submesh) in submeshes.iter().enumerate().take(3) {
@@ -85,7 +135,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!("      Vertex Start: {}", submesh.vertex_start);
                             println!("      Vertex Count: {}", submesh.vertex_count);
                             println!("      Triangle Start: {}", submesh.triangle_start);
-                            println!("      Triangle Count: {}", submesh.triangle_count);
+                            println!(
+                                "      Triangle Count: {} ({} triangles)",
+                                submesh.triangle_count,
+                                submesh.triangle_count / 3
+                            );
+
+                            // Sample triangle indices from this submesh
+                            let start = submesh.triangle_start as usize;
+                            let end = (start + 9).min(indices.len());
+                            if start < indices.len() && end > start {
+                                println!("      Sample indices: {:?}", &indices[start..end]);
+                            }
                         }
 
                         if submeshes.len() > 3 {

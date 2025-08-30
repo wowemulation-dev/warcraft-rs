@@ -939,7 +939,46 @@ impl SkinFile {
         }
     }
 
-    /// Get indices regardless of format
+    /// Get resolved vertex indices for rendering
+    ///
+    /// For external .skin files (WotLK+), this applies the two-level indirection:
+    /// - The triangles array contains indices into the indices array (lookup table)
+    /// - The final vertex index = indices[triangles[i]]
+    ///
+    /// For embedded skins (pre-WotLK), the indices are already direct vertex indices.
+    pub fn get_resolved_indices(&self) -> Vec<u16> {
+        match self {
+            SkinFile::Old(_) => {
+                // Embedded/old format: indices are already direct vertex indices
+                self.indices().clone()
+            }
+            SkinFile::New(_) => {
+                // External/new format: apply two-level indirection
+                let indices = self.indices();
+                let triangles = self.triangles();
+
+                // Resolve: final_index = indices[triangles[i]]
+                triangles
+                    .iter()
+                    .map(|&tri_idx| {
+                        if (tri_idx as usize) < indices.len() {
+                            indices[tri_idx as usize]
+                        } else {
+                            // Handle out-of-bounds gracefully
+                            0
+                        }
+                    })
+                    .collect()
+            }
+        }
+    }
+
+    /// Get raw indices array (vertex lookup table)
+    ///
+    /// Note: For rendering, use `get_resolved_indices()` instead.
+    /// This method returns the raw array which has different meanings:
+    /// - Embedded skins: Direct vertex indices
+    /// - External skins: Vertex lookup table
     pub fn indices(&self) -> &Vec<u16> {
         match self {
             SkinFile::New(skin) => &skin.indices,

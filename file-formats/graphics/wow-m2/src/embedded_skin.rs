@@ -80,11 +80,16 @@ impl M2Model {
         }
 
         // For pre-WotLK models, the views array points to ModelView structures
-        // Each ModelView is 28 bytes with the following structure:
-        // nIndex, ofsIndex, nTris, ofsTris, nProps, ofsProps, nSub, ofsSub, nTex, ofsTex, lod (7*4 = 28 bytes)
-        // We need to convert this to our SkinFile format
+        // Based on WMVx analysis, ModelView is 44 bytes (5 M2Arrays + 1 uint32):
+        // - indices: M2Array (count + offset) = 8 bytes
+        // - triangles: M2Array (count + offset) = 8 bytes
+        // - properties: M2Array (count + offset) = 8 bytes
+        // - submeshes: M2Array (count + offset) = 8 bytes
+        // - textureUnits: M2Array (count + offset) = 8 bytes
+        // - boneCountMax: uint32 = 4 bytes
+        // Total: 44 bytes
 
-        let model_view_size = 28; // 7 * 4-byte fields
+        let model_view_size = 44; // Correct size from WMVx analysis
         let model_view_offset = self.header.views.offset as usize + (skin_index * model_view_size);
 
         if model_view_offset + model_view_size > original_m2_data.len() {
@@ -98,7 +103,10 @@ impl M2Model {
         let model_view_data =
             &original_m2_data[model_view_offset..model_view_offset + model_view_size];
 
-        // Parse ModelView fields (all little-endian u32)
+        // Parse ModelView fields as M2Arrays (count + offset pairs)
+        // Each M2Array is 8 bytes: count (u32) + offset (u32)
+
+        // indices M2Array
         let n_index = u32::from_le_bytes([
             model_view_data[0],
             model_view_data[1],
@@ -111,6 +119,8 @@ impl M2Model {
             model_view_data[6],
             model_view_data[7],
         ]);
+
+        // triangles M2Array
         let n_tris = u32::from_le_bytes([
             model_view_data[8],
             model_view_data[9],
@@ -123,6 +133,8 @@ impl M2Model {
             model_view_data[14],
             model_view_data[15],
         ]);
+
+        // properties M2Array
         let _n_props = u32::from_le_bytes([
             model_view_data[16],
             model_view_data[17],
@@ -136,12 +148,52 @@ impl M2Model {
             model_view_data[23],
         ]);
 
+        // submeshes M2Array - THIS IS WHAT WE WERE MISSING!
+        let n_sub = u32::from_le_bytes([
+            model_view_data[24],
+            model_view_data[25],
+            model_view_data[26],
+            model_view_data[27],
+        ]);
+        let ofs_sub = u32::from_le_bytes([
+            model_view_data[28],
+            model_view_data[29],
+            model_view_data[30],
+            model_view_data[31],
+        ]);
+
+        // textureUnits M2Array
+        let _n_tex = u32::from_le_bytes([
+            model_view_data[32],
+            model_view_data[33],
+            model_view_data[34],
+            model_view_data[35],
+        ]);
+        let _ofs_tex = u32::from_le_bytes([
+            model_view_data[36],
+            model_view_data[37],
+            model_view_data[38],
+            model_view_data[39],
+        ]);
+
+        // boneCountMax uint32
+        let _bone_count_max = u32::from_le_bytes([
+            model_view_data[40],
+            model_view_data[41],
+            model_view_data[42],
+            model_view_data[43],
+        ]);
+
+        // Validate ModelView values (debug info removed for production use)
+
         // Sanity check: ModelView data should be reasonable
         // Index count should not exceed total vertices, and offsets should be within file
         if n_index > 100000
             || ofs_index as usize >= original_m2_data.len()
             || n_tris > 100000
             || ofs_tris as usize >= original_m2_data.len()
+            || n_sub > 1000 // Reasonable submesh count limit
+            || (n_sub > 0 && ofs_sub as usize >= original_m2_data.len())
         {
             return Err(M2Error::ParseError(format!(
                 "Skin {} appears to have invalid ModelView data. This may not be a valid embedded skin.",
@@ -149,26 +201,57 @@ impl M2Model {
             )));
         }
 
-        // Create a complete skin buffer that includes both header and data
-        // We need to calculate the total size required
-        let indices_size = (n_index as usize) * 2; // u16 per index
-        let triangles_size = (n_tris as usize) * 2; // u16 per triangle
+        // IMPORTANT: The ModelView field names are misleading!
+        // - nTris/ofsTris contains the INDICES array (triangle vertex indices)
+        // - nIndex/ofsIndex contains the TRIANGLES array (vertex lookup table)
+        // This is counterintuitive but confirmed by working implementations.
+
+        // Calculate actual data sizes based on corrected understanding:
+        // - indices come from nTris/ofsTris (should be the larger array)
+        // - triangles come from nIndex/ofsIndex (should be the smaller array)
+        // - submeshes come from nSub/ofsSub
+        let indices_size = (n_tris as usize) * 2; // Indices from tris field (u16 per index)
+        let triangles_size = (n_index as usize) * 2; // Triangles from index field (u16 per triangle)
+
+        // Calculate submesh data size based on WMVx ModelGeosetM2 structure:
+        // - Pre-TBC (versions < 260): 8 uint16_t + 1 Vector3 = 28 bytes on disk
+        // - TBC+ (versions >= 260): 10 uint16_t + 2 Vector3 + 1 float = 48 bytes
+        // NOTE: We always allocate 48 bytes per submesh in our buffer for the parser,
+        // but we read the original size from the file
+        let original_submesh_size_per_entry = if self.header.version < 260 {
+            28 // Original vanilla size on disk
+        } else {
+            48 // TBC+ size (same as buffer size)
+        };
+
+        let original_submeshes_size = (n_sub as usize) * original_submesh_size_per_entry;
+        let buffer_submeshes_size = (n_sub as usize) * 48; // Always 48 bytes per submesh in buffer
 
         // Verify offsets are within bounds
-        if ofs_index as usize + indices_size > original_m2_data.len() {
+        if ofs_tris as usize + indices_size > original_m2_data.len() {
             return Err(M2Error::ParseError(format!(
-                "Index data at offset {:#x} + {} exceeds file size {}",
-                ofs_index,
+                "Indices data at offset {:#x} + {} exceeds file size {}",
+                ofs_tris,
                 indices_size,
                 original_m2_data.len()
             )));
         }
 
-        if ofs_tris as usize + triangles_size > original_m2_data.len() {
+        if ofs_index as usize + triangles_size > original_m2_data.len() {
             return Err(M2Error::ParseError(format!(
-                "Triangle data at offset {:#x} + {} exceeds file size {}",
-                ofs_tris,
+                "Triangles data at offset {:#x} + {} exceeds file size {}",
+                ofs_index,
                 triangles_size,
+                original_m2_data.len()
+            )));
+        }
+
+        // Verify submeshes offset is within bounds if we have submeshes
+        if n_sub > 0 && ofs_sub as usize + original_submeshes_size > original_m2_data.len() {
+            return Err(M2Error::ParseError(format!(
+                "Submeshes data at offset {:#x} + {} exceeds file size {}",
+                ofs_sub,
+                original_submeshes_size,
                 original_m2_data.len()
             )));
         }
@@ -177,47 +260,98 @@ impl M2Model {
         let header_size = 40; // 5 M2Arrays * 8 bytes each
         let indices_buffer_offset = header_size;
         let triangles_buffer_offset = indices_buffer_offset + indices_size;
-        let total_buffer_size = triangles_buffer_offset + triangles_size;
+        let submeshes_buffer_offset = triangles_buffer_offset + triangles_size;
+        let total_buffer_size = submeshes_buffer_offset + buffer_submeshes_size;
+
+        // Allocate buffer for skin data with proper layout
 
         let mut skin_buffer = vec![0u8; total_buffer_size];
 
         // Write header at the beginning
         let mut cursor = Cursor::new(&mut skin_buffer);
 
-        // Write indices array (count, buffer offset)
-        cursor.write_all(&n_index.to_le_bytes())?;
-        cursor.write_all(&(indices_buffer_offset as u32).to_le_bytes())?;
+        // Write the skin header with corrected field mapping:
+        // The skin format expects: indices array first, then triangles array
+        // But ModelView has them labeled backwards, so we must carefully map:
 
-        // Write triangles array (count, buffer offset)
-        cursor.write_all(&n_tris.to_le_bytes())?;
-        cursor.write_all(&(triangles_buffer_offset as u32).to_le_bytes())?;
+        // Write indices array header (from nTris/ofsTris in ModelView)
+        cursor.write_all(&n_tris.to_le_bytes())?; // Count of indices (from tris field)
+        cursor.write_all(&(indices_buffer_offset as u32).to_le_bytes())?; // Offset to indices data
+
+        // Write triangles array header (from nIndex/ofsIndex in ModelView)
+        cursor.write_all(&n_index.to_le_bytes())?; // Count of triangles (from index field)
+        cursor.write_all(&(triangles_buffer_offset as u32).to_le_bytes())?; // Offset to triangles data
 
         // Write empty bone_indices array
         cursor.write_all(&0u32.to_le_bytes())?;
         cursor.write_all(&0u32.to_le_bytes())?;
 
-        // Write empty submeshes array
-        cursor.write_all(&0u32.to_le_bytes())?;
-        cursor.write_all(&0u32.to_le_bytes())?;
+        // Write submeshes array header (from nSub/ofsSub in ModelView)
+        cursor.write_all(&n_sub.to_le_bytes())?; // Count of submeshes
+        cursor.write_all(&(submeshes_buffer_offset as u32).to_le_bytes())?; // Offset to submeshes data
 
         // Write empty material_lookup array
         cursor.write_all(&0u32.to_le_bytes())?;
         cursor.write_all(&0u32.to_le_bytes())?;
 
-        // Copy actual data from the original M2 file
-        // Copy indices data
-        if n_index > 0 {
+        // Copy actual data from the original M2 file with corrected mapping:
+        // Copy indices data (from ofsTris in ModelView)
+        if n_tris > 0 {
             let src_indices =
-                &original_m2_data[ofs_index as usize..(ofs_index as usize + indices_size)];
+                &original_m2_data[ofs_tris as usize..(ofs_tris as usize + indices_size)];
             skin_buffer[indices_buffer_offset..triangles_buffer_offset]
                 .copy_from_slice(src_indices);
         }
 
-        // Copy triangles data
-        if n_tris > 0 {
+        // Copy triangles data (from ofsIndex in ModelView)
+        if n_index > 0 {
             let src_triangles =
-                &original_m2_data[ofs_tris as usize..(ofs_tris as usize + triangles_size)];
-            skin_buffer[triangles_buffer_offset..total_buffer_size].copy_from_slice(src_triangles);
+                &original_m2_data[ofs_index as usize..(ofs_index as usize + triangles_size)];
+            skin_buffer[triangles_buffer_offset..submeshes_buffer_offset]
+                .copy_from_slice(src_triangles);
+        }
+
+        // Copy submesh data (from ofsSub in ModelView)
+        if n_sub > 0 {
+            let src_submeshes =
+                &original_m2_data[ofs_sub as usize..(ofs_sub as usize + original_submeshes_size)];
+
+            if self.header.version < 260 {
+                // For vanilla models, we need to pad each 28-byte submesh to 48 bytes
+                // The vanilla structure has:
+                // - 8 uint16 fields (16 bytes)
+                // - Then the structure ends at 28 bytes total
+                // The modern structure adds:
+                // - 1 more uint16 + padding (4 bytes total)
+                // - 2 Vec3 fields (24 bytes)
+                // - 1 float field (4 bytes)
+                let mut submesh_offset = 0;
+                for i in 0..n_sub {
+                    let src_start = submesh_offset;
+                    let src_end = src_start + 28;
+                    let dst_start = submeshes_buffer_offset + (i as usize * 48);
+                    let dst_end = dst_start + 48;
+
+                    // Copy the 28 bytes of vanilla submesh data
+                    if src_end <= src_submeshes.len() && dst_end <= skin_buffer.len() {
+                        skin_buffer[dst_start..dst_start + 28]
+                            .copy_from_slice(&src_submeshes[src_start..src_end]);
+
+                        // The remaining 20 bytes (48 - 28) are already zeroed from vec initialization
+                        // This gives us:
+                        // - bone_influence: 0 (u16)
+                        // - padding: 0 (u16)
+                        // - center: [0.0, 0.0, 0.0] (3 f32)
+                        // - sort_center: [0.0, 0.0, 0.0] (3 f32)
+                        // - bounding_radius: 0.0 (f32)
+                    }
+                    submesh_offset += 28;
+                }
+            } else {
+                // For TBC+ models, copy directly since they're already 48 bytes
+                skin_buffer[submeshes_buffer_offset..total_buffer_size]
+                    .copy_from_slice(src_submeshes);
+            }
         }
 
         // Create a cursor with our complete skin buffer
@@ -373,32 +507,55 @@ mod tests {
         let mut m2_data = vec![0u8; 0x2000];
 
         // Write a ModelView structure at 0x1000
-        // ModelView is 28 bytes: nIndex, ofsIndex, nTris, ofsTris, nProps, ofsProps, nSub, ofsSub, nTex, ofsTex, lod
+        // ModelView is 44 bytes (5 M2Arrays + 1 uint32): indices, triangles, properties, submeshes, textureUnits, boneCountMax
         let mut cursor = std::io::Cursor::new(&mut m2_data[0x1000..]);
-        
-        // Write ModelView fields
-        cursor.write_all(&10u32.to_le_bytes()).unwrap(); // nIndex (10 indices)
-        cursor.write_all(&0x1200u32.to_le_bytes()).unwrap(); // ofsIndex
-        cursor.write_all(&6u32.to_le_bytes()).unwrap(); // nTris (6 triangles)  
-        cursor.write_all(&0x1220u32.to_le_bytes()).unwrap(); // ofsTris
-        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // nProps
-        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // ofsProps
-        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // nSub
-        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // ofsSub
-        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // nTex
-        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // ofsTex
-        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // lod
+
+        // Write ModelView fields (as M2Arrays: count + offset)
+        cursor.write_all(&10u32.to_le_bytes()).unwrap(); // indices.count (10 indices)
+        cursor.write_all(&0x1200u32.to_le_bytes()).unwrap(); // indices.offset
+        cursor.write_all(&6u32.to_le_bytes()).unwrap(); // triangles.count (6 triangles)  
+        cursor.write_all(&0x1220u32.to_le_bytes()).unwrap(); // triangles.offset
+        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // properties.count
+        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // properties.offset
+        cursor.write_all(&2u32.to_le_bytes()).unwrap(); // submeshes.count (2 submeshes)
+        cursor.write_all(&0x1240u32.to_le_bytes()).unwrap(); // submeshes.offset
+        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // textureUnits.count
+        cursor.write_all(&0u32.to_le_bytes()).unwrap(); // textureUnits.offset
+        cursor.write_all(&50u32.to_le_bytes()).unwrap(); // boneCountMax
 
         // Write some dummy index data at 0x1200 (10 indices * 2 bytes)
         for i in 0..10u16 {
             let idx_pos = 0x1200 + (i as usize * 2);
             m2_data[idx_pos..idx_pos + 2].copy_from_slice(&i.to_le_bytes());
         }
-        
+
         // Write some dummy triangle data at 0x1220 (6 triangles * 2 bytes)
         for i in 0..6u16 {
             let tri_pos = 0x1220 + (i as usize * 2);
             m2_data[tri_pos..tri_pos + 2].copy_from_slice(&i.to_le_bytes());
+        }
+
+        // Write dummy submesh data at 0x1240 (2 submeshes * 28 bytes each for vanilla)
+        // Each vanilla submesh has 8 uint16 fields (16 bytes) and ends at 28 bytes
+        for i in 0..2u32 {
+            let submesh_pos = 0x1240 + (i as usize * 28);
+            let mut submesh_cursor = std::io::Cursor::new(&mut m2_data[submesh_pos..]);
+            submesh_cursor.write_all(&(i as u16).to_le_bytes()).unwrap(); // id
+            submesh_cursor.write_all(&0u16.to_le_bytes()).unwrap(); // level
+            submesh_cursor
+                .write_all(&(i as u16 * 5).to_le_bytes())
+                .unwrap(); // vertex_start
+            submesh_cursor.write_all(&5u16.to_le_bytes()).unwrap(); // vertex_count
+            submesh_cursor
+                .write_all(&(i as u16 * 3).to_le_bytes())
+                .unwrap(); // triangle_start
+            submesh_cursor.write_all(&3u16.to_le_bytes()).unwrap(); // triangle_count
+            submesh_cursor.write_all(&0u16.to_le_bytes()).unwrap(); // bone_start
+            submesh_cursor.write_all(&0u16.to_le_bytes()).unwrap(); // bone_count
+            // Remaining fields up to 28 bytes
+            for _ in 0..(28 - 16) {
+                submesh_cursor.write_all(&0u8.to_le_bytes()).unwrap();
+            }
         }
 
         // Create a model and test parsing
@@ -415,9 +572,12 @@ mod tests {
         );
 
         let skin = result.unwrap();
-        assert_eq!(skin.indices().len(), 10);
-        assert_eq!(skin.triangles().len(), 6);
-        // No submeshes in this simplified test (they were optional anyway)
-        assert_eq!(skin.submeshes().len(), 0);
+        // With corrected field mapping:
+        // - nTris (6) becomes indices count (triangle vertex indices)
+        // - nIndex (10) becomes triangles count (vertex lookup table)
+        // - nSub (2) becomes submeshes count
+        assert_eq!(skin.indices().len(), 6);
+        assert_eq!(skin.triangles().len(), 10);
+        assert_eq!(skin.submeshes().len(), 2);
     }
 }

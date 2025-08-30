@@ -170,19 +170,96 @@ pub fn execute(cmd: M2Commands) -> Result<()> {
 fn handle_info(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading M2 model: {}", path.display());
 
-    let _model = M2Model::load(&path)
+    let m2_format = M2Model::load(&path)
         .with_context(|| format!("Failed to load M2 model from {}", path.display()))?;
 
+    let model = m2_format.model();
     println!("\n=== M2 Model Information ===");
 
-    // Note: Many fields are private in the M2Model struct, so we can only show basic info
-    // The actual model implementation would need to expose more public methods/fields
+    // Display version information
+    println!("Version: {}", model.header.version);
+    if let Some(version) = model.header.version() {
+        println!("Expansion: {:?}", version);
+        println!(
+            "Format: {}",
+            if version >= M2Version::Legion {
+                "Chunked (MD21)"
+            } else {
+                "Legacy (MD20)"
+            }
+        );
+    } else {
+        println!("Expansion: Unknown");
+        println!("Format: Unknown");
+    }
 
-    println!("File loaded successfully!");
+    // Display model name if available
+    if let Some(ref name) = model.name {
+        println!("Model Name: {}", name);
+    }
+
+    // Display basic counts
+    println!("Vertices: {}", model.header.vertices.count);
+    println!("Bones: {}", model.header.bones.count);
+    println!("Animations: {}", model.header.animations.count);
+    println!("Textures: {}", model.header.textures.count);
+
+    // Display skin information
+    if let Some(version) = model.header.version() {
+        if version <= M2Version::TBC {
+            println!("Skin Format: Embedded (Pre-WotLK)");
+            println!("Skin Profiles: {}", model.header.views.count);
+        } else {
+            println!("Skin Format: External (WotLK+)");
+            if let Some(count) = model.header.num_skin_profiles {
+                println!("Skin Profiles: {}", count);
+            }
+        }
+    }
 
     if detailed {
         println!("\n=== Detailed Information ===");
-        println!("(Detailed information requires additional public API methods)");
+        println!("Global Sequences: {}", model.header.global_sequences.count);
+        println!("Color Animations: {}", model.header.color_animations.count);
+        println!(
+            "Transparency Animations: {}",
+            model.header.transparency_animations.count
+        );
+        println!(
+            "Texture Animations: {}",
+            model.header.texture_animations.count
+        );
+        println!("Key Bone Lookups: {}", model.header.key_bone_lookup.count);
+        println!("Texture Units: {}", model.header.texture_units.count);
+
+        // Bounding box information
+        println!("\n--- Bounding Information ---");
+        let bbox_min = model.header.bounding_box_min;
+        let bbox_max = model.header.bounding_box_max;
+        println!(
+            "Bounding Box: [{:.2}, {:.2}, {:.2}] to [{:.2}, {:.2}, {:.2}]",
+            bbox_min[0], bbox_min[1], bbox_min[2], bbox_max[0], bbox_max[1], bbox_max[2]
+        );
+        println!(
+            "Bounding Sphere Radius: {:.2}",
+            model.header.bounding_sphere_radius
+        );
+
+        // Collision information
+        let col_min = model.header.collision_box_min;
+        let col_max = model.header.collision_box_max;
+        println!(
+            "Collision Box: [{:.2}, {:.2}, {:.2}] to [{:.2}, {:.2}, {:.2}]",
+            col_min[0], col_min[1], col_min[2], col_max[0], col_max[1], col_max[2]
+        );
+        println!(
+            "Collision Sphere Radius: {:.2}",
+            model.header.collision_sphere_radius
+        );
+
+        // Model flags
+        println!("\n--- Model Flags ---");
+        println!("Flags: {:?}", model.header.flags);
     }
 
     Ok(())
@@ -238,27 +315,380 @@ fn handle_validate(path: PathBuf, show_warnings: bool) -> Result<()> {
     Ok(())
 }
 
-fn handle_tree(path: PathBuf, max_depth: usize, _show_size: bool, _show_refs: bool) -> Result<()> {
-    let _model = M2Model::load(&path)
+fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool) -> Result<()> {
+    println!("Loading M2 model: {}", path.display());
+
+    let m2_format = M2Model::load(&path)
         .with_context(|| format!("Failed to load M2 model from {}", path.display()))?;
+    let model = m2_format.model();
 
-    let root = TreeNode::new("M2 Model".to_string(), NodeType::Root);
+    // Load the original file data for embedded skin parsing
+    let original_m2_data = std::fs::read(&path).with_context(|| {
+        format!(
+            "Failed to read original M2 file data from {}",
+            path.display()
+        )
+    })?;
 
-    // Since most model fields are private, we can only show a basic structure
-    // A real implementation would need the M2Model to expose more information
+    // Determine version and format details
+    let version_info = if let Some(version) = model.header.version() {
+        format!("{:?} ({})", version, model.header.version)
+    } else {
+        format!("Unknown ({})", model.header.version)
+    };
 
+    let format_type = match model.header.version() {
+        Some(v) if v >= M2Version::Legion => "Chunked (MD21)",
+        Some(_) => "Legacy (MD20)",
+        None => "Unknown",
+    };
+
+    // Build the main model tree
+    let mut root = TreeNode::new(
+        format!(
+            "M2 Model: {}",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        ),
+        NodeType::Root,
+    )
+    .with_metadata("version", &version_info)
+    .with_metadata("format", format_type)
+    .with_metadata("path", &path.to_string_lossy());
+
+    // Add header information
+    let mut header_node = TreeNode::new("Header".to_string(), NodeType::Header)
+        .with_metadata("magic", &String::from_utf8_lossy(&model.header.magic))
+        .with_metadata("version", &model.header.version.to_string())
+        .with_metadata("flags", &format!("{:?}", model.header.flags));
+
+    if let Some(ref name) = model.name {
+        header_node = header_node.with_metadata("model_name", name);
+    }
+
+    // Add bounding information
+    let bounds_node = TreeNode::new("Bounding Data".to_string(), NodeType::Data)
+        .with_metadata(
+            "bounding_box_min",
+            &format!("{:.2?}", model.header.bounding_box_min),
+        )
+        .with_metadata(
+            "bounding_box_max",
+            &format!("{:.2?}", model.header.bounding_box_max),
+        )
+        .with_metadata(
+            "bounding_radius",
+            &format!("{:.2}", model.header.bounding_sphere_radius),
+        )
+        .with_metadata(
+            "collision_box_min",
+            &format!("{:.2?}", model.header.collision_box_min),
+        )
+        .with_metadata(
+            "collision_box_max",
+            &format!("{:.2?}", model.header.collision_box_max),
+        )
+        .with_metadata(
+            "collision_radius",
+            &format!("{:.2}", model.header.collision_sphere_radius),
+        );
+
+    header_node = header_node.add_child(bounds_node);
+    root = root.add_child(header_node);
+
+    // Add geometry information
+    let mut geometry_node = TreeNode::new("Geometry".to_string(), NodeType::Data)
+        .with_metadata("vertices", &model.header.vertices.count.to_string())
+        .with_metadata("bones", &model.header.bones.count.to_string());
+
+    if show_size {
+        geometry_node = geometry_node
+            .with_metadata(
+                "vertex_data_offset",
+                &format!("0x{:x}", model.header.vertices.offset),
+            )
+            .with_metadata(
+                "bone_data_offset",
+                &format!("0x{:x}", model.header.bones.offset),
+            );
+    }
+
+    root = root.add_child(geometry_node);
+
+    // Add animation information
+    let mut anim_node = TreeNode::new("Animations".to_string(), NodeType::Data)
+        .with_metadata("sequences", &model.header.animations.count.to_string())
+        .with_metadata(
+            "global_sequences",
+            &model.header.global_sequences.count.to_string(),
+        )
+        .with_metadata(
+            "key_bone_lookups",
+            &model.header.key_bone_lookup.count.to_string(),
+        );
+
+    if show_size {
+        anim_node = anim_node
+            .with_metadata(
+                "animation_offset",
+                &format!("0x{:x}", model.header.animations.offset),
+            )
+            .with_metadata(
+                "global_seq_offset",
+                &format!("0x{:x}", model.header.global_sequences.offset),
+            );
+    }
+
+    root = root.add_child(anim_node);
+
+    // Add texture information
+    let mut texture_node = TreeNode::new("Textures".to_string(), NodeType::Data)
+        .with_metadata("textures", &model.header.textures.count.to_string())
+        .with_metadata(
+            "texture_units",
+            &model.header.texture_units.count.to_string(),
+        )
+        .with_metadata(
+            "texture_lookups",
+            &model.header.texture_lookup_table.count.to_string(),
+        )
+        .with_metadata(
+            "texture_animations",
+            &model.header.texture_animations.count.to_string(),
+        );
+
+    if show_size {
+        texture_node = texture_node
+            .with_metadata(
+                "texture_offset",
+                &format!("0x{:x}", model.header.textures.offset),
+            )
+            .with_metadata(
+                "texture_unit_offset",
+                &format!("0x{:x}", model.header.texture_units.offset),
+            );
+    }
+
+    root = root.add_child(texture_node);
+
+    // Add version-specific skin information
+    if let Some(version) = model.header.version() {
+        let skin_node = if version <= M2Version::TBC {
+            // Pre-WotLK: Embedded skins
+            let mut node = TreeNode::new("Skin Data (Embedded)".to_string(), NodeType::Data)
+                .with_metadata("format", "Embedded (Pre-WotLK)")
+                .with_metadata("profiles", &model.header.views.count.to_string());
+
+            if show_size {
+                node = node.with_metadata(
+                    "views_offset",
+                    &format!("0x{:x}", model.header.views.offset),
+                );
+            }
+
+            // Actually parse embedded skin profiles and show detailed information
+            for i in 0..model.header.views.count {
+                let skin_profile_name = format!("Skin Profile {}", i);
+                let mut profile_node = TreeNode::new(skin_profile_name, NodeType::Data)
+                    .with_metadata("index", &i.to_string());
+
+                // Try to parse the embedded skin
+                match model.parse_embedded_skin(&original_m2_data, i as usize) {
+                    Ok(skin) => {
+                        profile_node = profile_node
+                            .with_metadata("status", "✅ Parsed successfully")
+                            .with_metadata("indices_count", &skin.indices().len().to_string())
+                            .with_metadata("triangles_count", &skin.triangles().len().to_string())
+                            .with_metadata("submeshes_count", &skin.submeshes().len().to_string());
+
+                        // Add submesh details
+                        if !skin.submeshes().is_empty() {
+                            for (submesh_idx, submesh) in skin.submeshes().iter().enumerate() {
+                                let submesh_name = format!("Submesh {}", submesh_idx);
+                                let submesh_node = TreeNode::new(submesh_name, NodeType::Data)
+                                    .with_metadata("id", &submesh.id.to_string())
+                                    .with_metadata(
+                                        "vertex_start",
+                                        &submesh.vertex_start.to_string(),
+                                    )
+                                    .with_metadata(
+                                        "vertex_count",
+                                        &submesh.vertex_count.to_string(),
+                                    )
+                                    .with_metadata(
+                                        "triangle_start",
+                                        &submesh.triangle_start.to_string(),
+                                    )
+                                    .with_metadata(
+                                        "triangle_count",
+                                        &submesh.triangle_count.to_string(),
+                                    )
+                                    .with_metadata("bone_count", &submesh.bone_count.to_string())
+                                    .with_metadata("bone_start", &submesh.bone_start.to_string());
+
+                                profile_node = profile_node.add_child(submesh_node);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        profile_node = profile_node
+                            .with_metadata("status", &format!("❌ Parse failed: {}", e))
+                            .with_metadata(
+                                "note",
+                                if i == 0 {
+                                    "Main skin should be valid"
+                                } else {
+                                    "Secondary skins often contain invalid data"
+                                },
+                            );
+                    }
+                }
+
+                node = node.add_child(profile_node);
+            }
+
+            node
+        } else {
+            // WotLK+: External skins
+            let mut node = TreeNode::new("Skin Data (External)".to_string(), NodeType::Data)
+                .with_metadata("format", "External (.skin files)");
+
+            if let Some(count) = model.header.num_skin_profiles {
+                node = node.with_metadata("profiles", &count.to_string());
+            }
+
+            // Try to parse external skin files
+            let base_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("model");
+            let skin_count = model.header.num_skin_profiles.unwrap_or(1);
+
+            for i in 0..skin_count {
+                let skin_filename = format!("{}{:02}.skin", base_name, i);
+                let mut skin_path = path.clone();
+                skin_path.set_file_name(&skin_filename);
+
+                let mut skin_ref_node = TreeNode::new(skin_filename.clone(), NodeType::Reference)
+                    .with_metadata("type", "External Skin File")
+                    .with_metadata("index", &i.to_string());
+
+                // Try to load and parse the external skin file
+                match wow_m2::SkinFile::load(&skin_path) {
+                    Ok(skin) => {
+                        skin_ref_node = skin_ref_node
+                            .with_metadata("status", "✅ Loaded successfully")
+                            .with_metadata("indices_count", &skin.indices().len().to_string())
+                            .with_metadata("triangles_count", &skin.triangles().len().to_string())
+                            .with_metadata("submeshes_count", &skin.submeshes().len().to_string());
+
+                        // Add submesh details for external skins too
+                        if !skin.submeshes().is_empty() {
+                            for (submesh_idx, submesh) in skin.submeshes().iter().enumerate() {
+                                let submesh_name = format!("Submesh {}", submesh_idx);
+                                let submesh_node = TreeNode::new(submesh_name, NodeType::Data)
+                                    .with_metadata("id", &submesh.id.to_string())
+                                    .with_metadata(
+                                        "vertex_start",
+                                        &submesh.vertex_start.to_string(),
+                                    )
+                                    .with_metadata(
+                                        "vertex_count",
+                                        &submesh.vertex_count.to_string(),
+                                    )
+                                    .with_metadata(
+                                        "triangle_start",
+                                        &submesh.triangle_start.to_string(),
+                                    )
+                                    .with_metadata(
+                                        "triangle_count",
+                                        &submesh.triangle_count.to_string(),
+                                    )
+                                    .with_metadata("bone_count", &submesh.bone_count.to_string())
+                                    .with_metadata("bone_start", &submesh.bone_start.to_string());
+
+                                skin_ref_node = skin_ref_node.add_child(submesh_node);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        skin_ref_node = skin_ref_node
+                            .with_metadata("status", &format!("❌ Not found/failed: {}", e))
+                            .with_metadata("path", skin_path.to_string_lossy().as_ref());
+                    }
+                }
+
+                node = node.add_child(skin_ref_node);
+            }
+
+            node
+        };
+
+        root = root.add_child(skin_node);
+    }
+
+    // Add material and rendering information
+    let mut material_node = TreeNode::new("Materials & Rendering".to_string(), NodeType::Data)
+        .with_metadata("render_flags", &model.header.render_flags.count.to_string())
+        .with_metadata(
+            "color_animations",
+            &model.header.color_animations.count.to_string(),
+        )
+        .with_metadata(
+            "transparency_animations",
+            &model.header.transparency_animations.count.to_string(),
+        );
+
+    if show_size {
+        material_node = material_node
+            .with_metadata(
+                "render_flags_offset",
+                &format!("0x{:x}", model.header.render_flags.offset),
+            )
+            .with_metadata(
+                "color_anim_offset",
+                &format!("0x{:x}", model.header.color_animations.offset),
+            );
+    }
+
+    root = root.add_child(material_node);
+
+    // Add version-specific features
+    if let Some(version) = model.header.version() {
+        if version >= M2Version::Cataclysm {
+            if let Some(ref combos) = model.header.texture_combiner_combos {
+                let combo_node = TreeNode::new(
+                    "Texture Combiner Combos (Cataclysm+)".to_string(),
+                    NodeType::Data,
+                )
+                .with_metadata("count", &combos.count.to_string())
+                .with_metadata("offset", &format!("0x{:x}", combos.offset));
+                root = root.add_child(combo_node);
+            }
+        }
+
+        if version >= M2Version::WotLK {
+            // Add chunked format features for newer versions
+            if version >= M2Version::Legion {
+                let chunks_node = TreeNode::new(
+                    "Chunked Format Features (Legion+)".to_string(),
+                    NodeType::Data,
+                )
+                .with_metadata("format", "MD21 Chunked")
+                .with_metadata("note", "Additional chunks may be present");
+                root = root.add_child(chunks_node);
+            }
+        }
+    }
+
+    // Configure tree rendering options
     let options = TreeOptions {
         max_depth: Some(max_depth),
-        show_external_refs: _show_refs,
+        show_external_refs: show_refs,
         no_color: false,
         show_metadata: true,
         compact: false,
     };
 
     let tree_output = render_tree(&root, &options);
-    print!("{tree_output}");
+    println!("{}", tree_output);
 
-    println!("\n(Note: Full tree visualization requires additional public API methods)");
     Ok(())
 }
 
