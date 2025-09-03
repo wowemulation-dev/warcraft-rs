@@ -105,6 +105,10 @@ pub enum MpqCommands {
         /// Specific files to extract (extracts all if not specified)
         files: Vec<String>,
 
+        /// File types to extract (e.g. ".txt", "jpg"). Case-insensitive. Ignored if [FILES] are specified.
+        #[arg(short, long)]
+        file_type: Option<String>,
+
         /// Preserve directory structure
         #[arg(short, long)]
         preserve_paths: bool,
@@ -375,6 +379,7 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             archive,
             output,
             files,
+            file_type,
             preserve_paths,
             threads,
             skip_errors,
@@ -383,6 +388,7 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             &archive,
             &output,
             files,
+            file_type,
             preserve_paths,
             threads,
             skip_errors,
@@ -578,6 +584,7 @@ fn extract_files(
     archive_path: &str,
     output_dir: &str,
     files: Vec<String>,
+    file_type: Option<String>,
     preserve_paths: bool,
     threads: Option<usize>,
     skip_errors: bool,
@@ -591,7 +598,7 @@ fn extract_files(
             let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
 
             // Try to read (listfile) directly for faster bulk operations
-            match archive.read_file("(listfile)") {
+            let mut file_list = match archive.read_file("(listfile)") {
                 Ok(listfile_data) => {
                     println!("Parsing listfile...");
                     match wow_mpq::special_files::parse_listfile(&listfile_data) {
@@ -623,7 +630,25 @@ fn extract_files(
                     println!("Found {} files", file_list.len());
                     file_list
                 }
+            };
+
+            // Filter by file type if specified
+            if let Some(file_type) = file_type {
+                println!("Filtering by file type...");
+                file_list.retain(|f| {
+                    // Ignore case
+                    let lowercase_filename = f.to_lowercase();
+                    let lowercase_file_type = file_type.to_lowercase();
+                    lowercase_filename.ends_with(&lowercase_file_type)
+                });
+                println!(
+                    "Found {} files matching type {}",
+                    file_list.len(),
+                    file_type
+                );
             }
+
+            file_list
         } else {
             files
         };
