@@ -41,13 +41,13 @@ pub struct M2Vertex {
     pub normal: C3Vector,
     /// Primary texture coordinates
     pub tex_coords: C2Vector,
-    /// Secondary texture coordinates (added in Cataclysm)
-    pub tex_coords2: Option<C2Vector>,
+    /// Secondary texture coordinates
+    pub tex_coords2: C2Vector,
 }
 
 impl M2Vertex {
     /// Parse a vertex from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+    pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
         // Position
         let position = C3Vector::parse(reader)?;
 
@@ -73,16 +73,8 @@ impl M2Vertex {
         // Texture coordinates
         let tex_coords = C2Vector::parse(reader)?;
 
-        // Secondary texture coordinates (added in Cataclysm)
-        let tex_coords2 = if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version >= M2Version::WotLK {
-                Some(C2Vector::parse(reader)?)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        // Secondary texture coordinates
+        let tex_coords2 = C2Vector::parse(reader)?;
 
         Ok(Self {
             position,
@@ -95,7 +87,7 @@ impl M2Vertex {
     }
 
     /// Write a vertex to a writer based on the M2 version
-    pub fn write<W: Write>(&self, writer: &mut W, version: u32) -> Result<()> {
+    pub fn write<W: Write>(&self, writer: &mut W, _version: u32) -> Result<()> {
         // Position
         self.position.write(writer)?;
 
@@ -114,36 +106,14 @@ impl M2Vertex {
 
         // Texture coordinates
         self.tex_coords.write(writer)?;
-
-        // Secondary texture coordinates (if version supports it)
-        if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version >= M2Version::Cataclysm {
-                if let Some(tex_coords2) = self.tex_coords2 {
-                    tex_coords2.write(writer)?;
-                } else {
-                    // Write default values if missing
-                    C2Vector { x: 0.0, y: 0.0 }.write(writer)?;
-                }
-            }
-        }
+        self.tex_coords2.write(writer)?;
 
         Ok(())
     }
 
     /// Convert this vertex to a different version
-    pub fn convert(&self, target_version: M2Version) -> Self {
-        let mut new_vertex = self.clone();
-
-        // Handle version-specific conversions
-        if target_version >= M2Version::Cataclysm && self.tex_coords2.is_none() {
-            // When upgrading to Cataclysm or later, add secondary texture coordinates if missing
-            new_vertex.tex_coords2 = Some(self.tex_coords);
-        } else if target_version < M2Version::Cataclysm {
-            // When downgrading to pre-Cataclysm, remove secondary texture coordinates
-            new_vertex.tex_coords2 = None;
-        }
-
-        new_vertex
+    pub fn convert(&self, _target_version: M2Version) -> Self {
+        self.clone()
     }
 
     /// Get the effective bone count used by this vertex
@@ -193,7 +163,7 @@ mod tests {
     use std::io::Cursor;
 
     #[test]
-    fn test_vertex_parse_classic() {
+    fn test_vertex_parse() {
         let mut data = Vec::new();
 
         // Position
@@ -219,6 +189,8 @@ mod tests {
         data.extend_from_slice(&std::f32::consts::FRAC_1_SQRT_2.to_le_bytes());
 
         // Texture coordinates
+        data.extend_from_slice(&0.0f32.to_le_bytes());
+        data.extend_from_slice(&1.0f32.to_le_bytes());
         data.extend_from_slice(&0.0f32.to_le_bytes());
         data.extend_from_slice(&1.0f32.to_le_bytes());
 
@@ -239,65 +211,8 @@ mod tests {
         assert_eq!(vertex.tex_coords.x, 0.0);
         assert_eq!(vertex.tex_coords.y, 1.0);
 
-        assert!(vertex.tex_coords2.is_none());
-    }
-
-    #[test]
-    fn test_vertex_parse_cataclysm() {
-        let mut data = Vec::new();
-
-        // Position
-        data.extend_from_slice(&1.0f32.to_le_bytes());
-        data.extend_from_slice(&2.0f32.to_le_bytes());
-        data.extend_from_slice(&3.0f32.to_le_bytes());
-
-        // Bone weights
-        data.push(255);
-        data.push(128);
-        data.push(64);
-        data.push(0);
-
-        // Bone indices
-        data.push(0);
-        data.push(1);
-        data.push(2);
-        data.push(3);
-
-        // Normal
-        data.extend_from_slice(&0.5f32.to_le_bytes());
-        data.extend_from_slice(&0.5f32.to_le_bytes());
-        data.extend_from_slice(&std::f32::consts::FRAC_1_SQRT_2.to_le_bytes());
-
-        // Texture coordinates
-        data.extend_from_slice(&0.0f32.to_le_bytes());
-        data.extend_from_slice(&1.0f32.to_le_bytes());
-
-        // Secondary texture coordinates (added in Cataclysm)
-        data.extend_from_slice(&0.5f32.to_le_bytes());
-        data.extend_from_slice(&0.5f32.to_le_bytes());
-
-        let mut cursor = Cursor::new(data);
-        let vertex =
-            M2Vertex::parse(&mut cursor, M2Version::Cataclysm.to_header_version()).unwrap();
-
-        assert_eq!(vertex.position.x, 1.0);
-        assert_eq!(vertex.position.y, 2.0);
-        assert_eq!(vertex.position.z, 3.0);
-
-        assert_eq!(vertex.bone_weights, [255, 128, 64, 0]);
-        assert_eq!(vertex.bone_indices, [0, 1, 2, 3]);
-
-        assert_eq!(vertex.normal.x, 0.5);
-        assert_eq!(vertex.normal.y, 0.5);
-        assert!((vertex.normal.z - std::f32::consts::FRAC_1_SQRT_2).abs() < 0.0001);
-
-        assert_eq!(vertex.tex_coords.x, 0.0);
-        assert_eq!(vertex.tex_coords.y, 1.0);
-
-        assert!(vertex.tex_coords2.is_some());
-        let tex_coords2 = vertex.tex_coords2.unwrap();
-        assert_eq!(tex_coords2.x, 0.5);
-        assert_eq!(tex_coords2.y, 0.5);
+        assert_eq!(vertex.tex_coords2.x, 0.0);
+        assert_eq!(vertex.tex_coords2.y, 1.0);
     }
 
     #[test]
@@ -316,63 +231,16 @@ mod tests {
                 z: std::f32::consts::FRAC_1_SQRT_2,
             },
             tex_coords: C2Vector { x: 0.0, y: 1.0 },
-            tex_coords2: Some(C2Vector { x: 0.5, y: 0.5 }),
+            tex_coords2: C2Vector { x: 0.5, y: 0.5 },
         };
 
-        // Test writing in Classic format
-        let mut classic_data = Vec::new();
-        vertex
-            .write(&mut classic_data, M2Version::Classic.to_header_version())
-            .unwrap();
-
-        // Should not include secondary texture coordinates
-        // position (12) + bone_weights (4) + bone_indices (4) + normal (12) + tex_coords (8) = 40 bytes
-        assert_eq!(classic_data.len(), 40);
-
-        // Test writing in Cataclysm format
+        // Test writing
         let mut cata_data = Vec::new();
         vertex
             .write(&mut cata_data, M2Version::Cataclysm.to_header_version())
             .unwrap();
 
-        // Should include secondary texture coordinates
         // position (12) + bone_weights (4) + bone_indices (4) + normal (12) + tex_coords (8) + tex_coords2 (8) = 48 bytes
         assert_eq!(cata_data.len(), 48);
-    }
-
-    #[test]
-    fn test_vertex_conversion() {
-        // Create a Classic vertex
-        let classic_vertex = M2Vertex {
-            position: C3Vector {
-                x: 1.0,
-                y: 2.0,
-                z: 3.0,
-            },
-            bone_weights: [255, 128, 64, 0],
-            bone_indices: [0, 1, 2, 3],
-            normal: C3Vector {
-                x: 0.5,
-                y: 0.5,
-                z: std::f32::consts::FRAC_1_SQRT_2,
-            },
-            tex_coords: C2Vector { x: 0.0, y: 1.0 },
-            tex_coords2: None,
-        };
-
-        // Convert to Cataclysm
-        let cata_vertex = classic_vertex.convert(M2Version::Cataclysm);
-
-        // Should have secondary texture coordinates
-        assert!(cata_vertex.tex_coords2.is_some());
-        let tex_coords2 = cata_vertex.tex_coords2.unwrap();
-        assert_eq!(tex_coords2.x, classic_vertex.tex_coords.x);
-        assert_eq!(tex_coords2.y, classic_vertex.tex_coords.y);
-
-        // Convert back to Classic
-        let classic_vertex2 = cata_vertex.convert(M2Version::Classic);
-
-        // Should not have secondary texture coordinates
-        assert!(classic_vertex2.tex_coords2.is_none());
     }
 }
