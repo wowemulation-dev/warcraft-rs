@@ -594,16 +594,22 @@ impl SkinSubmesh {
 
         let mut center = [0.0; 3];
         let mut sort_center = [0.0; 3];
+        let mut bounding_radius = 0.0;
 
-        for item in &mut center {
-            *item = reader.read_f32_le()?;
+        if bone_count > 0 {
+            for item in &mut center {
+                *item = reader.read_f32_le()?;
+            }
+
+            for item in &mut sort_center {
+                *item = reader.read_f32_le()?;
+            }
+
+            bounding_radius = reader.read_f32_le()?;
+
+            // Skip 1 u32 of padding
+            reader.read_u32_le()?;
         }
-
-        for item in &mut sort_center {
-            *item = reader.read_f32_le()?;
-        }
-
-        let bounding_radius = reader.read_f32_le()?;
 
         Ok(Self {
             id,
@@ -636,15 +642,20 @@ impl SkinSubmesh {
         // Write 1 u16 of padding
         writer.write_u16_le(0)?;
 
-        for &value in &self.center {
-            writer.write_f32_le(value)?;
-        }
+        if self.bone_count > 0 {
+            for &value in &self.center {
+                writer.write_f32_le(value)?;
+            }
 
-        for &value in &self.sort_center {
-            writer.write_f32_le(value)?;
-        }
+            for &value in &self.sort_center {
+                writer.write_f32_le(value)?;
+            }
 
-        writer.write_f32_le(self.bounding_radius)?;
+            writer.write_f32_le(self.bounding_radius)?;
+
+            // Write 1 u32 of padding
+            writer.write_u32_le(0)?;
+        }
 
         Ok(())
     }

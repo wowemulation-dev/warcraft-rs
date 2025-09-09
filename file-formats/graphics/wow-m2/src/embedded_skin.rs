@@ -214,18 +214,18 @@ impl M2Model {
         let triangles_size = (n_index as usize) * 2; // Triangles from index field (u16 per triangle)
 
         // Calculate submesh data size based on WMVx ModelGeosetM2 structure:
-        // - Pre-TBC (versions < 260): 8 uint16_t + 1 Vector3 = 28 bytes on disk
-        // - TBC+ (versions >= 260): 10 uint16_t + 2 Vector3 + 1 float = 48 bytes
-        // NOTE: We always allocate 48 bytes per submesh in our buffer for the parser,
+        // - Pre-TBC (versions < 260): 10 uint16_t + 1 Vector3 = 32 bytes on disk
+        // - TBC+ (versions >= 260): 10 uint16_t + 2 Vector3 + 1 float + 1 uint32_t = 52 bytes
+        // NOTE: We always allocate 52 bytes per submesh in our buffer for the parser,
         // but we read the original size from the file
         let original_submesh_size_per_entry = if self.header.version < 260 {
-            28 // Original vanilla size on disk
+            32 // Original vanilla size on disk
         } else {
-            48 // TBC+ size (same as buffer size)
+            52 // TBC+ size (same as buffer size)
         };
 
         let original_submeshes_size = (n_sub as usize) * original_submesh_size_per_entry;
-        let buffer_submeshes_size = (n_sub as usize) * 48; // Always 48 bytes per submesh in buffer
+        let buffer_submeshes_size = (n_sub as usize) * 52; // Always 52 bytes per submesh in buffer
 
         // Verify offsets are within bounds
         if ofs_tris as usize + indices_size > original_m2_data.len() {
@@ -317,38 +317,50 @@ impl M2Model {
                 &original_m2_data[ofs_sub as usize..(ofs_sub as usize + original_submeshes_size)];
 
             if self.header.version < 260 {
-                // For vanilla models, we need to pad each 28-byte submesh to 48 bytes
+                // For vanilla models, we need to pad each 32-byte submesh to 52 bytes
                 // The vanilla structure has:
-                // - 8 uint16 fields (16 bytes)
-                // - Then the structure ends at 28 bytes total
+                //  2 bytes: Submesh ID
+                //  2 bytes: Level of detail
+                //  2 bytes: Start vertex index
+                //  2 bytes: Vertex count
+
+                //  2 bytes: Start triangle index
+                //  2 bytes: Triangle count
+                //  2 bytes: Bone count
+                //  2 bytes: Start bone index
+
+                //  2 bytes: Bone influence count (max bones per vertex)
+                //  2 bytes: padding
+                // 12 bytes: Center of mass
+                // - Then the structure ends at 32 bytes total
+
                 // The modern structure adds:
-                // - 1 more uint16 + padding (4 bytes total)
-                // - 2 Vec3 fields (24 bytes)
-                // - 1 float field (4 bytes)
+                // 12 bytes: Sort center
+                //  4 bytes: Bounding sphere radius
+                //  4 bytes: padding
+                // - 52 bytes total
                 let mut submesh_offset = 0;
                 for i in 0..n_sub {
                     let src_start = submesh_offset;
-                    let src_end = src_start + 28;
-                    let dst_start = submeshes_buffer_offset + (i as usize * 48);
-                    let dst_end = dst_start + 48;
+                    let src_end = src_start + 32;
+                    let dst_start = submeshes_buffer_offset + (i as usize * 52);
+                    let dst_end = dst_start + 52;
 
                     // Copy the 28 bytes of vanilla submesh data
                     if src_end <= src_submeshes.len() && dst_end <= skin_buffer.len() {
-                        skin_buffer[dst_start..dst_start + 28]
+                        skin_buffer[dst_start..dst_start + 32]
                             .copy_from_slice(&src_submeshes[src_start..src_end]);
 
-                        // The remaining 20 bytes (48 - 28) are already zeroed from vec initialization
+                        // The remaining 20 bytes (52 - 32) are already zeroed from vec initialization
                         // This gives us:
-                        // - bone_influence: 0 (u16)
-                        // - padding: 0 (u16)
-                        // - center: [0.0, 0.0, 0.0] (3 f32)
-                        // - sort_center: [0.0, 0.0, 0.0] (3 f32)
-                        // - bounding_radius: 0.0 (f32)
+                        // 12 bytes - sort_center: [0.0, 0.0, 0.0] (3 f32)
+                        // 4 bytes - bounding_radius: 0.0 (f32)
+                        // 4 bytes - padding: 0 (u32)
                     }
-                    submesh_offset += 28;
+                    submesh_offset += 32;
                 }
             } else {
-                // For TBC+ models, copy directly since they're already 48 bytes
+                // For TBC+ models, copy directly since they're already 52 bytes
                 skin_buffer[submeshes_buffer_offset..total_buffer_size]
                     .copy_from_slice(src_submeshes);
             }
