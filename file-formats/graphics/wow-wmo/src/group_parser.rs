@@ -185,6 +185,38 @@ impl WmoGroupParser {
             }
         }
 
+        // Read chunks within the MOGP chunk
+        let mogp_chunk = chunks
+            .get(&chunks::MOGP)
+            .ok_or_else(|| WmoError::MissingRequiredChunk("MOGP".to_string()))?;
+        mogp_chunk.seek_to_data(reader)?;
+        // Skip the group header
+        reader.seek(SeekFrom::Current(WmoGroupHeader::SIZE as _))?;
+
+        loop {
+            match ChunkHeader::read(reader) {
+                Ok(header) => {
+                    trace!("Found sub-chunk: {}, size: {}", header.id, header.size);
+                    let data_pos = reader.stream_position()?;
+
+                    chunks.insert(
+                        header.id,
+                        Chunk {
+                            header,
+                            data_position: data_pos,
+                        },
+                    );
+
+                    reader.seek(SeekFrom::Current(header.size as i64))?;
+                }
+                Err(WmoError::UnexpectedEof) => {
+                    // End of MOGP chunk reached
+                    break;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
         // Reset position to start
         reader.seek(SeekFrom::Start(start_pos))?;
 
