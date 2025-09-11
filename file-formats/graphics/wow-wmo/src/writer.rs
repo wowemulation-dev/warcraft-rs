@@ -918,8 +918,7 @@ impl WmoWriter {
         header.write(writer)?;
 
         for batch in batches {
-            writer.write_u8(batch.flags)?;
-            writer.write_u8(0)?; // Padding
+            writer.write_all(&batch.flags)?;
 
             writer.write_u16_le(batch.material_id)?;
             writer.write_u32_le(batch.start_index)?;
@@ -928,12 +927,8 @@ impl WmoWriter {
             writer.write_u16_le(batch.start_vertex)?;
             writer.write_u16_le(batch.end_vertex)?;
 
-            writer.write_u8(0)?; // Padding
-            writer.write_u8(0)?; // Padding
-
-            // Write position (for collision?)
-            writer.write_f32_le(0.0)?; // x
-            writer.write_f32_le(0.0)?; // y
+            writer.write_u8(batch.use_large_material_id as u8)?;
+            writer.write_u8(batch.material_id as u8)?;
         }
 
         Ok(())
