@@ -362,12 +362,13 @@ fn test_wmo_batch() {
     use wmo_group_types::WmoBatch;
 
     let batch = WmoBatch {
-        flags: 0,
+        flags: [0u8; 10],
         material_id: 2,
         start_index: 0,
         count: 12,
         start_vertex: 0,
         end_vertex: 3,
+        use_large_material_id: false,
     };
 
     assert_eq!(batch.material_id, 2);

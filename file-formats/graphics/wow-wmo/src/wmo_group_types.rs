@@ -112,7 +112,7 @@ pub struct TexCoord {
 #[derive(Debug, Clone)]
 pub struct WmoBatch {
     /// Flags for the batch
-    pub flags: u8,
+    pub flags: [u8; 10],
 
     /// Material ID
     pub material_id: u16,
@@ -128,6 +128,9 @@ pub struct WmoBatch {
 
     /// End vertex
     pub end_vertex: u16,
+
+    /// Whether a large material ID is used
+    pub use_large_material_id: bool,
 }
 
 /// BSP tree node for collision and visibility

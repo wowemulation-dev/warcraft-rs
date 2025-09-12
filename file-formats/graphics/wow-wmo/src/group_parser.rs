@@ -461,29 +461,24 @@ impl WmoGroupParser {
 
         let moba_data = moba_chunk.read_data(reader)?;
         let batch_count = moba_data.len() / 24; // 24 bytes per batch
+        let mut moba_cursor = std::io::Cursor::new(moba_data);
         let mut batches = Vec::with_capacity(batch_count);
 
-        for i in 0..batch_count {
-            let offset = i * 24;
+        for _ in 0..batch_count {
+            let mut flags = [0u8; 10];
+            moba_cursor.read_exact(&mut flags)?;
+            let large_material_id = moba_cursor.read_u16_le()?;
+            let start_index = moba_cursor.read_u32_le()?;
+            let count = moba_cursor.read_u16_le()?;
+            let start_vertex = moba_cursor.read_u16_le()?;
+            let end_vertex = moba_cursor.read_u16_le()?;
+            let use_large_material_id = moba_cursor.read_u8()? != 0;
+            let mut material_id = moba_cursor.read_u8()? as u16;
 
-            let flags = moba_data[offset];
-
-            let material_id = u16::from_le_bytes([moba_data[offset + 2], moba_data[offset + 3]]);
-
-            let start_index = u32::from_le_bytes([
-                moba_data[offset + 4],
-                moba_data[offset + 5],
-                moba_data[offset + 6],
-                moba_data[offset + 7],
-            ]);
-
-            let count = u16::from_le_bytes([moba_data[offset + 8], moba_data[offset + 9]]);
-
-            let start_vertex = u16::from_le_bytes([moba_data[offset + 10], moba_data[offset + 11]]);
-
-            let end_vertex = u16::from_le_bytes([moba_data[offset + 12], moba_data[offset + 13]]);
-
-            // Skip position (8 bytes) at offset + 16
+            // TODO: Apply this check only if version >= Legion
+            if use_large_material_id {
+                material_id = large_material_id;
+            }
 
             batches.push(WmoBatch {
                 flags,
@@ -492,6 +487,7 @@ impl WmoGroupParser {
                 count,
                 start_vertex,
                 end_vertex,
+                use_large_material_id,
             });
         }
 
