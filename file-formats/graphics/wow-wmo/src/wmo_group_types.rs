@@ -54,6 +54,10 @@ pub struct WmoGroupHeader {
     pub group_index: u32,
 }
 
+impl WmoGroupHeader {
+    pub const SIZE: usize = 68;
+}
+
 bitflags! {
     /// WMO group flags
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
