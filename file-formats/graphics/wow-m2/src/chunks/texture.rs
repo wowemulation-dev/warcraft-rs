@@ -24,14 +24,22 @@ pub enum M2TextureType {
     Environment = 6,
     /// Hair, beard
     Hair = 7,
-    /// Accessories
-    Accessories = 8,
-    /// Custom type, not used
-    Custom1 = 9,
-    /// Custom type, not used
-    Custom2 = 10,
-    /// Custom type, not used
-    Custom3 = 11,
+    /// Skin extra (accessories)
+    SkinExtra = 8,
+    /// Inventory art
+    UiSkin = 9,
+    /// Tauren mane
+    TaurenMane = 10,
+    /// Monster skin 1
+    Monster1 = 11,
+    /// Monster skin 2
+    Monster2 = 12,
+    /// Monster skin 3
+    Monster3 = 13,
+    /// Item icon
+    ItemIcon = 14,
+    /// Unknown
+    Unknown = 255,
 }
 
 impl M2TextureType {
@@ -46,10 +54,13 @@ impl M2TextureType {
             5 => Some(Self::WeaponHandle),
             6 => Some(Self::Environment),
             7 => Some(Self::Hair),
-            8 => Some(Self::Accessories),
-            9 => Some(Self::Custom1),
-            10 => Some(Self::Custom2),
-            11 => Some(Self::Custom3),
+            8 => Some(Self::SkinExtra),
+            9 => Some(Self::UiSkin),
+            10 => Some(Self::TaurenMane),
+            11 => Some(Self::Monster1),
+            12 => Some(Self::Monster2),
+            13 => Some(Self::Monster3),
+            14 => Some(Self::ItemIcon),
             _ => None,
         }
     }
@@ -85,7 +96,7 @@ impl M2Texture {
     pub fn parse<R: Read + Seek>(reader: &mut R, _version: u32) -> Result<Self> {
         let texture_type_raw = reader.read_u32_le()?;
         let texture_type =
-            M2TextureType::from_u32(texture_type_raw).unwrap_or(M2TextureType::Hardcoded);
+            M2TextureType::from_u32(texture_type_raw).unwrap_or(M2TextureType::Unknown);
 
         let flags = M2TextureFlags::from_bits_retain(reader.read_u32_le()?);
         let filename = M2ArrayString::parse(reader)?;

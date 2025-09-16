@@ -667,10 +667,10 @@ impl M2Model {
             crate::chunks::texture::M2TextureType::Hardcoded => "Hardcoded",
             crate::chunks::texture::M2TextureType::Body => "Body + Clothes",
             crate::chunks::texture::M2TextureType::Item => "Cape",
-            crate::chunks::texture::M2TextureType::Custom3 => "Skin Extra",
+            crate::chunks::texture::M2TextureType::SkinExtra => "Skin Extra",
             crate::chunks::texture::M2TextureType::Hair => "Hair",
             crate::chunks::texture::M2TextureType::Environment => "Environment",
-            crate::chunks::texture::M2TextureType::Accessories => "Accessories",
+            crate::chunks::texture::M2TextureType::Monster1 => "Monster Skin 1",
             _ => "Unknown",
         }
         .to_string()
