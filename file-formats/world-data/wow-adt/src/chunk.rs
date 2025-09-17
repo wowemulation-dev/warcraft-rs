@@ -491,11 +491,8 @@ impl MddfChunk {
                 *item = context.reader.read_f32_le()?;
             }
 
-            let scale = context.reader.read_f32_le()?;
+            let scale = context.reader.read_u16_le()? as f32 / 1024.0;
             let flags = context.reader.read_u16_le()?;
-
-            // Skip padding (2 bytes)
-            context.reader.seek(SeekFrom::Current(2))?;
 
             doodads.push(DoodadPlacement {
                 name_id,
