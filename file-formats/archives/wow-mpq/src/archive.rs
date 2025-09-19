@@ -1779,7 +1779,7 @@ impl Archive {
                 };
 
                 // MPQ uses ADLER32 for sector checksums, not CRC32 despite the name
-                let actual_crc = adler::adler32_slice(&data_to_check);
+                let actual_crc = adler2::adler32_slice(&data_to_check);
                 if actual_crc != expected_crc {
                     return Err(Error::ChecksumMismatch {
                         file: name.to_string(),
@@ -2903,7 +2903,7 @@ mod tests {
         // Test that we're using the correct checksum algorithm (ADLER32)
         // MPQ uses ADLER32 for sector checksums, not CRC32 despite the name "SECTOR_CRC"
         let test_data = b"Hello, World!";
-        let crc = adler::adler32_slice(test_data);
+        let crc = adler2::adler32_slice(test_data);
 
         // This is the expected ADLER32 value for "Hello, World!"
         assert_eq!(crc, 0x1F9E046A);

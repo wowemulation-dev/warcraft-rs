@@ -1248,7 +1248,7 @@ impl ArchiveBuilder {
             // Write CRC if enabled
             if self.generate_crcs {
                 // MPQ uses ADLER32 for sector checksums
-                let crc = adler::adler32_slice(file_data);
+                let crc = adler2::adler32_slice(file_data);
                 writer.write_u32_le(crc)?;
                 log::debug!("Generated CRC for single unit file {archive_name}: 0x{crc:08X}");
             }
@@ -1292,7 +1292,7 @@ impl ArchiveBuilder {
                 // Calculate CRC for uncompressed sector if enabled
                 if self.generate_crcs {
                     // MPQ uses ADLER32 for sector checksums
-                    let crc = adler::adler32_slice(sector_bytes);
+                    let crc = adler2::adler32_slice(sector_bytes);
                     sector_crcs.push(crc);
                 }
 

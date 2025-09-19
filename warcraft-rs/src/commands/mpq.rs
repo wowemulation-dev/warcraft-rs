@@ -105,7 +105,7 @@ pub enum MpqCommands {
         /// Specific files to extract (extracts all if not specified)
         files: Vec<String>,
 
-        /// File types to extract (e.g. ".txt", "jpg"). Case-insensitive. Ignored if [FILES] are specified.
+        /// File types to extract (e.g. ".txt", "jpg"). Case-insensitive. Ignored if \[FILES\] are specified.
         #[arg(short, long)]
         file_type: Option<String>,
 
@@ -580,6 +580,18 @@ fn list_archive(
     Ok(())
 }
 
+struct ExtractOptions {
+    archive_path: String,
+    output_dir: String,
+    files: Vec<String>,
+    file_type: Option<String>,
+    preserve_paths: bool,
+    threads: Option<usize>,
+    skip_errors: bool,
+    patches: Vec<String>,
+}
+
+#[allow(clippy::too_many_arguments)]
 fn extract_files(
     archive_path: &str,
     output_dir: &str,
@@ -590,12 +602,37 @@ fn extract_files(
     skip_errors: bool,
     patches: Vec<String>,
 ) -> Result<()> {
+    let options = ExtractOptions {
+        archive_path: archive_path.to_string(),
+        output_dir: output_dir.to_string(),
+        files,
+        file_type,
+        preserve_paths,
+        threads,
+        skip_errors,
+        patches,
+    };
+
+    extract_files_with_options(options)
+}
+
+fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
+    let ExtractOptions {
+        archive_path,
+        output_dir,
+        files,
+        file_type,
+        preserve_paths,
+        threads,
+        skip_errors,
+        patches,
+    } = options;
     if patches.is_empty() {
         // Use parallel extraction by default
         let files_to_extract: Vec<String> = if files.is_empty() {
             // For bulk extraction, read listfile directly to avoid slow database lookups
             println!("Reading file list from archive...");
-            let mut archive = Archive::open(archive_path).context("Failed to open archive")?;
+            let mut archive = Archive::open(&archive_path).context("Failed to open archive")?;
 
             // Try to read (listfile) directly for faster bulk operations
             let mut file_list = match archive.read_file("(listfile)") {
@@ -697,11 +734,11 @@ fn extract_files(
                 Ok(data) => {
                     let output_path = if preserve_paths {
                         let system_path = mpq_path_to_system(&file);
-                        Path::new(output_dir).join(system_path)
+                        Path::new(&output_dir).join(system_path)
                     } else {
                         let system_path = mpq_path_to_system(&file);
                         let filename = Path::new(&system_path).file_name().unwrap_or_default();
-                        Path::new(output_dir).join(filename)
+                        Path::new(&output_dir).join(filename)
                     };
 
                     if let Some(parent) = output_path.parent() {
@@ -766,12 +803,12 @@ fn extract_files(
                     let output_path = if preserve_paths {
                         // Convert MPQ path separators to system path separators
                         let system_path = mpq_path_to_system(file);
-                        Path::new(output_dir).join(system_path)
+                        Path::new(&output_dir).join(system_path)
                     } else {
                         // Convert MPQ path to system path, then extract just the filename
                         let system_path = mpq_path_to_system(file);
                         let filename = Path::new(&system_path).file_name().unwrap_or_default();
-                        Path::new(output_dir).join(filename)
+                        Path::new(&output_dir).join(filename)
                     };
 
                     if let Some(parent) = output_path.parent() {

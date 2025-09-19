@@ -1232,40 +1232,27 @@ impl M2Model {
 
         // Parse raw data for other sections
         // These are sections we won't fully parse yet but want to preserve
-        let mut raw_data = M2RawData::default();
-
-        // Read transparency lookup table
-        raw_data.transparency_lookup_table =
-            read_array(reader, &header.transparency_lookup_table, |r| {
-                Ok(r.read_u16_le()?)
-            })?;
-
-        // Read texture animation lookup
-        raw_data.texture_animation_lookup =
-            read_array(reader, &header.texture_animation_lookup, |r| {
-                Ok(r.read_u16_le()?)
-            })?;
-
-        // Read bone lookup table
-        raw_data.bone_lookup_table =
-            read_array(reader, &header.bone_lookup_table, |r| Ok(r.read_u16_le()?))?;
-
-        // Read texture lookup table
-        raw_data.texture_lookup_table = read_array(reader, &header.texture_lookup_table, |r| {
-            Ok(r.read_u16_le()?)
-        })?;
-
-        // Read texture units
-        raw_data.texture_units =
-            read_array(reader, &header.texture_units, |r| Ok(r.read_u16_le()?))?;
-
-        // Read camera lookup table
-        raw_data.camera_lookup_table =
-            read_array(
+        let raw_data = M2RawData {
+            transparency_lookup_table: read_array(
                 reader,
-                &header.camera_lookup_table,
+                &header.transparency_lookup_table,
                 |r| Ok(r.read_u16_le()?),
-            )?;
+            )?,
+            texture_animation_lookup: read_array(reader, &header.texture_animation_lookup, |r| {
+                Ok(r.read_u16_le()?)
+            })?,
+            bone_lookup_table: read_array(reader, &header.bone_lookup_table, |r| {
+                Ok(r.read_u16_le()?)
+            })?,
+            texture_lookup_table: read_array(reader, &header.texture_lookup_table, |r| {
+                Ok(r.read_u16_le()?)
+            })?,
+            texture_units: read_array(reader, &header.texture_units, |r| Ok(r.read_u16_le()?))?,
+            camera_lookup_table: read_array(reader, &header.camera_lookup_table, |r| {
+                Ok(r.read_u16_le()?)
+            })?,
+            ..Default::default()
+        };
 
         Ok(Self {
             header,
