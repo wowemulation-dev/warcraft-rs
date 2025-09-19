@@ -342,11 +342,9 @@ impl Adt {
                     writer.write_f32_le(doodad.rotation[i])?;
                 }
 
-                writer.write_f32_le(doodad.scale)?;
+                let scale_u16 = (doodad.scale * 1024.0) as u16;
+                writer.write_u16_le(scale_u16)?;
                 writer.write_u16_le(doodad.flags)?;
-
-                // Write padding (2 bytes)
-                writer.write_all(&[0, 0])?;
             }
         }
 
