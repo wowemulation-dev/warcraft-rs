@@ -161,10 +161,10 @@ bitflags! {
         const EXTERIOR_LIGHT = 0x08;
         /// Window light
         const WINDOW_LIGHT = 0x10;
-        /// Ignore vertex light
-        const IGNORE_VERTEX_LIGHT = 0x20;
-        /// Disable Z-buffer
-        const DISABLE_Z_BUFFER = 0x40;
+        /// Use clamp s addressing
+        const CLAMP_S = 0x20;
+        /// Use clamp t addressing
+        const CLAMP_T = 0x40;
         /// Unused 1
         const UNUSED1 = 0x80;
         /// Shadow batch 1
