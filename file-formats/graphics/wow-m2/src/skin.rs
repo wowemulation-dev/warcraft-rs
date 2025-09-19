@@ -83,12 +83,12 @@ pub fn parse_embedded_skin<R: Read + Seek>(reader: &mut R, m2_version: u32) -> R
         }
     }
 
-    // Parse material lookup
-    let mut material_lookup = Vec::with_capacity(header.material_lookup.count as usize);
-    if header.material_lookup.count > 0 && header.material_lookup.offset > 0 {
-        reader.seek(SeekFrom::Start(header.material_lookup.offset as u64))?;
-        for _ in 0..header.material_lookup.count {
-            material_lookup.push(reader.read_u16_le()?);
+    // Parse batches
+    let mut batches = Vec::with_capacity(header.batches.count as usize);
+    if header.batches.count > 0 && header.batches.offset > 0 {
+        reader.seek(SeekFrom::Start(header.batches.offset as u64))?;
+        for _ in 0..header.batches.count {
+            batches.push(SkinBatch::parse(reader)?);
         }
     }
 
@@ -98,7 +98,7 @@ pub fn parse_embedded_skin<R: Read + Seek>(reader: &mut R, m2_version: u32) -> R
         triangles,
         bone_indices,
         submeshes,
-        material_lookup,
+        batches,
     };
 
     Ok(SkinFile::Old(skin))
@@ -120,13 +120,13 @@ pub trait SkinHeaderT: Sized {
         triangles: M2Array<u16>,
         bone_indices: M2Array<u8>,
         submeshes: M2Array<SkinSubmesh>,
-        material_lookup: M2Array<u16>,
+        batches: M2Array<SkinBatch>,
     );
     fn indices(&self) -> &M2Array<u16>;
     fn triangles(&self) -> &M2Array<u16>;
     fn bone_indices(&self) -> &M2Array<u8>;
     fn submeshes(&self) -> &M2Array<SkinSubmesh>;
-    fn material_lookup(&self) -> &M2Array<u16>;
+    fn batches(&self) -> &M2Array<SkinBatch>;
 }
 
 /// Skin file header
@@ -148,8 +148,8 @@ pub struct SkinHeader {
     pub bone_indices: M2Array<u8>,
     /// Submeshes
     pub submeshes: M2Array<SkinSubmesh>,
-    /// Material lookup table
-    pub material_lookup: M2Array<u16>,
+    /// Batches
+    pub batches: M2Array<SkinBatch>,
     /// Center position (BfA and later)
     pub center_position: Option<[f32; 3]>,
     /// Center bounds (BfA and later)
@@ -204,7 +204,7 @@ impl SkinHeaderT for SkinHeader {
         let triangles = M2Array::parse(reader)?;
         let bone_indices = M2Array::parse(reader)?;
         let submeshes = M2Array::parse(reader)?;
-        let material_lookup = M2Array::parse(reader)?;
+        let batches = M2Array::parse(reader)?;
 
         // For BfA and later, we have additional fields
         let (center_position, center_bounds) = if version >= 4 {
@@ -235,7 +235,7 @@ impl SkinHeaderT for SkinHeader {
             triangles,
             bone_indices,
             submeshes,
-            material_lookup,
+            batches,
             center_position,
             center_bounds,
         })
@@ -258,7 +258,7 @@ impl SkinHeaderT for SkinHeader {
         self.triangles.write(writer)?;
         self.bone_indices.write(writer)?;
         self.submeshes.write(writer)?;
-        self.material_lookup.write(writer)?;
+        self.batches.write(writer)?;
 
         // Write BfA+ fields if present
         if let Some(center_pos) = self.center_position {
@@ -304,13 +304,13 @@ impl SkinHeaderT for SkinHeader {
         triangles: M2Array<u16>,
         bone_indices: M2Array<u8>,
         submeshes: M2Array<SkinSubmesh>,
-        material_lookup: M2Array<u16>,
+        batches: M2Array<SkinBatch>,
     ) {
         self.indices = indices;
         self.triangles = triangles;
         self.bone_indices = bone_indices;
         self.submeshes = submeshes;
-        self.material_lookup = material_lookup;
+        self.batches = batches;
     }
 
     fn indices(&self) -> &M2Array<u16> {
@@ -329,8 +329,8 @@ impl SkinHeaderT for SkinHeader {
         &self.submeshes
     }
 
-    fn material_lookup(&self) -> &M2Array<u16> {
-        &self.material_lookup
+    fn batches(&self) -> &M2Array<SkinBatch> {
+        &self.batches
     }
 }
 
@@ -389,7 +389,7 @@ impl SkinHeader {
             triangles: M2Array::new(0, 0),
             bone_indices: M2Array::new(0, 0),
             submeshes: M2Array::new(0, 0),
-            material_lookup: M2Array::new(0, 0),
+            batches: M2Array::new(0, 0),
             center_position,
             center_bounds,
         }
@@ -409,8 +409,8 @@ pub struct OldSkinHeader {
     pub bone_indices: M2Array<u8>,
     /// Submeshes
     pub submeshes: M2Array<SkinSubmesh>,
-    /// Material lookup table
-    pub material_lookup: M2Array<u16>,
+    /// Batches
+    pub batches: M2Array<SkinBatch>,
 }
 
 impl OldSkinHeader {
@@ -422,7 +422,7 @@ impl OldSkinHeader {
         let triangles = M2Array::parse(reader)?;
         let bone_indices = M2Array::parse(reader)?;
         let submeshes = M2Array::parse(reader)?;
-        let material_lookup = M2Array::parse(reader)?;
+        let batches = M2Array::parse(reader)?;
 
         Ok(Self {
             magic: SKIN_MAGIC, // Set magic for compatibility
@@ -430,7 +430,7 @@ impl OldSkinHeader {
             triangles,
             bone_indices,
             submeshes,
-            material_lookup,
+            batches,
         })
     }
 }
@@ -454,7 +454,7 @@ impl SkinHeaderT for OldSkinHeader {
         let triangles = M2Array::parse(reader)?;
         let bone_indices = M2Array::parse(reader)?;
         let submeshes = M2Array::parse(reader)?;
-        let material_lookup = M2Array::parse(reader)?;
+        let batches = M2Array::parse(reader)?;
 
         Ok(Self {
             magic,
@@ -462,7 +462,7 @@ impl SkinHeaderT for OldSkinHeader {
             triangles,
             bone_indices,
             submeshes,
-            material_lookup,
+            batches,
         })
     }
 
@@ -476,7 +476,7 @@ impl SkinHeaderT for OldSkinHeader {
         self.triangles.write(writer)?;
         self.bone_indices.write(writer)?;
         self.submeshes.write(writer)?;
-        self.material_lookup.write(writer)?;
+        self.batches.write(writer)?;
 
         Ok(())
     }
@@ -497,13 +497,13 @@ impl SkinHeaderT for OldSkinHeader {
         triangles: M2Array<u16>,
         bone_indices: M2Array<u8>,
         submeshes: M2Array<SkinSubmesh>,
-        material_lookup: M2Array<u16>,
+        batches: M2Array<SkinBatch>,
     ) {
         self.indices = indices;
         self.triangles = triangles;
         self.bone_indices = bone_indices;
         self.submeshes = submeshes;
-        self.material_lookup = material_lookup;
+        self.batches = batches;
     }
 
     fn indices(&self) -> &M2Array<u16> {
@@ -522,8 +522,8 @@ impl SkinHeaderT for OldSkinHeader {
         &self.submeshes
     }
 
-    fn material_lookup(&self) -> &M2Array<u16> {
-        &self.material_lookup
+    fn batches(&self) -> &M2Array<SkinBatch> {
+        &self.batches
     }
 }
 
@@ -536,7 +536,7 @@ impl OldSkinHeader {
             triangles: M2Array::new(0, 0),
             bone_indices: M2Array::new(0, 0),
             submeshes: M2Array::new(0, 0),
-            material_lookup: M2Array::new(0, 0),
+            batches: M2Array::new(0, 0),
         }
     }
 }
@@ -713,8 +713,8 @@ where
     pub bone_indices: Vec<u8>,
     /// Submeshes
     pub submeshes: Vec<SkinSubmesh>,
-    /// Material lookup table
-    pub material_lookup: Vec<u16>,
+    /// Batches
+    pub batches: Vec<SkinBatch>,
 }
 
 impl<H> SkinG<H>
@@ -758,12 +758,12 @@ where
             submeshes.push(SkinSubmesh::parse(reader)?);
         }
 
-        // Parse material lookup
-        let header_material_lookup = header.material_lookup();
-        reader.seek(SeekFrom::Start(header_material_lookup.offset as u64))?;
-        let mut material_lookup = Vec::with_capacity(header_material_lookup.count as usize);
-        for _ in 0..header_material_lookup.count {
-            material_lookup.push(reader.read_u16_le()?);
+        // Parse batches
+        let header_batches = header.batches();
+        reader.seek(SeekFrom::Start(header_batches.offset as u64))?;
+        let mut batches = Vec::with_capacity(header_batches.count as usize);
+        for _ in 0..header_batches.count {
+            batches.push(SkinBatch::parse(reader)?);
         }
 
         Ok(Self {
@@ -772,7 +772,7 @@ where
             triangles,
             bone_indices,
             submeshes,
-            material_lookup,
+            batches,
         })
     }
 
@@ -859,20 +859,22 @@ where
         };
 
         // Write material lookup
-        let material_lookup = if !self.material_lookup.is_empty() {
-            let material_lookup = M2Array::new(self.material_lookup.len() as u32, current_offset);
+        let batches = if !self.batches.is_empty() {
+            let batches = M2Array::new(self.batches.len() as u32, current_offset);
 
-            for &material in &self.material_lookup {
-                data_section.extend_from_slice(&material.to_le_bytes());
+            for material in &self.batches {
+                let mut material_data = Vec::new();
+                material.write(&mut material_data)?;
+                data_section.extend_from_slice(&material_data);
             }
 
-            // current_offset += (self.material_lookup.len() * std::mem::size_of::<u16>()) as u32;
-            material_lookup
+            // current_offset += (self.batches.len() * std::mem::size_of::<u16>()) as u32;
+            batches
         } else {
             M2Array::new(0, 0)
         };
 
-        header.set_array_fields(indices, triangles, bone_indices, submeshes, material_lookup);
+        header.set_array_fields(indices, triangles, bone_indices, submeshes, batches);
 
         // Finally, write the header followed by the data section
         header.write(writer)?;
@@ -1031,6 +1033,14 @@ impl SkinFile {
         }
     }
 
+    /// Get material lookup table regardless of format
+    pub fn batches(&self) -> &Vec<SkinBatch> {
+        match self {
+            SkinFile::New(skin) => &skin.batches,
+            SkinFile::Old(skin) => &skin.batches,
+        }
+    }
+
     /// Check if this is a new format SKIN file
     pub fn is_new_format(&self) -> bool {
         matches!(self, SkinFile::New(_))
@@ -1039,6 +1049,84 @@ impl SkinFile {
     /// Check if this is an old format SKIN file
     pub fn is_old_format(&self) -> bool {
         matches!(self, SkinFile::Old(_))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SkinBatch {
+    pub flags: u8,
+    pub priority_plane: i8,
+    pub shader_id: u16,
+    /// Submesh index
+    pub skin_section_index: u16,
+    /// Submesh index 2
+    pub geoset_index: u16,
+    /// Index into color lookup table
+    pub color_index: u16,
+    /// Index into render flags lookup table
+    pub material_index: u16,
+    /// Texture unit index
+    pub material_layer: u16,
+    pub texture_count: u16,
+    /// Index into Texture lookup table
+    pub texture_combo_index: u16,
+    /// Index into the texture mapping lookup table.
+    pub texture_coord_combo_index: u16,
+    /// Index into transparency lookup table.
+    pub texture_weight_combo_index: u16,
+    /// Index into uvanimation lookup table.
+    pub texture_transform_combo_index: u16,
+}
+
+impl SkinBatch {
+    /// Parse a submesh from a reader with version-aware structure size
+    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+        let flags = reader.read_u8()?;
+        let priority_lane = reader.read_i8()?;
+        let shader_id = reader.read_u16_le()?;
+        let skin_section_index = reader.read_u16_le()?;
+        let geoset_index = reader.read_u16_le()?;
+        let color_index = reader.read_u16_le()?;
+        let material_index = reader.read_u16_le()?;
+        let material_layer = reader.read_u16_le()?;
+        let texture_count = reader.read_u16_le()?;
+        let texture_combo_index = reader.read_u16_le()?;
+        let texture_coord_combo_index = reader.read_u16_le()?;
+        let texture_weight_combo_index = reader.read_u16_le()?;
+        let texture_transform_combo_index = reader.read_u16_le()?;
+        Ok(Self {
+            flags,
+            priority_plane: priority_lane,
+            shader_id,
+            skin_section_index,
+            geoset_index,
+            color_index,
+            material_index,
+            material_layer,
+            texture_count,
+            texture_combo_index,
+            texture_coord_combo_index,
+            texture_weight_combo_index,
+            texture_transform_combo_index,
+        })
+    }
+
+    /// Write a submesh to a writer
+    pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u8(self.flags)?;
+        writer.write_i8(self.priority_plane)?;
+        writer.write_u16_le(self.shader_id)?;
+        writer.write_u16_le(self.skin_section_index)?;
+        writer.write_u16_le(self.geoset_index)?;
+        writer.write_u16_le(self.color_index)?;
+        writer.write_u16_le(self.material_index)?;
+        writer.write_u16_le(self.material_layer)?;
+        writer.write_u16_le(self.texture_count)?;
+        writer.write_u16_le(self.texture_combo_index)?;
+        writer.write_u16_le(self.texture_coord_combo_index)?;
+        writer.write_u16_le(self.texture_weight_combo_index)?;
+        writer.write_u16_le(self.texture_transform_combo_index)?;
+        Ok(())
     }
 }
 
@@ -1140,8 +1228,8 @@ mod tests {
         assert_eq!(header.bone_indices.offset, 0x300);
         assert_eq!(header.submeshes.count, 2);
         assert_eq!(header.submeshes.offset, 0x400);
-        assert_eq!(header.material_lookup.count, 5);
-        assert_eq!(header.material_lookup.offset, 0x500);
+        assert_eq!(header.batches.count, 5);
+        assert_eq!(header.batches.offset, 0x500);
         assert!(header.center_position.is_none());
         assert!(header.center_bounds.is_none());
     }

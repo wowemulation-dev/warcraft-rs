@@ -167,14 +167,14 @@ impl M2Model {
             model_view_data[31],
         ]);
 
-        // textureUnits M2Array
-        let _n_tex = u32::from_le_bytes([
+        // batches M2Array
+        let n_batches = u32::from_le_bytes([
             model_view_data[32],
             model_view_data[33],
             model_view_data[34],
             model_view_data[35],
         ]);
-        let _ofs_tex = u32::from_le_bytes([
+        let ofs_batches = u32::from_le_bytes([
             model_view_data[36],
             model_view_data[37],
             model_view_data[38],
@@ -199,6 +199,7 @@ impl M2Model {
             || ofs_tris as usize >= original_m2_data.len()
             || n_sub > 1000 // Reasonable submesh count limit
             || (n_sub > 0 && ofs_sub as usize >= original_m2_data.len())
+            || (n_batches > 0 && ofs_batches as usize >= original_m2_data.len())
         {
             return Err(M2Error::ParseError(format!(
                 "Skin {} appears to have invalid ModelView data. This may not be a valid embedded skin.",
@@ -232,6 +233,8 @@ impl M2Model {
         let original_submeshes_size = (n_sub as usize) * original_submesh_size_per_entry;
         let buffer_submeshes_size = original_submeshes_size; // Keep original size in buffer
 
+        let batches_size = (n_batches as usize) * 96; // 96 bytes each
+
         // Verify offsets are within bounds
         if ofs_tris as usize + indices_size > original_m2_data.len() {
             return Err(M2Error::ParseError(format!(
@@ -261,12 +264,22 @@ impl M2Model {
             )));
         }
 
+        if n_batches > 0 && ofs_batches as usize + batches_size > original_m2_data.len() {
+            return Err(M2Error::ParseError(format!(
+                "Batches data at offset {:#x} + {} exceeds file size {}",
+                ofs_batches,
+                batches_size,
+                original_m2_data.len()
+            )));
+        }
+
         // Calculate where to place data in our buffer
         let header_size = 40; // 5 M2Arrays * 8 bytes each
         let indices_buffer_offset = header_size; // Indices go first (smaller array)
         let triangles_buffer_offset = indices_buffer_offset + triangles_size; // Triangles go second (larger array)
         let submeshes_buffer_offset = triangles_buffer_offset + indices_size;
-        let total_buffer_size = submeshes_buffer_offset + buffer_submeshes_size;
+        let batches_buffer_offset = submeshes_buffer_offset + buffer_submeshes_size;
+        let total_buffer_size = batches_buffer_offset + batches_size;
 
         // Allocate buffer for skin data with proper layout
 
@@ -295,9 +308,9 @@ impl M2Model {
         cursor.write_all(&n_sub.to_le_bytes())?; // Count of submeshes
         cursor.write_all(&(submeshes_buffer_offset as u32).to_le_bytes())?; // Offset to submeshes data
 
-        // Write empty material_lookup array
-        cursor.write_all(&0u32.to_le_bytes())?;
-        cursor.write_all(&0u32.to_le_bytes())?;
+        // Write batches array
+        cursor.write_all(&n_batches.to_le_bytes())?;
+        cursor.write_all(&(batches_buffer_offset as u32).to_le_bytes())?;
 
         // Copy actual data from the original M2 file with corrected mapping:
         // Copy indices data (from ofsIndex in ModelView - smaller array goes to indices)
@@ -325,6 +338,14 @@ impl M2Model {
             // will handle the different structure sizes correctly
             skin_buffer[submeshes_buffer_offset..submeshes_buffer_offset + original_submeshes_size]
                 .copy_from_slice(src_submeshes);
+        }
+
+        // Copy batches data (from ofsBatches in ModelView)
+        if n_batches > 0 {
+            let src_batches =
+                &original_m2_data[ofs_batches as usize..(ofs_batches as usize + batches_size)];
+            skin_buffer[batches_buffer_offset..(batches_buffer_offset + batches_size)]
+                .copy_from_slice(src_batches);
         }
 
         // Create a cursor with our complete skin buffer

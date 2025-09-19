@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Triangles: {}", skin.header.triangles.count);
     println!("Bones: {}", skin.header.bone_indices.count);
     println!("Submeshes: {}", skin.submeshes.len());
-    println!("Materials: {}", skin.header.material_lookup.count);
+    println!("Batches: {}", skin.batches.len());
 
     // Print submesh information
     if !skin.submeshes.is_empty() {
