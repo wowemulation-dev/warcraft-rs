@@ -350,11 +350,6 @@ impl WmoWriter {
             writer.write_u8(material.sidn_color.b)?;
             writer.write_u8(material.sidn_color.a)?;
 
-            writer.write_u8(material.framebuffer_blend.r)?;
-            writer.write_u8(material.framebuffer_blend.g)?;
-            writer.write_u8(material.framebuffer_blend.b)?;
-            writer.write_u8(material.framebuffer_blend.a)?;
-
             writer.write_u32_le(material.texture2)?;
 
             writer.write_u8(material.diffuse_color.r)?;
@@ -364,12 +359,9 @@ impl WmoWriter {
 
             writer.write_u32_le(material.ground_type)?;
 
-            // Write padding for newer versions
-            if target_version >= WmoVersion::Mop {
-                // Write 24 bytes of padding
-                for _ in 0..24 {
-                    writer.write_u8(0)?;
-                }
+            // Write 28 bytes of padding
+            for _ in 0..28 {
+                writer.write_u8(0)?;
             }
         }
 

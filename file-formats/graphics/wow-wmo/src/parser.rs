@@ -122,11 +122,11 @@ impl WmoParser {
         debug!("WMO header: {:?}", header);
 
         // Parse textures
-        let textures = self.parse_textures(&chunks, reader)?;
+        let (textures, texture_offset_index_map) = self.parse_textures(&chunks, reader)?;
         debug!("Found {} textures", textures.len());
 
         // Parse materials
-        let materials = self.parse_materials(&chunks, reader, version, header.n_materials)?;
+        let materials = self.parse_materials(&chunks, reader, header.n_materials)?;
         debug!("Found {} materials", materials.len());
 
         // Parse group info
@@ -187,6 +187,7 @@ impl WmoParser {
             doodad_sets,
             bounding_box,
             textures,
+            texture_offset_index_map,
             header,
             skybox,
             convex_volume_planes,
@@ -299,19 +300,20 @@ impl WmoParser {
         &self,
         chunks: &HashMap<ChunkId, Chunk>,
         reader: &mut R,
-    ) -> Result<Vec<String>> {
+    ) -> Result<(Vec<String>, HashMap<u32, u32>)> {
         let motx_chunk = match chunks.get(&chunks::MOTX) {
             Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No textures
+            None => return Ok((Vec::new(), HashMap::new())), // No textures
         };
 
         let motx_data = motx_chunk.read_data(reader)?;
         let mut textures = Vec::new();
+        let mut offset_index_map = HashMap::new();
 
         // MOTX chunk is a list of null-terminated strings
         let mut current_string = String::new();
 
-        for &byte in &motx_data {
+        for (i, &byte) in motx_data.iter().enumerate() {
             if byte == 0 {
                 // End of string
                 if !current_string.is_empty() {
@@ -319,12 +321,17 @@ impl WmoParser {
                     current_string = String::new();
                 }
             } else {
+                if current_string.is_empty() {
+                    let offset = i as u32;
+                    let texture_index = textures.len() as u32;
+                    offset_index_map.insert(offset, texture_index);
+                }
                 // Add to current string
                 current_string.push(byte as char);
             }
         }
 
-        Ok(textures)
+        Ok((textures, offset_index_map))
     }
 
     /// Parse materials
@@ -332,7 +339,6 @@ impl WmoParser {
         &self,
         chunks: &HashMap<ChunkId, Chunk>,
         reader: &mut R,
-        version: WmoVersion,
         n_materials: u32,
     ) -> Result<Vec<WmoMaterial>> {
         let momt_chunk = match chunks.get(&chunks::MOMT) {
@@ -343,8 +349,7 @@ impl WmoParser {
         momt_chunk.seek_to_data(reader)?;
         let mut materials = Vec::with_capacity(n_materials as usize);
 
-        // Material size depends on version
-        let material_size = if version >= WmoVersion::Mop { 64 } else { 40 };
+        const MATERIAL_SIZE: usize = 64;
 
         for _ in 0..n_materials {
             let flags = WmoMaterialFlags::from_bits_truncate(reader.read_u32_le()?);
@@ -366,12 +371,7 @@ impl WmoParser {
                 a: reader.read_u8()?,
             };
 
-            let framebuffer_blend = Color {
-                r: reader.read_u8()?,
-                g: reader.read_u8()?,
-                b: reader.read_u8()?,
-                a: reader.read_u8()?,
-            };
+            let framebuffer_blend = Color::default();
 
             let texture2 = reader.read_u32_le()?;
 
@@ -384,13 +384,7 @@ impl WmoParser {
 
             let ground_type = reader.read_u32_le()?;
 
-            // Skip remaining fields depending on version
-            let remaining_size = material_size - 40;
-            if remaining_size > 0 {
-                reader.seek(SeekFrom::Current(remaining_size as i64))?;
-            }
-
-            materials.push(WmoMaterial {
+            let ret = WmoMaterial {
                 flags,
                 shader,
                 blend_mode,
@@ -401,7 +395,14 @@ impl WmoParser {
                 texture2,
                 diffuse_color,
                 ground_type,
-            });
+            };
+
+            let remaining_size = MATERIAL_SIZE - 36;
+            if remaining_size > 0 {
+                reader.seek(SeekFrom::Current(remaining_size as i64))?;
+            }
+
+            materials.push(ret);
         }
 
         Ok(materials)

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::types::{BoundingBox, Color, Vec3};
 use crate::version::WmoVersion;
 use crate::wmo_group_types::WmoGroupFlags;
@@ -38,6 +40,9 @@ pub struct WmoRoot {
 
     /// List of textures
     pub textures: Vec<String>,
+
+    /// Map of texture offsets to indices in the textures vector
+    pub texture_offset_index_map: HashMap<u32, u32>,
 
     /// Model header info
     pub header: WmoHeader,
@@ -120,7 +125,7 @@ pub struct WmoMaterial {
     /// Blend mode
     pub blend_mode: u32,
 
-    /// Texture 1 index in MOTX chunk
+    /// Texture 1 offset in MOTX chunk
     pub texture1: u32,
 
     /// Emissive color
@@ -132,7 +137,7 @@ pub struct WmoMaterial {
     /// Framebuffer blend
     pub framebuffer_blend: Color,
 
-    /// Texture 2 index in MOTX chunk
+    /// Texture 2 offset in MOTX chunk
     pub texture2: u32,
 
     /// Diffuse color
@@ -170,6 +175,22 @@ bitflags! {
         const UNUSED2 = 0x400;
         /// Unused 3
         const UNUSED3 = 0x800;
+    }
+}
+
+impl WmoMaterial {
+    pub fn get_texture1_index(&self, texture_offset_index_map: &HashMap<u32, u32>) -> u32 {
+        texture_offset_index_map
+            .get(&self.texture1)
+            .copied()
+            .unwrap()
+    }
+
+    pub fn get_texture2_index(&self, texture_offset_index_map: &HashMap<u32, u32>) -> u32 {
+        texture_offset_index_map
+            .get(&self.texture2)
+            .copied()
+            .unwrap()
     }
 }
 
