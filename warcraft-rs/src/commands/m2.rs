@@ -222,10 +222,6 @@ fn handle_info(path: PathBuf, detailed: bool) -> Result<()> {
         println!("Global Sequences: {}", model.header.global_sequences.count);
         println!("Color Animations: {}", model.header.color_animations.count);
         println!(
-            "Transparency Animations: {}",
-            model.header.transparency_animations.count
-        );
-        println!(
             "Texture Animations: {}",
             model.header.texture_animations.count
         );
@@ -629,10 +625,6 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
         .with_metadata(
             "color_animations",
             &model.header.color_animations.count.to_string(),
-        )
-        .with_metadata(
-            "transparency_animations",
-            &model.header.transparency_animations.count.to_string(),
         );
 
     if show_size {

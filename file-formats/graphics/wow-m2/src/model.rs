@@ -225,7 +225,6 @@ impl Default for M2Model {
                 color_animations: M2Array::default(),
                 textures: M2Array::default(),
                 transparency_lookup: M2Array::default(),
-                transparency_animations: M2Array::default(),
                 texture_flipbooks: None,
                 texture_animations: M2Array::default(),
                 color_replacements: M2Array::default(),
@@ -951,7 +950,6 @@ impl M2Model {
 
         let textures = M2Array::parse(chunk_inner)?;
         let transparency_lookup = M2Array::parse(chunk_inner)?;
-        let transparency_animations = M2Array::parse(chunk_inner)?;
 
         // Texture flipbooks only exist in BC and earlier
         let texture_flipbooks = if version <= 263 {
@@ -1056,7 +1054,6 @@ impl M2Model {
             color_animations,
             textures,
             transparency_lookup,
-            transparency_animations,
             texture_flipbooks,
             texture_animations,
             color_replacements,
@@ -1236,20 +1233,6 @@ impl M2Model {
         // Parse raw data for other sections
         // These are sections we won't fully parse yet but want to preserve
         let mut raw_data = M2RawData::default();
-
-        // Read transparency animations data
-        if header.transparency_animations.count > 0 {
-            reader.seek(SeekFrom::Start(
-                header.transparency_animations.offset as u64,
-            ))?;
-            let mut transparency = vec![
-                0u8;
-                header.transparency_animations.count as usize
-                    * std::mem::size_of::<u32>()
-            ];
-            reader.read_exact(&mut transparency)?;
-            raw_data.transparency = transparency;
-        }
 
         // Read transparency lookup table
         raw_data.transparency_lookup_table =
