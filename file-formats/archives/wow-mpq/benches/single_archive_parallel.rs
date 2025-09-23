@@ -53,7 +53,7 @@ fn bench_multiple_file_extraction(c: &mut Criterion) {
         // Sequential extraction
         group.bench_with_input(BenchmarkId::new("sequential", count), &files, |b, files| {
             b.iter(|| {
-                let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+                let archive = Archive::open(black_box(&archive_path)).unwrap();
                 let mut results = Vec::new();
                 for &file in files.iter() {
                     let data = archive.read_file(file).unwrap();
@@ -103,7 +103,7 @@ fn bench_pattern_matching(c: &mut Criterion) {
     // Sequential pattern matching
     group.bench_function("sequential", |b| {
         b.iter(|| {
-            let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+            let archive = Archive::open(black_box(&archive_path)).unwrap();
             let files = archive.list().unwrap();
             let mut results = Vec::new();
 
@@ -152,7 +152,7 @@ fn bench_file_size_impact(c: &mut Criterion) {
             &files,
             |b, files| {
                 b.iter(|| {
-                    let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+                    let archive = Archive::open(black_box(&archive_path)).unwrap();
                     let mut results = Vec::new();
                     for &file in files.iter() {
                         let data = archive.read_file(file).unwrap();
@@ -224,7 +224,7 @@ fn bench_parallel_overhead(c: &mut Criterion) {
 
     group.bench_function("sequential_small", |b| {
         b.iter(|| {
-            let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+            let archive = Archive::open(black_box(&archive_path)).unwrap();
             let mut results = Vec::new();
             for &file in small_files.iter() {
                 let data = archive.read_file(file).unwrap();
@@ -251,7 +251,7 @@ fn bench_parallel_overhead(c: &mut Criterion) {
 
     group.bench_function("sequential_large", |b| {
         b.iter(|| {
-            let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+            let archive = Archive::open(black_box(&archive_path)).unwrap();
             let mut results = Vec::new();
             for &file in large_files.iter() {
                 let data = archive.read_file(file).unwrap();
@@ -286,7 +286,7 @@ fn bench_custom_processing(c: &mut Criterion) {
     // Sequential processing
     group.bench_function("sequential_checksum", |b| {
         b.iter(|| {
-            let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+            let archive = Archive::open(black_box(&archive_path)).unwrap();
             let mut results = Vec::new();
 
             for &file in files.iter() {

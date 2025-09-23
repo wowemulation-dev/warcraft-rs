@@ -149,7 +149,7 @@ fn bulk_modify_archive(path: &str) -> Result<(), Box<dyn Error>> {
 }
 
 fn list_archive_details(path: &str) -> Result<(), Box<dyn Error>> {
-    let mut archive = Archive::open(path)?;
+    let archive = Archive::open(path)?;
     let files = archive.list_all()?;
 
     println!("\nTotal files: {}", files.len());

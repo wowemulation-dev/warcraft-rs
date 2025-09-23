@@ -69,7 +69,7 @@ cargo add wow-mpq
 use wow_mpq::{Archive, ArchiveBuilder, MutableArchive, AddFileOptions};
 
 // Read an existing archive
-let mut archive = Archive::open("Data/common.MPQ")?;
+let archive = Archive::open("Data/common.MPQ")?;
 
 // List all files
 for entry in archive.list()? {

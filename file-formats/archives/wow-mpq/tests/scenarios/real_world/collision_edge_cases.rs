@@ -34,7 +34,7 @@ fn test_collision_edge_cases() {
     builder.build(path).unwrap();
 
     // Verify all files maintain integrity
-    let mut archive = Archive::open(path).unwrap();
+    let archive = Archive::open(path).unwrap();
     for (i, filename) in collision_files.iter().enumerate() {
         let data = archive.read_file(filename).unwrap();
         assert_eq!(data.len(), 1024, "File {filename} has wrong size");

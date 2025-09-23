@@ -23,7 +23,7 @@ fn test_path_normalization_in_archive() {
         .unwrap();
 
     // Open archive and verify all files can be found
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // All these lookups should work regardless of separator used
     assert!(archive.read_file("dir/subdir/file1.txt").is_ok());
@@ -57,7 +57,7 @@ fn test_listfile_path_separators() {
         .unwrap();
 
     // Open and list files
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let entries = archive.list().unwrap();
 
     // Should have 5 files (4 added + listfile)
@@ -91,7 +91,7 @@ fn test_extraction_path_conversion() {
         .unwrap();
 
     // Extract file
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let file_data = archive.read_file("data/config/settings.ini").unwrap();
 
     // When extracting with preserved paths, system separators should be used

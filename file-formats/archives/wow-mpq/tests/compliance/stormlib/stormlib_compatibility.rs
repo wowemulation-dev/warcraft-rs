@@ -26,7 +26,7 @@ fn test_compression_byte_prefix() {
     builder.build(&archive_path).unwrap();
 
     // Open the archive and read the file
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let file_data = archive.read_file("test.dat").unwrap();
     assert_eq!(file_data, test_data);
 
@@ -61,7 +61,7 @@ fn test_multi_compression_format() {
     builder.build(&archive_path).unwrap();
 
     // Open the archive and read the file
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let file_data = archive.read_file("audio.wav").unwrap();
 
     // ADPCM is lossy, so we just check the size is correct
@@ -94,7 +94,7 @@ fn test_uncompressed_small_data() {
     builder.build(&archive_path).unwrap();
 
     // Open the archive and read the file
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let file_data = archive.read_file("small.txt").unwrap();
     assert_eq!(file_data, test_data);
 

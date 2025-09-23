@@ -25,7 +25,7 @@
 //!
 //! // When reading, both separators work
 //! # use wow_mpq::Archive;
-//! # let mut archive = Archive::open("test.mpq").unwrap();
+//! # let archive = Archive::open("test.mpq").unwrap();
 //! let data1 = archive.read_file("dir/subdir/file.txt").unwrap();
 //! let data2 = archive.read_file("dir\\subdir\\file.txt").unwrap();
 //! assert_eq!(data1, data2);

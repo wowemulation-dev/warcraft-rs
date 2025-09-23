@@ -24,7 +24,7 @@ fn test_het_bet_table_creation() {
         .expect("Failed to create archive");
 
     // Open the archive and verify files can be read
-    let mut archive = Archive::open(&archive_path).expect("Failed to open archive");
+    let archive = Archive::open(&archive_path).expect("Failed to open archive");
 
     // Verify header has HET/BET table positions
     assert_eq!(
@@ -67,7 +67,7 @@ fn test_het_bet_with_compression() {
         .expect("Failed to create archive");
 
     // Open the archive and verify file can be read
-    let mut archive = Archive::open(&archive_path).expect("Failed to open archive");
+    let archive = Archive::open(&archive_path).expect("Failed to open archive");
 
     let data = archive
         .read_file("compressed_file.txt")
@@ -94,7 +94,7 @@ fn test_het_bet_with_many_files() {
         .expect("Failed to create archive");
 
     // Open the archive and verify a few files
-    let mut archive = Archive::open(&archive_path).expect("Failed to open archive");
+    let archive = Archive::open(&archive_path).expect("Failed to open archive");
 
     // Check first, middle, and last files
     for i in [0, 25, 49] {

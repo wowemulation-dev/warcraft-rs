@@ -17,7 +17,7 @@ fn test_debug_add_file() {
 
     // Check initial state and print header info
     {
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         let header = archive.header();
         println!("Initial header info:");
         println!("  Format version: {:?}", header.format_version);
@@ -71,7 +71,7 @@ fn test_debug_add_file() {
     // Check final state
     {
         println!("\nReopening archive to check changes...");
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         let header = archive.header();
         println!("Final header info:");
         println!("  Format version: {:?}", header.format_version);

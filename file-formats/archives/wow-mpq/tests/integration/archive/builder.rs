@@ -42,7 +42,7 @@ fn test_create_archive_with_files() {
         .unwrap();
 
     // Verify archive contents
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // Check that files exist
     assert!(archive.find_file("test/file1.txt").unwrap().is_some());
@@ -69,7 +69,7 @@ fn test_create_archive_with_memory_files() {
         .unwrap();
 
     // Verify contents
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     let data1 = archive.read_file("mem1.txt").unwrap();
     assert_eq!(data1, b"Memory file 1");
@@ -92,7 +92,7 @@ fn test_listfile_generation() {
         .unwrap();
 
     // Verify listfile exists and contains expected entries
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     let listfile_data = archive.read_file("(listfile)").unwrap();
     let listfile_content = String::from_utf8(listfile_data).unwrap();
@@ -125,7 +125,7 @@ fn test_external_listfile() {
         .unwrap();
 
     // Verify listfile contains external content
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     let listfile_data = archive.read_file("(listfile)").unwrap();
     let listfile_content = String::from_utf8(listfile_data).unwrap();
@@ -173,7 +173,7 @@ fn test_compression_options() {
         assert!(file_info.compressed_size < file_info.file_size);
 
         // Verify we can still read it correctly
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         let read_data = archive.read_file("compressed.txt").unwrap();
         assert_eq!(read_data, data.as_bytes());
     } else {
@@ -225,7 +225,7 @@ fn test_large_file_sectors() {
         .unwrap();
 
     // Verify we can read it back correctly
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let read_data = archive.read_file("large.dat").unwrap();
     assert_eq!(read_data, large_data);
 }
@@ -247,7 +247,7 @@ fn test_hash_table_sizing() {
     builder.build(&archive_path).unwrap();
 
     // Verify all files can be found
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     for i in 0..50 {
         let filename = format!("file_{i:03}.txt");
         assert!(archive.find_file(&filename).unwrap().is_some());
@@ -412,7 +412,7 @@ fn test_encrypted_file_round_trip() {
     }
 
     // Verify we can decrypt and read it correctly
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let decrypted_data = archive.read_file("secret.txt").unwrap();
     assert_eq!(decrypted_data, test_data);
 }
@@ -447,7 +447,7 @@ fn test_encrypted_file_with_fix_key() {
     }
 
     // Verify we can decrypt and read it correctly
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let decrypted_data = archive.read_file("fix_key.dat").unwrap();
     assert_eq!(decrypted_data, test_data);
 }
@@ -484,7 +484,7 @@ fn test_encrypted_large_file() {
     }
 
     // Verify we can decrypt and read it correctly
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let decrypted_data = archive.read_file("large_encrypted.bin").unwrap();
     assert_eq!(decrypted_data, large_data);
 }
@@ -515,7 +515,7 @@ fn test_mixed_encrypted_and_plain_files() {
         .unwrap();
 
     // Open archive and verify all files
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // Check plain file
     let plain_info = archive.find_file("plain.txt").unwrap().unwrap();
@@ -569,7 +569,7 @@ fn test_encrypted_compressed_file() {
     }
 
     // Verify we can decrypt and decompress correctly
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let decrypted_data = archive.read_file("encrypted_compressed.txt").unwrap();
     assert_eq!(decrypted_data, data.as_bytes());
 }
@@ -595,7 +595,7 @@ fn test_hi_block_table_creation_v2() {
     assert!(archive.header().hi_block_table_pos.is_some());
 
     // Verify files can be read
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let data1 = archive.read_file("test.txt").unwrap();
     assert_eq!(data1, b"Test data for V2");
     let data2 = archive.read_file("file2.txt").unwrap();
@@ -626,7 +626,7 @@ fn test_hi_block_table_creation_v3() {
     assert!(archive.header().archive_size_64.is_some());
 
     // Verify files
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let data1 = archive.read_file("test.txt").unwrap();
     assert_eq!(data1, b"Test data for V3");
     let data2 = archive.read_file("advanced.txt").unwrap();

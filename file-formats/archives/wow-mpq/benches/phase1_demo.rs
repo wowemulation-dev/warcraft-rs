@@ -27,7 +27,7 @@ fn demonstrate_phase1_performance(c: &mut Criterion) {
             // Benchmark archive opening and listing
             group.bench_function(format!("list_{}", archive_name), |b| {
                 b.iter(|| {
-                    if let Ok(mut archive) = wow_mpq::Archive::open(archive_path) {
+                    if let Ok(archive) = wow_mpq::Archive::open(archive_path) {
                         let _ = archive.list().unwrap_or_default();
                     }
                 })
@@ -47,7 +47,7 @@ fn measure_listing_performance(archive_path: &str, archive_name: &str) {
     // Measure archive opening time
     let open_start = Instant::now();
     match wow_mpq::Archive::open(archive_path) {
-        Ok(mut archive) => {
+        Ok(archive) => {
             let open_duration = open_start.elapsed();
 
             // Measure file listing time

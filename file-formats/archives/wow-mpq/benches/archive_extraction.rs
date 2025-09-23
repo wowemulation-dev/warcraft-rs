@@ -89,7 +89,7 @@ fn bench_single_file_extraction(c: &mut Criterion) {
             &archive_path,
             |b, path| {
                 b.iter(|| {
-                    let mut archive = Archive::open(black_box(path)).unwrap();
+                    let archive = Archive::open(black_box(path)).unwrap();
                     let extracted = archive.read_file("test_file.dat").unwrap();
                     black_box(extracted);
                 });
@@ -130,7 +130,7 @@ fn bench_compressed_extraction(c: &mut Criterion) {
             &archive_path,
             |b, path| {
                 b.iter(|| {
-                    let mut archive = Archive::open(black_box(path)).unwrap();
+                    let archive = Archive::open(black_box(path)).unwrap();
                     let extracted = archive.read_file("test.dat").unwrap();
                     black_box(extracted);
                 });
@@ -176,7 +176,7 @@ fn bench_file_listing(c: &mut Criterion) {
             &archive_path,
             |b, path| {
                 b.iter(|| {
-                    let mut archive = Archive::open(black_box(path)).unwrap();
+                    let archive = Archive::open(black_box(path)).unwrap();
                     let files = archive.list().unwrap();
                     black_box(files);
                 });
@@ -235,7 +235,7 @@ fn bench_random_access(c: &mut Criterion) {
         &(&archive_path, &sequential),
         |b, (path, filenames)| {
             b.iter(|| {
-                let mut archive = Archive::open(black_box(path)).unwrap();
+                let archive = Archive::open(black_box(path)).unwrap();
                 for filename in filenames.iter() {
                     let data = archive.read_file(filename).unwrap();
                     black_box(data);
@@ -249,7 +249,7 @@ fn bench_random_access(c: &mut Criterion) {
         &(&archive_path, &random),
         |b, (path, filenames)| {
             b.iter(|| {
-                let mut archive = Archive::open(black_box(path)).unwrap();
+                let archive = Archive::open(black_box(path)).unwrap();
                 for filename in filenames.iter() {
                     let data = archive.read_file(filename).unwrap();
                     black_box(data);
@@ -291,7 +291,7 @@ fn bench_version_extraction(c: &mut Criterion) {
             &archive_path,
             |b, path| {
                 b.iter(|| {
-                    let mut archive = Archive::open(black_box(path)).unwrap();
+                    let archive = Archive::open(black_box(path)).unwrap();
                     let extracted = archive.read_file("test.dat").unwrap();
                     black_box(extracted);
                 });
@@ -332,7 +332,7 @@ fn bench_parallel_extraction(c: &mut Criterion) {
     // Single-threaded baseline
     group.bench_function("single_thread", |b| {
         b.iter(|| {
-            let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+            let archive = Archive::open(black_box(&archive_path)).unwrap();
             for i in 0..file_count {
                 let filename = format!("file_{i:02}.dat");
                 let data = archive.read_file(&filename).unwrap();

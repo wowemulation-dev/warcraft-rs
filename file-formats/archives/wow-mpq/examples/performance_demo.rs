@@ -72,7 +72,7 @@ fn measure_archive_performance(archive_path: &str, description: &str) -> Option<
     println!("Testing: {}", description);
 
     let open_start = Instant::now();
-    let mut archive = match Archive::open(archive_path) {
+    let archive = match Archive::open(archive_path) {
         Ok(archive) => archive,
         Err(e) => {
             println!("  ❌ Failed to open: {}\n", e);

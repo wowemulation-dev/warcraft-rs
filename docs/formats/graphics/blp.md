@@ -497,7 +497,7 @@ use wow_blp::{parser::parse_blp, convert::blp_to_image};
 use std::path::Path;
 
 fn extract_spell_icons() -> Result<(), Box<dyn std::error::Error>> {
-    let mut archive = Archive::open("Interface.mpq")?;
+    let archive = Archive::open("Interface.mpq")?;
 
     for file in archive.list_files() {
         if file.starts_with("Interface\\Icons\\") && file.ends_with(".blp") {

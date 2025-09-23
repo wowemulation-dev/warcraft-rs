@@ -47,7 +47,7 @@ fn test_create_archive_and_add_files() {
     // Close and reopen to verify
     drop(archive);
 
-    let mut archive = Archive::open(archive_path).unwrap();
+    let archive = Archive::open(archive_path).unwrap();
 
     // Verify first file exists
     assert!(archive.find_file("test_file.txt").unwrap().is_some());
@@ -229,7 +229,7 @@ fn test_file_enumeration() {
     builder.build(archive_path).unwrap();
 
     // Test file listing
-    let mut archive = Archive::open(archive_path).unwrap();
+    let archive = Archive::open(archive_path).unwrap();
     let file_list = archive.list().unwrap();
 
     // Account for the automatically generated listfile

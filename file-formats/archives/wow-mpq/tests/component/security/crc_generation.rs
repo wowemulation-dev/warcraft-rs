@@ -25,7 +25,7 @@ fn test_single_unit_file_crc_generation() {
         .unwrap();
 
     // Open and verify the archive
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // Read the file - this should validate the CRC
     let read_data = archive.read_file("small.txt").unwrap();
@@ -63,7 +63,7 @@ fn test_multi_sector_file_crc_generation() {
         .unwrap();
 
     // Open and verify the archive
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // Read the file - this should validate the CRCs for all sectors
     let read_data = archive.read_file("large.bin").unwrap();
@@ -97,7 +97,7 @@ fn test_no_crc_generation() {
         .unwrap();
 
     // Open and verify the archive
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // Read the file
     let read_data = archive.read_file("no_crc.txt").unwrap();
@@ -134,7 +134,7 @@ fn test_crc_generation_with_compression() {
         .unwrap();
 
     // Open and verify the archive
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // Read the file - this should decompress and validate CRC
     let read_data = archive.read_file("compressible.txt").unwrap();
@@ -176,7 +176,7 @@ fn test_crc_generation_with_encryption() {
         .unwrap();
 
     // Open and verify the archive
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
 
     // Read the file - this should decrypt and validate CRC
     let read_data = archive.read_file("secret.dat").unwrap();

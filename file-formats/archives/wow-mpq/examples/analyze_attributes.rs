@@ -3,7 +3,7 @@ use wow_mpq::Archive;
 fn analyze_attributes(path: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Analyzing {name} attributes file ===");
 
-    let mut archive = Archive::open(path)?;
+    let archive = Archive::open(path)?;
 
     match archive.read_file("(attributes)") {
         Ok(data) => {

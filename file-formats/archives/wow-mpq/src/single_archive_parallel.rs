@@ -49,7 +49,7 @@ impl ParallelArchive {
         let path = path.as_ref().to_path_buf();
 
         // Open archive and get file list
-        let mut archive = Archive::open(&path)?;
+        let archive = Archive::open(&path)?;
         let entries = archive.list()?;
         let file_list = Arc::new(entries.into_iter().map(|e| e.name).collect());
 
@@ -119,7 +119,7 @@ impl ParallelArchive {
     /// a new file handle, avoiding conflicts with other threads.
     pub fn read_file_with_new_handle(&self, filename: &str) -> Result<Vec<u8>> {
         // Open a new file handle for this thread
-        let mut archive = Archive::open(&self.path)?;
+        let archive = Archive::open(&self.path)?;
 
         // Read the file
         archive.read_file(filename)
@@ -152,7 +152,7 @@ impl ParallelArchive {
             .par_iter()
             .map(|chunk| {
                 // Open one archive handle per batch
-                let mut archive = Archive::open(&self.path)?;
+                let archive = Archive::open(&self.path)?;
 
                 // Extract all files in this batch
                 let mut batch_results = Vec::new();
@@ -277,7 +277,7 @@ fn extract_with_config_batched<P: AsRef<Path>>(
             .par_iter()
             .map(|chunk| {
                 // Open one archive handle per batch to limit resource usage
-                let mut archive_handle = Archive::open(archive.path.as_path())?;
+                let archive_handle = Archive::open(archive.path.as_path())?;
 
                 // Process all files in this batch with the same handle
                 let mut batch_results = Vec::with_capacity(chunk.len());

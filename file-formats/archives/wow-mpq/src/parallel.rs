@@ -38,7 +38,7 @@ pub fn extract_from_multiple_archives<P: AsRef<Path> + Sync>(
         .map(|path| {
             let path_ref = path.as_ref();
             match Archive::open(path_ref) {
-                Ok(mut archive) => match archive.read_file(file_name) {
+                Ok(archive) => match archive.read_file(file_name) {
                     Ok(data) => Ok((path_ref.to_path_buf(), data)),
                     Err(e) => Err(e),
                 },
@@ -86,7 +86,7 @@ pub fn extract_multiple_from_multiple_archives<P: AsRef<Path> + Sync>(
         .par_iter()
         .map(|path| {
             let path_ref = path.as_ref();
-            let mut archive = Archive::open(path_ref)?;
+            let archive = Archive::open(path_ref)?;
 
             let files: Result<Vec<_>> = file_names
                 .iter()
@@ -129,7 +129,7 @@ pub fn search_in_multiple_archives<P: AsRef<Path> + Sync>(
         .par_iter()
         .map(|path| {
             let path_ref = path.as_ref();
-            let mut archive = Archive::open(path_ref)?;
+            let archive = Archive::open(path_ref)?;
             let files = archive.list()?;
 
             let matching: Vec<String> = files
@@ -157,7 +157,7 @@ pub fn search_in_multiple_archives<P: AsRef<Path> + Sync>(
 /// let archives = vec!["data.mpq", "patch.mpq"];
 ///
 /// // Count files in each archive
-/// let counts = process_archives_parallel(&archives, |mut archive| {
+/// let counts = process_archives_parallel(&archives, |archive| {
 ///     Ok(archive.list()?.len())
 /// })?;
 ///
@@ -252,7 +252,7 @@ mod tests {
         let (_temp_dir, archives) = create_test_archives(3)?;
 
         // Count files in each archive
-        let counts = process_archives_parallel(&archives, |mut archive| Ok(archive.list()?.len()))?;
+        let counts = process_archives_parallel(&archives, |archive| Ok(archive.list()?.len()))?;
 
         assert_eq!(counts.len(), 3);
         for count in counts {

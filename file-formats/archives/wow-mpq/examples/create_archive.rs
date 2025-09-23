@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for archive_name in &["simple.mpq", "from_files.mpq", "custom.mpq"] {
         println!("\nChecking {archive_name}:");
 
-        let mut archive = Archive::open(archive_name)?;
+        let archive = Archive::open(archive_name)?;
 
         // Try to list files
         match archive.list() {

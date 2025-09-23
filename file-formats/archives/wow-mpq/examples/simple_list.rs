@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Simple Archive Listing ===");
     println!("Archive: {archive_path}");
 
-    let mut archive = Archive::open(archive_path)?;
+    let archive = Archive::open(archive_path)?;
     let files = archive.list()?;
 
     println!("Found {} files:", files.len());

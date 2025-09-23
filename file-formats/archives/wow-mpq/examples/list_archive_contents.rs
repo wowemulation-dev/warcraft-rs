@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for archive_path in &archives {
         println!("\n=== Contents of {archive_path} ===");
 
-        let mut archive = Archive::open(archive_path)?;
+        let archive = Archive::open(archive_path)?;
         let files = archive.list_all()?;
 
         println!("Total files: {}", files.len());

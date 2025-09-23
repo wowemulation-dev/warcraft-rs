@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Verify the files
     println!("\nVerifying files...");
-    let mut archive = Archive::open(test_archive)?;
+    let archive = Archive::open(test_archive)?;
     let mut all_match = true;
 
     for (filename, original_data) in &test_files {

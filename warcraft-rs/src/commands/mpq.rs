@@ -502,7 +502,7 @@ fn list_archive(
     use wow_mpq::database::Database;
 
     let spinner = create_spinner("Opening archive...");
-    let mut archive = Archive::open(path).context("Failed to open archive")?;
+    let archive = Archive::open(path).context("Failed to open archive")?;
     spinner.finish_and_clear();
 
     // Open database if needed
@@ -632,7 +632,7 @@ fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
         let files_to_extract: Vec<String> = if files.is_empty() {
             // For bulk extraction, read listfile directly to avoid slow database lookups
             println!("Reading file list from archive...");
-            let mut archive = Archive::open(&archive_path).context("Failed to open archive")?;
+            let archive = Archive::open(&archive_path).context("Failed to open archive")?;
 
             // Try to read (listfile) directly for faster bulk operations
             let mut file_list = match archive.read_file("(listfile)") {
@@ -2009,7 +2009,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             include_anonymous,
         } => {
             let db = Database::open_default().context("Failed to open database")?;
-            let mut mpq = Archive::open(&archive).context("Failed to open archive")?;
+            let mpq = Archive::open(&archive).context("Failed to open archive")?;
 
             let spinner = create_spinner("Analyzing archive...");
 

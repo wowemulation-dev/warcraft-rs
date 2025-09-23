@@ -16,7 +16,7 @@ fn test_real_wow_archive(archive_path: &str) -> Result<()> {
     }
 
     // Open archive and get file list
-    let mut archive = Archive::open(path)?;
+    let archive = Archive::open(path)?;
     let file_list = archive.list()?;
     println!("📊 Archive contains {} files", file_list.len());
 
@@ -48,7 +48,7 @@ fn test_real_wow_archive(archive_path: &str) -> Result<()> {
     let mut sequential_count = 0;
     for &file in file_refs.iter().take(50) {
         // Small subset for sequential test
-        let mut archive = Archive::open(path)?;
+        let archive = Archive::open(path)?;
         if archive.read_file(file).is_ok() {
             sequential_count += 1;
         }

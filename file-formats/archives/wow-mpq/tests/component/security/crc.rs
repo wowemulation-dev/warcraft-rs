@@ -36,7 +36,7 @@ fn test_valid_crc_extraction() {
         return;
     }
 
-    let mut archive = Archive::open(test_file).expect("Failed to open test archive");
+    let archive = Archive::open(test_file).expect("Failed to open test archive");
 
     // This should succeed with valid CRCs
     let data = archive
@@ -64,7 +64,7 @@ fn test_single_unit_crc() {
         return;
     }
 
-    let mut archive = Archive::open(test_file).expect("Failed to open test archive");
+    let archive = Archive::open(test_file).expect("Failed to open test archive");
 
     // This should succeed with valid CRC
     let data = archive

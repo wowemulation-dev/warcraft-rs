@@ -44,7 +44,7 @@ fn test_encryption_key_diagnosis() {
 
     // Now read back and check key calculation
     {
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
 
         // Calculate key as reading code does
         if let Some(file_info) = archive.find_file(filename).unwrap() {

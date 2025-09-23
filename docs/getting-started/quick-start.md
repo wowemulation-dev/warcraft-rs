@@ -43,7 +43,7 @@ use wow_mpq::Archive;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open an MPQ archive
-    let mut archive = Archive::open("path/to/file.mpq")?;
+    let archive = Archive::open("path/to/file.mpq")?;
 
     // List files in the archive (requires listfile)
     if let Ok(entries) = archive.list() {

@@ -114,7 +114,7 @@ impl<'a> Importer<'a> {
     /// Import from an MPQ archive
     fn import_archive(&self, path: &Path) -> ImportResult<ImportStats> {
         let mut stats = ImportStats::default();
-        let mut archive = Archive::open(path)?;
+        let archive = Archive::open(path)?;
         let source = format!("archive:{}", path.display());
 
         // Get list of files from the archive

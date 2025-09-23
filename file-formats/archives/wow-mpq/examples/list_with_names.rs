@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Archive Listing with Proper Names ===");
     println!("Archive: {archive_path}");
 
-    let mut archive = Archive::open(archive_path)?;
+    let archive = Archive::open(archive_path)?;
 
     // First try to list files using the listfile (gets proper names)
     match archive.list() {

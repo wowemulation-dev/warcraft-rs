@@ -28,7 +28,7 @@
 //!
 //! # fn main() -> Result<(), wow_mpq::Error> {
 //! // Open an existing MPQ archive
-//! let mut archive = Archive::open("example.mpq")?;
+//! let archive = Archive::open("example.mpq")?;
 //!
 //! // List files in the archive
 //! for entry in archive.list()? {

@@ -256,8 +256,8 @@ impl Default for OpenOptions {
 pub struct Archive {
     /// Path to the archive file
     path: PathBuf,
-    /// Archive file reader
-    reader: BufReader<File>,
+    /// Archive file
+    file: File,
     /// Offset where the MPQ data starts in the file
     archive_offset: u64,
     /// Optional user data header
@@ -288,14 +288,14 @@ impl Archive {
     pub fn open_with_options<P: AsRef<Path>>(path: P, options: OpenOptions) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
         let file = File::open(&path)?;
-        let mut reader = BufReader::new(file);
+        let mut reader = BufReader::new(&file);
 
         // Find and read the MPQ header
         let (archive_offset, user_data, header) = header::find_header(&mut reader)?;
 
         let mut archive = Archive {
             path,
-            reader,
+            file,
             archive_offset,
             user_data,
             header,
@@ -321,6 +321,8 @@ impl Archive {
             "Loading tables for archive version {:?}",
             self.header.format_version
         );
+
+        let mut reader = BufReader::new(&self.file);
 
         // For v3+ archives, check for HET/BET tables first
         if self.header.format_version >= header::FormatVersion::V3 {
@@ -360,7 +362,7 @@ impl Archive {
                         let key = hash_string("(hash table)", hash_type::FILE_KEY);
 
                         match HetTable::read(
-                            &mut self.reader,
+                            &mut reader,
                             self.archive_offset + het_pos,
                             het_size,
                             key,
@@ -412,10 +414,9 @@ impl Archive {
 
                         // First, check if the BET offset actually points to a HET table
                         // This is a known issue in some MoP update archives
-                        self.reader
-                            .seek(SeekFrom::Start(self.archive_offset + bet_pos))?;
+                        reader.seek(SeekFrom::Start(self.archive_offset + bet_pos))?;
                         let mut sig_buf = [0u8; 4];
-                        self.reader.read_exact(&mut sig_buf)?;
+                        reader.read_exact(&mut sig_buf)?;
 
                         if &sig_buf == b"HET\x1A" {
                             log::error!(
@@ -426,14 +427,13 @@ impl Archive {
                             );
                         } else {
                             // Reset position and proceed with normal BET loading
-                            self.reader
-                                .seek(SeekFrom::Start(self.archive_offset + bet_pos))?;
+                            reader.seek(SeekFrom::Start(self.archive_offset + bet_pos))?;
 
                             // BET table key is based on table name
                             let key = hash_string("(block table)", hash_type::FILE_KEY);
 
                             match BetTable::read(
-                                &mut self.reader,
+                                &mut reader,
                                 self.archive_offset + bet_pos,
                                 bet_size,
                                 key,
@@ -472,7 +472,7 @@ impl Archive {
             // For V4 archives, we have explicit compressed size info
             if let Some(v4_data) = &self.header.v4_data {
                 // Validate V4 sizes are reasonable (not corrupted)
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = reader.get_ref().metadata()?.len();
                 let v4_size_valid = v4_data.hash_table_size_64 > 0
                     && v4_data.hash_table_size_64 < file_size
                     && v4_data.hash_table_size_64 < (uncompressed_size as u64 * 2); // Compressed shouldn't be much larger
@@ -486,12 +486,13 @@ impl Archive {
                     );
 
                     // Check if it would extend beyond file
-                    let file_size = self.reader.get_ref().metadata()?.len();
+                    let file_size = reader.get_ref().metadata()?.len();
                     if hash_table_offset + compressed_size > file_size {
                         log::warn!("Hash table extends beyond file, skipping");
                     } else {
                         // Read potentially compressed table
                         match self.read_compressed_table(
+                            &mut reader,
                             hash_table_offset,
                             compressed_size,
                             uncompressed_size,
@@ -534,7 +535,7 @@ impl Archive {
                     (block_table_offset - hash_table_offset) as usize
                 } else {
                     // If block table comes before hash table, calculate differently
-                    let file_size = self.reader.get_ref().metadata()?.len();
+                    let file_size = reader.get_ref().metadata()?.len();
                     (file_size - hash_table_offset) as usize
                 };
 
@@ -546,6 +547,7 @@ impl Archive {
 
                     // Try to read as compressed
                     match self.read_compressed_table(
+                        &mut reader,
                         hash_table_offset,
                         available_space as u64,
                         uncompressed_size,
@@ -576,11 +578,8 @@ impl Archive {
                                     pow2_entries,
                                     self.header.hash_table_size
                                 );
-                                match HashTable::read(
-                                    &mut self.reader,
-                                    hash_table_offset,
-                                    pow2_entries,
-                                ) {
+                                match HashTable::read(&mut reader, hash_table_offset, pow2_entries)
+                                {
                                     Ok(hash_table) => {
                                         self.hash_table = Some(hash_table);
                                         log::info!("Successfully loaded truncated hash table");
@@ -595,7 +594,7 @@ impl Archive {
                 } else {
                     // Normal uncompressed reading
                     match HashTable::read(
-                        &mut self.reader,
+                        &mut reader,
                         hash_table_offset,
                         self.header.hash_table_size,
                     ) {
@@ -618,7 +617,7 @@ impl Archive {
             // For V4 archives, we have explicit compressed size info
             if let Some(v4_data) = &self.header.v4_data {
                 // Validate V4 sizes are reasonable (not corrupted)
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = reader.get_ref().metadata()?.len();
                 let v4_size_valid = v4_data.block_table_size_64 > 0
                     && v4_data.block_table_size_64 < file_size
                     && v4_data.block_table_size_64 < (uncompressed_size as u64 * 2); // Compressed shouldn't be much larger
@@ -632,12 +631,13 @@ impl Archive {
                     );
 
                     // Check if it would extend beyond file
-                    let file_size = self.reader.get_ref().metadata()?.len();
+                    let file_size = reader.get_ref().metadata()?.len();
                     if block_table_offset + compressed_size > file_size {
                         log::warn!("Block table extends beyond file, skipping");
                     } else {
                         // Read potentially compressed table
                         match self.read_compressed_table(
+                            &mut reader,
                             block_table_offset,
                             compressed_size,
                             uncompressed_size,
@@ -675,7 +675,7 @@ impl Archive {
             if self.block_table.is_none() {
                 // For V3 and earlier, or V4 with invalid sizes, we need to detect if tables are compressed
                 // Calculate available space for block table
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = reader.get_ref().metadata()?.len();
                 let next_section = if let Some(hi_block_pos) = self.header.hi_block_table_pos {
                     if hi_block_pos != 0 {
                         self.archive_offset + hi_block_pos
@@ -696,6 +696,7 @@ impl Archive {
 
                     // Try to read as compressed
                     match self.read_compressed_table(
+                        &mut reader,
                         block_table_offset,
                         available_space as u64,
                         uncompressed_size,
@@ -723,7 +724,7 @@ impl Archive {
                                     self.header.block_table_size
                                 );
                                 match BlockTable::read(
-                                    &mut self.reader,
+                                    &mut reader,
                                     block_table_offset,
                                     entries_that_fit as u32,
                                 ) {
@@ -741,7 +742,7 @@ impl Archive {
                 } else {
                     // Normal uncompressed reading
                     match BlockTable::read(
-                        &mut self.reader,
+                        &mut reader,
                         block_table_offset,
                         self.header.block_table_size,
                     ) {
@@ -762,14 +763,14 @@ impl Archive {
                 let hi_block_offset = self.archive_offset + hi_block_pos;
                 let hi_block_end = hi_block_offset + (self.header.block_table_size as u64 * 8);
 
-                let file_size = self.reader.get_ref().metadata()?.len();
+                let file_size = reader.get_ref().metadata()?.len();
                 if hi_block_end > file_size {
                     log::warn!(
                         "Hi-block table extends beyond file (ends at 0x{hi_block_end:X}, file size 0x{file_size:X}). Skipping."
                     );
                 } else {
                     self.hi_block_table = Some(HiBlockTable::read(
-                        &mut self.reader,
+                        &mut reader,
                         hi_block_offset,
                         self.header.block_table_size,
                     )?);
@@ -815,7 +816,10 @@ impl Archive {
     }
 
     /// Validate MD5 checksums for v4 archives
-    fn validate_v4_md5_checksums(&mut self) -> Result<Option<Md5Status>> {
+    fn validate_v4_md5_checksums<R: Read + Seek>(
+        &self,
+        reader: &mut R,
+    ) -> Result<Option<Md5Status>> {
         use md5::{Digest, Md5};
 
         let v4_data = match &self.header.v4_data {
@@ -833,10 +837,9 @@ impl Archive {
             }
 
             // Read raw table data
-            self.reader
-                .seek(SeekFrom::Start(self.archive_offset + offset))?;
+            reader.seek(SeekFrom::Start(self.archive_offset + offset))?;
             let mut table_data = vec![0u8; size as usize];
-            match self.reader.read_exact(&mut table_data) {
+            match reader.read_exact(&mut table_data) {
                 Ok(_) => {
                     // Calculate MD5
                     let mut hasher = Md5::new();
@@ -913,9 +916,9 @@ impl Archive {
 
         // Validate header MD5 (first 192 bytes of header, excluding the MD5 field itself)
         let header_valid = {
-            self.reader.seek(SeekFrom::Start(self.archive_offset))?;
+            reader.seek(SeekFrom::Start(self.archive_offset))?;
             let mut header_data = vec![0u8; 192];
-            match self.reader.read_exact(&mut header_data) {
+            match reader.read_exact(&mut header_data) {
                 Ok(_) => {
                     let mut hasher = Md5::new();
                     hasher.update(&header_data);
@@ -952,7 +955,8 @@ impl Archive {
 
         // Get file size
         log::debug!("Getting file size");
-        let file_size = self.reader.get_ref().metadata()?.len();
+        let mut reader = BufReader::new(&self.file);
+        let file_size = reader.get_ref().metadata()?.len();
 
         // Count files
         let file_count = if let Some(bet) = &self.bet_table {
@@ -1035,12 +1039,10 @@ impl Archive {
             if compressed_size.is_none() && self.header.format_version == header::FormatVersion::V3
             {
                 // Make a copy of the reader to avoid interfering with the main archive
-                if let Ok(temp_reader) =
-                    std::fs::File::open(&self.path).map(std::io::BufReader::new)
-                {
-                    let mut temp_archive = Self {
+                if let Ok(temp_file) = std::fs::File::open(&self.path) {
+                    let temp_archive = Self {
                         path: self.path.clone(),
-                        reader: temp_reader,
+                        file: temp_file,
                         archive_offset: self.archive_offset,
                         user_data: self.user_data.clone(),
                         header: self.header.clone(),
@@ -1078,12 +1080,10 @@ impl Archive {
             if compressed_size.is_none() && self.header.format_version == header::FormatVersion::V3
             {
                 // Make a copy of the reader to avoid interfering with the main archive
-                if let Ok(temp_reader) =
-                    std::fs::File::open(&self.path).map(std::io::BufReader::new)
-                {
-                    let mut temp_archive = Self {
+                if let Ok(temp_file) = std::fs::File::open(&self.path) {
+                    let temp_archive = Self {
                         path: self.path.clone(),
-                        reader: temp_reader,
+                        file: temp_file,
                         archive_offset: self.archive_offset,
                         user_data: self.user_data.clone(),
                         header: self.header.clone(),
@@ -1137,7 +1137,7 @@ impl Archive {
 
         // MD5 verification for v4 archives
         let md5_status = if self.header.v4_data.is_some() {
-            self.validate_v4_md5_checksums()?
+            self.validate_v4_md5_checksums(&mut reader)?
         } else {
             None
         };
@@ -1347,7 +1347,7 @@ impl Archive {
     }
 
     /// List files in the archive
-    pub fn list(&mut self) -> Result<Vec<FileEntry>> {
+    pub fn list(&self) -> Result<Vec<FileEntry>> {
         // Try to find and read (listfile)
         if let Some(_listfile_info) = self.find_file("(listfile)")? {
             // Try to read the listfile
@@ -1466,7 +1466,7 @@ impl Archive {
 
     /// List all files in the archive by enumerating tables
     /// This shows all entries, using generic names for files not in listfile
-    pub fn list_all(&mut self) -> Result<Vec<FileEntry>> {
+    pub fn list_all(&self) -> Result<Vec<FileEntry>> {
         let mut entries = Vec::new();
 
         // For v3+ archives, prioritize HET/BET tables if they exist and are valid
@@ -1558,7 +1558,7 @@ impl Archive {
     }
 
     /// List files in the archive with database lookup for names
-    pub fn list_with_db(&mut self, db: &crate::database::Database) -> Result<Vec<FileEntry>> {
+    pub fn list_with_db(&self, db: &crate::database::Database) -> Result<Vec<FileEntry>> {
         use crate::database::HashLookup;
 
         // Get all entries with hashes
@@ -1577,7 +1577,7 @@ impl Archive {
     }
 
     /// Record all filenames from the archive's listfile to the database
-    pub fn record_listfile_to_db(&mut self, db: &crate::database::Database) -> Result<usize> {
+    pub fn record_listfile_to_db(&self, db: &crate::database::Database) -> Result<usize> {
         use crate::database::HashLookup;
 
         // Try to find and read (listfile)
@@ -1611,7 +1611,7 @@ impl Archive {
     }
 
     /// List all files in the archive by enumerating tables with hash information
-    pub fn list_all_with_hashes(&mut self) -> Result<Vec<FileEntry>> {
+    pub fn list_all_with_hashes(&self) -> Result<Vec<FileEntry>> {
         let mut entries = Vec::new();
 
         // For v3+ archives, use HET/BET tables
@@ -1686,7 +1686,7 @@ impl Archive {
     }
 
     /// Read a file from the archive
-    pub fn read_file(&mut self, name: &str) -> Result<Vec<u8>> {
+    pub fn read_file(&self, name: &str) -> Result<Vec<u8>> {
         let file_info = self
             .find_file(name)?
             .ok_or_else(|| Error::FileNotFound(name.to_string()))?;
@@ -1733,13 +1733,15 @@ impl Archive {
             0
         };
 
+        let mut reader = BufReader::new(&self.file);
+
         // Read the file data
-        self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
+        reader.seek(SeekFrom::Start(file_info.file_pos))?;
 
         if file_info.is_single_unit() || !file_info.is_compressed() {
             // Single unit or uncompressed file - read directly
             let mut data = vec![0u8; file_info.compressed_size as usize];
-            self.reader.read_exact(&mut data)?;
+            reader.read_exact(&mut data)?;
 
             // Decrypt if needed
             if file_info.is_encrypted() {
@@ -1761,7 +1763,7 @@ impl Archive {
             if file_info.has_sector_crc() && file_info.is_single_unit() {
                 // For single unit files, there's one CRC after the data
                 let mut crc_bytes = [0u8; 4];
-                self.reader.read_exact(&mut crc_bytes)?;
+                reader.read_exact(&mut crc_bytes)?;
                 let expected_crc = u32::from_le_bytes(crc_bytes);
 
                 // CRC is calculated on the decompressed data
@@ -1971,13 +1973,15 @@ impl Archive {
             key
         };
 
+        let mut reader = BufReader::new(&self.file);
+
         // Read the file data
-        self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
+        reader.seek(SeekFrom::Start(file_info.file_pos))?;
 
         if file_info.is_single_unit() || !file_info.is_compressed() {
             // Single unit or uncompressed file - read directly
             let mut data = vec![0u8; file_info.compressed_size as usize];
-            self.reader.read_exact(&mut data)?;
+            reader.read_exact(&mut data)?;
 
             // Decrypt if needed
             if file_info.is_encrypted() {
@@ -2032,17 +2036,18 @@ impl Archive {
     }
 
     /// Read a file that is split into sectors
-    fn read_sectored_file(&mut self, file_info: &FileInfo, key: u32) -> Result<Vec<u8>> {
+    fn read_sectored_file(&self, file_info: &FileInfo, key: u32) -> Result<Vec<u8>> {
         let sector_size = self.header.sector_size();
         let sector_count = (file_info.file_size as usize).div_ceil(sector_size);
 
         log::debug!("Reading sectored file: {sector_count} sectors of {sector_size} bytes each");
 
+        let mut reader = BufReader::new(&self.file);
         // Read sector offset table
-        self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
+        reader.seek(SeekFrom::Start(file_info.file_pos))?;
         let offset_table_size = (sector_count + 1) * 4;
         let mut offset_data = vec![0u8; offset_table_size];
-        self.reader.read_exact(&mut offset_data)?;
+        reader.read_exact(&mut offset_data)?;
 
         // Decrypt sector offset table if needed
         if file_info.is_encrypted() {
@@ -2075,7 +2080,7 @@ impl Archive {
             if first_data_offset >= expected_crc_table_start + expected_crc_table_size {
                 // CRC table follows the offset table
                 let mut crc_data = vec![0u8; expected_crc_table_size];
-                self.reader.read_exact(&mut crc_data)?;
+                reader.read_exact(&mut crc_data)?;
 
                 // CRC table may be encrypted if the file is encrypted
                 // According to MPQ format, CRC table uses the same key as the offset table but offset by sector count
@@ -2141,8 +2146,7 @@ impl Archive {
             let expected_size = remaining.min(sector_size);
 
             // Seek to sector data - offsets are absolute from file position
-            self.reader
-                .seek(SeekFrom::Start(file_info.file_pos + sector_start))?;
+            reader.seek(SeekFrom::Start(file_info.file_pos + sector_start))?;
 
             // Ensure our buffer is large enough
             if sector_size_compressed > sector_buffer.len() {
@@ -2151,7 +2155,7 @@ impl Archive {
 
             // Read sector data into the reusable buffer
             let sector_data = &mut sector_buffer[..sector_size_compressed];
-            self.reader.read_exact(sector_data)?;
+            reader.read_exact(sector_data)?;
 
             if i == 0 {
                 log::debug!(
@@ -2380,7 +2384,7 @@ impl Archive {
     }
 
     /// Read HET table size from the table header for V3 archives
-    fn read_het_table_size(&mut self, het_pos: u64) -> Result<u64> {
+    fn read_het_table_size(&self, het_pos: u64) -> Result<u64> {
         // For compressed tables, calculate the actual size based on the next table position
         log::debug!("Determining HET table size from file structure");
 
@@ -2404,7 +2408,7 @@ impl Archive {
     }
 
     /// Read BET table size from the table header for V3 archives
-    fn read_bet_table_size(&mut self, bet_pos: u64) -> Result<u64> {
+    fn read_bet_table_size(&self, bet_pos: u64) -> Result<u64> {
         // For compressed tables, calculate the actual size based on the next table position
         log::debug!("Determining BET table size from file structure");
 
@@ -2417,7 +2421,7 @@ impl Archive {
     }
 
     /// Verify the digital signature of the archive
-    pub fn verify_signature(&mut self) -> Result<SignatureStatus> {
+    pub fn verify_signature(&self) -> Result<SignatureStatus> {
         // First check for strong signature (external to archive)
         if let Ok(strong_status) = self.verify_strong_signature() {
             if strong_status != SignatureStatus::None {
@@ -2430,7 +2434,7 @@ impl Archive {
     }
 
     /// Verify weak signature from (signature) file inside the archive
-    fn verify_weak_signature(&mut self) -> Result<SignatureStatus> {
+    fn verify_weak_signature(&self) -> Result<SignatureStatus> {
         // Check if (signature) file exists
         let signature_info = match self.find_file("(signature)")? {
             Some(info) => info,
@@ -2453,12 +2457,14 @@ impl Archive {
                     weak_sig.clone(),
                 );
 
+                let mut reader = BufReader::new(&self.file);
+
                 // Seek to beginning of archive
-                self.reader.seek(SeekFrom::Start(self.archive_offset))?;
+                reader.seek(SeekFrom::Start(self.archive_offset))?;
 
                 // Verify the weak signature using StormLib-compatible approach
                 match crate::crypto::verify_weak_signature_stormlib(
-                    &mut self.reader,
+                    &mut reader,
                     &weak_sig,
                     &sig_info,
                 ) {
@@ -2484,18 +2490,19 @@ impl Archive {
     /// The compressed data format is:
     /// - Compression type byte (e.g., 0x02 for ZLIB)
     /// - Compressed data
-    fn read_compressed_table(
-        &mut self,
+    fn read_compressed_table<R: Read + Seek>(
+        &self,
+        reader: &mut R,
         offset: u64,
         compressed_size: u64,
         uncompressed_size: usize,
     ) -> Result<Vec<u8>> {
         // Seek to the table position
-        self.reader.seek(SeekFrom::Start(offset))?;
+        reader.seek(SeekFrom::Start(offset))?;
 
         // Read the compressed data
         let mut compressed_data = vec![0u8; compressed_size as usize];
-        self.reader.read_exact(&mut compressed_data)?;
+        reader.read_exact(&mut compressed_data)?;
 
         // Check if the table is actually compressed
         // In V4 archives, if compressed_size < expected uncompressed size, it's compressed
@@ -2531,13 +2538,14 @@ impl Archive {
     }
 
     /// Verify strong signature appended after the archive
-    fn verify_strong_signature(&mut self) -> Result<SignatureStatus> {
+    fn verify_strong_signature(&self) -> Result<SignatureStatus> {
         use crate::crypto::{
             STRONG_SIGNATURE_SIZE, parse_strong_signature, verify_strong_signature,
         };
 
+        let mut reader = BufReader::new(&self.file);
         // Get total file size
-        let file_size = self.reader.get_ref().metadata()?.len();
+        let file_size = reader.get_ref().metadata()?.len();
 
         // Calculate expected archive end position
         let archive_end = self.archive_offset + self.header.get_archive_size();
@@ -2550,11 +2558,11 @@ impl Archive {
 
         // Seek to where the strong signature should be
         let signature_pos = archive_end;
-        self.reader.seek(SeekFrom::Start(signature_pos))?;
+        reader.seek(SeekFrom::Start(signature_pos))?;
 
         // Read potential strong signature data
         let mut signature_data = vec![0u8; STRONG_SIGNATURE_SIZE];
-        match self.reader.read_exact(&mut signature_data) {
+        match reader.read_exact(&mut signature_data) {
             Ok(()) => {
                 // Try to parse as strong signature
                 match parse_strong_signature(&signature_data) {
@@ -2562,11 +2570,11 @@ impl Archive {
                         log::debug!("Found strong signature at offset 0x{signature_pos:X}");
 
                         // Seek to beginning of archive for verification
-                        self.reader.seek(SeekFrom::Start(self.archive_offset))?;
+                        reader.seek(SeekFrom::Start(self.archive_offset))?;
 
                         // Verify the strong signature
                         match verify_strong_signature(
-                            &mut self.reader,
+                            reader,
                             &strong_sig,
                             archive_end - self.archive_offset,
                         ) {

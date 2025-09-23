@@ -49,7 +49,7 @@ use std::fs;
 use std::io::Write;
 
 fn extract_dbc_files(mpq_path: &str, output_dir: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let mut archive = Archive::open(mpq_path)?;
+    let archive = Archive::open(mpq_path)?;
     let mut extracted_files = Vec::new();
 
     // Create output directory

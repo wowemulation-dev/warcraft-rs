@@ -57,7 +57,7 @@ fn test_add_file_from_disk() {
     drop(mutable_archive);
 
     // Verify file was added
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     assert_eq!(archive.list().unwrap().len(), 5); // 4 + new file
 
     let content = archive.read_file("new_file.txt").unwrap();
@@ -84,7 +84,7 @@ fn test_add_file_from_memory() {
     drop(mutable_archive);
 
     // Verify file was added
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let files = archive.list().unwrap();
 
     println!("Files in archive:");
@@ -132,7 +132,7 @@ fn test_remove_file() {
     drop(mutable_archive);
 
     // Verify file was removed
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let files = archive.list().unwrap();
     assert!(!files.iter().any(|f| f.name == "file1.txt"));
 }
@@ -152,7 +152,7 @@ fn test_rename_file() {
     drop(mutable_archive);
 
     // Verify file was renamed
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let files = archive.list().unwrap();
     assert!(!files.iter().any(|f| f.name == "dir\\file2.txt"));
     assert!(files.iter().any(|f| f.name == "renamed\\file2.txt"));
@@ -179,7 +179,7 @@ fn test_replace_existing_file() {
     drop(mutable_archive);
 
     // Verify file was replaced
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let content = archive.read_file("file1.txt").unwrap();
     assert_eq!(content, b"Replaced content");
 }
@@ -246,7 +246,7 @@ fn test_compact_archive() {
     assert!(compacted_size < fragmented_size);
 
     // Verify all remaining files are still accessible
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     assert_eq!(archive.read_file("file1.txt").unwrap(), b"Test content 1");
     assert_eq!(
         archive.read_file("big2.dat").unwrap(),
@@ -275,7 +275,7 @@ fn test_path_normalization() {
     drop(mutable_archive);
 
     // Should be accessible with backslashes
-    let mut archive = Archive::open(&archive_path).unwrap();
+    let archive = Archive::open(&archive_path).unwrap();
     let content = archive.read_file("path\\to\\file.txt").unwrap();
     assert_eq!(content, b"Forward slash content");
 }

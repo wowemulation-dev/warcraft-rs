@@ -28,7 +28,7 @@ fn test_concurrent_archive_opening() {
         .map(|i| {
             let path = archive_path.clone();
             thread::spawn(move || {
-                let mut archive = Archive::open(&path).unwrap();
+                let archive = Archive::open(&path).unwrap();
                 let data = archive.read_file("file_005.txt").unwrap();
                 let content = String::from_utf8(data).unwrap();
                 assert!(content.contains("File 5 content"));
@@ -233,7 +233,7 @@ fn test_custom_processor_thread_safety() {
         .collect();
 
     // Use a custom processor that does multiple operations
-    let results = parallel::process_archives_parallel(&archives, |mut archive| {
+    let results = parallel::process_archives_parallel(&archives, |archive| {
         let mut total_size = 0u64;
         let files = archive.list()?;
 

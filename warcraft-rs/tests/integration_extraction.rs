@@ -112,7 +112,7 @@ fn test_individual_file_extraction() -> Result<()> {
     );
 
     // Open the archive and get a list of files
-    let mut archive = Archive::open(&test_archive.path).with_context(|| {
+    let archive = Archive::open(&test_archive.path).with_context(|| {
         format!(
             "Failed to open test archive: {}",
             test_archive.path.display()
@@ -384,7 +384,7 @@ fn test_error_handling_missing_files() -> Result<()> {
         test_archive.name
     );
 
-    let mut archive = Archive::open(&test_archive.path).with_context(|| {
+    let archive = Archive::open(&test_archive.path).with_context(|| {
         format!(
             "Failed to open test archive: {}",
             test_archive.path.display()
@@ -442,7 +442,7 @@ fn test_data_integrity() -> Result<()> {
 
     println!("Testing data integrity with: {}", test_archive.name);
 
-    let mut archive = Archive::open(&test_archive.path).with_context(|| {
+    let archive = Archive::open(&test_archive.path).with_context(|| {
         format!(
             "Failed to open test archive: {}",
             test_archive.path.display()
@@ -520,7 +520,7 @@ fn test_batch_extraction(
     max_files: usize,
     preserve_paths: bool,
 ) -> Result<ExtractionTestResult> {
-    let mut archive = Archive::open(archive_path)
+    let archive = Archive::open(archive_path)
         .with_context(|| format!("Failed to open archive: {}", archive_path.display()))?;
 
     let file_list = archive.list().context("Failed to list archive files")?;

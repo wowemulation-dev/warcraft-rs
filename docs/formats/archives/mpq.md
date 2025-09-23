@@ -634,7 +634,7 @@ use std::path::Path;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ Open an existing MPQ archive
-    let mut archive = Archive::open(Path::new("Data/patch.mpq"))?;
+    let archive = Archive::open(Path::new("Data/patch.mpq"))?;
 
     // ✅ Search for a file
     if let Some(file_info) = archive.find_file("Interface\\Glues\\Models\\UI_Human\\UI_Human.m2")? {

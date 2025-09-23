@@ -121,7 +121,7 @@ fn bench_throughput_scaling(c: &mut Criterion) {
 
         // Generate file list for extraction (extract all files)
         let files: Vec<String> = {
-            let mut archive = Archive::open(&archive_path).unwrap();
+            let archive = Archive::open(&archive_path).unwrap();
             archive
                 .list()
                 .unwrap()
@@ -137,7 +137,7 @@ fn bench_throughput_scaling(c: &mut Criterion) {
             &(&archive_path, &file_refs, total_bytes),
             |b, (path, files, _bytes)| {
                 b.iter(|| {
-                    let mut archive = Archive::open(black_box(path)).unwrap();
+                    let archive = Archive::open(black_box(path)).unwrap();
                     let mut results = Vec::new();
                     for &file in files.iter() {
                         let data = archive.read_file(file).unwrap();
@@ -190,7 +190,7 @@ fn bench_threading_scalability(c: &mut Criterion) {
         create_test_archive_realistic("threading_test", 2000, 100, 0.6);
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         archive
             .list()
             .unwrap()
@@ -233,7 +233,7 @@ fn bench_batch_size_optimization(c: &mut Criterion) {
     let (_temp_dir, archive_path, _) = create_test_archive_realistic("batch_test", 1500, 80, 0.4);
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         archive
             .list()
             .unwrap()
@@ -277,7 +277,7 @@ fn bench_resource_utilization(c: &mut Criterion) {
         create_test_archive_realistic("resource_test", 10000, 120, 0.7);
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         archive
             .list()
             .unwrap()
@@ -340,7 +340,7 @@ fn bench_realistic_wow_archive(c: &mut Criterion) {
                         let mpq_path = entry.path();
 
                         // Try to open and get file count
-                        if let Ok(mut archive) = Archive::open(&mpq_path) {
+                        if let Ok(archive) = Archive::open(&mpq_path) {
                             if let Ok(file_list) = archive.list() {
                                 let file_count = file_list.len();
 
@@ -409,7 +409,7 @@ fn bench_stress_no_hanging(c: &mut Criterion) {
     );
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         archive
             .list()
             .unwrap()
@@ -456,7 +456,7 @@ fn bench_individual_vs_bulk(c: &mut Criterion) {
     let (_temp_dir, archive_path, _) = create_test_archive_realistic("comparison", 500, 150, 0.4);
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path).unwrap();
+        let archive = Archive::open(&archive_path).unwrap();
         archive
             .list()
             .unwrap()
@@ -472,7 +472,7 @@ fn bench_individual_vs_bulk(c: &mut Criterion) {
         b.iter(|| {
             let mut results = Vec::new();
             for &file in file_refs.iter() {
-                let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+                let archive = Archive::open(black_box(&archive_path)).unwrap();
                 let data = archive.read_file(file).unwrap();
                 results.push(data);
             }
@@ -483,7 +483,7 @@ fn bench_individual_vs_bulk(c: &mut Criterion) {
     // Sequential bulk extraction (one handle, multiple files)
     group.bench_function("sequential_bulk", |b| {
         b.iter(|| {
-            let mut archive = Archive::open(black_box(&archive_path)).unwrap();
+            let archive = Archive::open(black_box(&archive_path)).unwrap();
             let mut results = Vec::new();
             for &file in file_refs.iter() {
                 let data = archive.read_file(file).unwrap();

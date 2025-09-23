@@ -85,7 +85,7 @@ fn test_v3_archive_with_classic_table_compatibility() {
         .expect("Failed to create archive");
 
     // Open and verify
-    let mut archive = Archive::open(&archive_path).expect("Failed to open archive");
+    let archive = Archive::open(&archive_path).expect("Failed to open archive");
 
     // V3 archives may have table offset issues, but should still work via classic tables
     // HET/BET tables may not load due to swapped offsets detection

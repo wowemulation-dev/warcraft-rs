@@ -127,7 +127,7 @@ fn test_threading_scalability() -> Result<Vec<PerformanceMetrics>> {
         create_test_archive("threading_test", 1000, 100, 0.5)?;
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         archive.list()?.into_iter().map(|e| e.name).collect()
     };
     let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
@@ -171,7 +171,7 @@ fn test_batch_size_optimization() -> Result<Vec<PerformanceMetrics>> {
     let (_temp_dir, archive_path, total_bytes) = create_test_archive("batch_test", 800, 80, 0.4)?;
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         archive.list()?.into_iter().map(|e| e.name).collect()
     };
     let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
@@ -226,7 +226,7 @@ fn test_archive_size_scaling() -> Result<Vec<PerformanceMetrics>> {
             create_test_archive(&name.to_lowercase(), file_count, avg_size_kb, 0.6)?;
 
         let files: Vec<String> = {
-            let mut archive = Archive::open(&archive_path)?;
+            let archive = Archive::open(&archive_path)?;
             archive.list()?.into_iter().map(|e| e.name).collect()
         };
         let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
@@ -235,7 +235,7 @@ fn test_archive_size_scaling() -> Result<Vec<PerformanceMetrics>> {
 
         // Sequential
         let start = Instant::now();
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         let mut sequential_results = Vec::new();
         for &file in &file_refs {
             let data = archive.read_file(file)?;
@@ -294,7 +294,7 @@ fn test_no_hanging_stress() -> Result<PerformanceMetrics> {
     )?;
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         archive.list()?.into_iter().map(|e| e.name).collect()
     };
     let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
@@ -336,7 +336,7 @@ fn test_individual_vs_bulk() -> Result<Vec<PerformanceMetrics>> {
     let (_temp_dir, archive_path, total_bytes) = create_test_archive("comparison", 200, 150, 0.4)?;
 
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         archive
             .list()?
             .into_iter()
@@ -353,7 +353,7 @@ fn test_individual_vs_bulk() -> Result<Vec<PerformanceMetrics>> {
     let start = Instant::now();
     let mut individual_results = Vec::new();
     for &file in &file_refs {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         let data = archive.read_file(file)?;
         individual_results.push(data);
     }
@@ -372,7 +372,7 @@ fn test_individual_vs_bulk() -> Result<Vec<PerformanceMetrics>> {
 
     // Sequential bulk extraction (one handle, multiple files)
     let start = Instant::now();
-    let mut archive = Archive::open(&archive_path)?;
+    let archive = Archive::open(&archive_path)?;
     let mut sequential_results = Vec::new();
     for &file in &file_refs {
         let data = archive.read_file(file)?;

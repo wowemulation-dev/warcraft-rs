@@ -22,7 +22,7 @@ fn test_listfile_updates_correctly() {
 
     // Open and verify initial contents
     {
-        let mut archive = Archive::open(path).unwrap();
+        let archive = Archive::open(path).unwrap();
         let files = archive.list().unwrap();
         assert_eq!(files.len(), 3); // 2 files + listfile
 
@@ -60,7 +60,7 @@ fn test_listfile_updates_correctly() {
 
     // Reopen and verify all files are listed
     {
-        let mut archive = Archive::open(path).unwrap();
+        let archive = Archive::open(path).unwrap();
         let files = archive.list().unwrap();
 
         // Should have 5 files now: file1.txt, file2.txt, file3.txt, file4.txt, (listfile)

@@ -66,7 +66,7 @@ fn handle_mpq_error(e: MpqError) {
 use wow_mpq::Archive;
 
 // Open an MPQ archive
-let mut archive = Archive::open("Data/patch.mpq")?;
+let archive = Archive::open("Data/patch.mpq")?;
 
 // Read file data (both path styles work - auto-converted)
 let data = archive.read_file("Interface/FrameXML/UIParent.lua")?;
@@ -104,7 +104,7 @@ use wow_mpq::{Archive, path::mpq_path_to_system};
 use std::path::Path;
 use std::fs;
 
-let mut archive = Archive::open("Data/art.mpq")?;
+let archive = Archive::open("Data/art.mpq")?;
 
 // Extract all files (use list_all() to include files not in listfile)
 if let Ok(entries) = archive.list_all() {
@@ -387,7 +387,7 @@ let texture_ref = Arc::clone(&texture);
 // For MPQ archives, read files on demand
 use wow_mpq::Archive;
 
-let mut archive = Archive::open("huge.mpq")?;
+let archive = Archive::open("huge.mpq")?;
 
 // Read file when needed
 let data = archive.read_file("large_file.dat")?;

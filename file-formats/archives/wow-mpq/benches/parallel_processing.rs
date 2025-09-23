@@ -57,7 +57,7 @@ fn bench_multi_archive_extraction(c: &mut Criterion) {
                 b.iter(|| {
                     let mut results = Vec::new();
                     for path in archives.iter() {
-                        let mut archive = Archive::open(black_box(path)).unwrap();
+                        let archive = Archive::open(black_box(path)).unwrap();
                         let data = archive.read_file("file_005.txt").unwrap();
                         results.push((path.clone(), data));
                     }
@@ -99,7 +99,7 @@ fn bench_multi_archive_search(c: &mut Criterion) {
         b.iter(|| {
             let mut results = Vec::new();
             for path in archives.iter() {
-                let mut archive = Archive::open(black_box(path)).unwrap();
+                let archive = Archive::open(black_box(path)).unwrap();
                 let files = archive.list().unwrap();
                 let matching: Vec<String> = files
                     .into_iter()
@@ -145,7 +145,7 @@ fn bench_multi_file_multi_archive(c: &mut Criterion) {
         b.iter(|| {
             let mut results = Vec::new();
             for path in archives.iter() {
-                let mut archive = Archive::open(black_box(path)).unwrap();
+                let archive = Archive::open(black_box(path)).unwrap();
                 let mut file_results = Vec::new();
                 for &file_name in &files_to_extract {
                     let data = archive.read_file(file_name).unwrap();
@@ -184,7 +184,7 @@ fn bench_custom_processing(c: &mut Criterion) {
         b.iter(|| {
             let mut counts = Vec::new();
             for path in archives.iter() {
-                let mut archive = Archive::open(black_box(path)).unwrap();
+                let archive = Archive::open(black_box(path)).unwrap();
                 let count = archive.list().unwrap().len();
                 counts.push(count);
             }
@@ -196,7 +196,7 @@ fn bench_custom_processing(c: &mut Criterion) {
     group.bench_function("parallel_count", |b| {
         b.iter(|| {
             use wow_mpq::parallel::process_archives_parallel;
-            let counts = process_archives_parallel(black_box(&archives), |mut archive| {
+            let counts = process_archives_parallel(black_box(&archives), |archive| {
                 Ok(archive.list()?.len())
             })
             .unwrap();

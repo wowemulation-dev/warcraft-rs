@@ -54,7 +54,7 @@ fn test_no_hanging() -> Result<()> {
 
     // Get all files in archive
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         archive.list()?.into_iter().map(|e| e.name).collect()
     };
     let file_refs: Vec<&str> = files.iter().map(|s| s.as_str()).collect();
@@ -111,7 +111,7 @@ fn test_resource_usage() -> Result<()> {
 
     // Get subset of files to test different configurations
     let files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         archive
             .list()?
             .into_iter()
@@ -175,7 +175,7 @@ fn test_edge_cases() -> Result<()> {
 
     // Get all files
     let all_files: Vec<String> = {
-        let mut archive = Archive::open(&archive_path)?;
+        let archive = Archive::open(&archive_path)?;
         archive.list()?.into_iter().map(|e| e.name).collect()
     };
 

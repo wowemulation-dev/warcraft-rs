@@ -366,8 +366,8 @@ fn is_signature_file(filename: &str) -> bool {
 
 /// Verify that the rebuilt archive matches the original
 fn verify_rebuild(source_path: &Path, target_path: &Path, options: &RebuildOptions) -> Result<()> {
-    let mut source_archive = Archive::open(source_path)?;
-    let mut target_archive = Archive::open(target_path)?;
+    let source_archive = Archive::open(source_path)?;
+    let target_archive = Archive::open(target_path)?;
 
     let source_files = source_archive
         .list()

@@ -73,7 +73,7 @@ use wow_mpq::Archive;
 use wow_blp::parser::load_blp;
 
 // Read files from MPQ archives
-let mut archive = Archive::open("patch.mpq")?;
+let archive = Archive::open("patch.mpq")?;
 let file_data = archive.read_file("Interface\\Icons\\spell.blp")?;
 
 // List files in archive (from listfile)

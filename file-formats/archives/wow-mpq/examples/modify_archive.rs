@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Verify changes by reopening in read-only mode
     println!("\n🔍 Verifying changes...");
-    let mut readonly = wow_mpq::Archive::open(archive_path)?;
+    let readonly = wow_mpq::Archive::open(archive_path)?;
 
     let files = readonly.list()?;
     println!("\nFiles in modified archive:");
