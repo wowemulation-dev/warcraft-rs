@@ -1595,6 +1595,7 @@ fn show_tree(
         no_color,
         show_metadata: true,
         compact,
+        verbose: false,
     };
 
     println!("{}", render_tree(&root, &options));

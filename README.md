@@ -1,7 +1,6 @@
 # warcraft-rs
 
-A comprehensive Rust library and CLI toolset for parsing, manipulating, and
-creating World of Warcraft file formats.
+A Rust library and CLI toolset for parsing, manipulating, and creating World of Warcraft file formats.
 
 <div align="center">
 
@@ -91,9 +90,9 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.3.0"
-wow-blp = "0.3.0"
-wow-adt = "0.3.0"
+wow-mpq = "0.4.0"
+wow-blp = "0.4.0"
+wow-adt = "0.4.0"
 # ... other formats as needed
 ```
 

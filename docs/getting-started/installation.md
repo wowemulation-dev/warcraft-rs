@@ -1,4 +1,4 @@
-# 📦 Installation Guide
+# Installation Guide
 
 This guide will walk you through installing `warcraft-rs` and its dependencies.
 
@@ -40,14 +40,14 @@ cargo install warcraft-rs
 
 ```toml
 [dependencies]
-wow-mpq = "0.3.0"    # MPQ archive support
-wow-blp = "0.3.0"    # BLP texture support
-wow-adt = "0.3.0"    # ADT terrain support
-wow-wdl = "0.3.0"    # WDL low-resolution terrain support
-wow-wdt = "0.3.0"    # WDT map definition support
-wow-wmo = "0.3.0"    # WMO world map object support
-wow-m2 = "0.3.0"     # M2 model support
-wow-cdbc = "0.3.0"   # DBC database support
+wow-mpq = "0.4.0"    # MPQ archive support
+wow-blp = "0.4.0"    # BLP texture support
+wow-adt = "0.4.0"    # ADT terrain support
+wow-wdl = "0.4.0"    # WDL low-resolution terrain support
+wow-wdt = "0.4.0"    # WDT map definition support
+wow-wmo = "0.4.0"    # WMO world map object support
+wow-m2 = "0.4.0"     # M2 model support
+wow-cdbc = "0.4.0"   # DBC database support
 ```
 
 Or use cargo add:
@@ -173,7 +173,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.3.0"
+wow-mpq = "0.4.0"
 ```
 
 Create `src/main.rs`:

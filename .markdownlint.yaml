@@ -57,3 +57,8 @@ MD040:
     ]
   # Require language only
   language_only: false
+
+# MD024/no-duplicate-heading : Multiple headings with the same content
+# Disabled for CHANGELOG.md where duplicate section names are expected
+MD024:
+  siblings_only: true

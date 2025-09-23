@@ -100,7 +100,7 @@ The root WMO file contains global information about the entire model.
 
 #### MVER - Version
 
-Always the first chunk in the file.
+Always the first chunk in the file. ✅ **Implemented**
 
 ```rust
 // Version information is part of WmoRoot
@@ -115,7 +115,7 @@ fn check_version(wmo: &WmoRoot) {
 
 #### MOHD - Header
 
-Contains general information about the WMO.
+Contains general information about the WMO. ✅ **Implemented**
 
 ```rust
 use wow_wmo::{WmoHeader, WmoFlags, Color};
@@ -141,7 +141,7 @@ fn analyze_wmo_header(header: &WmoHeader) {
 
 #### MOTX - Textures
 
-Null-terminated texture filenames used by this WMO.
+Null-terminated texture filenames used by this WMO. ✅ **Implemented**
 
 ```rust
 // Textures are automatically parsed and available in WmoRoot
@@ -156,7 +156,7 @@ fn list_textures(wmo: &WmoRoot) {
 
 #### MOMT - Materials
 
-Material definitions for all textures.
+Material definitions for all textures. ✅ **Implemented**
 
 ```rust
 use wow_wmo::{WmoMaterial, WmoMaterialFlags};
@@ -468,9 +468,82 @@ struct MCVPEntry {
 }
 ```
 
+#### MOUV - UV Transformations
+
+UV transformations for animated textures (Legion+). ✅ **Implemented**
+
+```rust
+#[repr(C, packed)]
+struct MOUVEntry {
+    translation_speed: [[f32; 2]; 2], // 2 C2Vectors per material
+}
+```
+
+#### MOPE - Portal Extra Information
+
+Additional portal information (WarWithin+). ✅ **Implemented**
+
+```rust
+#[repr(C, packed)]
+struct MOPEEntry {
+    portal_index: u32, // index into MOPT
+    unk1: u32,
+    unk2: u32,
+    unk3: u32,
+}
+```
+
+#### MOLV - Light Extensions
+
+Extended light information (Shadowlands+). ✅ **Implemented**
+
+```rust
+#[repr(C, packed)]
+struct MOLVEntry {
+    directions: [[f32; 4]; 6], // 6 sets of C3Vector + float value
+    unknown: [u8; 3],
+    molt_index: u8,
+}
+```
+
+#### MODI - Doodad File IDs
+
+Doodad file IDs for modern file reference system (Battle for Azeroth+). ✅ **Implemented**
+
+```rust
+/// MODI contains an array of u32 doodad IDs, same count as SMOHeader.nDoodadNames
+fn parse_modi(data: &[u8]) -> Vec<u32> {
+    data.chunks_exact(4)
+        .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+        .collect()
+}
+```
+
+#### MOM3 - New Materials
+
+New material system for modern WoW versions (WarWithin+). ✅ **Implemented**
+
+```rust
+#[repr(C, packed)]
+struct MOM3Entry {
+    // m3SI structure - defines new materials
+    // Structure details may vary, treated as opaque data
+    data: Vec<u8>,
+}
+```
+
+#### MOMO - Alpha Version Container
+
+Container chunk for alpha WoW versions (version 14 only). ✅ **Implemented**
+
+```rust
+// MOMO is a container chunk with no additional data
+// It wraps other chunks in early WoW alpha versions
+```
+
 #### GFID - Group File IDs
 
-File IDs for group files (modern WoW versions).
+File IDs for group files (modern WoW versions). ⚠️ **Format Specification Only**
 
 ```rust
 /// GFID contains an array of u32 file IDs, one per group
@@ -540,7 +613,7 @@ struct MOGPHeader {
 
 #### MOPY - Material Info
 
-Material information for each triangle.
+Material information for each triangle. ✅ **Implemented**
 
 ```rust
 #[repr(C, packed)]
@@ -583,31 +656,39 @@ fn parse_movi(data: &[u8]) -> Vec<[u16; 3]> {
 
 #### MOVT - Vertices
 
-Vertex positions.
+Vertex positions. ✅ **Implemented**
+
+Vertices chunk with count = size / (sizeof(float) * 3). 3 floats per vertex.
+**Important**: Coordinates are in (X,Z,-Y) order as WMOs use a coordinate system with Z-up and Y into screen,
+while OpenGL uses Z toward viewer and Y up.
 
 ```rust
 #[repr(C, packed)]
 #[derive(Debug, Clone, Copy)]
 struct MOVTEntry {
-    position: [f32; 3],
+    x: f32,  // X coordinate
+    y: f32,  // Z coordinate (in WMO space)
+    z: f32,  // -Y coordinate (in WMO space)
 }
 ```
 
 #### MONR - Normals
 
-Vertex normals.
+Vertex normals. ✅ **Implemented**
 
 ```rust
 #[repr(C, packed)]
 #[derive(Debug, Clone, Copy)]
 struct MONREntry {
-    normal: [f32; 3],
+    x: f32,
+    y: f32,
+    z: f32,
 }
 ```
 
 #### MOTV - Texture Coordinates
 
-Texture coordinates (can have up to 3 sets).
+Texture coordinates (can have up to 3 sets). ✅ **Implemented**
 
 ```rust
 #[repr(C, packed)]
@@ -620,27 +701,33 @@ struct MOTVEntry {
 
 #### MOBA - Render Batches
 
-Defines how triangles are grouped for rendering.
+Defines how triangles are grouped for rendering. ✅ **Implemented**
 
 ```rust
 #[repr(C, packed)]
 struct MOBAEntry {
-    /// Start position for the first index
-    start_index: u16,
+    /// Bounding box for culling (bx, by, bz)
+    bounding_box_min: [i16; 3],
 
-    /// Number of indices
-    index_count: u16,
+    /// Bounding box for culling (tx, ty, tz)
+    bounding_box_max: [i16; 3],
 
-    /// First vertex
+    /// Index of the first face index used in MOVI
+    start_index: u32,
+
+    /// Number of MOVI indices used
+    count: u16,
+
+    /// Index of the first vertex used in MOVT
     min_index: u16,
 
-    /// Last vertex
+    /// Index of the last vertex used (batch includes this one)
     max_index: u16,
 
-    /// Flags
+    /// Batch flags
     flags: u8,
 
-    /// Material ID from MOMT
+    /// Material index in MOMT
     material_id: u8,
 }
 ```
@@ -841,9 +928,58 @@ impl MOTAEntry {
 }
 ```
 
+#### MOGX - Query Face Start
+
+Query face start index for modern collision (Dragonflight+). ✅ **Implemented**
+
+```rust
+/// MOGX contains a single u32 query face start index
+fn parse_mogx(data: &[u8]) -> u32 {
+    u32::from_le_bytes([data[0], data[1], data[2], data[3]])
+}
+```
+
+#### MPY2 - Extended Material Info
+
+Extended material information for modern rendering (Dragonflight+). ✅ **Implemented**
+
+```rust
+#[repr(C, packed)]
+struct MPY2Entry {
+    flags: u16,
+    material_id: u16,
+}
+```
+
+#### MOVX - Extended Vertex Indices
+
+Extended vertex indices allowing larger index values (Shadowlands+). ✅ **Implemented**
+
+```rust
+/// MOVX contains u32 indices instead of u16, allowing larger meshes
+fn parse_movx(data: &[u8]) -> Vec<u32> {
+    data.chunks_exact(4)
+        .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+        .collect()
+}
+```
+
+#### MOQG - Query Faces
+
+Query face ground type values for collision detection (Dragonflight+). ✅ **Implemented**
+
+```rust
+/// MOQG contains an array of u32 ground type values
+fn parse_moqg(data: &[u8]) -> Vec<u32> {
+    data.chunks_exact(4)
+        .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+        .collect()
+}
+```
+
 #### MOBS - Map Object Shadow Batches
 
-Shadow batch information for shadow rendering.
+Shadow batch information for shadow rendering. ⚠️ **Format Specification Only**
 
 ```rust
 #[repr(C, packed)]
@@ -1206,7 +1342,7 @@ pub fn process_render_batches(
     for batch in &group.render_batches {
         let material = &materials[batch.material_id as usize];
 
-        let indices: Vec<u32> = (batch.start_index..batch.start_index + batch.index_count)
+        let indices: Vec<u32> = (batch.start_index..batch.start_index + batch.count as u32)
             .map(|i| i as u32)
             .collect();
 

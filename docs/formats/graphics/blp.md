@@ -1,4 +1,4 @@
-# BLP Format 🎨
+# BLP Format
 
 BLP (Blizzard Picture) is Blizzard's proprietary texture format used for all textures in Warcraft III and World of Warcraft. The format uses non-standard JPEG compression with BGRA color components (instead of Y′CbCr) and various direct pixel storage methods.
 
