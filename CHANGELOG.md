@@ -48,6 +48,10 @@ and this project adheres to
   - Changed `index_count` from u16 to i16 for proper signed value handling
   - Fixed negative index values (0xFFF8 = -8) previously showing as 65528
   - Eliminates impossible index ranges in shadow batch data
+- **MPQ SIMD Code**: Resolved Rust version compatibility issues
+  - Added lint configuration to handle unsafe block requirements across Rust versions
+  - Updated io::Error creation to use newer io::Error::other() method
+  - Maintains compatibility with both MSRV (1.86.0) and stable Rust toolchain
 - **WMO Parser Robustness**: Comprehensive cross-expansion validation
   - Tested against 149 WMO files from Vanilla, WotLK, and Cataclysm/MoP
   - Achieved 100% parsing success rate with zero errors
