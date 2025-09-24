@@ -671,6 +671,7 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
 
     // Configure tree rendering options
     let options = TreeOptions {
+        verbose: false,
         max_depth: Some(max_depth),
         show_external_refs: show_refs,
         no_color: false,

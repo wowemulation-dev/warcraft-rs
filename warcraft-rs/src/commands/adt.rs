@@ -703,6 +703,7 @@ fn execute_tree(
 
     // Render tree
     let options = TreeOptions {
+        verbose: false,
         max_depth: depth,
         show_external_refs: show_refs,
         no_color,

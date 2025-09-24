@@ -11,7 +11,7 @@ formats supported by `warcraft-rs`.
 
 - **[MPQ](archives/mpq.md)** - Blizzard's main archive format
 
-### 🌍 [World Data](world-data/)
+### [World Data](world-data/)
 
 Formats for terrain, maps, and world geometry.
 
@@ -19,7 +19,7 @@ Formats for terrain, maps, and world geometry.
 - **[WDL](world-data/wdl.md)** - Low-resolution terrain for distant views
 - **[WDT](world-data/wdt.md)** - World definition tables
 
-### 🎨 [Graphics & Models](graphics/)
+### [Graphics & Models](graphics/)
 
 3D models, textures, and visual assets.
 
@@ -27,7 +27,7 @@ Formats for terrain, maps, and world geometry.
 - **[M2](graphics/m2.md)** - Animated 3D models (characters, creatures, props)
 - **[WMO](graphics/wmo.md)** - Large static world objects (buildings, dungeons)
 
-### 📊 [Database](database/)
+### [Database](database/)
 
 Client-side data storage.
 

@@ -46,6 +46,7 @@ fn main() {
         no_color: false,
         show_metadata: true,
         compact: true,
+        verbose: false,
     };
 
     println!("📋 Compact Mode (max depth 2, no external refs):");

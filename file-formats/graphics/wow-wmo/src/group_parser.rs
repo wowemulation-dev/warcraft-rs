@@ -1,62 +1,370 @@
-use std::collections::HashMap;
-use std::io::{Read, Seek, SeekFrom};
-use tracing::{debug, trace};
-
-use crate::chunk::{Chunk, ChunkHeader};
+use crate::chunk_discovery::ChunkDiscovery;
+use crate::chunk_header::ChunkHeader;
+use crate::chunks::{
+    MliqHeader, MobaEntry, MobnEntry, MobsEntry, MocvEntry, MonrEntry, MopyEntry, MorbEntry,
+    MotaEntry, MotvEntry, MovtEntry, Mpy2Entry,
+};
 use crate::error::{Result, WmoError};
-use crate::parser::chunks;
-use crate::types::{BoundingBox, ChunkId, Color, Vec3};
-use crate::version::{WmoFeature, WmoVersion};
-use crate::wmo_group_types::*;
+use crate::wmo_group_types::WmoGroup as LegacyWmoGroup;
+use binrw::{BinRead, BinReaderExt};
+use std::io::{Read, Seek, SeekFrom};
 
-/// Helper trait for reading little-endian values
-#[allow(dead_code)]
-trait ReadLittleEndian: Read {
-    fn read_u8(&mut self) -> Result<u8> {
-        let mut buf = [0u8; 1];
-        self.read_exact(&mut buf)?;
-        Ok(buf[0])
-    }
+/// WMO Group file structure with extended chunk support
+#[derive(Debug, Clone)]
+pub struct WmoGroup {
+    /// Version (always 17 for supported versions)
+    pub version: u32,
+    /// Group index (calculated from MOGN)
+    pub group_index: u32,
+    /// Group name index (offset into MOGN)
+    pub group_name_index: u32,
+    /// Descriptive group name index (offset into MOGN)
+    pub descriptive_name_index: u32,
+    /// Group flags
+    pub flags: u32,
+    /// Bounding box [min_x, min_y, min_z, max_x, max_y, max_z]
+    pub bounding_box: Vec<f32>,
+    /// Portal information
+    pub portal_start: u16,
+    pub portal_count: u16,
+    /// Batch counts (trans, int, ext)
+    pub trans_batch_count: u16,
+    pub int_batch_count: u16,
+    pub ext_batch_count: u16,
+    /// Unknown batch type (padding or batch_type_d)
+    pub batch_type_d: u16,
+    /// Fog indices (up to 4)
+    pub fog_ids: Vec<u8>,
+    /// Liquid group ID
+    pub group_liquid: u32,
+    /// WMOAreaTable ID
+    pub area_table_id: u32,
+    /// Additional flags (Cataclysm+)
+    pub flags2: u32,
+    /// Parent or first child split group index
+    pub parent_split_group: i16,
+    /// Next split child group index
+    pub next_split_child: i16,
+    /// Number of triangles in this group (calculated)
+    pub n_triangles: u32,
+    /// Number of vertices in this group (calculated)
+    pub n_vertices: u32,
 
-    fn read_u16_le(&mut self) -> Result<u16> {
-        let mut buf = [0u8; 2];
-        self.read_exact(&mut buf)?;
-        Ok(u16::from_le_bytes(buf))
-    }
-
-    fn read_u32_le(&mut self) -> Result<u32> {
-        let mut buf = [0u8; 4];
-        self.read_exact(&mut buf)?;
-        Ok(u32::from_le_bytes(buf))
-    }
-
-    fn read_i16_le(&mut self) -> Result<i16> {
-        let mut buf = [0u8; 2];
-        self.read_exact(&mut buf)?;
-        Ok(i16::from_le_bytes(buf))
-    }
-
-    fn read_i32_le(&mut self) -> Result<i32> {
-        let mut buf = [0u8; 4];
-        self.read_exact(&mut buf)?;
-        Ok(i32::from_le_bytes(buf))
-    }
-
-    fn read_f32_le(&mut self) -> Result<f32> {
-        let mut buf = [0u8; 4];
-        self.read_exact(&mut buf)?;
-        Ok(f32::from_le_bytes(buf))
-    }
+    // Extended chunk data
+    /// Material info per triangle (MOPY)
+    pub material_info: Vec<MopyEntry>,
+    /// Vertex indices (MOVI)
+    pub vertex_indices: Vec<u16>,
+    /// Vertex positions (MOVT)
+    pub vertex_positions: Vec<MovtEntry>,
+    /// Vertex normals (MONR)
+    pub vertex_normals: Vec<MonrEntry>,
+    /// Texture coordinates (MOTV)
+    pub texture_coords: Vec<MotvEntry>,
+    /// Render batches (MOBA)
+    pub render_batches: Vec<MobaEntry>,
+    /// Vertex colors (MOCV)
+    pub vertex_colors: Vec<MocvEntry>,
+    /// Light references (MOLR)
+    pub light_refs: Vec<u16>,
+    /// Doodad references (MODR)
+    pub doodad_refs: Vec<u16>,
+    /// BSP tree nodes (MOBN)
+    pub bsp_nodes: Vec<MobnEntry>,
+    /// BSP face indices (MOBR)
+    pub bsp_face_indices: Vec<u16>,
+    /// Liquid data (MLIQ)
+    pub liquid_header: Option<MliqHeader>,
+    /// Query face start (MOGX - Dragonflight+)
+    pub query_face_start: Option<u32>,
+    /// Extended material info (MPY2 - Dragonflight+)
+    pub extended_materials: Vec<Mpy2Entry>,
+    /// Extended vertex indices (MOVX - Shadowlands+)
+    pub extended_vertex_indices: Vec<u32>,
+    /// Query faces (MOQG - Dragonflight+)
+    pub query_faces: Vec<u32>,
+    /// Triangle strip indices (MORI)
+    pub triangle_strip_indices: Vec<u16>,
+    /// Additional render batches (MORB)
+    pub additional_render_batches: Vec<MorbEntry>,
+    /// Tangent arrays (MOTA)
+    pub tangent_arrays: Vec<MotaEntry>,
+    /// Shadow batches (MOBS)
+    pub shadow_batches: Vec<MobsEntry>,
 }
 
-impl<R: Read> ReadLittleEndian for R {}
+/// MOGP chunk header structure (corrected based on wowdev.wiki)
+#[derive(Debug, Clone, BinRead)]
+#[br(little)]
+pub struct MogpHeader {
+    group_name: u32,             // offset into MOGN
+    descriptive_group_name: u32, // offset into MOGN
+    flags: u32,                  // group flags
+    #[br(count = 6)]
+    bounding_box: Vec<f32>, // min xyz, max xyz
+    portal_start: u16,           // index into portal references
+    portal_count: u16,           // number of portal items
+    trans_batch_count: u16,
+    int_batch_count: u16,
+    ext_batch_count: u16,
+    padding_or_batch_type_d: u16,
+    #[br(count = 4)]
+    fog_ids: Vec<u8>, // fog IDs from MFOG
+    group_liquid: u32, // liquid-related
+    unique_id: u32,    // WMOAreaTable reference
+    flags2: u32,
+    parent_or_first_child_split_group_index: i16,
+    next_split_child_group_index: i16,
+}
 
-/// Parser for WMO group files
+/// Parse a WMO group file using discovered chunks
+pub fn parse_group_file<R: Read + Seek>(
+    reader: &mut R,
+    discovery: ChunkDiscovery,
+) -> std::result::Result<WmoGroup, Box<dyn std::error::Error>> {
+    let mut group = WmoGroup {
+        version: 0,
+        group_index: 0,
+        group_name_index: 0,
+        descriptive_name_index: 0,
+        flags: 0,
+        bounding_box: Vec::new(),
+        portal_start: 0,
+        portal_count: 0,
+        trans_batch_count: 0,
+        int_batch_count: 0,
+        ext_batch_count: 0,
+        batch_type_d: 0,
+        fog_ids: Vec::new(),
+        group_liquid: 0,
+        area_table_id: 0,
+        flags2: 0,
+        parent_split_group: 0,
+        next_split_child: 0,
+        n_triangles: 0,
+        n_vertices: 0,
+        material_info: Vec::new(),
+        vertex_indices: Vec::new(),
+        vertex_positions: Vec::new(),
+        vertex_normals: Vec::new(),
+        texture_coords: Vec::new(),
+        render_batches: Vec::new(),
+        vertex_colors: Vec::new(),
+        light_refs: Vec::new(),
+        doodad_refs: Vec::new(),
+        bsp_nodes: Vec::new(),
+        bsp_face_indices: Vec::new(),
+        liquid_header: None,
+        query_face_start: None,
+        extended_materials: Vec::new(),
+        extended_vertex_indices: Vec::new(),
+        query_faces: Vec::new(),
+        triangle_strip_indices: Vec::new(),
+        additional_render_batches: Vec::new(),
+        tangent_arrays: Vec::new(),
+        shadow_batches: Vec::new(),
+    };
+
+    // Process chunks in order
+    for chunk_info in &discovery.chunks {
+        // Seek to chunk data (skip header)
+        reader.seek(SeekFrom::Start(chunk_info.offset + 8))?;
+
+        match chunk_info.id.as_str() {
+            "MVER" => {
+                // Read version
+                group.version = reader.read_le()?;
+            }
+            "MOGP" => {
+                // Read group header
+                let header = MogpHeader::read(reader)?;
+
+                // Populate all header fields into the group structure
+                group.group_index = 0; // Will be set from filename or external context
+                group.group_name_index = header.group_name;
+                group.descriptive_name_index = header.descriptive_group_name;
+                group.flags = header.flags;
+                group.bounding_box = header.bounding_box;
+                group.portal_start = header.portal_start;
+                group.portal_count = header.portal_count;
+                group.trans_batch_count = header.trans_batch_count;
+                group.int_batch_count = header.int_batch_count;
+                group.ext_batch_count = header.ext_batch_count;
+                group.batch_type_d = header.padding_or_batch_type_d;
+                group.fog_ids = header.fog_ids;
+                group.group_liquid = header.group_liquid;
+                group.area_table_id = header.unique_id;
+                group.flags2 = header.flags2;
+                group.parent_split_group = header.parent_or_first_child_split_group_index;
+                group.next_split_child = header.next_split_child_group_index;
+
+                // MOGP contains sub-chunks - we need to parse them
+                // The remaining chunk data contains nested chunks
+                let data_size = chunk_info.size - std::mem::size_of::<MogpHeader>() as u32;
+                let mut data_reader = std::io::Cursor::new(read_chunk_data(reader, data_size)?);
+
+                // Parse nested chunks within MOGP
+                parse_nested_chunks(&mut data_reader, &mut group)?;
+            }
+            "MOPY" => {
+                // Read material info
+                let count = chunk_info.size / 2; // Each entry is 2 bytes
+                for _ in 0..count {
+                    group.material_info.push(MopyEntry::read(reader)?);
+                }
+            }
+            "MOVI" => {
+                // Read vertex indices
+                let count = chunk_info.size / 2; // Each index is 2 bytes
+                for _ in 0..count {
+                    group.vertex_indices.push(reader.read_le()?);
+                }
+            }
+            "MOVT" => {
+                // Read vertex positions
+                let count = chunk_info.size / 12; // Each position is 3 floats (12 bytes)
+                for _ in 0..count {
+                    group.vertex_positions.push(MovtEntry::read(reader)?);
+                }
+            }
+            "MONR" => {
+                // Read vertex normals
+                let count = chunk_info.size / 12; // Each normal is 3 floats (12 bytes)
+                for _ in 0..count {
+                    group.vertex_normals.push(MonrEntry::read(reader)?);
+                }
+            }
+            "MOTV" => {
+                // Read texture coordinates
+                let count = chunk_info.size / 8; // Each coord is 2 floats (8 bytes)
+                for _ in 0..count {
+                    group.texture_coords.push(MotvEntry::read(reader)?);
+                }
+            }
+            "MOBA" => {
+                // Read render batches
+                let count = chunk_info.size / 16; // Each batch is 16 bytes
+                for _ in 0..count {
+                    group.render_batches.push(MobaEntry::read(reader)?);
+                }
+            }
+            "MOCV" => {
+                // Read vertex colors
+                let count = chunk_info.size / 4; // Each color is 4 bytes
+                for _ in 0..count {
+                    group.vertex_colors.push(MocvEntry::read(reader)?);
+                }
+            }
+            "MOLR" => {
+                // Read light references
+                let count = chunk_info.size / 2; // Each ref is 2 bytes
+                for _ in 0..count {
+                    group.light_refs.push(reader.read_le()?);
+                }
+            }
+            "MODR" => {
+                // Read doodad references
+                let count = chunk_info.size / 2; // Each ref is 2 bytes
+                for _ in 0..count {
+                    group.doodad_refs.push(reader.read_le()?);
+                }
+            }
+            "MOBN" => {
+                // Read BSP tree nodes
+                let count = chunk_info.size / 16; // Each node is 16 bytes
+                for _ in 0..count {
+                    group.bsp_nodes.push(MobnEntry::read(reader)?);
+                }
+            }
+            "MOBR" => {
+                // Read BSP face indices
+                let count = chunk_info.size / 2; // Each index is 2 bytes
+                for _ in 0..count {
+                    group.bsp_face_indices.push(reader.read_le()?);
+                }
+            }
+            "MLIQ" => {
+                // Read liquid header (just the header for now)
+                if chunk_info.size >= 32 {
+                    group.liquid_header = Some(MliqHeader::read(reader)?);
+                }
+            }
+            "MOGX" => {
+                // Read query face start (Dragonflight+)
+                if chunk_info.size >= 4 {
+                    group.query_face_start = Some(reader.read_le()?);
+                }
+            }
+            "MPY2" => {
+                // Read extended material info (Dragonflight+)
+                let count = chunk_info.size / 4; // Each entry is 4 bytes (2 u16s)
+                for _ in 0..count {
+                    group.extended_materials.push(Mpy2Entry::read(reader)?);
+                }
+            }
+            "MOVX" => {
+                // Read extended vertex indices (Shadowlands+)
+                let count = chunk_info.size / 4; // Each index is 4 bytes (u32)
+                for _ in 0..count {
+                    group.extended_vertex_indices.push(reader.read_le()?);
+                }
+            }
+            "MOQG" => {
+                // Read query faces (Dragonflight+)
+                let count = chunk_info.size / 4; // Each face is 4 bytes (u32)
+                for _ in 0..count {
+                    group.query_faces.push(reader.read_le()?);
+                }
+            }
+            "MORI" => {
+                // Read triangle strip indices
+                let count = chunk_info.size / 2; // Each index is 2 bytes (u16)
+                for _ in 0..count {
+                    group.triangle_strip_indices.push(reader.read_le()?);
+                }
+            }
+            "MORB" => {
+                // Read additional render batches
+                let count = chunk_info.size / 10; // Each batch is 10 bytes
+                for _ in 0..count {
+                    group
+                        .additional_render_batches
+                        .push(MorbEntry::read(reader)?);
+                }
+            }
+            "MOTA" => {
+                // Read tangent arrays
+                let count = chunk_info.size / 8; // Each tangent is 8 bytes (4 i16)
+                for _ in 0..count {
+                    group.tangent_arrays.push(MotaEntry::read(reader)?);
+                }
+            }
+            "MOBS" => {
+                // Read shadow batches
+                let count = chunk_info.size / 10; // Each batch is 10 bytes (same as MORB)
+                for _ in 0..count {
+                    group.shadow_batches.push(MobsEntry::read(reader)?);
+                }
+            }
+            _ => {
+                // Skip unknown/unimplemented chunks
+            }
+        }
+    }
+
+    // Calculate triangle and vertex counts from actual data
+    group.n_triangles = (group.vertex_indices.len() / 3) as u32;
+    group.n_vertices = group.vertex_positions.len() as u32;
+
+    Ok(group)
+}
+
+/// Legacy parser for compatibility
 pub struct WmoGroupParser;
 
 impl Default for WmoGroupParser {
     fn default() -> Self {
-        Self::new()
+        Self
     }
 }
 
@@ -66,711 +374,194 @@ impl WmoGroupParser {
         Self
     }
 
-    /// Parse a WMO group file
+    /// Parse a WMO group file (legacy interface)
     pub fn parse_group<R: Read + Seek>(
         &self,
-        reader: &mut R,
-        group_index: u32,
-    ) -> Result<WmoGroup> {
-        // Read all chunks in the file
-        let chunks = self.read_chunks(reader)?;
-
-        // Parse version
-        let version = self.parse_version(&chunks, reader)?;
-        debug!("WMO version: {:?}", version);
-
-        // Parse group header
-        let header = self.parse_group_header(&chunks, reader, version, group_index)?;
-        debug!("WMO group header: {:?}", header);
-
-        // Parse materials
-        let materials = self.parse_materials(&chunks, reader)?;
-        debug!("Found {} materials", materials.len());
-
-        // Parse vertices
-        let vertices = self.parse_vertices(&chunks, reader)?;
-        debug!("Found {} vertices", vertices.len());
-
-        // Parse normals
-        let normals = if header.flags.contains(WmoGroupFlags::HAS_NORMALS) {
-            self.parse_normals(&chunks, reader)?
-        } else {
-            Vec::new()
-        };
-        debug!("Found {} normals", normals.len());
-
-        // Parse texture coordinates
-        let tex_coords = self.parse_texture_coords(&chunks, reader)?;
-        debug!("Found {} texture coordinates", tex_coords.len());
-
-        // Parse batches
-        let batches = self.parse_batches(&chunks, reader)?;
-        debug!("Found {} batches", batches.len());
-
-        // Parse indices
-        let indices = self.parse_indices(&chunks, reader)?;
-        debug!("Found {} indices", indices.len());
-
-        // Parse vertex colors (if present)
-        let vertex_colors = if header.flags.contains(WmoGroupFlags::HAS_VERTEX_COLORS) {
-            Some(self.parse_vertex_colors(&chunks, reader)?)
-        } else {
-            None
-        };
-        debug!("Vertex colors: {}", vertex_colors.is_some());
-
-        // Parse BSP nodes (if present)
-        let bsp_nodes = self.parse_bsp_nodes(&chunks, reader)?;
-        debug!("BSP nodes: {}", bsp_nodes.is_some());
-
-        // Parse liquid data (if present)
-        let liquid = if header.flags.contains(WmoGroupFlags::HAS_WATER) {
-            self.parse_liquid(&chunks, reader, version)?
-        } else {
-            None
-        };
-        debug!("Liquid data: {}", liquid.is_some());
-
-        // Parse doodad references (if present)
-        let doodad_refs = if header.flags.contains(WmoGroupFlags::HAS_DOODADS) {
-            Some(self.parse_doodad_refs(&chunks, reader)?)
-        } else {
-            None
-        };
-        debug!("Doodad references: {}", doodad_refs.is_some());
-
-        Ok(WmoGroup {
-            header,
-            materials,
-            vertices,
-            normals,
-            tex_coords,
-            batches,
-            indices,
-            vertex_colors,
-            bsp_nodes,
-            liquid,
-            doodad_refs,
-        })
+        _reader: &mut R,
+        _group_index: u32,
+    ) -> Result<LegacyWmoGroup> {
+        // This is a stub for now - the real implementation will use binrw
+        Err(WmoError::InvalidFormat(
+            "Legacy parser not yet migrated".into(),
+        ))
     }
+}
 
-    /// Read all chunks in a file
-    fn read_chunks<R: Read + Seek>(&self, reader: &mut R) -> Result<HashMap<ChunkId, Chunk>> {
-        let mut chunks = HashMap::new();
-        let start_pos = reader.stream_position()?;
-        reader.seek(SeekFrom::Start(start_pos))?;
+/// Read chunk data as bytes
+fn read_chunk_data<R: Read>(
+    reader: &mut R,
+    size: u32,
+) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let mut data = vec![0u8; size as usize];
+    reader.read_exact(&mut data)?;
+    Ok(data)
+}
 
-        // Read chunks until end of file
-        loop {
-            match ChunkHeader::read(reader) {
-                Ok(header) => {
-                    trace!("Found chunk: {}, size: {}", header.id, header.size);
-                    let data_pos = reader.stream_position()?;
+/// Parse nested chunks within MOGP data
+fn parse_nested_chunks<R: Read + Seek>(
+    reader: &mut R,
+    group: &mut WmoGroup,
+) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let end_pos = reader.seek(SeekFrom::End(0))?;
+    reader.seek(SeekFrom::Start(0))?;
 
-                    chunks.insert(
-                        header.id,
-                        Chunk {
-                            header,
-                            data_position: data_pos,
-                        },
-                    );
+    // Parse chunks within the MOGP data
+    while reader.stream_position()? < end_pos {
+        let chunk_start = reader.stream_position()?;
+        let remaining = end_pos - chunk_start;
 
-                    reader.seek(SeekFrom::Current(header.size as i64))?;
-                }
-                Err(WmoError::UnexpectedEof) => {
-                    // End of file reached
-                    break;
-                }
-                Err(e) => return Err(e),
-            }
+        if remaining < 8 {
+            break; // Not enough bytes for chunk header
         }
 
-        // Read chunks within the MOGP chunk
-        let mogp_chunk = chunks
-            .get(&chunks::MOGP)
-            .ok_or_else(|| WmoError::MissingRequiredChunk("MOGP".to_string()))?;
-        mogp_chunk.seek_to_data(reader)?;
-        // Skip the group header
-        reader.seek(SeekFrom::Current(WmoGroupHeader::SIZE as _))?;
-
-        loop {
-            match ChunkHeader::read(reader) {
-                Ok(header) => {
-                    trace!("Found sub-chunk: {}, size: {}", header.id, header.size);
-                    let data_pos = reader.stream_position()?;
-
-                    chunks.insert(
-                        header.id,
-                        Chunk {
-                            header,
-                            data_position: data_pos,
-                        },
-                    );
-
-                    reader.seek(SeekFrom::Current(header.size as i64))?;
-                }
-                Err(WmoError::UnexpectedEof) => {
-                    // End of MOGP chunk reached
-                    break;
-                }
-                Err(e) => return Err(e),
-            }
-        }
-
-        // Reset position to start
-        reader.seek(SeekFrom::Start(start_pos))?;
-
-        Ok(chunks)
-    }
-
-    /// Parse the WMO version
-    fn parse_version<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<WmoVersion> {
-        let version_chunk = chunks
-            .get(&chunks::MVER)
-            .ok_or_else(|| WmoError::MissingRequiredChunk("MVER".to_string()))?;
-
-        version_chunk.seek_to_data(reader)?;
-        let raw_version = reader.read_u32_le()?;
-
-        WmoVersion::from_raw(raw_version).ok_or(WmoError::InvalidVersion(raw_version))
-    }
-
-    /// Parse the group header
-    fn parse_group_header<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-        _version: WmoVersion,
-        group_index: u32,
-    ) -> Result<WmoGroupHeader> {
-        let mogp_chunk = chunks
-            .get(&chunks::MOGP)
-            .ok_or_else(|| WmoError::MissingRequiredChunk("MOGP".to_string()))?;
-
-        mogp_chunk.seek_to_data(reader)?;
-
-        // First 4 bytes are group name offset
-        let name_offset = reader.read_u32_le()?;
-
-        // Next 4 bytes are group flags
-        let flags = WmoGroupFlags::from_bits_truncate(reader.read_u32_le()?);
-
-        // Next 24 bytes are bounding box
-        let min_x = reader.read_f32_le()?;
-        let min_y = reader.read_f32_le()?;
-        let min_z = reader.read_f32_le()?;
-
-        let max_x = reader.read_f32_le()?;
-        let max_y = reader.read_f32_le()?;
-        let max_z = reader.read_f32_le()?;
-
-        // Skip the rest of the header (varies by version)
-        reader.seek(SeekFrom::Current(8))?; // Skip 8 bytes
-
-        Ok(WmoGroupHeader {
-            flags,
-            bounding_box: BoundingBox {
-                min: Vec3 {
-                    x: min_x,
-                    y: min_y,
-                    z: min_z,
-                },
-                max: Vec3 {
-                    x: max_x,
-                    y: max_y,
-                    z: max_z,
-                },
-            },
-            name_offset,
-            group_index,
-        })
-    }
-
-    /// Parse materials used in the group
-    fn parse_materials<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<u16>> {
-        let moba_chunk = match chunks.get(&chunks::MOBA) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No batches
+        let header = match ChunkHeader::read(reader) {
+            Ok(h) => h,
+            Err(_) => break, // Malformed chunk
         };
 
-        let batch_data = moba_chunk.read_data(reader)?;
-        let mut materials = Vec::new();
+        let chunk_id = header.id.as_str();
+        let chunk_size = header.size;
 
-        // Each batch is 24 bytes
-        let batch_count = batch_data.len() / 24;
-
-        for i in 0..batch_count {
-            let offset = i * 24 + 2; // Material ID is 2 bytes in
-
-            let material_id = u16::from_le_bytes([batch_data[offset], batch_data[offset + 1]]);
-
-            if !materials.contains(&material_id) {
-                materials.push(material_id);
-            }
+        // Check if we have enough remaining data for this chunk
+        let remaining_data = end_pos - reader.stream_position()?;
+        if chunk_size as u64 > remaining_data {
+            // Chunk claims more data than available - truncated file or corrupted chunk
+            // Skip parsing this chunk and stop
+            break;
         }
-
-        Ok(materials)
-    }
-
-    /// Parse vertices
-    fn parse_vertices<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<Vec3>> {
-        let movt_chunk = match chunks.get(&chunks::MOVT) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No vertices
-        };
-
-        let movt_data = movt_chunk.read_data(reader)?;
-        let vertex_count = movt_data.len() / 12; // 12 bytes per vertex (3 floats)
-        let mut vertices = Vec::with_capacity(vertex_count);
-
-        for i in 0..vertex_count {
-            let offset = i * 12;
-
-            let x = f32::from_le_bytes([
-                movt_data[offset],
-                movt_data[offset + 1],
-                movt_data[offset + 2],
-                movt_data[offset + 3],
-            ]);
-
-            let y = f32::from_le_bytes([
-                movt_data[offset + 4],
-                movt_data[offset + 5],
-                movt_data[offset + 6],
-                movt_data[offset + 7],
-            ]);
-
-            let z = f32::from_le_bytes([
-                movt_data[offset + 8],
-                movt_data[offset + 9],
-                movt_data[offset + 10],
-                movt_data[offset + 11],
-            ]);
-
-            vertices.push(Vec3 { x, y, z });
-        }
-
-        Ok(vertices)
-    }
-
-    /// Parse normals
-    fn parse_normals<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<Vec3>> {
-        let monr_chunk = match chunks.get(&chunks::MONR) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No normals
-        };
-
-        let monr_data = monr_chunk.read_data(reader)?;
-        let normal_count = monr_data.len() / 12; // 12 bytes per normal (3 floats)
-        let mut normals = Vec::with_capacity(normal_count);
-
-        for i in 0..normal_count {
-            let offset = i * 12;
-
-            let x = f32::from_le_bytes([
-                monr_data[offset],
-                monr_data[offset + 1],
-                monr_data[offset + 2],
-                monr_data[offset + 3],
-            ]);
-
-            let y = f32::from_le_bytes([
-                monr_data[offset + 4],
-                monr_data[offset + 5],
-                monr_data[offset + 6],
-                monr_data[offset + 7],
-            ]);
-
-            let z = f32::from_le_bytes([
-                monr_data[offset + 8],
-                monr_data[offset + 9],
-                monr_data[offset + 10],
-                monr_data[offset + 11],
-            ]);
-
-            normals.push(Vec3 { x, y, z });
-        }
-
-        Ok(normals)
-    }
-
-    /// Parse texture coordinates
-    fn parse_texture_coords<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<TexCoord>> {
-        let motv_chunk = match chunks.get(&chunks::MOTV) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No texture coordinates
-        };
-
-        let motv_data = motv_chunk.read_data(reader)?;
-        let tex_coord_count = motv_data.len() / 8; // 8 bytes per texture coordinate (2 floats)
-        let mut tex_coords = Vec::with_capacity(tex_coord_count);
-
-        for i in 0..tex_coord_count {
-            let offset = i * 8;
-
-            let u = f32::from_le_bytes([
-                motv_data[offset],
-                motv_data[offset + 1],
-                motv_data[offset + 2],
-                motv_data[offset + 3],
-            ]);
-
-            let v = f32::from_le_bytes([
-                motv_data[offset + 4],
-                motv_data[offset + 5],
-                motv_data[offset + 6],
-                motv_data[offset + 7],
-            ]);
-
-            tex_coords.push(TexCoord { u, v });
-        }
-
-        Ok(tex_coords)
-    }
-
-    /// Parse batches
-    fn parse_batches<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<WmoBatch>> {
-        let moba_chunk = match chunks.get(&chunks::MOBA) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No batches
-        };
-
-        let moba_data = moba_chunk.read_data(reader)?;
-        let batch_count = moba_data.len() / 24; // 24 bytes per batch
-        let mut moba_cursor = std::io::Cursor::new(moba_data);
-        let mut batches = Vec::with_capacity(batch_count);
-
-        for _ in 0..batch_count {
-            let mut flags = [0u8; 10];
-            moba_cursor.read_exact(&mut flags)?;
-            let large_material_id = moba_cursor.read_u16_le()?;
-            let start_index = moba_cursor.read_u32_le()?;
-            let count = moba_cursor.read_u16_le()?;
-            let start_vertex = moba_cursor.read_u16_le()?;
-            let end_vertex = moba_cursor.read_u16_le()?;
-            let use_large_material_id = moba_cursor.read_u8()? != 0;
-            let mut material_id = moba_cursor.read_u8()? as u16;
-
-            // TODO: Apply this check only if version >= Legion
-            if use_large_material_id {
-                material_id = large_material_id;
-            }
-
-            batches.push(WmoBatch {
-                flags,
-                material_id,
-                start_index,
-                count,
-                start_vertex,
-                end_vertex,
-                use_large_material_id,
-            });
-        }
-
-        Ok(batches)
-    }
-
-    /// Parse indices
-    fn parse_indices<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<u16>> {
-        let movi_chunk = match chunks.get(&chunks::MOVI) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No indices
-        };
-
-        let movi_data = movi_chunk.read_data(reader)?;
-        let index_count = movi_data.len() / 2; // 2 bytes per index
-        let mut indices = Vec::with_capacity(index_count);
-
-        for i in 0..index_count {
-            let offset = i * 2;
-
-            let index = u16::from_le_bytes([movi_data[offset], movi_data[offset + 1]]);
-
-            indices.push(index);
-        }
-
-        Ok(indices)
-    }
-
-    /// Parse vertex colors
-    fn parse_vertex_colors<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<Color>> {
-        let mocv_chunk = match chunks.get(&chunks::MOCV) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No vertex colors
-        };
-
-        let mocv_data = mocv_chunk.read_data(reader)?;
-        let color_count = mocv_data.len() / 4; // 4 bytes per color
-        let mut colors = Vec::with_capacity(color_count);
-
-        for i in 0..color_count {
-            let offset = i * 4;
-
-            let color = Color {
-                b: mocv_data[offset],
-                g: mocv_data[offset + 1],
-                r: mocv_data[offset + 2],
-                a: mocv_data[offset + 3],
-            };
-
-            colors.push(color);
-        }
-
-        Ok(colors)
-    }
-
-    /// Parse BSP nodes
-    fn parse_bsp_nodes<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Option<Vec<WmoBspNode>>> {
-        let mobn_chunk = match chunks.get(&chunks::MOBN) {
-            Some(chunk) => chunk,
-            None => return Ok(None), // No BSP nodes
-        };
-
-        let mobn_data = mobn_chunk.read_data(reader)?;
-        let node_count = mobn_data.len() / 16; // 16 bytes per node
-        let mut nodes = Vec::with_capacity(node_count);
-
-        for i in 0..node_count {
-            let offset = i * 16;
-
-            let plane_normal_x = f32::from_le_bytes([
-                mobn_data[offset],
-                mobn_data[offset + 1],
-                mobn_data[offset + 2],
-                mobn_data[offset + 3],
-            ]);
-
-            let plane_distance = f32::from_le_bytes([
-                mobn_data[offset + 4],
-                mobn_data[offset + 5],
-                mobn_data[offset + 6],
-                mobn_data[offset + 7],
-            ]);
-
-            let child0 = i16::from_le_bytes([mobn_data[offset + 8], mobn_data[offset + 9]]);
-
-            let child1 = i16::from_le_bytes([mobn_data[offset + 10], mobn_data[offset + 11]]);
-
-            let first_face = u16::from_le_bytes([mobn_data[offset + 12], mobn_data[offset + 13]]);
-
-            let num_faces = u16::from_le_bytes([mobn_data[offset + 14], mobn_data[offset + 15]]);
-
-            // Extract plane normal components (x is stored, y and z are packed)
-            let plane_flags = (plane_normal_x as u32) & 0x3;
-            let normal = match plane_flags {
-                0 => Vec3 {
-                    x: 1.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-                1 => Vec3 {
-                    x: 0.0,
-                    y: 1.0,
-                    z: 0.0,
-                },
-                2 => Vec3 {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 1.0,
-                },
-                3 => {
-                    // Custom normal
-                    let x = ((plane_normal_x as u32) >> 2) as f32 / 32767.0;
-
-                    // Extract y and z from child0 and child1 if they are flagged
-                    // This is approximate since the exact encoding is complex
-                    let y = if child0 < 0 { -0.5 } else { 0.5 };
-                    let z = if child1 < 0 { -0.5 } else { 0.5 };
-
-                    Vec3 { x, y, z }
-                }
-                _ => unreachable!(),
-            };
-
-            nodes.push(WmoBspNode {
-                plane: WmoPlane {
-                    normal,
-                    distance: plane_distance,
-                },
-                children: [child0, child1],
-                first_face,
-                num_faces,
-            });
-        }
-
-        Ok(Some(nodes))
-    }
-
-    /// Parse liquid data
-    fn parse_liquid<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-        version: WmoVersion,
-    ) -> Result<Option<WmoLiquid>> {
-        let mliq_chunk = match chunks.get(&chunks::MLIQ) {
-            Some(chunk) => chunk,
-            None => return Ok(None), // No liquid data
-        };
-
-        mliq_chunk.seek_to_data(reader)?;
-
-        // Parse liquid header
-        let liquid_type = reader.read_u32_le()?;
-        let flags = reader.read_u32_le()?;
-
-        let width = reader.read_u32_le()? + 1; // Grid is 1 larger than stored value
-        let height = reader.read_u32_le()? + 1;
-
-        // Skip bounding box for now
-        reader.seek(SeekFrom::Current(24))?;
-
-        // Determine format based on version
-        // In older versions, liquid data was simpler
-        let vertex_count = (width * height) as usize;
-        let mut vertices = Vec::with_capacity(vertex_count);
-
-        if version >= WmoVersion::Wod && version.supports_feature(WmoFeature::LiquidV2) {
-            // WoD and later - more complex liquid format
-            // Read vertices and heights
-            for y in 0..height {
-                for x in 0..width {
-                    let base_x = reader.read_f32_le()?;
-                    let base_y = reader.read_f32_le()?;
-                    let base_z = reader.read_f32_le()?;
-
-                    let height = reader.read_f32_le()?;
-
-                    vertices.push(WmoLiquidVertex {
-                        position: Vec3 {
-                            x: base_x + x as f32,
-                            y: base_y + y as f32,
-                            z: base_z,
-                        },
-                        height,
-                    });
+        match chunk_id {
+            "MOPY" => {
+                // Read material info
+                let count = chunk_size / 2; // Each entry is 2 bytes
+                for _ in 0..count {
+                    group.material_info.push(MopyEntry::read(reader)?);
                 }
             }
-
-            // Read tile flags if available
-            let has_tile_flags = flags & 2 != 0;
-            let tile_flags = if has_tile_flags {
-                let tile_count = ((width - 1) * (height - 1)) as usize;
-                let mut flags = Vec::with_capacity(tile_count);
-
-                for _ in 0..tile_count {
-                    flags.push(reader.read_u8()?);
-                }
-
-                Some(flags)
-            } else {
-                None
-            };
-
-            Ok(Some(WmoLiquid {
-                liquid_type,
-                flags,
-                width,
-                height,
-                vertices,
-                tile_flags,
-            }))
-        } else {
-            // Classic through MoP - simpler liquid format
-            // Just read heights
-            for y in 0..height {
-                for x in 0..width {
-                    let depth = reader.read_f32_le()?;
-
-                    vertices.push(WmoLiquidVertex {
-                        position: Vec3 {
-                            x: x as f32,
-                            y: y as f32,
-                            z: 0.0, // Base height set to 0, adjusted by depth
-                        },
-                        height: depth,
-                    });
+            "MOVI" => {
+                // Read vertex indices
+                let count = chunk_size / 2; // Each index is 2 bytes
+                for _ in 0..count {
+                    group.vertex_indices.push(reader.read_le()?);
                 }
             }
-
-            // Read tile flags
-            let tile_count = ((width - 1) * (height - 1)) as usize;
-            let mut tile_flags = Vec::with_capacity(tile_count);
-
-            for _ in 0..tile_count {
-                tile_flags.push(reader.read_u8()?);
+            "MOVT" => {
+                // Read vertex positions
+                let count = chunk_size / 12; // Each position is 3 floats (12 bytes)
+                for _ in 0..count {
+                    group.vertex_positions.push(MovtEntry::read(reader)?);
+                }
             }
-
-            Ok(Some(WmoLiquid {
-                liquid_type,
-                flags,
-                width,
-                height,
-                vertices,
-                tile_flags: Some(tile_flags),
-            }))
+            "MONR" => {
+                // Read vertex normals
+                let count = chunk_size / 12; // Each normal is 3 floats (12 bytes)
+                for _ in 0..count {
+                    group.vertex_normals.push(MonrEntry::read(reader)?);
+                }
+            }
+            "MOTV" => {
+                // Read texture coordinates
+                let count = chunk_size / 8; // Each coord is 2 floats (8 bytes)
+                for _ in 0..count {
+                    group.texture_coords.push(MotvEntry::read(reader)?);
+                }
+            }
+            "MOBA" => {
+                // Read render batches
+                let count = chunk_size / 24; // Each batch is 24 bytes
+                for _ in 0..count {
+                    group.render_batches.push(MobaEntry::read(reader)?);
+                }
+            }
+            "MOCV" => {
+                // Read vertex colors
+                let count = chunk_size / 4; // Each color is 4 bytes (BGRA)
+                for _ in 0..count {
+                    group.vertex_colors.push(MocvEntry::read(reader)?);
+                }
+            }
+            "MOBN" => {
+                // Read BSP tree nodes
+                let count = chunk_size / 16; // Each node is 16 bytes
+                for _ in 0..count {
+                    group.bsp_nodes.push(MobnEntry::read(reader)?);
+                }
+            }
+            "MOBR" => {
+                // Read BSP face indices
+                let count = chunk_size / 2; // Each index is 2 bytes
+                for _ in 0..count {
+                    group.bsp_face_indices.push(reader.read_le()?);
+                }
+            }
+            "MLIQ" => {
+                // Read liquid header if available
+                if chunk_size >= 32 {
+                    group.liquid_header = Some(MliqHeader::read(reader)?);
+                }
+            }
+            "MOGX" => {
+                // Read query face start (Dragonflight+)
+                if chunk_size >= 4 {
+                    group.query_face_start = Some(reader.read_le()?);
+                }
+            }
+            "MPY2" => {
+                // Read extended material info (Dragonflight+)
+                let count = chunk_size / 4; // Each entry is 4 bytes (2 u16s)
+                for _ in 0..count {
+                    group.extended_materials.push(Mpy2Entry::read(reader)?);
+                }
+            }
+            "MOVX" => {
+                // Read extended vertex indices (Shadowlands+)
+                let count = chunk_size / 4; // Each index is 4 bytes (u32)
+                for _ in 0..count {
+                    group.extended_vertex_indices.push(reader.read_le()?);
+                }
+            }
+            "MOQG" => {
+                // Read query faces (Dragonflight+)
+                let count = chunk_size / 4; // Each face is 4 bytes (u32)
+                for _ in 0..count {
+                    group.query_faces.push(reader.read_le()?);
+                }
+            }
+            "MORI" => {
+                // Read triangle strip indices
+                let count = chunk_size / 2; // Each index is 2 bytes (u16)
+                for _ in 0..count {
+                    group.triangle_strip_indices.push(reader.read_le()?);
+                }
+            }
+            "MORB" => {
+                // Read additional render batches
+                let count = chunk_size / 10; // Each batch is 10 bytes
+                for _ in 0..count {
+                    group
+                        .additional_render_batches
+                        .push(MorbEntry::read(reader)?);
+                }
+            }
+            "MOTA" => {
+                // Read tangent arrays
+                let count = chunk_size / 8; // Each tangent is 8 bytes (4 i16)
+                for _ in 0..count {
+                    group.tangent_arrays.push(MotaEntry::read(reader)?);
+                }
+            }
+            "MOBS" => {
+                // Read shadow batches
+                let count = chunk_size / 10; // Each batch is 10 bytes (same as MORB)
+                for _ in 0..count {
+                    group.shadow_batches.push(MobsEntry::read(reader)?);
+                }
+            }
+            _ => {
+                // Skip unknown chunk
+                reader.seek(SeekFrom::Current(chunk_size as i64))?;
+            }
         }
     }
 
-    /// Parse doodad references
-    fn parse_doodad_refs<R: Read + Seek>(
-        &self,
-        chunks: &HashMap<ChunkId, Chunk>,
-        reader: &mut R,
-    ) -> Result<Vec<u16>> {
-        let modr_chunk = match chunks.get(&chunks::MODR) {
-            Some(chunk) => chunk,
-            None => return Ok(Vec::new()), // No doodad refs
-        };
-
-        let modr_data = modr_chunk.read_data(reader)?;
-        let doodad_count = modr_data.len() / 2; // 2 bytes per doodad reference
-        let mut doodad_refs = Vec::with_capacity(doodad_count);
-
-        for i in 0..doodad_count {
-            let offset = i * 2;
-
-            let doodad_ref = u16::from_le_bytes([modr_data[offset], modr_data[offset + 1]]);
-
-            doodad_refs.push(doodad_ref);
-        }
-
-        Ok(doodad_refs)
-    }
+    Ok(())
 }

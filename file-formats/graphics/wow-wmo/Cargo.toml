@@ -1,6 +1,6 @@
 [package]
 name = "wow-wmo"
-version = "0.4.0"
+version = "0.5.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,7 +12,14 @@ description = "Parser, editor, and converter for World of Warcraft WMO (World Mo
 categories = ["game-development", "parser-implementations"]
 keywords = ["wow", "warcraft", "wmo", "parser", "gamedev"]
 
+[[bin]]
+name = "debug_chunks"
+path = "src/bin/debug_chunks.rs"
+
 [dependencies]
+# Binary parsing
+binrw = "0.14"
+
 # Error handling
 thiserror = { workspace = true }
 

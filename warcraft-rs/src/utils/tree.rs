@@ -63,6 +63,8 @@ pub struct TreeOptions {
     pub no_color: bool,
     pub show_metadata: bool,
     pub compact: bool,
+    #[cfg_attr(not(feature = "wmo"), allow(dead_code))]
+    pub verbose: bool,
 }
 
 impl Default for TreeOptions {
@@ -73,6 +75,7 @@ impl Default for TreeOptions {
             no_color: false,
             show_metadata: true,
             compact: false,
+            verbose: false,
         }
     }
 }

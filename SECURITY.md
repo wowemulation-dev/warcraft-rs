@@ -5,10 +5,11 @@
 The following versions of `warcraft-rs` are currently being supported with
 security updates:
 
-| Version | Supported             |
-| ------- | --------------------- |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+| Version | Supported          |
+| ------- | ------------------ |
+| 0.4.x   | ✅ Yes             |
+| 0.3.x   | ✅ Yes             |
+| < 0.3   | ❌ No              |
 
 ## Reporting a Vulnerability
 

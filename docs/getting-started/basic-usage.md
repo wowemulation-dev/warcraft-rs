@@ -1,4 +1,4 @@
-# 🎮 Basic Usage
+# Basic Usage
 
 Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft files.
 

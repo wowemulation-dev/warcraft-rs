@@ -6,10 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - 0.5.0
+
+### Added
+
+- **WMO Format**: Complete chunk support with test-driven implementation
+  - GFID (Group File ID) - File references for group data
+  - MORI (Portal references) - Portal connectivity information
+  - MORB (Bounding boxes) - Spatial boundaries for groups
+  - MOTA (Portal attachment) - Portal-to-group associations
+  - MOBS (Shadow batches) - Shadow rendering optimization data with signed index support
+- **WMO Tree Command**: Comprehensive visualization enhancements
+  - Increased chunk coverage from 48.8% to 97.6% (40/41 chunks displayed)
+  - Added `--detailed` flag for complete field-level data visibility
+  - Enhanced material display with shader, blend mode, and texture data
+  - Improved statistics display with chunk counts and sizes
+  - Added verbose metadata for all chunk types
+- **WMO Chunk ID Mapping**: Extended chunk recognition for cross-version compatibility
+  - Added alternative byte patterns for MOVB (VBOM, BVOM)
+  - Added alternative byte patterns for MFOG (GFOM, GOFM)
+  - Ensures proper chunk identification across all WoW expansions
 
 ### Changed
 
+- **WMO Parser Architecture**: Complete rewrite using BinRead with multi-phase parsing
+  - Migrated from manual binary parsing to declarative BinRead derive macros
+  - Implemented two-phase parsing: chunk discovery followed by typed parsing
+  - Added ChunkHeader abstraction for consistent chunk handling
+  - Introduced modular parser architecture with separate root and group parsers
+  - Enhanced error handling with detailed parsing context and chunk validation
+  - Improved maintainability through declarative structure definitions
 - **M2 Parser Consolidation**: Streamlined codebase after bone parsing fixes
   - Removed 17 temporary debugging examples used during corruption analysis
   - Consolidated vertex validation and coordinate transformation logic
@@ -18,8 +44,19 @@ and this project adheres to
 
 ### Fixed
 
+- **WMO MOBS Structure**: Corrected shadow batch index interpretation
+  - Changed `index_count` from u16 to i16 for proper signed value handling
+  - Fixed negative index values (0xFFF8 = -8) previously showing as 65528
+  - Eliminates impossible index ranges in shadow batch data
+- **WMO Parser Robustness**: Comprehensive cross-expansion validation
+  - Tested against 149 WMO files from Vanilla, WotLK, and Cataclysm/MoP
+  - Achieved 100% parsing success rate with zero errors
+  - Properly handles float values stored in texture index fields
+  - Correctly processes zero-count doodad references
+  - Supports high material counts (100+) in complex models
+
 - **M2 Triangle Index Parsing**: Critical mesh connectivity corruption causing fragmented geometry (CRITICAL FIX)
-  - **Double Indirection Bug**: Fixed unnecessary two-level indirection in `get_resolved_indices()` 
+  - **Double Indirection Bug**: Fixed unnecessary two-level indirection in `get_resolved_indices()`
     - Triangle indices were incorrectly resolved as `indices[triangles[i]]` instead of direct usage
     - Created sequential indices [0,1,2,3...] resulting in flat "airplane" geometry
     - Now correctly uses triangle array values [76,21,23,29...] for proper 3D mesh connectivity
@@ -196,7 +233,7 @@ and this project adheres to
 
 ### Changed
 
-- **MPQ Architecture**: Refactored to lazy-loading with Arc<RwLock<T>> for thread safety
+- **MPQ Architecture**: Refactored to lazy-loading with `Arc<RwLock<T>>` for thread safety
 - **MPQ Validation**: Security checks now run before any data processing
 - **MPQ Compression**: Integrated buffer pooling for all decompression operations
 - **MPQ CRC32**: Unified to use crc32fast for consistency across scalar/SIMD
