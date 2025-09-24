@@ -5,6 +5,7 @@ use crate::chunks::{
     Motx, MouvEntry, MovbEntry, MovvEntry,
 };
 use binrw::{BinRead, BinReaderExt};
+use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 
 /// WMO Root file structure with extended chunk support
@@ -30,6 +31,7 @@ pub struct WmoRoot {
     // Extended chunk data
     /// Texture filenames (MOTX)
     pub textures: Vec<String>,
+    pub texture_offset_index_map: HashMap<u32, u32>,
     /// Materials (MOMT)
     pub materials: Vec<MomtEntry>,
     /// Group names (MOGN)
@@ -104,6 +106,7 @@ pub fn parse_root_file<R: Read + Seek>(
         n_doodad_defs: 0,
         n_doodad_sets: 0,
         textures: Vec::new(),
+        texture_offset_index_map: HashMap::new(),
         materials: Vec::new(),
         group_names: Vec::new(),
         group_info: Vec::new(),
@@ -154,6 +157,7 @@ pub fn parse_root_file<R: Read + Seek>(
                 reader.read_exact(&mut data)?;
                 let motx = Motx::parse(&data)?;
                 root.textures = motx.textures;
+                root.texture_offset_index_map = motx.texture_offset_index_map;
             }
             "MOMT" => {
                 // Read materials

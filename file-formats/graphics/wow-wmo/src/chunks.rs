@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use binrw::BinRead;
 
 /// MOMT - Materials chunk
@@ -11,13 +13,36 @@ pub struct MomtEntry {
     pub emissive_color: [u8; 4],
     pub frame_emissive_color: [u8; 4],
     pub texture_2: u32,
-    pub diff_color: u32,
+    pub diff_color: [u8; 4],
     pub ground_type: u32,
     pub texture_3: u32,
     pub color_2: u32,
     pub flags_2: u32,
     #[br(count = 16)]
     pub runtime_data: Vec<u8>,
+}
+
+impl MomtEntry {
+    pub fn get_texture1_index(&self, texture_offset_index_map: &HashMap<u32, u32>) -> u32 {
+        texture_offset_index_map
+            .get(&self.texture_1)
+            .copied()
+            .unwrap()
+    }
+
+    pub fn get_texture2_index(&self, texture_offset_index_map: &HashMap<u32, u32>) -> u32 {
+        texture_offset_index_map
+            .get(&self.texture_2)
+            .copied()
+            .unwrap()
+    }
+
+    pub fn get_texture3_index(&self, texture_offset_index_map: &HashMap<u32, u32>) -> u32 {
+        texture_offset_index_map
+            .get(&self.texture_3)
+            .copied()
+            .unwrap()
+    }
 }
 
 /// MOGN - Group names chunk
@@ -245,24 +270,30 @@ pub struct MliqVertex {
 #[derive(Debug, Clone)]
 pub struct Motx {
     pub textures: Vec<String>,
+    pub texture_offset_index_map: HashMap<u32, u32>,
 }
 
 impl Motx {
     pub fn parse(data: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
         let mut textures = Vec::new();
         let mut start = 0;
+        let mut texture_offset_index_map = HashMap::new();
 
         for i in 0..data.len() {
             if data[i] == 0 {
                 if i > start {
                     let texture = String::from_utf8(data[start..i].to_vec())?;
                     textures.push(texture);
+                    texture_offset_index_map.insert(start as u32, textures.len() as u32 - 1);
                 }
                 start = i + 1;
             }
         }
 
-        Ok(Self { textures })
+        Ok(Self {
+            textures,
+            texture_offset_index_map,
+        })
     }
 }
 
