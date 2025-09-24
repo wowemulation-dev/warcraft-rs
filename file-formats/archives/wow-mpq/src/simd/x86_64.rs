@@ -9,6 +9,10 @@
 //! attributes and must be called from safe wrapper functions that perform
 //! runtime CPU feature detection.
 
+// Allow both unused_unsafe and unsafe_op_in_unsafe_fn to handle different Rust versions
+#![allow(unused_unsafe)]
+#![allow(unsafe_op_in_unsafe_fn)]
+
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 
@@ -66,10 +70,10 @@ pub(super) unsafe fn hash_string_avx2(filename: &[u8], hash_type: u32) -> u32 {
         let chunk = unsafe { _mm256_loadu_si256(filename.as_ptr().add(pos) as *const __m256i) };
 
         // Convert forward slashes to backslashes
-        let forward_slash = unsafe { _mm256_set1_epi8(b'/' as i8) };
-        let backslash = unsafe { _mm256_set1_epi8(b'\\' as i8) };
-        let is_forward_slash = unsafe { _mm256_cmpeq_epi8(chunk, forward_slash) };
-        let normalized = unsafe { _mm256_blendv_epi8(chunk, backslash, is_forward_slash) };
+        let forward_slash = _mm256_set1_epi8(b'/' as i8);
+        let backslash = _mm256_set1_epi8(b'\\' as i8);
+        let is_forward_slash = _mm256_cmpeq_epi8(chunk, forward_slash);
+        let normalized = _mm256_blendv_epi8(chunk, backslash, is_forward_slash);
 
         // Extract bytes and process serially (due to hash algorithm dependencies)
         let mut bytes = [0u8; 32];
@@ -178,28 +182,24 @@ unsafe fn jenkins_hash_scalar_optimized(filename: &str) -> u64 {
         let chunk = unsafe { _mm256_loadu_si256(bytes.as_ptr().add(pos) as *const __m256i) };
 
         // Convert forward slashes to backslashes
-        let forward_slash = unsafe { _mm256_set1_epi8(b'/' as i8) };
-        let backslash = unsafe { _mm256_set1_epi8(b'\\' as i8) };
-        let is_forward_slash = unsafe { _mm256_cmpeq_epi8(chunk, forward_slash) };
-        let slash_normalized = unsafe { _mm256_blendv_epi8(chunk, backslash, is_forward_slash) };
+        let forward_slash = _mm256_set1_epi8(b'/' as i8);
+        let backslash = _mm256_set1_epi8(b'\\' as i8);
+        let is_forward_slash = _mm256_cmpeq_epi8(chunk, forward_slash);
+        let slash_normalized = _mm256_blendv_epi8(chunk, backslash, is_forward_slash);
 
         // Convert to lowercase (for uppercase characters)
-        let uppercase_base = unsafe { _mm256_set1_epi8(b'A' as i8 - 1) };
-        let uppercase_limit = unsafe { _mm256_set1_epi8(b'Z' as i8 + 1) };
-        let is_uppercase = unsafe {
-            _mm256_and_si256(
-                _mm256_cmpgt_epi8(slash_normalized, uppercase_base),
-                _mm256_cmpgt_epi8(uppercase_limit, slash_normalized),
-            )
-        };
-        let lowercase_offset = unsafe { _mm256_set1_epi8(32) };
-        let case_corrected = unsafe {
-            _mm256_blendv_epi8(
-                slash_normalized,
-                _mm256_add_epi8(slash_normalized, lowercase_offset),
-                is_uppercase,
-            )
-        };
+        let uppercase_base = _mm256_set1_epi8(b'A' as i8 - 1);
+        let uppercase_limit = _mm256_set1_epi8(b'Z' as i8 + 1);
+        let is_uppercase = _mm256_and_si256(
+            _mm256_cmpgt_epi8(slash_normalized, uppercase_base),
+            _mm256_cmpgt_epi8(uppercase_limit, slash_normalized),
+        );
+        let lowercase_offset = _mm256_set1_epi8(32);
+        let case_corrected = _mm256_blendv_epi8(
+            slash_normalized,
+            _mm256_add_epi8(slash_normalized, lowercase_offset),
+            is_uppercase,
+        );
 
         // Extract normalized bytes and process with Jenkins algorithm
         let mut normalized_bytes = [0u8; 32];
@@ -272,29 +272,24 @@ pub(super) unsafe fn normalize_filenames_avx2(filenames: &mut [Vec<u8>]) {
             let chunk = unsafe { _mm256_loadu_si256(filename.as_ptr().add(pos) as *const __m256i) };
 
             // Convert forward slashes to backslashes
-            let forward_slash = unsafe { _mm256_set1_epi8(b'/' as i8) };
-            let backslash = unsafe { _mm256_set1_epi8(b'\\' as i8) };
-            let is_forward_slash = unsafe { _mm256_cmpeq_epi8(chunk, forward_slash) };
-            let slash_normalized =
-                unsafe { _mm256_blendv_epi8(chunk, backslash, is_forward_slash) };
+            let forward_slash = _mm256_set1_epi8(b'/' as i8);
+            let backslash = _mm256_set1_epi8(b'\\' as i8);
+            let is_forward_slash = _mm256_cmpeq_epi8(chunk, forward_slash);
+            let slash_normalized = _mm256_blendv_epi8(chunk, backslash, is_forward_slash);
 
             // Convert to uppercase for MPQ hash
-            let lowercase_base = unsafe { _mm256_set1_epi8(b'a' as i8 - 1) };
-            let lowercase_limit = unsafe { _mm256_set1_epi8(b'z' as i8 + 1) };
-            let is_lowercase = unsafe {
-                _mm256_and_si256(
-                    _mm256_cmpgt_epi8(slash_normalized, lowercase_base),
-                    _mm256_cmpgt_epi8(lowercase_limit, slash_normalized),
-                )
-            };
-            let uppercase_offset = unsafe { _mm256_set1_epi8(-32) }; // Subtract 32 to convert to uppercase
-            let case_corrected = unsafe {
-                _mm256_blendv_epi8(
-                    slash_normalized,
-                    _mm256_add_epi8(slash_normalized, uppercase_offset),
-                    is_lowercase,
-                )
-            };
+            let lowercase_base = _mm256_set1_epi8(b'a' as i8 - 1);
+            let lowercase_limit = _mm256_set1_epi8(b'z' as i8 + 1);
+            let is_lowercase = _mm256_and_si256(
+                _mm256_cmpgt_epi8(slash_normalized, lowercase_base),
+                _mm256_cmpgt_epi8(lowercase_limit, slash_normalized),
+            );
+            let uppercase_offset = _mm256_set1_epi8(-32); // Subtract 32 to convert to uppercase
+            let case_corrected = _mm256_blendv_epi8(
+                slash_normalized,
+                _mm256_add_epi8(slash_normalized, uppercase_offset),
+                is_lowercase,
+            );
 
             // Store back
             unsafe {

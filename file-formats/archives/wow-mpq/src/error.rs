@@ -210,7 +210,7 @@ impl Error {
 
     /// Create a new I/O error
     pub fn io_error<S: Into<String>>(msg: S) -> Self {
-        Error::Io(io::Error::new(io::ErrorKind::Other, msg.into()))
+        Error::Io(io::Error::other(msg.into()))
     }
 
     /// Create a new Decompression error
