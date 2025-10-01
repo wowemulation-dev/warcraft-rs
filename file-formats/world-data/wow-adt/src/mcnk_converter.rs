@@ -3,7 +3,7 @@
 use crate::chunk::*;
 use crate::error::Result;
 // use crate::mcnk_subchunks::*;
-use crate::texture_converter::{convert_alpha_maps, convert_area_id, convert_texture_layers};
+use crate::texture_converter::{convert_area_id, convert_texture_layers};
 use crate::version::AdtVersion;
 
 /// Convert a MCNK chunk from one version to another
@@ -28,12 +28,7 @@ pub fn convert_mcnk(
         convert_texture_layers(&source.texture_layers, from_version, to_version)?;
 
     // Convert alpha maps
-    result.alpha_maps = convert_alpha_maps(
-        &source.alpha_maps,
-        &source.texture_layers,
-        from_version,
-        to_version,
-    )?;
+    result.alpha_maps = source.alpha_maps.clone();
 
     // Update flags for version changes
     update_mcnk_flags(&mut result, from_version, to_version);

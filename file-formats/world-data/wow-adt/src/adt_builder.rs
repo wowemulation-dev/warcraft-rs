@@ -634,7 +634,13 @@ impl AdtBuilder {
                 self.layers[chunk_idx]
                     .iter()
                     .skip(1)
-                    .filter_map(|layer| layer.alpha_map.clone())
+                    .flat_map(|layer| {
+                        if let Some(alpha_map) = layer.alpha_map.clone() {
+                            alpha_map.into_iter()
+                        } else {
+                            Vec::new().into_iter()
+                        }
+                    })
                     .collect()
             } else {
                 Vec::new()

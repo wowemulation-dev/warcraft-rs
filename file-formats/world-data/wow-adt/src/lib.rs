@@ -175,6 +175,7 @@ use std::path::Path;
 
 mod adt_builder;
 mod chunk;
+mod combined_alpha_map;
 mod converter;
 mod error;
 mod io_helpers;
@@ -205,6 +206,7 @@ pub use mh2o::{Mh2oEntry, Mh2oInstance, WaterLevelData, WaterVertex, WaterVertex
 
 pub use adt_builder::{AdtBuilder, create_flat_terrain};
 pub use chunk::*;
+pub use combined_alpha_map::CombinedAlphaMap;
 pub use converter::convert_adt;
 pub use error::{AdtError, Result};
 pub use mcnk_converter::{convert_mcnk, convert_mcnk_chunks};

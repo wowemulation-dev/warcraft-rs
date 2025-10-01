@@ -207,11 +207,8 @@ pub fn write_mcnk<W: Write + Seek>(
         let mcal_pos = writer.stream_position()? as u32;
         let rel_offset = mcal_pos - start_pos;
 
-        // Calculate total size of alpha maps
-        let mut total_size = 0;
-        for alpha_map in &chunk.alpha_maps {
-            total_size += alpha_map.len();
-        }
+        // Total size of alpha maps
+        let total_size = chunk.alpha_maps.len();
 
         // Update the offset and size in the header
         writer.seek(SeekFrom::Start(mcal_offset_pos as u64))?;
@@ -224,9 +221,7 @@ pub fn write_mcnk<W: Write + Seek>(
         // Write MCAL
         write_chunk_header(writer, b"MCAL", total_size as u32)?;
 
-        for alpha_map in &chunk.alpha_maps {
-            writer.write_all(alpha_map)?;
-        }
+        writer.write_all(&chunk.alpha_maps)?;
     }
 
     // Write liquid data based on version

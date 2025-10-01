@@ -4,6 +4,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::str;
 
 use crate::ParserContext;
+use crate::combined_alpha_map::CombinedAlphaMap;
 use crate::error::{AdtError, Result};
 use crate::io_helpers::ReadLittleEndian;
 use crate::mcnk_subchunks::{McnrSubchunk, McvtSubchunk};
@@ -685,7 +686,7 @@ pub struct McnkChunk {
     /// Map object references (indices into MWID)
     pub map_obj_refs: Vec<u32>,
     /// Alpha maps (texture blending)
-    pub alpha_maps: Vec<Vec<u8>>,
+    pub alpha_maps: Vec<u8>,
     /// Legacy liquid data (pre-WotLK)
     pub mclq: Option<crate::mcnk_subchunks::MclqSubchunk>,
 }
@@ -1031,35 +1032,9 @@ impl McnkChunk {
                                     // Check if the entire MCAL chunk is within bounds
                                     if mcal_abs_pos + 8 + subheader.size as u64 <= chunk_end {
                                         // For now, just read the whole chunk and store it
-                                        let mut alpha_data = vec![0u8; subheader.size as usize];
-                                        match context.reader.read_exact(&mut alpha_data) {
-                                            Ok(_) => {
-                                                // Process alpha maps based on texture layers
-                                                // The first layer doesn't have an alpha map
-                                                for layer in texture_layers.iter().skip(1) {
-                                                    // Compute the size of this alpha map
-                                                    // For now, assume 64x64 = 4096 bytes
-                                                    // In reality, this depends on the flags
-                                                    let alpha_size = 64 * 64;
-
-                                                    if (layer.alpha_map_offset as usize)
-                                                        < alpha_data.len()
-                                                        && (layer.alpha_map_offset as usize
-                                                            + alpha_size)
-                                                            <= alpha_data.len()
-                                                    {
-                                                        let start = layer.alpha_map_offset as usize;
-                                                        let end = start + alpha_size;
-                                                        let map_data =
-                                                            alpha_data[start..end].to_vec();
-                                                        alpha_maps.push(map_data);
-                                                    }
-                                                }
-                                            }
-                                            Err(_) => {
-                                                // Silently skip if we can't read alpha data
-                                            }
-                                        }
+                                        alpha_maps.resize(subheader.size as usize, 0);
+                                        // Silently skip if we can't read alpha data
+                                        let _ = context.reader.read_exact(&mut alpha_maps);
                                     }
                                 }
                             }
@@ -1167,6 +1142,10 @@ impl McnkChunk {
             alpha_maps,
             mclq,
         })
+    }
+
+    pub fn get_combined_alpha_map(&self, has_big_alpha: bool, fix_alpha: bool) -> CombinedAlphaMap {
+        CombinedAlphaMap::new(self, has_big_alpha, fix_alpha)
     }
 }
 
