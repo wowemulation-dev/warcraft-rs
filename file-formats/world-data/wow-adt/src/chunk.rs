@@ -1,5 +1,6 @@
 // chunk.rs - Chunk structures and parsing for ADT files
 
+use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::str;
 
@@ -402,6 +403,35 @@ impl MwmoChunk {
 
         Ok(Self { filenames })
     }
+
+    /// Build a lookup map from byte offsets (as stored in the raw MWMO chunk)
+    /// to the corresponding index in `self.filenames`.
+    ///
+    /// In the ADT file, the MWMO chunk contains a contiguous, null-terminated
+    /// string block. Other chunks (namely MWID / MODF) reference WMO names by
+    /// storing the starting byte offset of the desired filename within this
+    /// raw block. During parsing we already split this block into individual
+    /// Rust `String`s; this helper reconstructs the offset→index relationship
+    /// so higher‑level code can move from an offset (u32) to an O(1) index
+    /// into the parsed `filenames` vector.
+    ///
+    /// Returns: a `HashMap<u32, usize>` where the key is the starting byte
+    /// offset within the original MWMO string blob and the value is the index
+    /// in `self.filenames`.
+    ///
+    /// Note: We recompute this map each call. If many lookups are required,
+    /// consider caching the result externally instead of calling repeatedly.
+    pub fn get_offset_index_map(&self) -> HashMap<u32, usize> {
+        let mut offset_index_map = HashMap::new();
+        let mut current_offset = 0;
+
+        for (i, filename) in self.filenames.iter().enumerate() {
+            offset_index_map.insert(current_offset, i);
+            current_offset += filename.len() as u32 + 1; // +1 for null terminator
+        }
+
+        offset_index_map
+    }
 }
 
 /// MWID chunk - WMO indices
@@ -430,6 +460,38 @@ impl MwidChunk {
         }
 
         Ok(Self { offsets })
+    }
+
+    /// Translate the raw MWID offsets into indices into the MWMO filename list.
+    ///
+    /// Each entry in MWID is a `u32` byte offset into the *raw* MWMO string
+    /// block. After parsing MWMO we no longer keep the raw concatenated blob;
+    /// instead we have the vector of `filenames`. We therefore reconstruct an
+    /// offset→index map (via `MwmoChunk::get_offset_index_map`) and use it to
+    /// convert every stored offset into its corresponding filename index.
+    ///
+    /// Invalid Offsets: If an offset does not correspond to the beginning of
+    /// any known filename, we push `usize::MAX` as a sentinel. This preserves
+    /// positional alignment with the original MWID data while signaling an
+    /// anomalous entry. Callers should treat `usize::MAX` as "unresolved" and
+    /// handle/log accordingly.
+    ///
+    /// Returns: `Vec<usize>` where each element is either a valid index into
+    /// `mwmo.filenames` or `usize::MAX` if the offset could not be resolved.
+    pub fn get_indices(&self, mwmo: &MwmoChunk) -> Vec<usize> {
+        let offset_index_map = mwmo.get_offset_index_map();
+        let mut indices = Vec::with_capacity(self.offsets.len());
+
+        for &offset in &self.offsets {
+            if let Some(&index) = offset_index_map.get(&offset) {
+                indices.push(index);
+            } else {
+                // Invalid offset, push a placeholder (e.g., usize::MAX)
+                indices.push(usize::MAX);
+            }
+        }
+
+        indices
     }
 }
 
