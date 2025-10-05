@@ -1,8 +1,8 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::{C3Vector, M2Array};
+use crate::common::{C3Vector, M2Parse};
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -60,6 +60,16 @@ pub struct C4Quaternion {
     pub w: f32,
 }
 
+impl M2Parse for C4Quaternion {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        C4Quaternion::parse(reader)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.write(writer)
+    }
+}
+
 impl C4Quaternion {
     /// Parse a quaternion from a reader
     pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
@@ -84,7 +94,7 @@ impl C4Quaternion {
 
 impl M2TextureTransform {
     /// Parse a texture transform from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let id = reader.read_u32_le()?;
 
         let transform_type_raw = reader.read_u16_le()?;
@@ -133,24 +143,9 @@ impl M2TextureTransform {
         Self {
             id,
             transform_type,
-            translation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            rotation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            scaling: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            translation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            rotation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            scaling: M2AnimationBlock::new(M2AnimationTrack::default()),
         }
     }
 }

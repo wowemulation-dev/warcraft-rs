@@ -2,6 +2,106 @@ use crate::error::{M2Error, Result};
 use crate::io_ext::{ReadExt, WriteExt};
 use std::io::{Read, Seek, SeekFrom, Write};
 
+/// Trait for parsing and writing types to and from the M2 binary file format.
+///
+/// Types implementing `M2Parse` can be deserialized from a binary reader and serialized to a binary writer.
+/// This trait is used throughout the M2 parsing code to provide a generic interface for reading and writing
+/// primitive types, vectors, and complex structures in a version-agnostic way.
+pub trait M2Parse {
+    /// Parse an instance of the type from the given reader.
+    ///
+    /// # Arguments
+    /// * `reader` - A mutable reference to a type implementing `Read + Seek`.
+    ///
+    /// # Returns
+    /// * `Result<Self>` - The parsed instance or an error.
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self>
+    where
+        Self: Sized;
+
+    /// Write this instance to the given writer.
+    ///
+    /// # Arguments
+    /// * `writer` - A mutable reference to a type implementing `Write`.
+    ///
+    /// # Returns
+    /// * `Result<()>` - Ok if successful, or an error.
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
+}
+
+impl M2Parse for f32 {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(reader.read_f32_le()?)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_f32_le(*self)?;
+        Ok(())
+    }
+}
+
+impl M2Parse for u16 {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(reader.read_u16_le()?)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u16_le(*self)?;
+        Ok(())
+    }
+}
+
+impl M2Parse for u32 {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        Ok(reader.read_u32_le()?)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u32_le(*self)?;
+        Ok(())
+    }
+}
+
+/// Represents a vector of elements in the M2 file format, along with its array reference.
+///
+/// `M2Vec` stores both the `M2Array` reference (count and offset in the file) and the actual data elements.
+/// This is used for fields in M2 structs that point to arrays of data elsewhere in the file.
+///
+/// The `data` field is populated when parsing, but only the `array` field is written when serializing,
+/// as the actual data is written separately at the correct offset.
+#[derive(Debug, Clone, Default)]
+pub struct M2Vec<T: M2Parse> {
+    /// Reference to the array in the file (count and offset)
+    pub array: M2Array<T>,
+    /// The actual data elements (populated when parsing)
+    pub data: Vec<T>,
+}
+
+impl<T: M2Parse> M2Vec<T> {
+    /// Create a new, empty `M2Vec` with no data and a zeroed array reference.
+    pub fn new() -> Self {
+        Self {
+            array: M2Array::new(0, 0),
+            data: Vec::new(),
+        }
+    }
+}
+
+impl<T: M2Parse> M2Parse for M2Vec<T> {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        let array = M2Array::<T>::parse(reader)?;
+        let pos = reader.stream_position()?;
+        let data = read_array(reader, &array, |r| T::parse(r))?;
+        reader.seek(SeekFrom::Start(pos))?;
+        Ok(Self { array, data })
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.array.write(writer)?;
+        Ok(())
+    }
+}
+
 /// A reference to an array in the M2 file format
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct M2Array<T> {
@@ -90,6 +190,16 @@ pub struct C3Vector {
     pub z: f32,
 }
 
+impl M2Parse for C3Vector {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        C3Vector::parse(reader)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.write(writer)
+    }
+}
+
 impl C3Vector {
     /// Parse a C3Vector from a reader
     pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
@@ -129,6 +239,16 @@ impl C3Vector {
 pub struct C2Vector {
     pub x: f32,
     pub y: f32,
+}
+
+impl M2Parse for C2Vector {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        C2Vector::parse(reader)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.write(writer)
+    }
 }
 
 impl C2Vector {

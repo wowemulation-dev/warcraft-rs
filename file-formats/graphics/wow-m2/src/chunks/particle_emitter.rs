@@ -1,5 +1,5 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::chunks::animation::M2AnimationBlock;
 use crate::chunks::color_animation::M2Color;
@@ -258,7 +258,7 @@ pub struct M2ParticleEmitter {
 
 impl M2ParticleEmitter {
     /// Parse a particle emitter from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
         let id = reader.read_u32_le()?;
         let flags = M2ParticleFlags::from_bits_retain(reader.read_u32_le()?);
         let position = C3Vector::parse(reader)?;

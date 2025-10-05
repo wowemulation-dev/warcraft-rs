@@ -1,8 +1,8 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::{C3Vector, M2Array};
+use crate::common::C3Vector;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -86,7 +86,7 @@ pub struct M2Attachment {
 
 impl M2Attachment {
     /// Parse an attachment from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, _version: u32) -> Result<Self> {
         let id = reader.read_u32_le()?;
         let bone_index = reader.read_u16_le()?;
         let parent_bone_flying = reader.read_u16_le()?;
@@ -145,12 +145,7 @@ impl M2Attachment {
                 y: 0.0,
                 z: 0.0,
             },
-            scale_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            scale_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
         }
     }
 }

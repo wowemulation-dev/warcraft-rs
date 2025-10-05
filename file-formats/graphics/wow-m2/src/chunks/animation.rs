@@ -1,7 +1,7 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
-use crate::common::M2Array;
+use crate::common::{M2Array, M2Parse, M2Vec};
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -77,31 +77,47 @@ impl M2Range {
 
 /// An animation track header
 #[derive(Debug, Clone)]
-pub struct M2AnimationTrack {
+pub struct M2AnimationTrack<T: M2Parse> {
     /// Interpolation type
     pub interpolation_type: M2InterpolationType,
     /// Global sequence ID or -1
     pub global_sequence: i16,
+    // Interpolation ranges
+    pub interpolation_ranges: M2Array<(u32, u32)>,
     /// Timestamps
     pub timestamps: M2Array<u32>,
     /// Values
-    pub values: M2Array<f32>,
+    pub values: M2Vec<T>,
 }
 
-impl M2AnimationTrack {
+impl<T: M2Parse> Default for M2AnimationTrack<T> {
+    fn default() -> Self {
+        Self {
+            interpolation_type: M2InterpolationType::None,
+            global_sequence: -1,
+            interpolation_ranges: M2Array::new(0, 0),
+            timestamps: M2Array::new(0, 0),
+            values: M2Vec::new(),
+        }
+    }
+}
+
+impl<T: M2Parse> M2AnimationTrack<T> {
     /// Parse an animation track from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let interpolation_type_raw = reader.read_u16_le()?;
         let interpolation_type = M2InterpolationType::from_u16(interpolation_type_raw)
             .unwrap_or(M2InterpolationType::None);
 
         let global_sequence = reader.read_i16_le()?;
+        let interpolation_ranges = M2Array::parse(reader)?;
         let timestamps = M2Array::parse(reader)?;
-        let values = M2Array::parse(reader)?;
+        let values = M2Vec::<T>::parse(reader)?;
 
         Ok(Self {
             interpolation_type,
             global_sequence,
+            interpolation_ranges,
             timestamps,
             values,
         })
@@ -111,6 +127,7 @@ impl M2AnimationTrack {
     pub fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_u16_le(self.interpolation_type as u16)?;
         writer.write_i16_le(self.global_sequence)?;
+        self.interpolation_ranges.write(writer)?;
         self.timestamps.write(writer)?;
         self.values.write(writer)?;
 
@@ -119,17 +136,17 @@ impl M2AnimationTrack {
 }
 
 /// Animation block for a specific animation type
-#[derive(Debug, Clone)]
-pub struct M2AnimationBlock<T> {
+#[derive(Debug, Default, Clone)]
+pub struct M2AnimationBlock<T: M2Parse> {
     /// Animation track
-    pub track: M2AnimationTrack,
+    pub track: M2AnimationTrack<T>,
     /// Data type (phantom data)
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> M2AnimationBlock<T> {
+impl<T: M2Parse> M2AnimationBlock<T> {
     /// Create a new animation block from a track
-    pub fn new(track: M2AnimationTrack) -> Self {
+    pub fn new(track: M2AnimationTrack<T>) -> Self {
         Self {
             track,
             _phantom: std::marker::PhantomData,
@@ -137,7 +154,7 @@ impl<T> M2AnimationBlock<T> {
     }
 
     /// Parse an animation block from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let track = M2AnimationTrack::parse(reader)?;
 
         Ok(Self {

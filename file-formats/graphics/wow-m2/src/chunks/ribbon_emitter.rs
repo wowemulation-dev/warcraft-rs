@@ -1,5 +1,5 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::chunks::animation::M2AnimationBlock;
 use crate::chunks::color_animation::M2Color;
@@ -48,7 +48,7 @@ pub struct M2RibbonEmitter {
 
 impl M2RibbonEmitter {
     /// Parse a ribbon emitter from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, version: u32) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, version: u32) -> Result<Self> {
         let bone_index = reader.read_u32_le()?;
         let position = C3Vector::parse(reader)?;
         let texture_indices = M2Array::parse(reader)?;
@@ -209,30 +209,10 @@ mod tests {
             },
             texture_indices: M2Array::new(1, 0x100),
             material_indices: M2Array::new(1, 0x200),
-            color_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            alpha_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            height_above_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            height_below_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            color_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            alpha_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            height_above_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            height_below_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
             edges_per_second: 30.0,
             edge_lifetime: 1.0,
             gravity: 9.8,
@@ -285,30 +265,10 @@ mod tests {
             },
             texture_indices: M2Array::new(1, 0x100),
             material_indices: M2Array::new(1, 0x200),
-            color_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            alpha_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            height_above_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            height_below_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            color_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            alpha_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            height_above_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            height_below_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
             edges_per_second: 30.0,
             edge_lifetime: 1.0,
             gravity: 9.8,
@@ -362,30 +322,10 @@ mod tests {
             },
             texture_indices: M2Array::new(1, 0x100),
             material_indices: M2Array::new(1, 0x200),
-            color_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            alpha_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            height_above_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            height_below_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            color_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            alpha_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            height_above_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            height_below_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
             edges_per_second: 30.0,
             edge_lifetime: 1.0,
             gravity: 9.8,
