@@ -1,12 +1,11 @@
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::M2Array;
+use crate::chunks::animation::M2AnimationBlock;
 use crate::error::Result;
 use crate::version::M2Version;
 
 /// Transparency animation structure
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct M2TransparencyAnimation {
     /// Alpha animation
     pub alpha: M2AnimationBlock<f32>,
@@ -14,7 +13,7 @@ pub struct M2TransparencyAnimation {
 
 impl M2TransparencyAnimation {
     /// Parse a transparency animation from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let alpha = M2AnimationBlock::parse(reader)?;
 
         Ok(Self { alpha })
@@ -34,14 +33,7 @@ impl M2TransparencyAnimation {
 
     /// Create a new transparency animation with default values
     pub fn new() -> Self {
-        Self {
-            alpha: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-        }
+        Self::default()
     }
 }
 
@@ -57,6 +49,8 @@ mod tests {
         // Alpha animation track
         data.extend_from_slice(&1u16.to_le_bytes()); // Interpolation type (Linear)
         data.extend_from_slice(&(-1i16).to_le_bytes()); // Global sequence
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges count
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps count
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Values count

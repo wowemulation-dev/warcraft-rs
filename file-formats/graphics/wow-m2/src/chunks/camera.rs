@@ -1,8 +1,8 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::{C3Vector, M2Array};
+use crate::common::C3Vector;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -44,7 +44,7 @@ pub struct M2Camera {
 
 impl M2Camera {
     /// Parse a camera from a reader based on the M2 version
-    pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R, _version: u32) -> Result<Self> {
         let camera_type = reader.read_u32_le()?;
         let fov = reader.read_f32_le()?;
         let far_clip = reader.read_f32_le()?;
@@ -105,24 +105,9 @@ impl M2Camera {
             fov: 0.8726646, // 50 degrees in radians
             far_clip: 100.0,
             near_clip: 0.1,
-            position_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            target_position_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            roll_animation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            position_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            target_position_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            roll_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
             id,
             flags: M2CameraFlags::empty(),
         }

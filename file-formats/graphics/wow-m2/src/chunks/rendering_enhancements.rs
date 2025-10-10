@@ -4,23 +4,18 @@
 //! Legion and later expansions, including extended particle systems, waterfall
 //! effects, edge fading, model alpha calculations, and lighting details.
 
-use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack, M2InterpolationType};
+use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
 use crate::chunks::infrastructure::ChunkReader;
 use crate::chunks::particle_emitter::M2ParticleEmitter;
 use crate::chunks::texture_animation::M2TextureAnimation;
-use crate::common::M2Array;
+use crate::common::M2Parse;
 use crate::error::Result;
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 /// Helper function to create empty animation blocks for compatibility
-fn create_empty_animation_block<T>() -> M2AnimationBlock<T> {
-    let track = M2AnimationTrack {
-        interpolation_type: M2InterpolationType::None,
-        global_sequence: -1,
-        timestamps: M2Array::new(0, 0),
-        values: M2Array::new(0, 0),
-    };
+fn create_empty_animation_block<T: M2Parse>() -> M2AnimationBlock<T> {
+    let track = M2AnimationTrack::default();
     M2AnimationBlock::new(track)
 }
 
@@ -879,7 +874,7 @@ pub struct ExtendedTextureAnimation {
 
 impl ExtendedTextureAnimation {
     /// Parse extended texture animation
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         // Parse base texture animation first
         let base_animation = M2TextureAnimation::parse(reader)?;
 
@@ -1777,6 +1772,8 @@ mod tests {
             // Each animation block: interpolation_type, global_sequence, timestamps, values
             data.extend_from_slice(&0u16.to_le_bytes()); // Interpolation type
             data.extend_from_slice(&(-1i16).to_le_bytes()); // Global sequence
+            data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges count
+            data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges offset
             data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps count
             data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps offset
             data.extend_from_slice(&0u32.to_le_bytes()); // Values count

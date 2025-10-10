@@ -1,5 +1,6 @@
+use crate::common::M2Parse;
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::chunks::animation::M2AnimationBlock;
 use crate::error::Result;
@@ -14,8 +15,22 @@ pub struct M2Color {
     pub g: f32,
     /// Blue component (0-1)
     pub b: f32,
-    /// Alpha component (0-1)
-    pub a: f32,
+}
+
+impl Default for M2Color {
+    fn default() -> Self {
+        Self::white()
+    }
+}
+
+impl M2Parse for M2Color {
+    fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
+        M2Color::parse(reader)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.write(writer)
+    }
 }
 
 impl M2Color {
@@ -24,9 +39,8 @@ impl M2Color {
         let r = reader.read_f32_le()?;
         let g = reader.read_f32_le()?;
         let b = reader.read_f32_le()?;
-        let a = reader.read_f32_le()?;
 
-        Ok(Self { r, g, b, a })
+        Ok(Self { r, g, b })
     }
 
     /// Write a color to a writer
@@ -34,29 +48,28 @@ impl M2Color {
         writer.write_f32_le(self.r)?;
         writer.write_f32_le(self.g)?;
         writer.write_f32_le(self.b)?;
-        writer.write_f32_le(self.a)?;
 
         Ok(())
     }
 
     /// Create a new color
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
-        Self { r, g, b, a }
+    pub fn new(r: f32, g: f32, b: f32) -> Self {
+        Self { r, g, b }
     }
 
     /// Create a new white color with full alpha
     pub fn white() -> Self {
-        Self::new(1.0, 1.0, 1.0, 1.0)
+        Self::new(1.0, 1.0, 1.0)
     }
 
     /// Create a new black color with full alpha
     pub fn black() -> Self {
-        Self::new(0.0, 0.0, 0.0, 1.0)
+        Self::new(0.0, 0.0, 0.0)
     }
 
     /// Create a new transparent color
     pub fn transparent() -> Self {
-        Self::new(0.0, 0.0, 0.0, 0.0)
+        Self::new(0.0, 0.0, 0.0)
     }
 }
 
@@ -66,12 +79,12 @@ pub struct M2ColorAnimation {
     /// Animation for color RGB
     pub color: M2AnimationBlock<M2Color>,
     /// Animation for alpha
-    pub alpha: M2AnimationBlock<f32>,
+    pub alpha: M2AnimationBlock<u16>,
 }
 
 impl M2ColorAnimation {
     /// Parse a color animation from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let color = M2AnimationBlock::parse(reader)?;
         let alpha = M2AnimationBlock::parse(reader)?;
 
@@ -99,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_color_parse_write() {
-        let color = M2Color::new(0.5, 0.6, 0.7, 1.0);
+        let color = M2Color::new(0.5, 0.6, 0.7);
 
         let mut data = Vec::new();
         color.write(&mut data).unwrap();
@@ -110,6 +123,5 @@ mod tests {
         assert_eq!(parsed_color.r, 0.5);
         assert_eq!(parsed_color.g, 0.6);
         assert_eq!(parsed_color.b, 0.7);
-        assert_eq!(parsed_color.a, 1.0);
     }
 }

@@ -1,8 +1,7 @@
 use crate::io_ext::{ReadExt, WriteExt};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use crate::chunks::animation::{M2AnimationBlock, M2AnimationTrack};
-use crate::common::M2Array;
 use crate::error::Result;
 use crate::version::M2Version;
 
@@ -54,7 +53,7 @@ pub struct M2TextureAnimation {
 
 impl M2TextureAnimation {
     /// Parse a texture animation from a reader
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Self> {
+    pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let type_raw = reader.read_u16_le()?;
         let animation_type =
             M2TextureAnimationType::from_u16(type_raw).unwrap_or(M2TextureAnimationType::None);
@@ -103,36 +102,11 @@ impl M2TextureAnimation {
     pub fn new(animation_type: M2TextureAnimationType) -> Self {
         Self {
             animation_type,
-            translation_u: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            translation_v: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            rotation: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            scale_u: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
-            scale_v: M2AnimationBlock::new(M2AnimationTrack {
-                interpolation_type: crate::chunks::animation::M2InterpolationType::None,
-                global_sequence: -1,
-                timestamps: M2Array::new(0, 0),
-                values: M2Array::new(0, 0),
-            }),
+            translation_u: M2AnimationBlock::new(M2AnimationTrack::default()),
+            translation_v: M2AnimationBlock::new(M2AnimationTrack::default()),
+            rotation: M2AnimationBlock::new(M2AnimationTrack::default()),
+            scale_u: M2AnimationBlock::new(M2AnimationTrack::default()),
+            scale_v: M2AnimationBlock::new(M2AnimationTrack::default()),
         }
     }
 }
@@ -155,6 +129,8 @@ mod tests {
         // Translation U animation track
         data.extend_from_slice(&1u16.to_le_bytes()); // Interpolation type (Linear)
         data.extend_from_slice(&(-1i16).to_le_bytes()); // Global sequence
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges count
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps count
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Values count
@@ -163,6 +139,8 @@ mod tests {
         // Translation V animation track
         data.extend_from_slice(&1u16.to_le_bytes()); // Interpolation type (Linear)
         data.extend_from_slice(&(-1i16).to_le_bytes()); // Global sequence
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges count
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps count
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Values count
@@ -171,6 +149,8 @@ mod tests {
         // Rotation animation track
         data.extend_from_slice(&1u16.to_le_bytes()); // Interpolation type (Linear)
         data.extend_from_slice(&(-1i16).to_le_bytes()); // Global sequence
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges count
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps count
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Values count
@@ -179,6 +159,8 @@ mod tests {
         // Scale U animation track
         data.extend_from_slice(&1u16.to_le_bytes()); // Interpolation type (Linear)
         data.extend_from_slice(&(-1i16).to_le_bytes()); // Global sequence
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges count
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps count
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Values count
@@ -187,6 +169,8 @@ mod tests {
         // Scale V animation track
         data.extend_from_slice(&1u16.to_le_bytes()); // Interpolation type (Linear)
         data.extend_from_slice(&(-1i16).to_le_bytes()); // Global sequence
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges count
+        data.extend_from_slice(&0u32.to_le_bytes()); // Interpolation ranges offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps count
         data.extend_from_slice(&0u32.to_le_bytes()); // Timestamps offset
         data.extend_from_slice(&0u32.to_le_bytes()); // Values count
