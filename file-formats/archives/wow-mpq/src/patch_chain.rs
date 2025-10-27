@@ -128,11 +128,11 @@ impl PatchChain {
     ///
     /// Returns the file from the highest-priority archive that contains it.
     pub fn read_file(&mut self, filename: &str) -> Result<Vec<u8>> {
-        // Normalize the filename to use backslashes for lookup
-        let normalized_filename = crate::path::normalize_mpq_path(filename);
+        // Normalize filename and convert to uppercase for case-insensitive lookup
+        // This matches MPQ hashing behavior which is always case-insensitive
+        let lookup_key = crate::path::normalize_mpq_path(filename).to_uppercase();
 
-        if let Some(&archive_idx) = self.file_map.get(&normalized_filename) {
-            // Use the original filename for read_file (it handles both separators)
+        if let Some(&archive_idx) = self.file_map.get(&lookup_key) {
             self.archives[archive_idx].archive.read_file(filename)
         } else {
             Err(Error::FileNotFound(filename.to_string()))
@@ -141,8 +141,8 @@ impl PatchChain {
 
     /// Check if a file exists in the chain
     pub fn contains_file(&self, filename: &str) -> bool {
-        let normalized_filename = crate::path::normalize_mpq_path(filename);
-        self.file_map.contains_key(&normalized_filename)
+        let lookup_key = crate::path::normalize_mpq_path(filename).to_uppercase();
+        self.file_map.contains_key(&lookup_key)
     }
 
     /// Find which archive contains a file
@@ -230,8 +230,10 @@ impl PatchChain {
             };
 
             // Add files to map (only if not already present from higher priority)
+            // MPQ hashing is case-insensitive, so normalize keys to uppercase
             for file in files {
-                self.file_map.entry(file.name).or_insert(idx);
+                let normalized_key = crate::path::normalize_mpq_path(&file.name).to_uppercase();
+                self.file_map.entry(normalized_key).or_insert(idx);
             }
         }
 

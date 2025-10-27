@@ -466,9 +466,9 @@ impl Adt {
 
             write_chunk_header(writer, b"MTFX", size as u32)?;
 
-            // Write effect IDs
+            // Write effect flags (raw u32 values)
             for effect in &mtfx.effects {
-                writer.write_u32_le(effect.effect_id)?;
+                writer.write_u32_le(effect.raw_flags)?;
             }
         }
 

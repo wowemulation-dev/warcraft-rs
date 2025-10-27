@@ -59,7 +59,7 @@ fn convert_chunk_mclq_to_mh2o(
     let header = Mh2oHeader {
         offset_instances: 0, // Will be filled during serialization
         layer_count: if mclq.vertices.is_empty() { 0 } else { 1 },
-        offset_render_mask: 0, // Will be filled during serialization
+        offset_attributes: 0, // Will be filled during serialization
     };
 
     // If there's no liquid data, return an empty entry
@@ -67,6 +67,7 @@ fn convert_chunk_mclq_to_mh2o(
         return Mh2oEntry {
             header,
             instances: Vec::new(),
+            attributes: None,
             render_mask: None,
         };
     }
@@ -83,6 +84,7 @@ fn convert_chunk_mclq_to_mh2o(
     Mh2oEntry {
         header,
         instances: vec![instance],
+        attributes: None,
         render_mask,
     }
 }
@@ -93,9 +95,10 @@ fn create_empty_mh2o_entry() -> Mh2oEntry {
         header: Mh2oHeader {
             offset_instances: 0,
             layer_count: 0,
-            offset_render_mask: 0,
+            offset_attributes: 0,
         },
         instances: Vec::new(),
+        attributes: None,
         render_mask: None,
     }
 }
@@ -167,6 +170,10 @@ fn create_water_instance(mclq: &MclqSubchunk, min_height: f32, max_height: f32) 
     Mh2oInstance {
         liquid_type,
         liquid_object: 0, // Default liquid object ID
+        x_offset: 0,
+        y_offset: 0,
+        width: 8,  // Full chunk coverage (8 cells = 9 vertices)
+        height: 8, // Full chunk coverage (8 cells = 9 vertices)
         level_data,
         vertex_data,
         attributes: Vec::new(), // No attributes in older versions

@@ -245,14 +245,22 @@ fn hashlittle2(key: &[u8], pc: &mut u32, pb: &mut u32) {
 ///
 /// This function normalizes the filename and applies Jenkins hashlittle2
 /// to generate the hash value used in HET tables.
+///
+/// IMPORTANT: Uses UPPERCASE normalization to match MPQ convention and StormLib.
+/// This ensures consistency between HET (v3+) and classic hash/block table lookups.
 pub fn jenkins_hashlittle2(filename: &str, hash_bits: u32) -> (u64, u8) {
-    // Normalize filename: lowercase and convert / to \
+    use crate::crypto::ASCII_TO_UPPER;
+
+    // Normalize filename: UPPERCASE and convert / to \
+    // CRITICAL: Must use uppercase to match classic MPQ hash_string() behavior
+    // and match what StormLib does. Files in WotLK archives are stored with
+    // uppercase paths (e.g., "TILESET\...").
     let normalized = filename
         .bytes()
         .map(|b| {
             let b = if b == b'/' { b'\\' } else { b };
-            // Simple ASCII lowercase
-            if b.is_ascii_uppercase() { b + 32 } else { b }
+            // Use ASCII_TO_UPPER table for consistency with classic hash
+            ASCII_TO_UPPER[b as usize]
         })
         .collect::<Vec<u8>>();
 

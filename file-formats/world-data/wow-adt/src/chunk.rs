@@ -751,6 +751,8 @@ pub struct McnkChunk {
     pub alpha_maps: Vec<u8>,
     /// Legacy liquid data (pre-WotLK)
     pub mclq: Option<crate::mcnk_subchunks::MclqSubchunk>,
+    /// Vertex colors (BGRA format, 145 colors for WotLK+)
+    pub vertex_colors: Vec<[u8; 4]>,
 }
 
 /// MCNK texture layer information
@@ -1112,12 +1114,21 @@ impl McnkChunk {
             }
         }
 
-        // Read MCLQ (legacy liquid data) for pre-WotLK versions
+        // Read MCLQ (legacy liquid data)
+        // IMPORTANT: MCLQ can exist in files detected as "WotLK" because:
+        // 1. Vanilla 1.9+ had MCCV vertex colors (triggers WotLK detection)
+        // 2. TBC 2.x files had MCCV but used MCLQ for water
+        // 3. Early WotLK might have both MCLQ and MH2O during transition
+        //
+        // Strategy: If liquid_offset/liquid_size are present in MCNK header,
+        // try to read MCLQ data. The presence of liquid data in MCNK headers
+        // indicates pre-MH2O format, regardless of version detection.
         let mut mclq = None;
-        if context.version < crate::version::AdtVersion::WotLK
-            && liquid_offset > 0
-            && liquid_size > 0
-        {
+
+        // DEBUG: Log version detection and liquid data for first few chunks
+        // Try to parse MCLQ if liquid offset/size are present in MCNK header
+        // (This indicates MCLQ format regardless of detected version)
+        if liquid_offset > 0 && liquid_size > 0 {
             let mclq_abs_pos = chunk_start + liquid_offset as u64;
             let chunk_end = chunk_start + 8 + header.size as u64;
 
@@ -1128,17 +1139,81 @@ impl McnkChunk {
                         match ChunkHeader::read(context.reader) {
                             Ok(subheader) => {
                                 if subheader.magic == *b"MCLQ" {
+                                    // IMPORTANT: Use liquid_size from MCNK header, not MCLQ chunk header!
+                                    // Per noggit-red: "ignore the size here, the valid size is in the header"
+                                    // The MCLQ chunk header often has size=0 even when data exists
+                                    let actual_size = liquid_size - 8; // Subtract 8 for MCLQ chunk header
+
+                                    // Override subheader size with actual size from MCNK
+                                    let corrected_header = ChunkHeader {
+                                        magic: subheader.magic,
+                                        size: actual_size,
+                                    };
+
                                     // Check if the entire MCLQ chunk is within bounds
-                                    if mclq_abs_pos + 8 + subheader.size as u64 <= chunk_end {
-                                        // Use the proper subchunk reader
+                                    if mclq_abs_pos + 8 + actual_size as u64 <= chunk_end {
+                                        // Use the proper subchunk reader, passing MCNK flags for liquid type detection
                                         match crate::mcnk_subchunks::MclqSubchunk::read_with_header(
-                                            subheader, context,
+                                            corrected_header,
+                                            flags,
+                                            context,
                                         ) {
                                             Ok(mclq_data) => {
                                                 mclq = Some(mclq_data);
                                             }
+                                            Err(e) => {
+                                                // Silently skip InvalidChunkSize errors - these are empty MCLQ placeholders
+                                                // Only log other error types
+                                                match e {
+                                                    AdtError::InvalidChunkSize { .. } => {
+                                                        // Empty MCLQ placeholder (liquid_size=8, just the header)
+                                                        // This is normal and expected, skip silently
+                                                    }
+                                                    _ => {
+                                                        // MCLQ parsing error - skip silently as these are expected for some chunks
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Err(_) => {
+                                // Silently skip if we can't read the header
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // Silently skip if we can't seek to position
+                    }
+                }
+            }
+        }
+
+        // Read MCCV (vertex colors) for WotLK+ versions
+        let mut vertex_colors = Vec::new();
+        if context.version >= crate::version::AdtVersion::WotLK && mccv_offset > 0 {
+            let mccv_abs_pos = chunk_start + mccv_offset as u64;
+            let chunk_end = chunk_start + 8 + header.size as u64;
+
+            if mccv_abs_pos + 8 <= chunk_end {
+                match context.reader.seek(SeekFrom::Start(mccv_abs_pos)) {
+                    Ok(_) => {
+                        // Check for MCCV header
+                        match ChunkHeader::read(context.reader) {
+                            Ok(subheader) => {
+                                if subheader.magic == *b"MCCV" {
+                                    // Check if the entire MCCV chunk is within bounds
+                                    if mccv_abs_pos + 8 + subheader.size as u64 <= chunk_end {
+                                        // Use the proper subchunk reader
+                                        match crate::mcnk_subchunks::MccvSubchunk::read_with_header(
+                                            subheader, context,
+                                        ) {
+                                            Ok(mccv) => {
+                                                vertex_colors = mccv.colors;
+                                            }
                                             Err(_) => {
-                                                // Silently skip malformed MCLQ
+                                                // Silently skip malformed MCCV
                                             }
                                         }
                                     }
@@ -1203,6 +1278,7 @@ impl McnkChunk {
             map_obj_refs,
             alpha_maps,
             mclq,
+            vertex_colors,
         })
     }
 
@@ -1390,11 +1466,15 @@ pub struct MtfxChunk {
     pub effects: Vec<TextureEffect>,
 }
 
-/// Texture effect data
+/// Texture effect data (bitfield structure)
 #[derive(Debug, Clone)]
 pub struct TextureEffect {
-    /// Effect ID
-    pub effect_id: u32,
+    /// Use cubemap reflection instead of loading specular/height textures (bit 0)
+    pub use_cubemap: bool,
+    /// Texture scale exponent (bits 4-7): actual scale = 1 << texture_scale (MoP+)
+    pub texture_scale: u8,
+    /// Raw flags value (for debugging/compatibility)
+    pub raw_flags: u32,
 }
 
 /// MAMP chunk - texture amplifier (Cataclysm+)
@@ -1493,8 +1573,17 @@ impl MtfxChunk {
         let mut effects = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
-            let effect_id = context.reader.read_u32_le()?;
-            effects.push(TextureEffect { effect_id });
+            let raw_flags = context.reader.read_u32_le()?;
+
+            // Extract bitfields per wowdev.wiki ADT/v18 specification
+            let use_cubemap = (raw_flags & 0x1) != 0; // Bit 0
+            let texture_scale = ((raw_flags >> 4) & 0xF) as u8; // Bits 4-7
+
+            effects.push(TextureEffect {
+                use_cubemap,
+                texture_scale,
+                raw_flags,
+            });
         }
 
         Ok(Self { effects })

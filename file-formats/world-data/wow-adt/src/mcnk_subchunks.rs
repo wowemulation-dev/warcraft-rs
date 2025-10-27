@@ -347,46 +347,129 @@ pub struct LiquidVertex {
 
 impl MclqSubchunk {
     /// Parse a MCLQ subchunk with an existing header
+    ///
+    /// MCLQ format (Vanilla/TBC):
+    /// - min_height: f32
+    /// - max_height: f32
+    /// - verts: [SLVert; 81] - 9x9 grid, vertex size varies by liquid type:
+    ///   - River/Slime: 8 bytes (depth, flow0, flow1, filler, height)
+    ///   - Ocean: 4 bytes (depth, foam, wet, filler) - NO HEIGHT!
+    ///   - Magma: 8 bytes (s, t, height)
+    /// - tiles: [u8; 64] - 8x8 render flags
+    /// - flow data (variable, often not present)
+    ///
+    /// # Arguments
+    ///
+    /// * `mcnk_flags` - MCNK chunk flags to determine liquid type (0x4=river, 0x8=ocean, 0x10=magma, 0x20=slime)
     #[allow(dead_code)]
     pub(crate) fn read_with_header<R: Read + Seek>(
         header: ChunkHeader,
+        mcnk_flags: u32,
         context: &mut ParserContext<R>,
     ) -> Result<Self> {
         header.expect_magic(b"MCLQ")?;
 
-        let x_vertices = context.reader.read_u32_le()?;
-        let y_vertices = context.reader.read_u32_le()?;
-        let base_height = context.reader.read_f32_le()?;
+        // CRITICAL: If MCLQ chunk size is 0 or too small, it's an empty placeholder
+        // Minimum size: 4 (min_height) + 4 (max_height) + 648 (81*8 vertices) + 64 (tiles) = 720 bytes
+        if header.size < 720 {
+            return Err(AdtError::InvalidChunkSize {
+                chunk: "MCLQ".to_string(),
+                size: header.size,
+                expected: 720,
+            });
+        }
 
-        // Calculate number of vertices with overflow check
-        let vertex_count = (x_vertices as usize)
-            .checked_mul(y_vertices as usize)
-            .ok_or_else(|| {
-                AdtError::ParseError(format!(
-                    "Vertex count overflow: {x_vertices} * {y_vertices}"
-                ))
-            })?;
+        // MCLQ always has 9x9 vertices (81 total)
+        let x_vertices = 9;
+        let y_vertices = 9;
 
-        // Sanity check - liquid layers shouldn't have more than 9x9 vertices typically
-        if vertex_count > 10000 {
+        // Read height range (CRange)
+        let min_height = context.reader.read_f32_le()?;
+        let max_height = context.reader.read_f32_le()?;
+
+        // Validate height values - corrupted MCLQ chunks have nonsense float values
+        // Valid heights should be finite and within reasonable world bounds (±10000 units)
+        let heights_valid = min_height.is_finite()
+            && max_height.is_finite()
+            && min_height.abs() <= 10000.0
+            && max_height.abs() <= 10000.0
+            && min_height <= max_height; // Min should be <= max
+
+        if !heights_valid {
+            // Corrupted/placeholder MCLQ chunk - skip parsing and return error
+            // This indicates the chunk exists but contains invalid data
+            eprintln!(
+                "DEBUG MCLQ: CORRUPTED/INVALID chunk (size={}) - min={}, max={}, flags=0x{:x}",
+                header.size, min_height, max_height, mcnk_flags
+            );
+            eprintln!("  Skipping water parsing for this chunk (likely empty/placeholder)");
             return Err(AdtError::ParseError(format!(
-                "Unreasonable vertex count for liquid layer: {vertex_count} ({x_vertices}x{y_vertices})"
+                "MCLQ chunk has invalid height range: min={}, max={} (likely placeholder/empty chunk)",
+                min_height, max_height
             )));
         }
 
-        let mut vertices = Vec::with_capacity(vertex_count);
+        // Use the average as base_height
+        let base_height = (min_height + max_height) / 2.0;
 
-        for _ in 0..vertex_count {
-            let depth = context.reader.read_f32_le()?;
-            let liquid_id = context.reader.read_u16_le()?;
-            let flags = context.reader.read_u16_le()?;
+        // Determine liquid type from MCNK flags for later use
+        // 0x4 = river, 0x8 = ocean, 0x10 = magma, 0x20 = slime
+        let is_ocean = (mcnk_flags & 0x8) != 0;
+        let is_magma = (mcnk_flags & 0x10) != 0;
+        let is_slime = (mcnk_flags & 0x20) != 0;
+
+        // Determine liquid_id for vertices (matches shader liquid type values)
+        // Shader expects: 0=Water, 1=Ocean, 2=Magma, 3=Slime
+        let liquid_id = if is_ocean {
+            1 // Ocean
+        } else if is_magma {
+            2 // Magma
+        } else if is_slime {
+            3 // Slime
+        } else {
+            0 // Water (includes rivers)
+        };
+
+        // Read 81 vertices (9x9 grid)
+        // According to noggit-red, ALL vertices are 8 bytes:
+        // struct mclq_vertex {
+        //   union {
+        //     water_vert { depth(u8), flow0(u8), flow1(u8), filler(u8) };  // 4 bytes
+        //     magma_vert { s(u16), t(u16) };  // 4 bytes
+        //   };
+        //   float height;  // 4 bytes - ALWAYS PRESENT!
+        // };
+        let mut vertices = Vec::with_capacity(81);
+
+        for _ in 0..81 {
+            if is_magma {
+                // Magma format: s(u16), t(u16), then height(f32)
+                let _s = context.reader.read_u16_le()?;
+                let _t = context.reader.read_u16_le()?;
+            } else {
+                // Water/Ocean/River/Slime format: depth, flow0, flow1, filler (or depth, foam, wet, filler for ocean)
+                let _depth_byte = context.reader.read_u8()?;
+                let _flow0_or_foam = context.reader.read_u8()?;
+                let _flow1_or_wet = context.reader.read_u8()?;
+                let _filler = context.reader.read_u8()?;
+            }
+
+            // Height is ALWAYS present after the 4-byte union, regardless of liquid type
+            let height = context.reader.read_f32_le()?;
 
             vertices.push(LiquidVertex {
-                depth,
+                depth: height - base_height, // Store relative depth
                 liquid_id,
-                flags,
+                flags: 0,
             });
         }
+
+        // Read tile flags (8x8 = 64 bytes)
+        let mut _tile_flags = [0u8; 64];
+        context.reader.read_exact(&mut _tile_flags)?;
+
+        // Skip remaining data (flow data, etc.) - not needed for basic rendering
+        // The chunk size tells us how much data there is total
 
         Ok(Self {
             x_vertices,

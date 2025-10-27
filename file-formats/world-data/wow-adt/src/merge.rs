@@ -446,9 +446,10 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                 header: Mh2oHeader {
                     offset_instances: 0,
                     layer_count: 0,
-                    offset_render_mask: 0,
+                    offset_attributes: 0,
                 },
                 instances: Vec::new(),
+                attributes: None,
                 render_mask: None,
             };
             256

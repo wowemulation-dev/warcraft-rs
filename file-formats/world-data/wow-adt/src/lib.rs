@@ -202,7 +202,7 @@ pub mod extract;
 
 // Import advanced water chunk type
 use crate::mh2o::Mh2oChunk as AdvancedMh2oChunk;
-pub use mh2o::{Mh2oEntry, Mh2oInstance, WaterLevelData, WaterVertex, WaterVertexData};
+pub use mh2o::{Mh2oChunk, Mh2oEntry, Mh2oInstance, WaterLevelData, WaterVertex, WaterVertexData};
 
 pub use adt_builder::{AdtBuilder, create_flat_terrain};
 pub use chunk::*;

@@ -31,9 +31,22 @@
 //! assert_eq!(data1, data2);
 //! ```
 
-/// Normalize a path for storage in an MPQ archive
+/// Normalize a file path to MPQ archive format
 ///
-/// Converts forward slashes to backslashes to match MPQ format requirements.
+/// MPQ archives use backslashes (`\`) as path separators internally, regardless
+/// of the host operating system. This function converts forward slashes to backslashes.
+///
+/// **Note**: This function only normalizes path separators. Case normalization
+/// (uppercasing) is handled separately at the `PatchChain` level to enable
+/// case-insensitive file lookups.
+///
+/// # Arguments
+///
+/// * `path` - The path to normalize
+///
+/// # Returns
+///
+/// A string with all forward slashes replaced with backslashes
 ///
 /// # Examples
 ///
@@ -42,9 +55,11 @@
 ///
 /// assert_eq!(normalize_mpq_path("dir/file.txt"), "dir\\file.txt");
 /// assert_eq!(normalize_mpq_path("dir\\file.txt"), "dir\\file.txt");
-/// assert_eq!(normalize_mpq_path("a/b/c/d.txt"), "a\\b\\c\\d.txt");
+/// assert_eq!(normalize_mpq_path("a/b/c/file.txt"), "a\\b\\c\\file.txt");
 /// ```
 pub fn normalize_mpq_path(path: &str) -> String {
+    // Only normalize path separators (/ to \)
+    // Case normalization must be handled at the Archive level based on version
     path.replace('/', "\\")
 }
 

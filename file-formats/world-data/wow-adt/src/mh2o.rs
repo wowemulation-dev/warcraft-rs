@@ -19,6 +19,8 @@ pub struct Mh2oEntry {
     pub header: Mh2oHeader,
     /// Water instances (layers) for this chunk
     pub instances: Vec<Mh2oInstance>,
+    /// Attributes for liquid properties (fishable, deep water zones)
+    pub attributes: Option<Mh2oAttributes>,
     /// Render mask for liquid rendering
     pub render_mask: Option<Mh2oRenderMask>,
 }
@@ -30,8 +32,17 @@ pub struct Mh2oHeader {
     pub offset_instances: u32,
     /// Number of water layers in this chunk
     pub layer_count: u32,
-    /// Offset to render mask, relative to the start of the MH2O chunk
-    pub offset_render_mask: u32,
+    /// Offset to attributes, relative to the start of the MH2O chunk
+    pub offset_attributes: u32,
+}
+
+/// MH2O chunk attributes (8x8 bitmasks for liquid properties)
+#[derive(Debug, Clone)]
+pub struct Mh2oAttributes {
+    /// Fishable/visibility flags (8x8 grid of bits, stored as 64-bit value)
+    pub fishable: u64,
+    /// Deep water/fatigue zone flags (8x8 grid of bits, stored as 64-bit value)
+    pub deep: u64,
 }
 
 /// MH2O water instance (layer)
@@ -41,6 +52,14 @@ pub struct Mh2oInstance {
     pub liquid_type: u16,
     /// Liquid object ID
     pub liquid_object: u16,
+    /// X offset within chunk (0-8)
+    pub x_offset: u8,
+    /// Y offset within chunk (0-8)
+    pub y_offset: u8,
+    /// Width in cells (not vertices)
+    pub width: u8,
+    /// Height in cells (not vertices)
+    pub height: u8,
     /// Water level (height) values
     pub level_data: WaterLevelData,
     /// Vertex data for water surface
@@ -124,15 +143,12 @@ impl Mh2oChunk {
         for _ in 0..header_count {
             let offset_instances = context.reader.read_u32_le()?;
             let layer_count = context.reader.read_u32_le()?;
-            let offset_render_mask = context.reader.read_u32_le()?;
-
-            // Note: offset_render_mask is actually offset_attributes in newer versions
-            // but we keep the old name for compatibility
+            let offset_attributes = context.reader.read_u32_le()?;
 
             headers.push(Mh2oHeader {
                 offset_instances,
                 layer_count,
-                offset_render_mask,
+                offset_attributes,
             });
         }
 
@@ -141,7 +157,7 @@ impl Mh2oChunk {
             headers.push(Mh2oHeader {
                 offset_instances: 0,
                 layer_count: 0,
-                offset_render_mask: 0,
+                offset_attributes: 0,
             });
         }
 
@@ -150,7 +166,8 @@ impl Mh2oChunk {
 
         for header in headers {
             let mut instances = Vec::new();
-            let mut render_mask = None;
+            let mut attributes = None;
+            let render_mask = None;
 
             // Read water instances
             if header.offset_instances > 0 && header.layer_count > 0 {
@@ -160,6 +177,7 @@ impl Mh2oChunk {
                     chunks.push(Mh2oEntry {
                         header,
                         instances: Vec::new(),
+                        attributes: None,
                         render_mask: None,
                     });
                     continue;
@@ -172,64 +190,61 @@ impl Mh2oChunk {
                 for _layer_idx in 0..header.layer_count {
                     // Try to read instance header, break on EOF
                     let instance_result = (|| -> Result<Mh2oInstance> {
-                        let liquid_type = context.reader.read_u16_le()?;
-                        let liquid_object = context.reader.read_u16_le()?;
-                        let min_height = context.reader.read_f32_le()?;
-                        let max_height = context.reader.read_f32_le()?;
+                        // Read the 24-byte SMLiquidInstance structure per wowdev.wiki spec
+                        let liquid_type = context.reader.read_u16_le()?; // 0x00
+                        let liquid_object = context.reader.read_u16_le()?; // 0x02
+                        let min_height = context.reader.read_f32_le()?; // 0x04
+                        let max_height = context.reader.read_f32_le()?; // 0x08
 
-                        let _x_offset = context.reader.read_u8()?;
-                        let _y_offset = context.reader.read_u8()?;
-                        let _width = context.reader.read_u8()?;
-                        let _height = context.reader.read_u8()?;
+                        let x_offset = context.reader.read_u8()?; // 0x0C
+                        let y_offset = context.reader.read_u8()?; // 0x0D
+                        let width = context.reader.read_u8()?; // 0x0E
+                        let height = context.reader.read_u8()?; // 0x0F
 
-                        let _offset_mask_2bit = context.reader.read_u32_le()?;
-                        let offset_height_map = context.reader.read_u32_le()?;
+                        let offset_exists_bitmap = context.reader.read_u32_le()?; // 0x10
+                        let offset_vertex_data = context.reader.read_u32_le()?; // 0x14
+                        // Instance header ends at 0x18 (24 bytes)
 
-                        // Vertex data
-                        let mut vertex_data = None;
-                        let offset_vertex_data = context.reader.read_u32_le()?;
-                        if offset_vertex_data > 0 {
-                            let x_vertices = context.reader.read_u8()?;
-                            let y_vertices = context.reader.read_u8()?;
-                            let _liquid_flags = context.reader.read_u16_le()?;
-
-                            vertex_data = Some(WaterVertexData {
-                                offset_vertex_data,
-                                x_vertices,
-                                y_vertices,
-                                vertices: None, // Will be read later
-                            });
+                        // Determine liquid vertex format (LVF)
+                        // If liquid_object < 42, it encodes LVF directly:
+                        //   0 = height + depth (has heightmap)
+                        //   1 = height + UV (has heightmap)
+                        //   2 = depth only (NO heightmap)
+                        //   3 = height + UV + depth (has heightmap)
+                        // If liquid_object >= 42, it's a LiquidObjectID (need DB lookup)
+                        let has_heightmap = if liquid_object < 42 {
+                            // liquid_object is LVF directly
+                            liquid_object != 2 // LVF 2 (depth-only) has no heightmap
                         } else {
-                            // Skip the 4 bytes if no vertex data
-                            context.reader.seek(SeekFrom::Current(4))?;
-                        }
-
-                        // Read attribute data - these are 64-bit flags since MoP
-                        // In Cataclysm they were different, but we'll keep it simple
-                        let attribute_count = if context.version >= crate::version::AdtVersion::MoP
-                        {
-                            context.reader.read_u32_le()?
-                        } else {
-                            0
+                            // For LiquidObjectID, assume has heightmap if vertex data present
+                            // TODO: Proper DB lookup when implementing full liquid support
+                            offset_vertex_data > 0
                         };
 
-                        let mut attributes = Vec::new();
-                        for _ in 0..attribute_count {
-                            let attribute = context.reader.read_u64_le()?;
-                            attributes.push(attribute);
-                        }
+                        // Vertex data will be read later using offset_vertex_data
+                        // The vertex data section contains both height map AND vertex attributes
+                        let vertex_data = if offset_vertex_data > 0 {
+                            Some(WaterVertexData {
+                                offset_vertex_data,
+                                x_vertices: width + 1, // Grid has width+1 vertices
+                                y_vertices: height + 1, // Grid has height+1 vertices
+                                vertices: None,        // Will be read later
+                            })
+                        } else {
+                            None
+                        };
 
-                        // Determine level data type
-                        let level_data = if offset_height_map > 0 {
-                            // Variable height water
+                        // Determine level data type based on whether heightmap exists
+                        let level_data = if has_heightmap && offset_vertex_data > 0 {
+                            // Variable height water - heightmap in vertex data section
                             WaterLevelData::Variable {
                                 min_height,
                                 max_height,
-                                offset_height_map,
-                                heights: None, // Will be read later
+                                offset_height_map: offset_vertex_data, // Height data is first in vertex section
+                                heights: None,                         // Will be read later
                             }
                         } else {
-                            // Uniform height water
+                            // Uniform height water (flat surface at min_height)
                             WaterLevelData::Uniform {
                                 min_height,
                                 max_height,
@@ -239,9 +254,13 @@ impl Mh2oChunk {
                         Ok(Mh2oInstance {
                             liquid_type,
                             liquid_object,
+                            x_offset,
+                            y_offset,
+                            width,
+                            height,
                             level_data,
                             vertex_data,
-                            attributes,
+                            attributes: Vec::new(), // Attributes are in separate chunk header section
                         })
                     })();
 
@@ -274,9 +293,24 @@ impl Mh2oChunk {
                                     .reader
                                     .seek(SeekFrom::Start(start_pos + *offset_height_map as u64))?;
 
-                                // Typically a 9x9 grid for water heights
-                                let mut height_data = Vec::with_capacity(9 * 9);
-                                for _ in 0..9 * 9 {
+                                // Calculate actual vertex count based on water dimensions
+                                // IMPORTANT: width/height in MH2O are cell counts, vertices = cells + 1
+                                // SPECIAL CASE: width=0 or height=0 means full chunk coverage (8 cells = 9 vertices)
+                                let width_vertices = if instance.width == 0 {
+                                    9
+                                } else {
+                                    instance.width + 1
+                                };
+                                let height_vertices = if instance.height == 0 {
+                                    9
+                                } else {
+                                    instance.height + 1
+                                };
+                                let vertex_count =
+                                    (width_vertices as usize) * (height_vertices as usize);
+
+                                let mut height_data = Vec::with_capacity(vertex_count);
+                                for _ in 0..vertex_count {
                                     let height = context.reader.read_f32_le()?;
                                     height_data.push(height);
                                 }
@@ -325,28 +359,33 @@ impl Mh2oChunk {
                 }
             }
 
-            // Read render mask
-            if header.offset_render_mask > 0 && header.offset_render_mask < chunk_size {
-                // Try to read render mask, skip on error
-                let mask_result = (|| -> Result<Mh2oRenderMask> {
-                    context.reader.seek(SeekFrom::Start(
-                        start_pos + header.offset_render_mask as u64,
-                    ))?;
+            // Read attributes
+            if header.offset_attributes > 0 && header.offset_attributes < chunk_size {
+                // Try to read attributes, skip on error
+                let attr_result = (|| -> Result<Mh2oAttributes> {
+                    context
+                        .reader
+                        .seek(SeekFrom::Start(start_pos + header.offset_attributes as u64))?;
 
-                    let mut mask = [0u8; 8];
-                    context.reader.read_exact(&mut mask)?;
+                    let fishable = context.reader.read_u64_le()?;
+                    let deep = context.reader.read_u64_le()?;
 
-                    Ok(Mh2oRenderMask { mask })
+                    Ok(Mh2oAttributes { fishable, deep })
                 })();
 
-                if let Ok(mask) = mask_result {
-                    render_mask = Some(mask);
+                if let Ok(attr) = attr_result {
+                    attributes = Some(attr);
                 }
             }
+
+            // Note: Render mask is deprecated in WotLK+ and replaced by attributes
+            // We keep this for backward compatibility with pre-WotLK data
+            // In WotLK+, offset_attributes points to the new 16-byte structure
 
             chunks.push(Mh2oEntry {
                 header,
                 instances,
+                attributes,
                 render_mask,
             });
         }

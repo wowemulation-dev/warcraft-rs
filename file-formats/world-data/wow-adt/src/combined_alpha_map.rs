@@ -296,6 +296,7 @@ mod tests {
             map_obj_refs: Vec::new(),
             alpha_maps: Vec::new(),
             mclq: None,
+            vertex_colors: Vec::new(),
         }
     }
 

@@ -691,7 +691,8 @@ impl AdtBuilder {
                 doodad_refs: Vec::new(),
                 map_obj_refs: Vec::new(),
                 alpha_maps,
-                mclq: None, // No liquid data in builder
+                mclq: None,                // No liquid data in builder
+                vertex_colors: Vec::new(), // No vertex colors in builder
             };
 
             mcnk_chunks.push(mcnk);
@@ -730,6 +731,10 @@ impl AdtBuilder {
                     let instance = Mh2oInstance {
                         liquid_type: info.liquid_type,
                         liquid_object: 0,
+                        x_offset: 0,
+                        y_offset: 0,
+                        width: 8,  // Full chunk coverage (8 cells = 9 vertices)
+                        height: 8, // Full chunk coverage (8 cells = 9 vertices)
                         level_data: if info.vertices.is_some() {
                             WaterLevelData::Variable {
                                 min_height: info.min_height,
@@ -771,9 +776,10 @@ impl AdtBuilder {
                         header: Mh2oHeader {
                             offset_instances: 0, // Will be set during writing
                             layer_count: 1,
-                            offset_render_mask: 0, // Will be set during writing
+                            offset_attributes: 0, // Will be set during writing
                         },
                         instances: vec![instance],
+                        attributes: None,
                         render_mask,
                     });
                 } else {
@@ -782,9 +788,10 @@ impl AdtBuilder {
                         header: Mh2oHeader {
                             offset_instances: 0,
                             layer_count: 0,
-                            offset_render_mask: 0,
+                            offset_attributes: 0,
                         },
                         instances: Vec::new(),
+                        attributes: None,
                         render_mask: None,
                     });
                 }
@@ -801,7 +808,11 @@ impl AdtBuilder {
                 effects: self
                     .texture_effects
                     .iter()
-                    .map(|&id| TextureEffect { effect_id: id })
+                    .map(|&id| TextureEffect {
+                        use_cubemap: (id & 0x1) != 0,
+                        texture_scale: ((id >> 4) & 0xF) as u8,
+                        raw_flags: id,
+                    })
                     .collect(),
             })
         } else {
