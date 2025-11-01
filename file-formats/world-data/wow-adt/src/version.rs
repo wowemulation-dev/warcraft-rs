@@ -1,138 +1,203 @@
-// version.rs - Version handling for ADT files
+use crate::chunk_discovery::ChunkLocation;
+use crate::chunk_id::ChunkId;
+use std::collections::HashMap;
 
-use crate::error::{AdtError, Result};
-
-/// Represents the different World of Warcraft versions that ADT files can be from
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// WoW client version detected from ADT chunk analysis.
+///
+/// ADT files across all WoW versions use `MVER = 18`, making traditional version
+/// detection impossible. Instead, version is determined by analyzing which chunks
+/// are present in the file, as different expansions introduced new chunk types.
+///
+/// Detection follows this hierarchy (most recent features first):
+/// - `MTXP` (texture parameters) → Mists of Pandaria 5.x
+/// - `MAMP` (texture amplitude) → Cataclysm 4.x
+/// - `MH2O` (height-based water) → Wrath of the Lich King 3.x
+/// - `MFBO` (flight bounds) → The Burning Crusade 2.x
+/// - `MCCV` (vertex colors) → Vanilla 1.9+
+/// - No distinguishing chunks → Vanilla early (1.0-1.8.4)
+///
+/// This approach is necessary because Blizzard never incremented the format
+/// version number despite adding new features across 15+ years of development.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AdtVersion {
-    /// Vanilla WoW (1.x)
-    Vanilla,
-    /// The Burning Crusade (2.x)
+    /// Vanilla 1.x (early) - No MCCV vertex colors
+    ///
+    /// Basic terrain format without vertex coloring support.
+    VanillaEarly,
+
+    /// Vanilla 1.9+ - Has MCCV vertex colors
+    ///
+    /// Added per-vertex color support for terrain shading.
+    VanillaLate,
+
+    /// The Burning Crusade 2.x - Added MFBO flight bounds
+    ///
+    /// Introduced flight boundary data for flying mount restrictions.
     TBC,
-    /// Wrath of the Lich King (3.x)
+
+    /// Wrath of the Lich King 3.x - Added MH2O water
+    ///
+    /// New height-based water system replacing old liquid chunks.
     WotLK,
-    /// Cataclysm (4.x)
+
+    /// Cataclysm 4.x - Added MAMP, split files
+    ///
+    /// Introduced texture amplitude and split ADT into _obj0/_tex0 files.
     Cataclysm,
-    /// Mists of Pandaria (5.x)
+
+    /// Mists of Pandaria 5.x - Added MTXP
+    ///
+    /// Added texture parameter chunk for advanced texture blending.
     MoP,
-    /// Warlords of Draenor (6.x)
-    WoD,
-    /// Legion (7.x)
-    Legion,
-    /// Battle for Azeroth (8.x)
-    BfA,
-    /// Shadowlands (9.x)
-    Shadowlands,
-    /// Dragonflight (10.x)
-    Dragonflight,
 }
 
 impl AdtVersion {
-    /// Convert a version number from the MVER chunk to an AdtVersion enum
-    pub fn from_mver(version: u32) -> Result<Self> {
-        // According to wowdev.wiki, the MVER value doesn't seem to change between versions
-        // The ADT version is determined more by the presence of certain chunks
-        // However, the value is supposed to be 18 for most versions
-        match version {
-            18 => {
-                // Default to Vanilla, but the caller should update based on chunks
-                Ok(AdtVersion::Vanilla)
-            }
-            _ => Err(AdtError::UnsupportedVersion(version)),
+    /// Detect version from chunk presence (primary detection method).
+    ///
+    /// Since all ADT versions use `MVER = 18`, version detection analyzes which
+    /// chunks exist in the file. The algorithm checks for signature chunks
+    /// introduced in each expansion, starting with the most recent.
+    ///
+    /// Detection algorithm:
+    /// 1. `MTXP` present → Mists of Pandaria (5.x)
+    /// 2. `MAMP` present OR (has `MCNK` but no `MCIN`) → Cataclysm (4.x)
+    ///    - Split root files have `MCNK` but `MCIN` moved to _tex0.adt
+    /// 3. `MH2O` present → Wrath of the Lich King (3.x)
+    /// 4. `MFBO` present → The Burning Crusade (2.x)
+    /// 5. `MCCV` present → Vanilla 1.9+
+    /// 6. Otherwise → Vanilla early (1.0-1.8.4)
+    ///
+    /// # Arguments
+    ///
+    /// * `chunks` - Map of chunk IDs to their locations
+    ///
+    /// # Returns
+    ///
+    /// Detected ADT version based on chunk presence
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wow_adt::version::AdtVersion;
+    /// use wow_adt::chunk_id::ChunkId;
+    /// use wow_adt::chunk_discovery::ChunkLocation;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut chunks = HashMap::new();
+    /// chunks.insert(ChunkId::MH2O, vec![ChunkLocation { offset: 0x1000, size: 100 }]);
+    /// chunks.insert(ChunkId::MCCV, vec![ChunkLocation { offset: 0x2000, size: 200 }]);
+    ///
+    /// let version = AdtVersion::detect_from_chunks(&chunks);
+    /// assert_eq!(version, AdtVersion::WotLK);
+    /// ```
+    pub fn detect_from_chunks(chunks: &HashMap<ChunkId, Vec<ChunkLocation>>) -> Self {
+        // Check for split file architecture (Cataclysm+)
+        // Split root files have MCNK but NO MCIN (MCIN moved to _tex0.adt)
+        let has_mcnk = chunks.contains_key(&ChunkId::MCNK);
+        let has_mcin = chunks.contains_key(&ChunkId::MCIN);
+        let is_split_root = has_mcnk && !has_mcin;
+
+        if chunks.contains_key(&ChunkId::MTXP) {
+            Self::MoP
+        } else if chunks.contains_key(&ChunkId::MAMP) || is_split_root {
+            // Cataclysm: Either has MAMP or is split root file
+            Self::Cataclysm
+        } else if chunks.contains_key(&ChunkId::MH2O) || chunks.contains_key(&ChunkId::MTXF) {
+            // WotLK introduced both MH2O (water) and MTXF (texture flags)
+            // MTXF is used as fallback marker when MH2O is not present
+            Self::WotLK
+        } else if chunks.contains_key(&ChunkId::MFBO) {
+            Self::TBC
+        } else if chunks.contains_key(&ChunkId::MCCV) {
+            Self::VanillaLate
+        } else {
+            Self::VanillaEarly
         }
     }
 
-    /// Get the corresponding MVER value for this version
-    pub fn to_mver_value(self) -> u32 {
-        // The MVER value is 18 for all known versions
-        18
+    /// Detect version from ChunkDiscovery result (convenience method).
+    ///
+    /// This method provides a direct way to detect version from a
+    /// `ChunkDiscovery` result, delegating to `detect_from_chunks()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `discovery` - Chunk discovery results from phase 1 parsing
+    ///
+    /// # Returns
+    ///
+    /// Detected ADT version based on chunk presence
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// use wow_adt::chunk_discovery::discover_chunks;
+    /// use wow_adt::version::AdtVersion;
+    ///
+    /// let mut file = File::open("Kalimdor_32_48.adt")?;
+    /// let discovery = discover_chunks(&mut file)?;
+    /// let version = AdtVersion::from_discovery(&discovery);
+    ///
+    /// println!("Detected version: {}", version);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn from_discovery(discovery: &crate::chunk_discovery::ChunkDiscovery) -> Self {
+        Self::detect_from_chunks(&discovery.chunks)
     }
 
-    /// Detect version based on chunk presence
-    /// This should be called after initial parsing to refine the version detection
-    pub fn detect_from_chunks(
-        has_mfbo: bool,
-        has_mh2o: bool,
-        has_mtfx: bool,
-        has_mcnk_with_mccv: bool,
-    ) -> Self {
-        // Version detection based on chunk presence:
-        // - MTXP: MoP+ (5.x+) - texture parameters chunk
-        // - MTFX: Cataclysm+ (4.x+) - texture effects chunk
-        // - MH2O: WotLK+ (3.x+) - advanced water chunk
-        // - MFBO: TBC+ (2.x+) - flight boundaries chunk
-        // - MCCV in MCNK: WotLK+ (3.x+) - vertex colors in terrain chunks
-
-        // Note: MTXP detection would require additional parameter
-        // For now, we can't distinguish MoP from Cataclysm without MTXP chunk detection
-
-        if has_mtfx {
-            // MTFX was introduced in Cataclysm
-            // Without MTXP detection, default to Cataclysm for 4.x+
-            AdtVersion::Cataclysm
-        } else if has_mh2o || has_mcnk_with_mccv {
-            // MH2O and MCCV were introduced in WotLK
-            AdtVersion::WotLK
-        } else if has_mfbo {
-            // MFBO was introduced in TBC
-            AdtVersion::TBC
-        } else {
-            // No version-specific chunks found, assume Vanilla
-            AdtVersion::Vanilla
+    /// Human-readable version string.
+    ///
+    /// Returns expansion name and major version number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wow_adt::version::AdtVersion;
+    ///
+    /// assert_eq!(AdtVersion::WotLK.as_str(), "Wrath of the Lich King 3.x");
+    /// assert_eq!(AdtVersion::VanillaLate.as_str(), "Vanilla 1.9+");
+    /// ```
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::VanillaEarly => "Vanilla 1.x (Early)",
+            Self::VanillaLate => "Vanilla 1.9+",
+            Self::TBC => "The Burning Crusade 2.x",
+            Self::WotLK => "Wrath of the Lich King 3.x",
+            Self::Cataclysm => "Cataclysm 4.x",
+            Self::MoP => "Mists of Pandaria 5.x",
         }
     }
 
-    /// Enhanced version detection with additional chunk information
-    pub fn detect_from_chunks_extended(
-        has_mfbo: bool,
-        has_mh2o: bool,
-        has_mtfx: bool,
-        has_mcnk_with_mccv: bool,
-        has_mtxp: bool,
-        has_mamp: bool,
-    ) -> Self {
-        // Version detection based on chunk presence:
-        // - MAMP: Cataclysm+ (4 bytes, appears in 4.x+)
-        // - MTXP: MoP+ (5.x+)
-        // - MTFX: Cataclysm+ (4.x+)
-        // - MH2O: WotLK+ (3.x+)
-        // - MFBO: TBC+ (2.x+)
-        // - MCCV in MCNK: WotLK+ (3.x+)
-
-        if has_mtxp {
-            // MTXP was introduced in MoP
-            AdtVersion::MoP
-        } else if has_mtfx || has_mamp {
-            // MTFX and MAMP were introduced in Cataclysm
-            AdtVersion::Cataclysm
-        } else if has_mh2o || has_mcnk_with_mccv {
-            // MH2O and MCCV were introduced in WotLK
-            AdtVersion::WotLK
-        } else if has_mfbo {
-            // MFBO was introduced in TBC
-            AdtVersion::TBC
-        } else {
-            // No version-specific chunks found, assume Vanilla
-            AdtVersion::Vanilla
+    /// Client version range supported by this ADT format.
+    ///
+    /// Returns the specific client version numbers that use this format.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wow_adt::version::AdtVersion;
+    ///
+    /// assert_eq!(AdtVersion::WotLK.version_range(), "3.0.0 - 3.3.5a");
+    /// assert_eq!(AdtVersion::VanillaEarly.version_range(), "1.0.0 - 1.8.4");
+    /// ```
+    #[must_use]
+    pub const fn version_range(&self) -> &'static str {
+        match self {
+            Self::VanillaEarly => "1.0.0 - 1.8.4",
+            Self::VanillaLate => "1.9.0 - 1.12.1",
+            Self::TBC => "2.0.0 - 2.4.3",
+            Self::WotLK => "3.0.0 - 3.3.5a",
+            Self::Cataclysm => "4.0.0 - 4.3.4",
+            Self::MoP => "5.0.0 - 5.4.8",
         }
     }
 }
 
 impl std::fmt::Display for AdtVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            AdtVersion::Vanilla => "Vanilla (1.x)",
-            AdtVersion::TBC => "The Burning Crusade (2.x)",
-            AdtVersion::WotLK => "Wrath of the Lich King (3.x)",
-            AdtVersion::Cataclysm => "Cataclysm (4.x)",
-            AdtVersion::MoP => "Mists of Pandaria (5.x)",
-            AdtVersion::WoD => "Warlords of Draenor (6.x)",
-            AdtVersion::Legion => "Legion (7.x)",
-            AdtVersion::BfA => "Battle for Azeroth (8.x)",
-            AdtVersion::Shadowlands => "Shadowlands (9.x)",
-            AdtVersion::Dragonflight => "Dragonflight (10.x)",
-        };
-        write!(f, "{s}")
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -141,161 +206,190 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_mver_parsing() {
-        // Valid version (18)
-        assert!(matches!(AdtVersion::from_mver(18), Ok(AdtVersion::Vanilla)));
+    fn detect_mop_from_mtxp() {
+        let mut chunks = HashMap::new();
+        chunks.insert(
+            ChunkId::MTXP,
+            vec![ChunkLocation {
+                offset: 0x1000,
+                size: 100,
+            }],
+        );
 
-        // Invalid version
-        assert!(AdtVersion::from_mver(19).is_err());
-        assert!(AdtVersion::from_mver(0).is_err());
-        assert!(AdtVersion::from_mver(99).is_err());
+        let version = AdtVersion::detect_from_chunks(&chunks);
+        assert_eq!(version, AdtVersion::MoP);
     }
 
     #[test]
-    fn test_mver_value() {
-        // All versions should return 18
-        assert_eq!(AdtVersion::Vanilla.to_mver_value(), 18);
-        assert_eq!(AdtVersion::TBC.to_mver_value(), 18);
-        assert_eq!(AdtVersion::WotLK.to_mver_value(), 18);
-        assert_eq!(AdtVersion::Cataclysm.to_mver_value(), 18);
-        assert_eq!(AdtVersion::MoP.to_mver_value(), 18);
-        assert_eq!(AdtVersion::Legion.to_mver_value(), 18);
+    fn detect_cataclysm_from_mamp() {
+        let mut chunks = HashMap::new();
+        chunks.insert(
+            ChunkId::MAMP,
+            vec![ChunkLocation {
+                offset: 0x1000,
+                size: 100,
+            }],
+        );
+        chunks.insert(
+            ChunkId::MH2O,
+            vec![ChunkLocation {
+                offset: 0x2000,
+                size: 200,
+            }],
+        );
+
+        let version = AdtVersion::detect_from_chunks(&chunks);
+        assert_eq!(version, AdtVersion::Cataclysm);
     }
 
     #[test]
-    fn test_version_detection() {
-        // Vanilla - no special chunks
-        assert_eq!(
-            AdtVersion::detect_from_chunks(false, false, false, false),
-            AdtVersion::Vanilla
+    fn detect_wotlk_from_mh2o() {
+        let mut chunks = HashMap::new();
+        chunks.insert(
+            ChunkId::MH2O,
+            vec![ChunkLocation {
+                offset: 0x1000,
+                size: 100,
+            }],
+        );
+        chunks.insert(
+            ChunkId::MCCV,
+            vec![ChunkLocation {
+                offset: 0x2000,
+                size: 200,
+            }],
         );
 
-        // TBC - has MFBO
-        assert_eq!(
-            AdtVersion::detect_from_chunks(true, false, false, false),
-            AdtVersion::TBC
-        );
-
-        // WotLK - has MH2O
-        assert_eq!(
-            AdtVersion::detect_from_chunks(false, true, false, false),
-            AdtVersion::WotLK
-        );
-
-        // WotLK - has MCCV
-        assert_eq!(
-            AdtVersion::detect_from_chunks(false, false, false, true),
-            AdtVersion::WotLK
-        );
-
-        // Cataclysm - has MTFX
-        assert_eq!(
-            AdtVersion::detect_from_chunks(false, false, true, false),
-            AdtVersion::Cataclysm
-        );
-
-        // Cataclysm - has all chunks
-        assert_eq!(
-            AdtVersion::detect_from_chunks(true, true, true, true),
-            AdtVersion::Cataclysm
-        );
+        let version = AdtVersion::detect_from_chunks(&chunks);
+        assert_eq!(version, AdtVersion::WotLK);
     }
 
     #[test]
-    fn test_version_comparison() {
-        assert!(AdtVersion::Vanilla < AdtVersion::TBC);
-        assert!(AdtVersion::TBC < AdtVersion::WotLK);
-        assert!(AdtVersion::WotLK < AdtVersion::Cataclysm);
-        assert!(AdtVersion::Cataclysm < AdtVersion::MoP);
-        assert!(AdtVersion::MoP < AdtVersion::WoD);
-        assert!(AdtVersion::WoD < AdtVersion::Legion);
-        assert!(AdtVersion::Legion < AdtVersion::BfA);
-        assert!(AdtVersion::BfA < AdtVersion::Shadowlands);
-        assert!(AdtVersion::Shadowlands < AdtVersion::Dragonflight);
+    fn detect_tbc_from_mfbo() {
+        let mut chunks = HashMap::new();
+        chunks.insert(
+            ChunkId::MFBO,
+            vec![ChunkLocation {
+                offset: 0x1000,
+                size: 100,
+            }],
+        );
+        chunks.insert(
+            ChunkId::MCCV,
+            vec![ChunkLocation {
+                offset: 0x2000,
+                size: 200,
+            }],
+        );
 
-        // Test equality
-        assert_eq!(AdtVersion::Vanilla, AdtVersion::Vanilla);
-        assert_eq!(AdtVersion::Legion, AdtVersion::Legion);
+        let version = AdtVersion::detect_from_chunks(&chunks);
+        assert_eq!(version, AdtVersion::TBC);
     }
 
     #[test]
-    fn test_version_to_string() {
-        assert_eq!(AdtVersion::Vanilla.to_string(), "Vanilla (1.x)");
-        assert_eq!(AdtVersion::TBC.to_string(), "The Burning Crusade (2.x)");
-        assert_eq!(
-            AdtVersion::WotLK.to_string(),
-            "Wrath of the Lich King (3.x)"
+    fn detect_vanilla_late_from_mccv() {
+        let mut chunks = HashMap::new();
+        chunks.insert(
+            ChunkId::MCCV,
+            vec![ChunkLocation {
+                offset: 0x1000,
+                size: 100,
+            }],
         );
-        assert_eq!(AdtVersion::Cataclysm.to_string(), "Cataclysm (4.x)");
-        assert_eq!(AdtVersion::MoP.to_string(), "Mists of Pandaria (5.x)");
-        assert_eq!(AdtVersion::WoD.to_string(), "Warlords of Draenor (6.x)");
-        assert_eq!(AdtVersion::Legion.to_string(), "Legion (7.x)");
-        assert_eq!(AdtVersion::BfA.to_string(), "Battle for Azeroth (8.x)");
-        assert_eq!(AdtVersion::Shadowlands.to_string(), "Shadowlands (9.x)");
-        assert_eq!(AdtVersion::Dragonflight.to_string(), "Dragonflight (10.x)");
+
+        let version = AdtVersion::detect_from_chunks(&chunks);
+        assert_eq!(version, AdtVersion::VanillaLate);
     }
 
     #[test]
-    fn test_version_ordering() {
-        let versions = vec![
-            AdtVersion::Dragonflight,
-            AdtVersion::Vanilla,
-            AdtVersion::Legion,
-            AdtVersion::TBC,
-            AdtVersion::Cataclysm,
-        ];
+    fn detect_vanilla_early_from_no_signature_chunks() {
+        let chunks = HashMap::new();
 
-        let mut sorted = versions.clone();
-        sorted.sort();
-
-        assert_eq!(
-            sorted,
-            vec![
-                AdtVersion::Vanilla,
-                AdtVersion::TBC,
-                AdtVersion::Cataclysm,
-                AdtVersion::Legion,
-                AdtVersion::Dragonflight,
-            ]
-        );
+        let version = AdtVersion::detect_from_chunks(&chunks);
+        assert_eq!(version, AdtVersion::VanillaEarly);
     }
 
     #[test]
-    fn test_extended_version_detection() {
-        // Vanilla - no special chunks
-        assert_eq!(
-            AdtVersion::detect_from_chunks_extended(false, false, false, false, false, false),
-            AdtVersion::Vanilla
+    fn version_strings_are_descriptive() {
+        assert_eq!(AdtVersion::MoP.as_str(), "Mists of Pandaria 5.x");
+        assert_eq!(AdtVersion::WotLK.as_str(), "Wrath of the Lich King 3.x");
+        assert_eq!(AdtVersion::VanillaEarly.as_str(), "Vanilla 1.x (Early)");
+    }
+
+    #[test]
+    fn version_ranges_are_accurate() {
+        assert_eq!(AdtVersion::MoP.version_range(), "5.0.0 - 5.4.8");
+        assert_eq!(AdtVersion::WotLK.version_range(), "3.0.0 - 3.3.5a");
+        assert_eq!(AdtVersion::VanillaEarly.version_range(), "1.0.0 - 1.8.4");
+    }
+
+    #[test]
+    fn display_implementation_matches_as_str() {
+        let version = AdtVersion::Cataclysm;
+        assert_eq!(format!("{version}"), version.as_str());
+    }
+
+    #[test]
+    fn test_detect_from_discovery() {
+        use crate::chunk_discovery::ChunkDiscovery;
+
+        let mut discovery = ChunkDiscovery::new(1000);
+
+        // Add MH2O chunk to indicate WotLK version
+        discovery.chunks.insert(
+            ChunkId::MH2O,
+            vec![ChunkLocation {
+                offset: 100,
+                size: 200,
+            }],
         );
 
-        // TBC - has MFBO
-        assert_eq!(
-            AdtVersion::detect_from_chunks_extended(true, false, false, false, false, false),
-            AdtVersion::TBC
+        let version = AdtVersion::from_discovery(&discovery);
+        assert_eq!(version, AdtVersion::WotLK);
+    }
+
+    #[test]
+    fn test_from_discovery_with_multiple_versions() {
+        use crate::chunk_discovery::ChunkDiscovery;
+
+        let mut discovery = ChunkDiscovery::new(2000);
+
+        // Add multiple version-indicating chunks (MTXP takes precedence)
+        discovery.chunks.insert(
+            ChunkId::MTXP,
+            vec![ChunkLocation {
+                offset: 100,
+                size: 50,
+            }],
+        );
+        discovery.chunks.insert(
+            ChunkId::MAMP,
+            vec![ChunkLocation {
+                offset: 200,
+                size: 100,
+            }],
+        );
+        discovery.chunks.insert(
+            ChunkId::MH2O,
+            vec![ChunkLocation {
+                offset: 300,
+                size: 150,
+            }],
         );
 
-        // WotLK - has MH2O
-        assert_eq!(
-            AdtVersion::detect_from_chunks_extended(true, true, false, false, false, false),
-            AdtVersion::WotLK
-        );
+        let version = AdtVersion::from_discovery(&discovery);
+        // Should detect as MoP (most recent)
+        assert_eq!(version, AdtVersion::MoP);
+    }
 
-        // Cataclysm - has MTFX
-        assert_eq!(
-            AdtVersion::detect_from_chunks_extended(true, true, true, false, false, false),
-            AdtVersion::Cataclysm
-        );
+    #[test]
+    fn test_from_discovery_vanilla_early() {
+        use crate::chunk_discovery::ChunkDiscovery;
 
-        // Cataclysm - has MAMP
-        assert_eq!(
-            AdtVersion::detect_from_chunks_extended(true, true, false, false, false, true),
-            AdtVersion::Cataclysm
-        );
+        let discovery = ChunkDiscovery::new(500);
+        // No version-indicating chunks
 
-        // MoP - has MTXP
-        assert_eq!(
-            AdtVersion::detect_from_chunks_extended(true, true, true, true, true, false),
-            AdtVersion::MoP
-        );
+        let version = AdtVersion::from_discovery(&discovery);
+        assert_eq!(version, AdtVersion::VanillaEarly);
     }
 }
