@@ -59,6 +59,7 @@ tokio = { version = "1.0", features = ["io-util", "time", "sync", "rt", "fs", "m
 
 # Memory-mapped files (optional)
 memmap2 = { version = "0.9", optional = true }
+hex = "0.4.3"
 
 # Unix system calls for memory mapping optimizations (optional, Unix only)
 [target.'cfg(unix)'.dependencies]
