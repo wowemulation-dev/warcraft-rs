@@ -28,3 +28,31 @@ Thumbs.db
 
 __pycache__
 .ruff-cache
+
+# Rust build artifacts
+*.rs.bk
+*.rlib
+*.so
+*.dylib
+*.dll
+debug/
+release/
+
+# Python environments
+.venv/
+venv/
+*.pyc
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Development
+*.log
+*.prof
+.env
+.env.*
+!.env.example
+
+# Tools output
+tools/adt/samples/
+tools/adt/reports/
