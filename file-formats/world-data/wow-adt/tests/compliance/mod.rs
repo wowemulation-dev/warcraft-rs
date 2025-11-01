@@ -1,6 +1,10 @@
-//! Compliance tests for ADT parsing
+//! Compliance tests for format specification adherence.
 //!
-//! These tests validate our parsing behavior against known-good references
-//! like TrinityCore server implementations and World of Warcraft client behavior.
+//! These tests verify that chunk implementations correctly parse and serialize
+//! according to wowdev.wiki specifications and real game file behavior.
 
-pub mod trinitycore;
+pub mod cataclysm;
+pub mod mop;
+pub mod tbc;
+pub mod vanilla;
+pub mod wotlk;
