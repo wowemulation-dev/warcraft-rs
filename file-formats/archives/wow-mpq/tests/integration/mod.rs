@@ -7,5 +7,6 @@ pub mod archive;
 // #[cfg(feature = "async")]
 // pub mod async_operations;
 pub mod compression;
+pub mod patch_chain_test;
 pub mod path_separator_handling;
 pub mod security;
