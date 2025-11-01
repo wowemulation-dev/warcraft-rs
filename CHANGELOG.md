@@ -10,6 +10,74 @@ and this project adheres to
 
 ### Added
 
+- **ADT Format**: Complete BinRead-based parser rewrite with two-phase parsing architecture
+  - Declarative chunk parsing using BinRead derive macros
+  - Two-phase parsing: fast chunk discovery followed by selective typed parsing
+  - New modular architecture with 15+ new modules for maintainable code
+  - High-level type-safe APIs: `RootAdt`, `Tex0Adt`, `Obj0Adt`, `LodAdt`
+  - Enhanced split file support with `AdtSet` for automatic loading and merging
+  - Comprehensive builder API for ADT creation and serialization
+  - Selective parsing capabilities for performance optimization
+- **MPQ Format**: Binary patch file (PTCH) support for Cataclysm+ updates
+  - COPY patches for simple file replacement
+  - BSD0 patches using bsdiff40 algorithm for binary diffs
+  - Automatic patch detection and application in PatchChain
+  - MD5 verification for patch integrity
+  - RLE compression algorithm support
+  - Enhanced PatchChain with transparent patch application
+- **Testing**: Expanded test coverage across format parsers
+  - ADT compliance tests split by expansion (vanilla, tbc, wotlk, cataclysm, mop)
+  - MPQ patch chain integration tests
+  - New benchmarks for ADT discovery and parsing phases
+- **Examples**: New demonstrations for enhanced functionality
+  - `load_split_adt` - ADT split file loading and merging
+  - `selective_parsing` - Performance-optimized chunk parsing
+  - MPQ patch testing examples (`check_patch_flags`, `test_patch_chain`, etc.)
+- **CLI Enhancements**: Improved command handling for ADT and MPQ operations
+  - Better ADT format support in CLI commands
+  - Enhanced MPQ patch chain handling in extraction
+
+### Changed
+
+- **ADT Parser Architecture**: Complete rewrite for maintainability and performance
+  - Migrated from manual binary parsing to declarative BinRead macros
+  - Two-phase parsing reduces memory usage via selective chunk loading
+  - Module structure reorganized with chunk-specific subdirectories
+  - Error handling enhanced with chunk-level context
+- **MPQ PatchChain**: Refactored for automatic patch application
+  - Transparent PTCH patch handling during file reads
+  - Simplified API with automatic patch detection
+  - Enhanced priority-based file resolution
+- **Test Organization**: Comprehensive test suite restructuring
+  - Compliance tests organized by WoW expansion
+  - Integration tests separated by functionality
+  - Focused benchmarks for performance profiling
+- **Dependency Management**: Cargo.lock cleanup
+  - Removed obsolete dependencies (2,272 lines reduced)
+  - Updated core dependencies for better compatibility
+
+### Fixed
+
+- **ADT Parsing**: All Cataclysm compliance tests now passing
+  - Fixed split file version detection (Cataclysm vs WotLK)
+  - Corrected MCNK subchunk parsing with proper offsets
+  - Improved texture and object chunk handling in split files
+  - Enhanced MH2O water chunk parsing across all versions
+- **MPQ Compression**: Minor fixes in compression algorithm integration
+  - Better RLE compression handling
+  - Improved compression method selection
+
+### Removed
+
+- **Development Tools**: Cleaned up temporary analysis utilities
+  - Removed Python M2 analysis tools from `tools/` directory
+  - Removed legacy ADT parser benchmark
+  - Consolidated redundant test files
+
+## [0.4.0] - 2025-08-29
+
+### Added
+
 - **WMO Format**: Complete chunk support with test-driven implementation
   - GFID (Group File ID) - File references for group data
   - MORI (Portal references) - Portal connectivity information
