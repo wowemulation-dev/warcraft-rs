@@ -13,9 +13,9 @@ pub fn compress(data: &[u8], method: u8) -> Result<Vec<u8>> {
     // Check if compression actually reduces size
     let compressed = compress_internal(data, method)?;
 
-    // MPQ format requires that compression saves at least 2 bytes
-    // If it doesn't, we return the original data uncompressed
-    if compressed.len() >= data.len() {
+    // MPQ format requires that compression saves space
+    // Account for the method byte prefix when comparing sizes
+    if 1 + compressed.len() >= data.len() {
         // Return uncompressed data (no compression byte prefix)
         Ok(data.to_vec())
     } else {

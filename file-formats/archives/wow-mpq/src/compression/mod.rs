@@ -1,6 +1,6 @@
 //! Compression and decompression algorithms for MPQ files
 
-mod algorithms;
+pub(crate) mod algorithms;
 mod compress;
 mod decompress;
 mod methods;
@@ -12,6 +12,9 @@ pub use methods::{CompressionMethod, flags};
 
 // Re-export security types for public use
 pub use crate::security::{DecompressionMonitor, SecurityLimits, SessionTracker};
+
+// Re-export RLE decompression for patch file handling
+pub use algorithms::rle;
 
 /// Error conversion helpers for compression algorithms
 pub(crate) mod error_helpers {
