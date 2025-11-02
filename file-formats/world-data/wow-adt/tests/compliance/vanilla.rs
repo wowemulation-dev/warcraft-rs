@@ -8,7 +8,7 @@
 use std::fs;
 use std::io::Cursor;
 use std::path::PathBuf;
-use wow_adt::{parse_adt, AdtVersion, ParsedAdt};
+use wow_adt::{AdtVersion, ParsedAdt, parse_adt};
 
 /// Get path to test data directory
 fn test_data_dir() -> PathBuf {
@@ -25,7 +25,7 @@ fn parse_vanilla_adt(test_file: &PathBuf) -> wow_adt::RootAdt {
     let parsed = parse_adt(&mut cursor).expect("Failed to parse Vanilla ADT");
 
     match parsed {
-        ParsedAdt::Root(root) => root,
+        ParsedAdt::Root(root) => *root,
         _ => panic!("Expected Root ADT, got different variant"),
     }
 }
@@ -275,8 +275,18 @@ fn test_parse_all_vanilla_files() {
         }
     }
 
-    assert_eq!(error_count, 0, "All Vanilla ADT files should parse successfully");
-    assert!(parsed_count >= 5, "Should have parsed at least 5 test files");
+    assert_eq!(
+        error_count, 0,
+        "All Vanilla ADT files should parse successfully"
+    );
+    assert!(
+        parsed_count >= 5,
+        "Should have parsed at least 5 test files"
+    );
 
-    println!("✓ Successfully parsed {}/{} Vanilla ADT files", parsed_count, parsed_count + error_count);
+    println!(
+        "✓ Successfully parsed {}/{} Vanilla ADT files",
+        parsed_count,
+        parsed_count + error_count
+    );
 }

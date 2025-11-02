@@ -18,7 +18,7 @@ use std::collections::HashMap;
 ///
 /// This approach is necessary because Blizzard never incremented the format
 /// version number despite adding new features across 15+ years of development.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AdtVersion {
     /// Vanilla 1.x (early) - No MCCV vertex colors
     ///

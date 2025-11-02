@@ -12,7 +12,7 @@ use wow_adt::{AdtVersion, DoodadPlacement, WmoPlacement, parse_adt};
 /// Helper to extract RootAdt from ParsedAdt enum
 fn extract_root(parsed: ParsedAdt) -> RootAdt {
     match parsed {
-        ParsedAdt::Root(r) => r,
+        ParsedAdt::Root(r) => *r,
         _ => panic!("Expected Root ADT"),
     }
 }
@@ -435,11 +435,16 @@ fn test_mop_blend_mesh_builder() {
     assert_eq!(stored_mbmi.indices, vec![0, 1, 2]);
 
     // Serialize to bytes - verifies serialization doesn't crash
-    let bytes = built_adt.to_bytes().expect("Failed to serialize MoP ADT with blend mesh");
+    let bytes = built_adt
+        .to_bytes()
+        .expect("Failed to serialize MoP ADT with blend mesh");
 
     // Verify serialized data is non-empty and reasonable size
     // Minimal ADT with 256 MCNK chunks + blend mesh is ~200KB
-    assert!(bytes.len() > 1000, "Serialized ADT should have substantial size");
+    assert!(
+        bytes.len() > 1000,
+        "Serialized ADT should have substantial size"
+    );
     assert!(
         bytes.len() < 1_000_000,
         "Serialized ADT should not be unreasonably large (got {} bytes)",
@@ -464,9 +469,7 @@ fn test_mcnk_subchunk_offset_verification() {
         .expect("Failed to build ADT");
 
     // Serialize to bytes
-    let bytes = built_adt
-        .to_bytes()
-        .expect("Failed to serialize ADT");
+    let bytes = built_adt.to_bytes().expect("Failed to serialize ADT");
 
     // Parse back
     let mut cursor = Cursor::new(bytes);
@@ -804,7 +807,9 @@ fn test_mh2o_vertex_data_round_trip() {
 
         // Verify vertex data
         assert_eq!(entry.vertex_data.len(), 1);
-        let vertex_data = entry.vertex_data[0].as_ref().expect("Entry 0 should have vertex data");
+        let vertex_data = entry.vertex_data[0]
+            .as_ref()
+            .expect("Entry 0 should have vertex data");
 
         match vertex_data {
             VertexDataArray::HeightDepth(vertices) => {
@@ -834,7 +839,9 @@ fn test_mh2o_vertex_data_round_trip() {
         assert_eq!(entry.exists_bitmaps[0], Some(0xFF));
 
         // Verify vertex data
-        let vertex_data = entry.vertex_data[0].as_ref().expect("Entry 1 should have vertex data");
+        let vertex_data = entry.vertex_data[0]
+            .as_ref()
+            .expect("Entry 1 should have vertex data");
 
         match vertex_data {
             VertexDataArray::HeightUv(vertices) => {
@@ -864,7 +871,9 @@ fn test_mh2o_vertex_data_round_trip() {
         assert_eq!(entry.exists_bitmaps[0], Some(0x1));
 
         // Verify vertex data
-        let vertex_data = entry.vertex_data[0].as_ref().expect("Entry 2 should have vertex data");
+        let vertex_data = entry.vertex_data[0]
+            .as_ref()
+            .expect("Entry 2 should have vertex data");
 
         match vertex_data {
             VertexDataArray::DepthOnly(vertices) => {
@@ -893,7 +902,9 @@ fn test_mh2o_vertex_data_round_trip() {
         assert_eq!(entry.exists_bitmaps[0], Some(0x3));
 
         // Verify vertex data
-        let vertex_data = entry.vertex_data[0].as_ref().expect("Entry 3 should have vertex data");
+        let vertex_data = entry.vertex_data[0]
+            .as_ref()
+            .expect("Entry 3 should have vertex data");
 
         match vertex_data {
             VertexDataArray::HeightUvDepth(vertices) => {
@@ -913,7 +924,11 @@ fn test_mh2o_vertex_data_round_trip() {
     // Verify remaining entries have no liquid data
     for i in 4..256 {
         let entry = &parsed_mh2o.entries[i];
-        assert!(!entry.has_liquid(), "Entry {} should have no liquid data", i);
+        assert!(
+            !entry.has_liquid(),
+            "Entry {} should have no liquid data",
+            i
+        );
     }
 }
 
@@ -943,7 +958,7 @@ fn test_mh2o_without_vertex_data() {
         max_height_level: 100.0, // Flat surface
         x_offset: 0,
         y_offset: 0,
-        width: 8,  // Full tile coverage
+        width: 8, // Full tile coverage
         height: 8,
         offset_exists_bitmap: 0, // No bitmap
         offset_vertex_data: 0,   // No vertex data
@@ -952,7 +967,7 @@ fn test_mh2o_without_vertex_data() {
     entries.push(Mh2oEntry {
         header,
         instances: vec![instance],
-        vertex_data: vec![None], // No vertex data
+        vertex_data: vec![None],    // No vertex data
         exists_bitmaps: vec![None], // No exists bitmap
         attributes: None,
     });
@@ -993,5 +1008,8 @@ fn test_mh2o_without_vertex_data() {
     assert_eq!(entry.vertex_data.len(), 1);
     assert!(entry.vertex_data[0].is_none(), "Should have no vertex data");
     assert_eq!(entry.exists_bitmaps.len(), 1);
-    assert!(entry.exists_bitmaps[0].is_none(), "Should have no exists bitmap");
+    assert!(
+        entry.exists_bitmaps[0].is_none(),
+        "Should have no exists bitmap"
+    );
 }

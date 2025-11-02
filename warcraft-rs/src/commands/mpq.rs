@@ -962,7 +962,12 @@ fn create_archive(
     Ok(())
 }
 
-fn show_info(path: &str, file: Option<&str>, include_hash_table: bool, include_block_table: bool) -> Result<()> {
+fn show_info(
+    path: &str,
+    file: Option<&str>,
+    include_hash_table: bool,
+    include_block_table: bool,
+) -> Result<()> {
     let spinner = create_spinner("Opening archive...");
     let mut archive = Archive::open(path).context("Failed to open archive")?;
     spinner.finish_and_clear();
@@ -1016,7 +1021,10 @@ fn show_file_info(archive: &mut Archive, filename: &str) -> Result<()> {
     println!("================");
     println!("Filename: {filename}");
     println!("File size: {}", format_bytes(file_info.file_size));
-    println!("Compressed size: {}", format_bytes(file_info.compressed_size));
+    println!(
+        "Compressed size: {}",
+        format_bytes(file_info.compressed_size)
+    );
     println!(
         "Compression ratio: {}",
         format_compression_ratio(file_info.file_size, file_info.compressed_size)
@@ -2307,14 +2315,16 @@ fn visualize_patch_chain(base: &str, patches: Vec<String>, detailed: bool) -> Re
     let mut chain = PatchChain::new();
 
     // Add base archive with priority 0
-    chain.add_archive(base, 0)
+    chain
+        .add_archive(base, 0)
         .context("Failed to add base archive")?;
     println!("  [0] {} (base)", base);
 
     // Add patch archives with increasing priority
     for (index, patch_path) in patches.iter().enumerate() {
         let priority = (index + 1) * 100;
-        chain.add_archive(patch_path, priority as i32)
+        chain
+            .add_archive(patch_path, priority as i32)
             .with_context(|| format!("Failed to add patch archive: {patch_path}"))?;
         println!("  [{}] {} (priority: {})", index + 1, patch_path, priority);
     }
@@ -2337,7 +2347,8 @@ fn visualize_patch_chain(base: &str, patches: Vec<String>, detailed: bool) -> Re
             add_table_row(
                 &mut table,
                 vec![
-                    info.path.file_name()
+                    info.path
+                        .file_name()
                         .and_then(|n| n.to_str())
                         .unwrap_or("?")
                         .to_string(),

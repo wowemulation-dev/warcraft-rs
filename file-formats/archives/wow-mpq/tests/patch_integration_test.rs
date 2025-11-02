@@ -1,3 +1,4 @@
+use wow_mpq::Archive;
 /**
  * MPQ Patch File Integration Tests
  *
@@ -8,17 +9,10 @@
  * - stormlib_base_file.bin: Base M2 model (78,784 bytes)
  * - stormlib_patched_result.bin: Final patched M2 model (92,448 bytes)
  */
+use wow_mpq::patch::{PatchFile, PatchType};
 
-use wow_mpq::patch::{PatchFile, PatchHeader, PatchType};
-use wow_mpq::Archive;
-
-const BASE_MPQ: &str = "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/art.MPQ";
 const UPDATE_MPQ1: &str =
     "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15211.MPQ";
-const UPDATE_MPQ2: &str =
-    "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15354.MPQ";
-const UPDATE_MPQ3: &str =
-    "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15595.MPQ";
 
 const TEST_FILE: &str = "Item/ObjectComponents/Head/Helm_Robe_RaidWarlock_F_01_WoF.M2";
 
@@ -26,7 +20,7 @@ const TEST_FILE: &str = "Item/ObjectComponents/Head/Helm_Robe_RaidWarlock_F_01_W
 #[test]
 fn test_identify_patch_file() {
     // Open the update MPQ directly (it contains patch files)
-    let mut archive = Archive::open(UPDATE_MPQ1).expect("Failed to open update MPQ");
+    let archive = Archive::open(UPDATE_MPQ1).expect("Failed to open update MPQ");
 
     // Find the file in the update MPQ
     let file_info = archive
@@ -38,7 +32,10 @@ fn test_identify_patch_file() {
     println!("Is patch file: {}", file_info.is_patch_file());
 
     // This file should have the PATCH_FILE flag in the update MPQ
-    assert!(file_info.is_patch_file(), "Expected file to be a patch file");
+    assert!(
+        file_info.is_patch_file(),
+        "Expected file to be a patch file"
+    );
 }
 
 /// Test PTCH header parsing with real patch data
@@ -86,7 +83,7 @@ fn test_parse_ptch_header_synthetic() {
     data.extend_from_slice(&0x59504f43u32.to_le_bytes()); // 'COPY' patch type
 
     // Add some dummy patch data (100 bytes to match xfrm_block_size - 12)
-    data.extend_from_slice(&vec![0x42u8; 100]);
+    data.extend_from_slice(&[0x42u8; 100]);
 
     // Parse the header
     let patch = PatchFile::parse(&data).expect("Failed to parse PTCH file");
@@ -124,7 +121,7 @@ fn test_parse_bsd0_patch_type() {
     data.extend_from_slice(&0x30445342u32.to_le_bytes()); // 'BSD0' patch type
 
     // Add dummy bsdiff data
-    data.extend_from_slice(&vec![0x99u8; 200]);
+    data.extend_from_slice(&[0x99u8; 200]);
 
     let patch = PatchFile::parse(&data).expect("Failed to parse BSD0 patch");
 
@@ -255,7 +252,7 @@ fn test_md5_verification() {
     data.extend_from_slice(&0x4d524658u32.to_le_bytes());
     data.extend_from_slice(&112u32.to_le_bytes());
     data.extend_from_slice(&0x59504f43u32.to_le_bytes());
-    data.extend_from_slice(&vec![0u8; 100]);
+    data.extend_from_slice(&[0u8; 100]);
 
     let patch = PatchFile::parse(&data).expect("Failed to parse patch");
 

@@ -5,7 +5,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let base_mpq = "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/art.MPQ";
-    let patch_mpq = "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15211.MPQ";
+    let patch_mpq =
+        "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15211.MPQ";
     let filename = "Creature/DrakeMount/FelDrakeMount01.skin";
 
     println!("=== Testing Patch Chain ===\n");

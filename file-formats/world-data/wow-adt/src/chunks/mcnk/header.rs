@@ -1,6 +1,6 @@
 //! MCNK chunk header structure.
 //!
-//! The MCNK header is 128 bytes and contains metadata for a single terrain chunk
+//! The MCNK header is 136 bytes and contains metadata for a single terrain chunk
 //! (16×16 yards) including tile position, texture layer count, and offsets to subchunks.
 //!
 //! **Critical:** Subchunk offsets are relative to the beginning of the MCNK chunk
@@ -68,7 +68,7 @@ impl McnkFlags {
     }
 }
 
-/// MCNK chunk header - 128 bytes of terrain metadata.
+/// MCNK chunk header - 136 bytes of terrain metadata.
 ///
 /// Contains tile coordinates, texture layer info, and offsets to subchunks.
 /// Each MCNK represents a 16×16 yard terrain tile within the 533.33333 yard ADT.
@@ -112,7 +112,7 @@ impl McnkFlags {
 /// Same as above, but offsets 0x14-0x1B contain `holes_high_res: u64` instead,
 /// shifting subsequent fields by 8 bytes.
 ///
-/// **Total:** 0x80 (128) bytes
+/// **Total:** 0x88 (136) bytes
 ///
 /// # Offset Interpretation
 ///
@@ -267,7 +267,7 @@ pub struct McnkHeader {
 
     /// Padding to reach 128-byte alignment
     ///
-    /// The MCNK header is specified as 128 bytes (0x80) in wowdev.wiki.
+    /// The MCNK header is specified as 136 bytes (0x88) in wowdev.wiki.
     /// These 8 bytes of padding ensure the header matches the expected size.
     #[br(pad_before = 0)]
     pub _padding: [u8; 8],
@@ -501,6 +501,7 @@ mod tests {
             unknown_but_used: 1,
             pred_tex: [0; 8],
             no_effect_doodad: [0; 8],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0,
             n_snd_emitters: 0,
             ofs_liquid: 0,
@@ -512,12 +513,19 @@ mod tests {
             _padding: [0; 8],
         };
 
-        eprintln!("Size in memory: {} bytes", std::mem::size_of::<McnkHeader>());
+        eprintln!(
+            "Size in memory: {} bytes",
+            std::mem::size_of::<McnkHeader>()
+        );
         let mut buffer = Cursor::new(Vec::new());
         buffer.write_le(&vanilla_header).unwrap();
         eprintln!("Serialized {} bytes", buffer.get_ref().len());
         eprintln!("All bytes: {:02x?}", buffer.get_ref());
-        assert_eq!(buffer.get_ref().len(), 128, "McnkHeader serializes to 128 bytes (including _padding)");
+        assert_eq!(
+            buffer.get_ref().len(),
+            136,
+            "McnkHeader serializes to 136 bytes (including _padding)"
+        );
 
         // Test MoP 5.3+ header (with high_res_holes)
         let mop_header = McnkHeader {
@@ -539,6 +547,7 @@ mod tests {
             unknown_but_used: 1,
             pred_tex: [0; 8],
             no_effect_doodad: [0; 8],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0,
             n_snd_emitters: 0,
             ofs_liquid: 0,
@@ -552,12 +561,16 @@ mod tests {
 
         let mut buffer = Cursor::new(Vec::new());
         buffer.write_le(&mop_header).unwrap();
-        assert_eq!(buffer.get_ref().len(), 128, "McnkHeader serializes to 128 bytes (including _padding)");
+        assert_eq!(
+            buffer.get_ref().len(),
+            136,
+            "McnkHeader serializes to 136 bytes (including _padding)"
+        );
     }
 
     #[test]
     fn test_mcnk_header_parse() {
-        let mut data = vec![0u8; 128];
+        let mut data = vec![0u8; 136];
 
         // flags: 0x41 (has_mcsh | has_mccv)
         data[0] = 0x41;
@@ -630,6 +643,7 @@ mod tests {
             unknown_but_used: 1,
             pred_tex: [0; 8],
             no_effect_doodad: [0; 8],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0x700,
             n_snd_emitters: 2,
             ofs_liquid: 0,
@@ -674,6 +688,7 @@ mod tests {
             unknown_but_used: 1,
             pred_tex: [0; 8],
             no_effect_doodad: [0; 8],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0,
             n_snd_emitters: 0,
             ofs_liquid: 0,
@@ -713,6 +728,7 @@ mod tests {
             unknown_but_used: 1,
             pred_tex: [0; 8],
             no_effect_doodad: [0; 8],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0,
             n_snd_emitters: 0,
             ofs_liquid: 0,
@@ -766,6 +782,7 @@ mod tests {
                 0x00,
             ],
             no_effect_doodad: [0; 8],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0,
             n_snd_emitters: 0,
             ofs_liquid: 0,
@@ -807,6 +824,7 @@ mod tests {
                 0b10101010, // Row 0: alternating pattern
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             ],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0,
             n_snd_emitters: 0,
             ofs_liquid: 0,
@@ -845,6 +863,7 @@ mod tests {
             unknown_but_used: 1,
             pred_tex: [1, 2, 3, 4, 5, 6, 7, 8],
             no_effect_doodad: [0xFF, 0, 0, 0, 0, 0, 0, 0],
+            unknown_8bytes: [0; 8],
             ofs_snd_emitters: 0xA00,
             n_snd_emitters: 3,
             ofs_liquid: 0xB00,
@@ -860,7 +879,7 @@ mod tests {
         original.write_le(&mut buffer).unwrap();
 
         let data = buffer.into_inner();
-        assert_eq!(data.len(), 128);
+        assert_eq!(data.len(), 136);
 
         let mut cursor = Cursor::new(data);
         let parsed = McnkHeader::read_le(&mut cursor).unwrap();

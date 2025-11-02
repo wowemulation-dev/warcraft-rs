@@ -234,7 +234,7 @@ mod tests {
         // MHDR chunk
         data.extend_from_slice(&ChunkId::MHDR.0);
         data.extend_from_slice(&64u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 64]);
+        data.extend_from_slice(&[0u8; 64]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();
@@ -256,7 +256,7 @@ mod tests {
         // MHDR chunk at offset 12 (8 + 4)
         data.extend_from_slice(&ChunkId::MHDR.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();
@@ -343,7 +343,7 @@ mod tests {
         data.extend_from_slice(&ChunkId::MHDR.0);
         data.extend_from_slice(&64u32.to_le_bytes());
         // Only add 10 bytes instead of 64
-        data.extend_from_slice(&vec![0u8; 10]);
+        data.extend_from_slice(&[0u8; 10]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();
@@ -376,7 +376,7 @@ mod tests {
         // MCNK (indicates root file)
         data.extend_from_slice(&ChunkId::MCNK.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();
@@ -400,7 +400,7 @@ mod tests {
         // MTEX (indicates texture file)
         data.extend_from_slice(&ChunkId::MTEX.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();
@@ -424,7 +424,7 @@ mod tests {
         // MDDF (indicates object file)
         data.extend_from_slice(&ChunkId::MDDF.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();
@@ -467,17 +467,17 @@ mod tests {
         // MHDR (header chunk - distinguishes Root from split files)
         data.extend_from_slice(&ChunkId::MHDR.0);
         data.extend_from_slice(&64u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 64]);
+        data.extend_from_slice(&[0u8; 64]);
 
         // MTEX
         data.extend_from_slice(&ChunkId::MTEX.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         // MCNK (terrain chunks)
         data.extend_from_slice(&ChunkId::MCNK.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();
@@ -501,12 +501,12 @@ mod tests {
         // MTEX (texture definitions)
         data.extend_from_slice(&ChunkId::MTEX.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         // MCNK (texture sub-chunks, not full terrain chunks)
         data.extend_from_slice(&ChunkId::MCNK.0);
         data.extend_from_slice(&8u32.to_le_bytes());
-        data.extend_from_slice(&vec![0u8; 8]);
+        data.extend_from_slice(&[0u8; 8]);
 
         let mut cursor = Cursor::new(data);
         let discovery = discover_chunks(&mut cursor).unwrap();

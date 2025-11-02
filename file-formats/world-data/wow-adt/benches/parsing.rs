@@ -10,11 +10,11 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::io::Cursor;
+use wow_adt::AdtVersion;
 use wow_adt::api::parse_adt;
 use wow_adt::builder::AdtBuilder;
-use wow_adt::chunks::mcnk::{McnkChunk, McnkFlags, McnkHeader};
 use wow_adt::chunks::mcnk::mcvt::McvtChunk;
-use wow_adt::AdtVersion;
+use wow_adt::chunks::mcnk::{McnkChunk, McnkFlags, McnkHeader};
 
 /// Generate a minimal ADT for parsing benchmarks.
 fn create_test_adt(version: AdtVersion, num_mcnk: usize) -> Vec<u8> {
@@ -33,9 +33,7 @@ fn create_test_adt(version: AdtVersion, num_mcnk: usize) -> Vec<u8> {
                 index_y: (i / 16) as u32,
                 n_layers: 1,
                 n_doodad_refs: 0,
-                holes_high_res: 0,
-                ofs_height: 0,
-                ofs_normal: 0,
+                multipurpose_field: McnkHeader::multipurpose_from_offsets(0, 0),
                 ofs_layer: 0,
                 ofs_refs: 0,
                 ofs_alpha: 0,
@@ -48,6 +46,7 @@ fn create_test_adt(version: AdtVersion, num_mcnk: usize) -> Vec<u8> {
                 unknown_but_used: 0,
                 pred_tex: [0; 8],
                 no_effect_doodad: [0; 8],
+                unknown_8bytes: [0; 8],
                 ofs_snd_emitters: 0,
                 n_snd_emitters: 0,
                 ofs_liquid: 0,
@@ -56,6 +55,7 @@ fn create_test_adt(version: AdtVersion, num_mcnk: usize) -> Vec<u8> {
                 ofs_mccv: 0,
                 ofs_mclv: 0,
                 unused: 0,
+                _padding: [0; 8],
             },
             heights: Some(McvtChunk {
                 heights: vec![(i as f32) * 10.0; 145],
@@ -207,7 +207,7 @@ fn bench_round_trip(c: &mut Criterion) {
             };
 
             // Build
-            let built = AdtBuilder::from_parsed(root)
+            let built = AdtBuilder::from_parsed(*root)
                 .build()
                 .expect("Build failed");
 

@@ -322,7 +322,6 @@ impl Default for MclqChunk {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
 
     #[test]
     fn test_liquid_type_values() {

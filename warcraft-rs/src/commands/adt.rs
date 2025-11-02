@@ -6,7 +6,10 @@ use prettytable::{Cell, Row, Table, format};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use wow_adt::{AdtVersion, parse_adt_with_metadata, ParsedAdt};
+use wow_adt::{AdtVersion, ParsedAdt, parse_adt_with_metadata};
+
+#[cfg(feature = "parallel")]
+use wow_adt::parse_adt;
 
 #[derive(Subcommand)]
 pub enum AdtCommands {
@@ -179,8 +182,8 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
     println!();
 
     // Parse the ADT file with metadata
-    let file_handle = File::open(file)
-        .with_context(|| format!("Failed to open ADT file: {file}"))?;
+    let file_handle =
+        File::open(file).with_context(|| format!("Failed to open ADT file: {file}"))?;
     let mut reader = BufReader::new(file_handle);
     let (adt, metadata) = parse_adt_with_metadata(&mut reader)
         .with_context(|| format!("Failed to parse ADT file: {file}"))?;
@@ -288,7 +291,10 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
         ParsedAdt::Tex0(tex) | ParsedAdt::Tex1(tex) => {
             println!("\nTexture File Information:");
             println!("  Textures: {}", tex.textures.len());
-            println!("  MCNK chunks with texture data: {}", tex.mcnk_textures.len());
+            println!(
+                "  MCNK chunks with texture data: {}",
+                tex.mcnk_textures.len()
+            );
 
             if detailed && !tex.textures.is_empty() {
                 println!("\nTexture List:");
@@ -358,7 +364,12 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
 
         // Add rows based on discovered chunks
         for chunk_type in metadata.discovery.chunk_types() {
-            let count = metadata.discovery.chunks.get(&chunk_type).map(|v| v.len()).unwrap_or(0);
+            let count = metadata
+                .discovery
+                .chunks
+                .get(&chunk_type)
+                .map(|v| v.len())
+                .unwrap_or(0);
             add_chunk_row(&mut table, &chunk_type.as_str(), count);
         }
 
@@ -377,8 +388,8 @@ fn execute_validate(file: &str, level: &str, warnings: bool) -> Result<()> {
     println!();
 
     // Parse the file (parsing validates structure)
-    let file_handle = File::open(file)
-        .with_context(|| format!("Failed to open ADT file: {file}"))?;
+    let file_handle =
+        File::open(file).with_context(|| format!("Failed to open ADT file: {file}"))?;
     let mut reader = BufReader::new(file_handle);
     let (adt, metadata) = parse_adt_with_metadata(&mut reader)
         .with_context(|| format!("Failed to parse ADT file: {file}"))?;
@@ -457,8 +468,8 @@ fn execute_tree(
     use crate::utils::tree::{NodeType, TreeNode, TreeOptions, render_tree};
 
     // Parse the ADT file
-    let file_handle = File::open(file)
-        .with_context(|| format!("Failed to open ADT file: {file}"))?;
+    let file_handle =
+        File::open(file).with_context(|| format!("Failed to open ADT file: {file}"))?;
     let mut reader = BufReader::new(file_handle);
     let (adt, metadata) = parse_adt_with_metadata(&mut reader)
         .with_context(|| format!("Failed to parse ADT file: {file}"))?;
@@ -502,7 +513,8 @@ fn execute_tree(
             format!("Metadata ({} chunks)", metadata.chunk_count),
             NodeType::Header,
         );
-        meta_node = meta_node.with_metadata("discovery", &format!("{:?}", metadata.discovery_duration));
+        meta_node =
+            meta_node.with_metadata("discovery", &format!("{:?}", metadata.discovery_duration));
         meta_node = meta_node.with_metadata("parse", &format!("{:?}", metadata.parse_duration));
         root = root.add_child(meta_node);
     }
@@ -539,8 +551,8 @@ fn build_root_adt_tree(
     root = root.add_child(header_node);
 
     // MCIN chunk index
-    let mcin_node = TreeNode::new("MCIN (Chunk Index)".to_string(), NodeType::Header)
-        .with_size(256 * 16);
+    let mcin_node =
+        TreeNode::new("MCIN (Chunk Index)".to_string(), NodeType::Header).with_size(256 * 16);
     root = root.add_child(mcin_node);
 
     // Terrain chunks
@@ -567,10 +579,8 @@ fn build_root_adt_tree(
             );
 
             if !no_metadata {
-                chunk_node = chunk_node.with_metadata(
-                    "flags",
-                    &format!("0x{:08X}", chunk.header.flags.value),
-                );
+                chunk_node = chunk_node
+                    .with_metadata("flags", &format!("0x{:08X}", chunk.header.flags.value));
                 chunk_node = chunk_node.with_metadata(
                     "holes",
                     if chunk.header.holes_low_res != 0 {
@@ -665,7 +675,7 @@ fn build_root_adt_tree(
         {
             let mut file_node = TreeNode::new(texture.clone(), NodeType::File);
             if !no_metadata {
-                file_node = file_node.with_metadata("index", &&i.to_string());
+                file_node = file_node.with_metadata("index", &i.to_string());
             }
             tex_node = tex_node.add_child(file_node);
         }
@@ -699,11 +709,11 @@ fn build_root_adt_tree(
         {
             let mut file_node = TreeNode::new(model.clone(), NodeType::File);
             if !no_metadata {
-                file_node = file_node.with_metadata("index", &&i.to_string());
+                file_node = file_node.with_metadata("index", &i.to_string());
             }
             if show_refs {
-                file_node = file_node
-                    .with_external_ref(model, crate::utils::tree::detect_ref_type(model));
+                file_node =
+                    file_node.with_external_ref(model, crate::utils::tree::detect_ref_type(model));
             }
             model_node = model_node.add_child(file_node);
         }
@@ -737,11 +747,11 @@ fn build_root_adt_tree(
         {
             let mut file_node = TreeNode::new(wmo.clone(), NodeType::File);
             if !no_metadata {
-                file_node = file_node.with_metadata("index", &&i.to_string());
+                file_node = file_node.with_metadata("index", &i.to_string());
             }
             if show_refs {
-                file_node = file_node
-                    .with_external_ref(wmo, crate::utils::tree::detect_ref_type(wmo));
+                file_node =
+                    file_node.with_external_ref(wmo, crate::utils::tree::detect_ref_type(wmo));
             }
             wmo_node = wmo_node.add_child(file_node);
         }
@@ -811,7 +821,12 @@ fn build_root_adt_tree(
                     }
 
                     // Count exists bitmaps
-                    if entry.exists_bitmaps.get(idx).and_then(|b| b.as_ref()).is_some() {
+                    if entry
+                        .exists_bitmaps
+                        .get(idx)
+                        .and_then(|b| b.as_ref())
+                        .is_some()
+                    {
                         has_exists_bitmap += 1;
                     }
                 }
@@ -827,19 +842,21 @@ fn build_root_adt_tree(
             water_node = water_node.with_metadata("instances", &total_instances.to_string());
 
             if has_vertex_data > 0 {
-                water_node = water_node.with_metadata("vertex_data", &format!("{} instances", has_vertex_data));
+                water_node = water_node
+                    .with_metadata("vertex_data", &format!("{} instances", has_vertex_data));
             }
             if has_exists_bitmap > 0 {
-                water_node = water_node.with_metadata("exists_bitmaps", &format!("{} instances", has_exists_bitmap));
+                water_node = water_node.with_metadata(
+                    "exists_bitmaps",
+                    &format!("{} instances", has_exists_bitmap),
+                );
             }
         }
 
         // Add LVF breakdown if we have vertex data
         if !compact && has_vertex_data > 0 {
-            let mut lvf_node = TreeNode::new(
-                "Vertex Data Formats".to_string(),
-                NodeType::Directory,
-            );
+            let mut lvf_node =
+                TreeNode::new("Vertex Data Formats".to_string(), NodeType::Directory);
 
             if lvf_counts[0] > 0 {
                 let mut lvf0_node = TreeNode::new(
@@ -992,7 +1009,7 @@ fn build_tex_adt_tree(
         {
             let mut file_node = TreeNode::new(texture.clone(), NodeType::File);
             if !no_metadata {
-                file_node = file_node.with_metadata("index", &&i.to_string());
+                file_node = file_node.with_metadata("index", &i.to_string());
             }
             tex_node = tex_node.add_child(file_node);
         }
@@ -1022,10 +1039,7 @@ fn build_tex_adt_tree(
         for chunk in adt.mcnk_textures.iter().take(if compact { 2 } else { 4 }) {
             let row = chunk.index / 16;
             let col = chunk.index % 16;
-            let mut chunk_node = TreeNode::new(
-                format!("Chunk [{},{}]", row, col),
-                NodeType::Data,
-            );
+            let mut chunk_node = TreeNode::new(format!("Chunk [{},{}]", row, col), NodeType::Data);
 
             if let Some(layers) = &chunk.layers {
                 chunk_node = chunk_node.with_metadata("layers", &layers.layers.len().to_string());
@@ -1090,11 +1104,11 @@ fn build_obj_adt_tree(
         {
             let mut file_node = TreeNode::new(model.clone(), NodeType::File);
             if !no_metadata {
-                file_node = file_node.with_metadata("index", &&i.to_string());
+                file_node = file_node.with_metadata("index", &i.to_string());
             }
             if show_refs {
-                file_node = file_node
-                    .with_external_ref(model, crate::utils::tree::detect_ref_type(model));
+                file_node =
+                    file_node.with_external_ref(model, crate::utils::tree::detect_ref_type(model));
             }
             model_node = model_node.add_child(file_node);
         }
@@ -1128,11 +1142,11 @@ fn build_obj_adt_tree(
         {
             let mut file_node = TreeNode::new(wmo.clone(), NodeType::File);
             if !no_metadata {
-                file_node = file_node.with_metadata("index", &&i.to_string());
+                file_node = file_node.with_metadata("index", &i.to_string());
             }
             if show_refs {
-                file_node = file_node
-                    .with_external_ref(wmo, crate::utils::tree::detect_ref_type(wmo));
+                file_node =
+                    file_node.with_external_ref(wmo, crate::utils::tree::detect_ref_type(wmo));
             }
             wmo_node = wmo_node.add_child(file_node);
         }
@@ -1179,13 +1193,11 @@ fn build_obj_adt_tree(
         for chunk in adt.mcnk_objects.iter().take(if compact { 2 } else { 4 }) {
             let row = chunk.index / 16;
             let col = chunk.index % 16;
-            let mut chunk_node = TreeNode::new(
-                format!("Chunk [{},{}]", row, col),
-                NodeType::Data,
-            );
+            let mut chunk_node = TreeNode::new(format!("Chunk [{},{}]", row, col), NodeType::Data);
 
             if !chunk.doodad_refs.is_empty() {
-                chunk_node = chunk_node.with_metadata("doodads", &chunk.doodad_refs.len().to_string());
+                chunk_node =
+                    chunk_node.with_metadata("doodads", &chunk.doodad_refs.len().to_string());
             }
             if !chunk.wmo_refs.is_empty() {
                 chunk_node = chunk_node.with_metadata("wmos", &chunk.wmo_refs.len().to_string());
@@ -1210,7 +1222,7 @@ fn build_obj_adt_tree(
 #[cfg(feature = "parallel")]
 fn execute_batch(
     pattern: &str,
-    output_dir: &str,
+    _output_dir: &str,
     operation: &str,
     _to_version: Option<&str>,
     threads: Option<usize>,

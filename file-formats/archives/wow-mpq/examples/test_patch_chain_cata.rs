@@ -75,9 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut full_chain = PatchChain::new();
 
     // Add base archives (priority 0)
-    let base_archives = vec![
-        format!("{}/art.MPQ", data_dir),
-    ];
+    let base_archives = vec![format!("{}/art.MPQ", data_dir)];
 
     println!("Adding base archives:");
     for base_path in &base_archives {

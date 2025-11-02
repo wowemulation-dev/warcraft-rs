@@ -238,14 +238,8 @@ mod tests {
         assert_eq!(PatchType::Copy.to_magic(), 0x59504f43);
         assert_eq!(PatchType::Bsd0.to_magic(), 0x30445342);
 
-        assert_eq!(
-            PatchType::from_magic(0x59504f43).unwrap(),
-            PatchType::Copy
-        );
-        assert_eq!(
-            PatchType::from_magic(0x30445342).unwrap(),
-            PatchType::Bsd0
-        );
+        assert_eq!(PatchType::from_magic(0x59504f43).unwrap(), PatchType::Copy);
+        assert_eq!(PatchType::from_magic(0x30445342).unwrap(), PatchType::Bsd0);
 
         assert!(PatchType::from_magic(0xDEADBEEF).is_err());
     }

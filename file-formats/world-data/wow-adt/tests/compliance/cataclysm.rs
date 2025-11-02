@@ -21,7 +21,7 @@ use std::fs;
 use std::io::Cursor;
 use std::path::PathBuf;
 use wow_adt::chunks::mcnk::{McddChunk, MclvChunk, McmtChunk, McrdChunk, McrwChunk};
-use wow_adt::{parse_adt, AdtVersion, ParsedAdt};
+use wow_adt::{AdtVersion, ParsedAdt, parse_adt};
 
 // ==============================================================================
 // UNIT TESTS - Synthetic data for individual chunks
@@ -171,9 +171,7 @@ fn test_mclv_realistic_lighting() {
     }
 
     // Inner grid (offset by 81)
-    for _ in 81..145 {
-        colors.push(0xFFA0A0A0); // Medium gray
-    }
+    colors.extend(std::iter::repeat_n(0xFFA0A0A0, 64)); // Medium gray
 
     let mclv = MclvChunk {
         colors: colors.clone(),
@@ -308,7 +306,7 @@ fn parse_cataclysm_adt(test_file: &PathBuf) -> wow_adt::RootAdt {
     let parsed = parse_adt(&mut cursor).expect("Failed to parse Cataclysm ADT");
 
     match parsed {
-        ParsedAdt::Root(root) => root,
+        ParsedAdt::Root(root) => *root,
         _ => panic!("Expected Root ADT, got different variant"),
     }
 }
@@ -347,7 +345,7 @@ fn test_parse_cataclysm_split_root() {
 
     // Verify root ADT structure
     let root = match parsed {
-        ParsedAdt::Root(root) => root,
+        ParsedAdt::Root(root) => *root,
         _ => panic!("Expected Root ADT, got different variant"),
     };
 
@@ -396,7 +394,11 @@ fn test_cataclysm_split_file_completeness() {
         }
 
         // Verify root file exists and can be parsed
-        assert!(root_file.exists(), "Root file should exist: {:?}", root_file);
+        assert!(
+            root_file.exists(),
+            "Root file should exist: {:?}",
+            root_file
+        );
         let root_data = fs::read(&root_file).expect("Failed to read root file");
         let data_len = root_data.len();
         let mut cursor = Cursor::new(root_data);
@@ -413,7 +415,11 @@ fn test_cataclysm_split_file_completeness() {
 
         // Debug output to identify which file is causing issues
         if !matches!(parsed, ParsedAdt::Root(_)) {
-            eprintln!("WARNING: {} parsed as {:?} instead of Root", set_name, std::mem::discriminant(&parsed));
+            eprintln!(
+                "WARNING: {} parsed as {:?} instead of Root",
+                set_name,
+                std::mem::discriminant(&parsed)
+            );
             eprintln!("File size: {} bytes", data_len);
             continue; // Skip this file for now
         }
@@ -430,7 +436,11 @@ fn test_cataclysm_split_file_completeness() {
         assert!(tex_size > 0, "Texture file should not be empty");
 
         // Verify object file exists
-        assert!(obj0_file.exists(), "Object file should exist: {:?}", obj0_file);
+        assert!(
+            obj0_file.exists(),
+            "Object file should exist: {:?}",
+            obj0_file
+        );
         let obj_size = fs::metadata(&obj0_file)
             .expect("Failed to get obj0 metadata")
             .len();
@@ -530,11 +540,7 @@ fn test_parse_all_cataclysm_root_files() {
 
         // Only test root files (not _tex0 or _obj0)
         if path.extension().and_then(|s| s.to_str()) == Some("adt")
-            && !path
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .contains("_tex")
+            && !path.file_name().unwrap().to_string_lossy().contains("_tex")
             && !path.file_name().unwrap().to_string_lossy().contains("_obj")
         {
             let data = fs::read(&path).expect("Failed to read file");
@@ -544,8 +550,11 @@ fn test_parse_all_cataclysm_root_files() {
                 Ok(parsed) => {
                     let version = parsed.version();
                     if !matches!(version, AdtVersion::Cataclysm) {
-                        eprintln!("⚠ Skipping {} - detected as {:?} instead of Cataclysm",
-                            path.file_name().unwrap().to_string_lossy(), version);
+                        eprintln!(
+                            "⚠ Skipping {} - detected as {:?} instead of Cataclysm",
+                            path.file_name().unwrap().to_string_lossy(),
+                            version
+                        );
                         continue;
                     }
                     parsed_count += 1;

@@ -193,8 +193,8 @@ pub(crate) mod split_parser;
 // Public re-exports for convenience
 pub use adt_set::AdtSet;
 pub use api::{
-    AdtMetadata, LodAdt, McnkChunkObject, McnkChunkTexture, Obj0Adt, ObjectAdt, ParsedAdt,
-    RootAdt, Tex0Adt, TextureAdt, parse_adt, parse_adt_with_metadata,
+    AdtMetadata, LodAdt, McnkChunkObject, McnkChunkTexture, Obj0Adt, ObjectAdt, ParsedAdt, RootAdt,
+    Tex0Adt, TextureAdt, parse_adt, parse_adt_with_metadata,
 };
 pub use builder::{AdtBuilder, BuiltAdt};
 pub use chunk_discovery::{ChunkDiscovery, ChunkLocation, discover_chunks};

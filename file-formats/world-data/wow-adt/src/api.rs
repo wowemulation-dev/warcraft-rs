@@ -583,7 +583,7 @@ pub type ObjectAdt = Obj0Adt;
 #[derive(Debug, Clone)]
 pub enum ParsedAdt {
     /// Root ADT file (main terrain)
-    Root(RootAdt),
+    Root(Box<RootAdt>),
 
     /// Texture file 0 (Cataclysm+)
     Tex0(Tex0Adt),
@@ -808,7 +808,7 @@ pub fn parse_adt_with_metadata<R: Read + Seek>(reader: &mut R) -> Result<(Parsed
     let (adt, warnings) = match file_type {
         AdtFileType::Root => {
             let (root, warnings) = crate::root_parser::parse_root_adt(reader, &discovery, version)?;
-            (ParsedAdt::Root(root), warnings)
+            (ParsedAdt::Root(Box::new(root)), warnings)
         }
         AdtFileType::Tex0 | AdtFileType::Tex1 => {
             let (tex, warnings) = crate::split_parser::parse_tex_adt(reader, &discovery, version)?;
@@ -879,7 +879,7 @@ mod tests {
             blend_mesh_indices: None,
         };
 
-        let parsed = ParsedAdt::Root(root);
+        let parsed = ParsedAdt::Root(Box::new(root));
         assert!(parsed.is_root());
         assert!(!parsed.is_split());
         assert_eq!(parsed.file_type(), AdtFileType::Root);

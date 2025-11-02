@@ -4,7 +4,8 @@ use wow_mpq::Archive;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
-    let mpq_path = "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15211.MPQ";
+    let mpq_path =
+        "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15211.MPQ";
     let mut archive = Archive::open(mpq_path)?;
 
     let filename = "Creature/DrakeMount/FelDrakeMount01.skin";

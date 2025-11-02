@@ -65,7 +65,7 @@ use binrw::{BinRead, BinWrite, helpers::until_eof};
 /// **Size**: 28 bytes per entry
 ///
 /// Reference: <https://wowdev.wiki/ADT/v18#MBMH_chunk>
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, Default, BinRead, BinWrite)]
 pub struct MbmhChunk {
     /// Array of blend mesh headers.
     ///
@@ -91,7 +91,7 @@ pub struct MbmhChunk {
 /// ```
 ///
 /// **Size**: 28 bytes
-#[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, BinRead, BinWrite)]
 pub struct MbmhEntry {
     /// Unique blend mesh identifier.
     ///
@@ -150,7 +150,7 @@ pub struct MbmhEntry {
 /// **Size**: 28 bytes per entry
 ///
 /// Reference: <https://wowdev.wiki/ADT/v18#MBBB_chunk>
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, Default, BinRead, BinWrite)]
 pub struct MbbbChunk {
     /// Array of bounding boxes, one per MBMH entry.
     ///
@@ -174,7 +174,7 @@ pub struct MbbbChunk {
 /// ```
 ///
 /// **Size**: 28 bytes
-#[derive(Debug, Clone, Copy, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, BinRead, BinWrite)]
 pub struct MbbbEntry {
     /// Map object ID matching the corresponding MBMH entry.
     pub map_object_id: u32,
@@ -384,46 +384,6 @@ impl MbmiChunk {
 // ============================================================================
 // Default Implementations
 // ============================================================================
-
-impl Default for MbmhChunk {
-    fn default() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-}
-
-impl Default for MbmhEntry {
-    fn default() -> Self {
-        Self {
-            map_object_id: 0,
-            texture_id: 0,
-            unknown: 0,
-            mbmi_count: 0,
-            mbnv_count: 0,
-            mbmi_start: 0,
-            mbnv_start: 0,
-        }
-    }
-}
-
-impl Default for MbbbChunk {
-    fn default() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-}
-
-impl Default for MbbbEntry {
-    fn default() -> Self {
-        Self {
-            map_object_id: 0,
-            min: [0.0, 0.0, 0.0],
-            max: [0.0, 0.0, 0.0],
-        }
-    }
-}
 
 impl Default for MbnvVertex {
     fn default() -> Self {

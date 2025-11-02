@@ -19,7 +19,11 @@ use crate::error::{Error, Result};
 /// * `compressed` - RLE-compressed data
 /// * `decompressed_size` - Expected size after decompression
 /// * `skip_header` - Whether to skip first 4 bytes (size header)
-pub fn decompress(compressed: &[u8], decompressed_size: usize, skip_header: bool) -> Result<Vec<u8>> {
+pub fn decompress(
+    compressed: &[u8],
+    decompressed_size: usize,
+    skip_header: bool,
+) -> Result<Vec<u8>> {
     let data = if skip_header {
         if compressed.len() < 4 {
             return Err(Error::compression("RLE data too short for header"));
@@ -71,12 +75,12 @@ mod tests {
     fn test_rle_decompress_with_header() {
         // Test with 4-byte header
         let compressed = vec![
-            0x08, 0x00, 0x00, 0x00,  // Decompressed size: 8 bytes
-            0x82,                     // Copy 3 bytes
-            0x41, 0x42, 0x43,        // ABC
-            0x01,                     // Skip 2 zeros
-            0x81,                     // Copy 2 bytes
-            0x44, 0x45,              // DE
+            0x08, 0x00, 0x00, 0x00, // Decompressed size: 8 bytes
+            0x82, // Copy 3 bytes
+            0x41, 0x42, 0x43, // ABC
+            0x01, // Skip 2 zeros
+            0x81, // Copy 2 bytes
+            0x44, 0x45, // DE
         ];
 
         let result = decompress(&compressed, 8, true).unwrap();
@@ -87,11 +91,11 @@ mod tests {
     fn test_rle_decompress_no_header() {
         // Test without header (sector data)
         let compressed = vec![
-            0x82,                     // Copy 3 bytes
-            0x41, 0x42, 0x43,        // ABC
-            0x01,                     // Skip 2 zeros
-            0x81,                     // Copy 2 bytes
-            0x44, 0x45,              // DE
+            0x82, // Copy 3 bytes
+            0x41, 0x42, 0x43, // ABC
+            0x01, // Skip 2 zeros
+            0x81, // Copy 2 bytes
+            0x44, 0x45, // DE
         ];
 
         let result = decompress(&compressed, 8, false).unwrap();

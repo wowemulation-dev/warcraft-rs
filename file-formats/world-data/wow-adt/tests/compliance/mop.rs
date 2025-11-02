@@ -18,7 +18,7 @@ use wow_adt::chunks::mcnk::{BlendBatch, McbbChunk};
 use wow_adt::chunks::{
     MbbbChunk, MbbbEntry, MbmhChunk, MbmhEntry, MbmiChunk, MbnvChunk, MbnvVertex,
 };
-use wow_adt::{parse_adt, AdtVersion, ParsedAdt};
+use wow_adt::{AdtVersion, ParsedAdt, parse_adt};
 
 /// Test MCBB chunk round-trip with realistic blend batch data.
 #[test]
@@ -445,11 +445,7 @@ fn test_parse_all_mop_root_files() {
 
         // Only test root files (not _tex0 or _obj0)
         if path.extension().and_then(|s| s.to_str()) == Some("adt")
-            && !path
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .contains("_tex")
+            && !path.file_name().unwrap().to_string_lossy().contains("_tex")
             && !path.file_name().unwrap().to_string_lossy().contains("_obj")
         {
             let data = fs::read(&path).expect("Failed to read file");
@@ -468,7 +464,11 @@ fn test_parse_all_mop_root_files() {
                         continue;
                     }
                     parsed_count += 1;
-                    println!("✓ Parsed: {} ({:?})", path.file_name().unwrap().to_string_lossy(), version);
+                    println!(
+                        "✓ Parsed: {} ({:?})",
+                        path.file_name().unwrap().to_string_lossy(),
+                        version
+                    );
                 }
                 Err(e) => {
                     eprintln!("⚠ Skipping {} - parse error: {}", path.display(), e);
@@ -513,7 +513,11 @@ fn test_mop_split_file_completeness() {
         }
 
         // Verify root file exists and can be parsed
-        assert!(root_file.exists(), "Root file should exist: {:?}", root_file);
+        assert!(
+            root_file.exists(),
+            "Root file should exist: {:?}",
+            root_file
+        );
         let root_data = fs::read(&root_file).expect("Failed to read root file");
         let data_len = root_data.len();
         let mut cursor = Cursor::new(root_data);
@@ -551,7 +555,11 @@ fn test_mop_split_file_completeness() {
         assert!(tex_size > 0, "Texture file should not be empty");
 
         // Verify object file exists
-        assert!(obj0_file.exists(), "Object file should exist: {:?}", obj0_file);
+        assert!(
+            obj0_file.exists(),
+            "Object file should exist: {:?}",
+            obj0_file
+        );
         let obj_size = fs::metadata(&obj0_file)
             .expect("Failed to get obj0 metadata")
             .len();

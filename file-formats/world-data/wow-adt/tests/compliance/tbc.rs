@@ -8,7 +8,7 @@
 use std::fs;
 use std::io::Cursor;
 use std::path::PathBuf;
-use wow_adt::{parse_adt, AdtVersion, ParsedAdt};
+use wow_adt::{AdtVersion, ParsedAdt, parse_adt};
 
 /// Get path to TBC test data directory
 fn test_data_dir() -> PathBuf {
@@ -25,7 +25,7 @@ fn parse_tbc_adt(test_file: &PathBuf) -> wow_adt::RootAdt {
     let parsed = parse_adt(&mut cursor).expect("Failed to parse TBC ADT");
 
     match parsed {
-        ParsedAdt::Root(root) => root,
+        ParsedAdt::Root(root) => *root,
         _ => panic!("Expected Root ADT, got different variant"),
     }
 }
@@ -62,7 +62,7 @@ fn test_parse_tbc_outland() {
 
     // Verify root ADT structure
     let root = match parsed {
-        ParsedAdt::Root(root) => root,
+        ParsedAdt::Root(root) => *root,
         _ => panic!("Expected Root ADT, got different variant"),
     };
 
@@ -341,8 +341,18 @@ fn test_parse_all_tbc_files() {
         }
     }
 
-    assert_eq!(error_count, 0, "All TBC ADT files should parse successfully");
-    assert!(parsed_count >= 5, "Should have parsed at least 5 test files");
+    assert_eq!(
+        error_count, 0,
+        "All TBC ADT files should parse successfully"
+    );
+    assert!(
+        parsed_count >= 5,
+        "Should have parsed at least 5 test files"
+    );
 
-    println!("✓ Successfully parsed {}/{} TBC ADT files", parsed_count, parsed_count + error_count);
+    println!(
+        "✓ Successfully parsed {}/{} TBC ADT files",
+        parsed_count,
+        parsed_count + error_count
+    );
 }

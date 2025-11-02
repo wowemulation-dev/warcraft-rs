@@ -465,10 +465,7 @@ fn parse_mh2o_chunk<R: Read + Seek>(
                 reader.seek(SeekFrom::Start(
                     data_start + u64::from(instance.offset_exists_bitmap),
                 ))?;
-                match u64::read_le(reader) {
-                    Ok(bitmap) => Some(bitmap),
-                    Err(_) => None,
-                }
+                u64::read_le(reader).ok()
             } else {
                 None
             };
@@ -599,7 +596,12 @@ fn parse_mcnk_chunks<R: Read + Seek>(
 
         // Parse using the special two-level parser
         let mcnk = McnkChunk::parse_with_offset(reader, chunk_info.offset).map_err(|e| {
-            log::error!("Failed to parse MCNK chunk {} at offset {}: {:?}", index, chunk_info.offset, e);
+            log::error!(
+                "Failed to parse MCNK chunk {} at offset {}: {:?}",
+                index,
+                chunk_info.offset,
+                e
+            );
             e
         })?;
 
@@ -674,10 +676,10 @@ mod tests {
 
         // One minimal MCNK chunk
         data.extend_from_slice(&ChunkId::MCNK.0);
-        data.extend_from_slice(&128u32.to_le_bytes()); // Size: just header
+        data.extend_from_slice(&136u32.to_le_bytes()); // Size: just header
 
-        // MCNK header (128 bytes, all zeros)
-        data.extend_from_slice(&[0u8; 128]);
+        // MCNK header (136 bytes, all zeros)
+        data.extend_from_slice(&[0u8; 136]);
 
         data
     }
@@ -770,8 +772,8 @@ mod tests {
 
         // One minimal MCNK chunk (split root still has MCNK but with different structure)
         data.extend_from_slice(&ChunkId::MCNK.0);
-        data.extend_from_slice(&128u32.to_le_bytes());
-        data.extend_from_slice(&[0u8; 128]);
+        data.extend_from_slice(&136u32.to_le_bytes());
+        data.extend_from_slice(&[0u8; 136]);
 
         data
     }

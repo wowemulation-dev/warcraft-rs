@@ -2,13 +2,13 @@
 use wow_mpq::Archive;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mpq_path = "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15211.MPQ";
-    let mut archive = Archive::open(mpq_path)?;
+    let mpq_path =
+        "/home/danielsreichenbach/Downloads/wow/4.3.4/4.3.4/Data/wow-update-base-15211.MPQ";
+    let archive = Archive::open(mpq_path)?;
 
     let filename = "Creature/DrakeMount/FelDrakeMount01.skin";
 
-    let file_info = archive.find_file(filename)?
-        .ok_or("File not found")?;
+    let file_info = archive.find_file(filename)?.ok_or("File not found")?;
 
     println!("=== Rust MPQ File Info ===");
     println!("File: {}", filename);

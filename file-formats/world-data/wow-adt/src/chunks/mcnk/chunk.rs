@@ -178,21 +178,25 @@ impl McnkChunk {
 
             // Seek to subchunk (offset is relative to MCNK chunk start)
             let subchunk_pos = mcnk_start_offset + u64::from(offset);
-            reader.seek(SeekFrom::Start(subchunk_pos)).map_err(|e| {
-                binrw::Error::Custom {
+            reader
+                .seek(SeekFrom::Start(subchunk_pos))
+                .map_err(|e| binrw::Error::Custom {
                     pos: subchunk_pos,
-                    err: Box::new(format!("Failed to seek to {} subchunk at offset {}: {}", name, offset, e)),
-                }
-            })?;
+                    err: Box::new(format!(
+                        "Failed to seek to {} subchunk at offset {}: {}",
+                        name, offset, e
+                    )),
+                })?;
 
             // Read subchunk header
-            let subchunk_header = ChunkHeader::read_le(reader).map_err(|e| {
-                binrw::Error::Custom {
+            let subchunk_header =
+                ChunkHeader::read_le(reader).map_err(|e| binrw::Error::Custom {
                     pos: subchunk_pos,
-                    err: Box::new(format!("Failed to read {} subchunk header at file offset {} (MCNK+{}): {:?}",
-                        name, subchunk_pos, offset, e)),
-                }
-            })?;
+                    err: Box::new(format!(
+                        "Failed to read {} subchunk header at file offset {} (MCNK+{}): {:?}",
+                        name, subchunk_pos, offset, e
+                    )),
+                })?;
 
             // Read subchunk data
             let mut data = vec![0u8; subchunk_header.size as usize];
@@ -337,12 +341,15 @@ impl McnkChunk {
         let liquid = if header.has_legacy_liquid() {
             // Seek to MCLQ chunk
             let mclq_pos = mcnk_start_offset + u64::from(header.ofs_liquid);
-            reader.seek(SeekFrom::Start(mclq_pos)).map_err(|e| {
-                binrw::Error::Custom {
+            reader
+                .seek(SeekFrom::Start(mclq_pos))
+                .map_err(|e| binrw::Error::Custom {
                     pos: mclq_pos,
-                    err: Box::new(format!("Failed to seek to MCLQ at offset {}: {}", header.ofs_liquid, e)),
-                }
-            })?;
+                    err: Box::new(format!(
+                        "Failed to seek to MCLQ at offset {}: {}",
+                        header.ofs_liquid, e
+                    )),
+                })?;
 
             // Read the 8-byte chunk header (magic + size, where size is always 0)
             let _chunk_header = ChunkHeader::read_le(reader)?;
@@ -355,13 +362,7 @@ impl McnkChunk {
                 // Pass MCNK flags to MCLQ parser for liquid type detection
                 // Note: Small MCLQ chunks (8 bytes) are often corrupted/empty placeholders
                 // We catch parsing errors and treat them as "no liquid"
-                match MclqChunk::read_le_args(
-                    &mut std::io::Cursor::new(data),
-                    header.flags.value,
-                ) {
-                    Ok(mclq) => Some(mclq),
-                    Err(_) => None, // Silently skip corrupted/placeholder chunks
-                }
+                MclqChunk::read_le_args(&mut std::io::Cursor::new(data), header.flags.value).ok() // Silently skip corrupted/placeholder chunks
             } else {
                 None
             }
@@ -484,7 +485,7 @@ mod tests {
         // (8 bytes total: first 4 = ofs_height, last 4 = ofs_normal)
         // Points to MCVT at offset 136 (8-byte chunk header + 128-byte MCNK header)
         data.extend_from_slice(&136u32.to_le_bytes()); // ofs_height
-        data.extend_from_slice(&0u32.to_le_bytes());   // ofs_normal
+        data.extend_from_slice(&0u32.to_le_bytes()); // ofs_normal
 
         // ofs_layer (0 = not present)
         data.extend_from_slice(&0u32.to_le_bytes());

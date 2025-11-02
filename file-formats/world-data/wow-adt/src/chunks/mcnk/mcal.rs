@@ -759,7 +759,9 @@ mod tests {
     #[test]
     fn compress_rle_alternating_pattern() {
         // Worst case: alternating values (no runs possible)
-        let data: Vec<u8> = (0..4096).map(|i| if i % 2 == 0 { 0xAA } else { 0x55 }).collect();
+        let data: Vec<u8> = (0..4096)
+            .map(|i| if i % 2 == 0 { 0xAA } else { 0x55 })
+            .collect();
         let compressed = AlphaMap::compress_rle(&data).unwrap();
 
         // Should not compress well (all copy mode)
@@ -1042,9 +1044,11 @@ mod tests {
         let result = AlphaMap::with_optimal_format(&data);
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .contains("Invalid input size for optimal format selection"));
+        assert!(
+            result
+                .unwrap_err()
+                .contains("Invalid input size for optimal format selection")
+        );
     }
 
     #[test]

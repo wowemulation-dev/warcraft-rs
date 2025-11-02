@@ -201,10 +201,7 @@ pub fn validate_version_chunk_compatibility(version: AdtVersion, chunk: ChunkId)
                 return Err(AdtError::ChunkParseError {
                     chunk,
                     offset: 0,
-                    details: format!(
-                        "{} requires MoP, but version is {:?}",
-                        chunk_name, version
-                    ),
+                    details: format!("{} requires MoP, but version is {:?}", chunk_name, version),
                 });
             }
         }

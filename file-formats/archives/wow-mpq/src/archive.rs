@@ -1243,7 +1243,6 @@ impl Archive {
         self.find_file_classic(filename)
     }
 
-
     /// Classic file lookup using hash/block tables
     fn find_file_classic(&self, filename: &str) -> Result<Option<FileInfo>> {
         // If tables aren't loaded, return None instead of error
@@ -1856,12 +1855,31 @@ impl Archive {
         let mut patch_info_buf = [0u8; 28];
         self.reader.read_exact(&mut patch_info_buf)?;
 
-        let patch_info_length = u32::from_le_bytes([patch_info_buf[0], patch_info_buf[1], patch_info_buf[2], patch_info_buf[3]]);
-        let patch_info_flags = u32::from_le_bytes([patch_info_buf[4], patch_info_buf[5], patch_info_buf[6], patch_info_buf[7]]);
-        let patch_data_size = u32::from_le_bytes([patch_info_buf[8], patch_info_buf[9], patch_info_buf[10], patch_info_buf[11]]);
+        let patch_info_length = u32::from_le_bytes([
+            patch_info_buf[0],
+            patch_info_buf[1],
+            patch_info_buf[2],
+            patch_info_buf[3],
+        ]);
+        let patch_info_flags = u32::from_le_bytes([
+            patch_info_buf[4],
+            patch_info_buf[5],
+            patch_info_buf[6],
+            patch_info_buf[7],
+        ]);
+        let patch_data_size = u32::from_le_bytes([
+            patch_info_buf[8],
+            patch_info_buf[9],
+            patch_info_buf[10],
+            patch_info_buf[11],
+        ]);
 
-        log::debug!("TPatchInfo: length={}, flags=0x{:08X}, data_size={} bytes",
-                   patch_info_length, patch_info_flags, patch_data_size);
+        log::debug!(
+            "TPatchInfo: length={}, flags=0x{:08X}, data_size={} bytes",
+            patch_info_length,
+            patch_info_flags,
+            patch_data_size
+        );
 
         // The actual decompressed size is patch_data_size, not file_info.file_size!
         let actual_patch_size = patch_data_size as usize;
@@ -1872,12 +1890,16 @@ impl Archive {
 
         if is_single_unit {
             log::debug!("Patch file is stored as single unit");
-            let compressed_data_size = file_info.compressed_size as usize - patch_info_length as usize;
+            let compressed_data_size =
+                file_info.compressed_size as usize - patch_info_length as usize;
 
             let mut data = vec![0u8; compressed_data_size];
             self.reader.read_exact(&mut data)?;
 
-            log::debug!("Read {} bytes of compressed patch data (single unit)", data.len());
+            log::debug!(
+                "Read {} bytes of compressed patch data (single unit)",
+                data.len()
+            );
             log::debug!("First 32 bytes: {:02X?}", &data[..32.min(data.len())]);
 
             // Decrypt if needed (though patch files are typically not encrypted)
@@ -1895,14 +1917,14 @@ impl Archive {
                 let compression_type = data[0];
                 let compressed_data = &data[1..];
 
-                log::debug!("Decompressing patch file (single unit): method=0x{:02X}, compressed={} bytes → {} bytes",
-                           compression_type, compressed_data.len(), actual_patch_size);
-
-                compression::decompress(
-                    compressed_data,
+                log::debug!(
+                    "Decompressing patch file (single unit): method=0x{:02X}, compressed={} bytes → {} bytes",
                     compression_type,
-                    actual_patch_size,
-                )
+                    compressed_data.len(),
+                    actual_patch_size
+                );
+
+                compression::decompress(compressed_data, compression_type, actual_patch_size)
             } else {
                 Ok(data)
             }
@@ -1914,16 +1936,23 @@ impl Archive {
             let sector_size = self.header.sector_size();
             let sector_count = (patch_data_size as usize).div_ceil(sector_size);
 
-            log::debug!("Patch sectors: data_size={}, sector_size={}, sector_count={}",
-                       patch_data_size, sector_size, sector_count);
+            log::debug!(
+                "Patch sectors: data_size={}, sector_size={}, sector_count={}",
+                patch_data_size,
+                sector_size,
+                sector_count
+            );
 
             // Read sector offset table
             let offset_table_size = (sector_count + 1) * 4;
             let mut offset_data = vec![0u8; offset_table_size];
             self.reader.read_exact(&mut offset_data)?;
 
-            log::debug!("Read sector offset table: {} bytes for {} sectors",
-                       offset_table_size, sector_count);
+            log::debug!(
+                "Read sector offset table: {} bytes for {} sectors",
+                offset_table_size,
+                sector_count
+            );
 
             // Parse sector offsets
             let mut sector_offsets = Vec::with_capacity(sector_count + 1);
@@ -1942,43 +1971,62 @@ impl Archive {
                 let sector_end = sector_offsets[i + 1] as usize;
                 let sector_compressed_size = sector_end - sector_start;
 
-                log::debug!("Reading sector {}: offset={}, size={} bytes",
-                           i, sector_start, sector_compressed_size);
+                log::debug!(
+                    "Reading sector {}: offset={}, size={} bytes",
+                    i,
+                    sector_start,
+                    sector_compressed_size
+                );
 
                 // Sector offsets are relative to the START of the offset table, NOT after it
                 // So we need to seek to: file_pos + TPatchInfo + sector_offset
-                let sector_file_pos = file_info.file_pos
-                    + patch_info_length as u64
-                    + sector_start as u64;
+                let sector_file_pos =
+                    file_info.file_pos + patch_info_length as u64 + sector_start as u64;
 
                 self.reader.seek(SeekFrom::Start(sector_file_pos))?;
 
                 let mut sector_data = vec![0u8; sector_compressed_size];
                 self.reader.read_exact(&mut sector_data)?;
 
-                log::debug!("Sector {} data first 16 bytes: {:02X?}", i, &sector_data[..16.min(sector_data.len())]);
+                log::debug!(
+                    "Sector {} data first 16 bytes: {:02X?}",
+                    i,
+                    &sector_data[..16.min(sector_data.len())]
+                );
 
                 // Patch file sectors use standard MPQ compression (Zlib/BZip2/etc)
                 // First byte indicates compression method, remaining bytes are compressed PTCH data
                 let compression_method = sector_data[0];
-                log::debug!("Decompressing sector {} with method 0x{:02X} ({} bytes compressed)",
-                           i, compression_method, sector_data.len() - 1);
+                log::debug!(
+                    "Decompressing sector {} with method 0x{:02X} ({} bytes compressed)",
+                    i,
+                    compression_method,
+                    sector_data.len() - 1
+                );
 
                 // Decompress using standard MPQ decompression
-                let expected_size = sector_size.min(patch_data_size as usize - decompressed_data.len());
+                let expected_size =
+                    sector_size.min(patch_data_size as usize - decompressed_data.len());
                 let sector_decompressed = compression::decompress(
-                    &sector_data[1..],  // Skip compression method byte
+                    &sector_data[1..], // Skip compression method byte
                     compression_method,
                     expected_size,
                 )?;
 
-                log::debug!("Sector {} decompressed to {} bytes", i, sector_decompressed.len());
+                log::debug!(
+                    "Sector {} decompressed to {} bytes",
+                    i,
+                    sector_decompressed.len()
+                );
 
                 decompressed_data.extend_from_slice(&sector_decompressed);
             }
 
-            log::debug!("Successfully decompressed {} bytes from {} sectors",
-                       decompressed_data.len(), sector_count);
+            log::debug!(
+                "Successfully decompressed {} bytes from {} sectors",
+                decompressed_data.len(),
+                sector_count
+            );
 
             Ok(decompressed_data)
         }
@@ -2174,12 +2222,19 @@ impl Archive {
         self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
         let offset_table_size = (sector_count + 1) * 4;
         log::debug!("  offset_table_size: {} bytes", offset_table_size);
-        log::debug!("  Attempting to read offset table at position 0x{:X}", file_info.file_pos);
+        log::debug!(
+            "  Attempting to read offset table at position 0x{:X}",
+            file_info.file_pos
+        );
 
         let mut offset_data = vec![0u8; offset_table_size];
         self.reader.read_exact(&mut offset_data).map_err(|e| {
             log::error!("Failed to read offset table: {}", e);
-            log::error!("  Tried to read {} bytes at position 0x{:X}", offset_table_size, file_info.file_pos);
+            log::error!(
+                "  Tried to read {} bytes at position 0x{:X}",
+                offset_table_size,
+                file_info.file_pos
+            );
             e
         })?;
 

@@ -137,7 +137,7 @@ impl McvtChunk {
         }
         // Map to interleaved storage: even row y*2 using indexMapBuf formula
         let logical_row = y * 2;
-        let index = ((logical_row + 1) / 2) * 9 + (logical_row / 2) * 8 + x;
+        let index = logical_row.div_ceil(2) * 9 + (logical_row / 2) * 8 + x;
         self.heights.get(index).copied()
     }
 
@@ -174,7 +174,7 @@ impl McvtChunk {
         }
         // Map to interleaved storage: odd row y*2+1 using indexMapBuf formula
         let logical_row = y * 2 + 1;
-        let index = ((logical_row + 1) / 2) * 9 + (logical_row / 2) * 8 + x;
+        let index = logical_row.div_ceil(2) * 9 + (logical_row / 2) * 8 + x;
         self.heights.get(index).copied()
     }
 
@@ -233,8 +233,8 @@ mod tests {
         let mut heights = vec![0.0; 145];
         // Set up interleaved row pattern
         // Row 0 (indices 0-8): outer row 0
-        heights[0] = 100.0;  // (0,0)
-        heights[8] = 108.0;  // (8,0)
+        heights[0] = 100.0; // (0,0)
+        heights[8] = 108.0; // (8,0)
 
         // Row 2 (indices 17-25): outer row 1
         heights[17] = 117.0; // (0,1)
@@ -265,12 +265,12 @@ mod tests {
         let mut heights = vec![0.0; 145];
         // Set up interleaved row pattern
         // Row 1 (indices 9-16): inner row 0
-        heights[9] = 209.0;   // (0,0)
-        heights[16] = 216.0;  // (7,0)
+        heights[9] = 209.0; // (0,0)
+        heights[16] = 216.0; // (7,0)
 
         // Row 3 (indices 26-33): inner row 1
-        heights[26] = 226.0;  // (0,1)
-        heights[33] = 233.0;  // (7,1)
+        heights[26] = 226.0; // (0,1)
+        heights[33] = 233.0; // (7,1)
 
         let chunk = McvtChunk { heights };
 
@@ -391,7 +391,7 @@ mod tests {
 
         // Helper to simulate wow-map-viewer's indexMapBuf formula
         fn index_map_buf(x: usize, y: usize) -> usize {
-            ((y + 1) / 2) * 9 + (y / 2) * 8 + x
+            y.div_ceil(2) * 9 + (y / 2) * 8 + x
         }
 
         // Test outer vertices (even logical rows)

@@ -36,7 +36,7 @@ use crate::api::{LodAdt, Obj0Adt, RootAdt, Tex0Adt};
 use crate::error::Result;
 use crate::merger::merge_split_files;
 use crate::split_set::SplitFileSet;
-use crate::{parse_adt, ParsedAdt};
+use crate::{ParsedAdt, parse_adt};
 
 /// Complete set of parsed ADT split files.
 ///
@@ -132,13 +132,13 @@ impl AdtSet {
         let root_data = fs::read(&file_set.root)?;
         let mut cursor = Cursor::new(root_data);
         let root = match parse_adt(&mut cursor)? {
-            ParsedAdt::Root(r) => r,
+            ParsedAdt::Root(r) => *r,
             _ => {
                 return Err(crate::error::AdtError::ChunkParseError {
                     chunk: crate::chunk_id::ChunkId::MVER,
                     offset: 0,
                     details: "Expected root ADT file but got different file type".to_string(),
-                })
+                });
             }
         };
 

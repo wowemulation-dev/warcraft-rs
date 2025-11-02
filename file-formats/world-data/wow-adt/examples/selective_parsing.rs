@@ -43,8 +43,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let discovery = discover_chunks(&mut file)?;
     let discovery_time = start.elapsed();
 
-    println!("  ✓ Discovery completed in {:.2}ms", discovery_time.as_secs_f64() * 1000.0);
-    println!("  • File size: {:.2} MB", discovery.file_size as f64 / (1024.0 * 1024.0));
+    println!(
+        "  ✓ Discovery completed in {:.2}ms",
+        discovery_time.as_secs_f64() * 1000.0
+    );
+    println!(
+        "  • File size: {:.2} MB",
+        discovery.file_size as f64 / (1024.0 * 1024.0)
+    );
     println!("  • Total chunks: {}", discovery.total_chunks);
     println!("  • Unique chunk types: {}", discovery.chunk_types().len());
 
@@ -87,13 +93,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n  Use Case 2: Feature Detection");
 
     let has_water = discovery.has_chunk(ChunkId::MH2O);
-    println!("    Water data (MH2O): {}", if has_water { "✓ Present" } else { "✗ Not present" });
+    println!(
+        "    Water data (MH2O): {}",
+        if has_water {
+            "✓ Present"
+        } else {
+            "✗ Not present"
+        }
+    );
 
     let has_flight_bounds = discovery.has_chunk(ChunkId::MFBO);
-    println!("    Flight boundaries (MFBO): {}", if has_flight_bounds { "✓ Present" } else { "✗ Not present" });
+    println!(
+        "    Flight boundaries (MFBO): {}",
+        if has_flight_bounds {
+            "✓ Present"
+        } else {
+            "✗ Not present"
+        }
+    );
 
     let has_blend_mesh = discovery.has_chunk(ChunkId::MBMH);
-    println!("    Blend mesh (MoP): {}", if has_blend_mesh { "✓ Present" } else { "✗ Not present" });
+    println!(
+        "    Blend mesh (MoP): {}",
+        if has_blend_mesh {
+            "✓ Present"
+        } else {
+            "✗ Not present"
+        }
+    );
 
     // Use Case 3: Count terrain chunks
     println!("\n  Use Case 3: Terrain Chunk Statistics");
@@ -102,7 +129,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Calculate total terrain data size
         let total_size: u32 = mcnk_chunks.iter().map(|c| c.size).sum();
-        println!("    Total terrain data: {:.2} KB", total_size as f64 / 1024.0);
+        println!(
+            "    Total terrain data: {:.2} KB",
+            total_size as f64 / 1024.0
+        );
 
         // Show first few chunk locations
         println!("    First 3 chunk locations:");
@@ -133,8 +163,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Performance summary
     println!("\n📊 Performance Summary");
-    println!("  • Discovery time: {:.2}ms", discovery_time.as_secs_f64() * 1000.0);
-    println!("  • Memory footprint: ~{} KB", (discovery.total_chunks * 16 + 1024) / 1024);
+    println!(
+        "  • Discovery time: {:.2}ms",
+        discovery_time.as_secs_f64() * 1000.0
+    );
+    println!(
+        "  • Memory footprint: ~{} KB",
+        (discovery.total_chunks * 16 + 1024) / 1024
+    );
     println!("  • Time saved vs full parse: ~70-80%");
 
     println!("\n💡 Key Takeaways");

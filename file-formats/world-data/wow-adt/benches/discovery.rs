@@ -9,9 +9,9 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::io::Cursor;
+use wow_adt::AdtVersion;
 use wow_adt::builder::AdtBuilder;
 use wow_adt::chunk_discovery::discover_chunks;
-use wow_adt::AdtVersion;
 
 /// Generate a minimal ADT file for benchmarking.
 ///
@@ -38,8 +38,8 @@ fn create_multi_mcnk_adt(num_chunks: usize, version: AdtVersion) -> Vec<u8> {
 
     // Add multiple MCNK chunks (limited by validation)
     for _ in 0..num_chunks.min(256) {
-        use wow_adt::chunks::mcnk::{McnkChunk, McnkHeader, McnkFlags};
         use wow_adt::chunks::mcnk::mcvt::McvtChunk;
+        use wow_adt::chunks::mcnk::{McnkChunk, McnkFlags, McnkHeader};
 
         let chunk = McnkChunk {
             header: McnkHeader {
@@ -48,9 +48,7 @@ fn create_multi_mcnk_adt(num_chunks: usize, version: AdtVersion) -> Vec<u8> {
                 index_y: 0,
                 n_layers: 1,
                 n_doodad_refs: 0,
-                holes_high_res: 0,
-                ofs_height: 0,
-                ofs_normal: 0,
+                multipurpose_field: McnkHeader::multipurpose_from_offsets(0, 0),
                 ofs_layer: 0,
                 ofs_refs: 0,
                 ofs_alpha: 0,
@@ -63,6 +61,7 @@ fn create_multi_mcnk_adt(num_chunks: usize, version: AdtVersion) -> Vec<u8> {
                 unknown_but_used: 0,
                 pred_tex: [0; 8],
                 no_effect_doodad: [0; 8],
+                unknown_8bytes: [0; 8],
                 ofs_snd_emitters: 0,
                 n_snd_emitters: 0,
                 ofs_liquid: 0,
@@ -71,6 +70,7 @@ fn create_multi_mcnk_adt(num_chunks: usize, version: AdtVersion) -> Vec<u8> {
                 ofs_mccv: 0,
                 ofs_mclv: 0,
                 unused: 0,
+                _padding: [0; 8],
             },
             heights: Some(McvtChunk {
                 heights: vec![100.0; 145],

@@ -17,7 +17,7 @@ use wow_adt::chunks::DoodadPlacement;
 use wow_adt::chunks::mcnk::McnkChunk;
 use wow_adt::chunks::mcnk::header::{McnkFlags, McnkHeader};
 use wow_adt::chunks::mcnk::mcvt::McvtChunk;
-use wow_adt::chunks::mcnk::{McbbChunk, BlendBatch};
+use wow_adt::chunks::mcnk::{BlendBatch, McbbChunk};
 
 /// Helper: Create minimal MCNK chunk with heights
 fn create_mcnk_with_heights(base_height: f32) -> McnkChunk {
@@ -45,6 +45,7 @@ fn create_mcnk_with_heights(base_height: f32) -> McnkChunk {
         unknown_but_used: 0,
         pred_tex: [0; 8],
         no_effect_doodad: [0; 8],
+        unknown_8bytes: [0; 8],
         ofs_snd_emitters: 0,
         n_snd_emitters: 0,
         ofs_liquid: 0,
@@ -111,7 +112,7 @@ fn test_modify_terrain_heights_round_trip() {
     }
 
     // Convert back to builder and serialize
-    let modified = AdtBuilder::from_parsed(root)
+    let modified = AdtBuilder::from_parsed(*root)
         .build()
         .expect("Failed to build modified ADT");
 
@@ -169,7 +170,7 @@ fn test_modify_textures_round_trip() {
     root.textures_mut()[1] = "terrain/rock.blp".to_string();
 
     // Rebuild and serialize
-    let modified = AdtBuilder::from_parsed(root)
+    let modified = AdtBuilder::from_parsed(*root)
         .build()
         .expect("Failed to build modified ADT");
 
@@ -226,7 +227,7 @@ fn test_add_model_placement_round_trip() {
     root.doodad_placements_mut().push(new_placement);
 
     // Rebuild and serialize
-    let modified = AdtBuilder::from_parsed(root)
+    let modified = AdtBuilder::from_parsed(*root)
         .build()
         .expect("Failed to build modified ADT");
 
@@ -284,7 +285,7 @@ fn test_modify_multiple_mcnk_chunks() {
     }
 
     // Rebuild and serialize
-    let modified = AdtBuilder::from_parsed(root)
+    let modified = AdtBuilder::from_parsed(*root)
         .build()
         .expect("Failed to build modified ADT");
 
@@ -353,7 +354,7 @@ fn test_remove_and_add_textures() {
     root.textures_mut().push("terrain/sand.blp".to_string());
 
     // Rebuild and serialize
-    let modified = AdtBuilder::from_parsed(root)
+    let modified = AdtBuilder::from_parsed(*root)
         .build()
         .expect("Failed to build modified ADT");
 
@@ -417,13 +418,16 @@ fn test_modify_blend_batches_serialization() {
         .expect("Failed to serialize ADT with blend batches");
 
     // Verify serialized data is non-empty
-    assert!(bytes.len() > 0, "Serialized ADT should not be empty");
+    assert!(!bytes.is_empty(), "Serialized ADT should not be empty");
 
     // Verify blend batch data is present in serialized form
     // WoW uses reversed magic numbers, so MCBB is written as BBCM
     let bbcm_magic = b"BBCM";
     let has_mcbb = bytes.windows(4).any(|window| window == bbcm_magic);
-    assert!(has_mcbb, "Serialized ADT should contain MCBB chunk (written as BBCM)");
+    assert!(
+        has_mcbb,
+        "Serialized ADT should contain MCBB chunk (written as BBCM)"
+    );
 }
 
 #[test]
@@ -576,5 +580,8 @@ fn test_blend_batch_in_memory_modification() {
     // Verify MCBB is in serialized data (written as BBCM in WoW format)
     let bbcm_magic = b"BBCM";
     let has_mcbb = bytes.windows(4).any(|window| window == bbcm_magic);
-    assert!(has_mcbb, "Modified ADT should contain MCBB chunk (written as BBCM)");
+    assert!(
+        has_mcbb,
+        "Modified ADT should contain MCBB chunk (written as BBCM)"
+    );
 }

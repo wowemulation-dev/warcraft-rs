@@ -6,6 +6,6 @@ pub(super) mod huffman;
 pub(super) mod implode;
 pub(super) mod lzma;
 pub(super) mod pkware;
-pub mod rle;  // Public for patch file handling
+pub mod rle; // Public for patch file handling
 pub(super) mod sparse;
 pub(super) mod zlib;

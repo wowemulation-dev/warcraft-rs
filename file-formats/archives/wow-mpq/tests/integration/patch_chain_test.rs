@@ -2,9 +2,9 @@
 //
 // This test creates synthetic patch files to verify the complete patch chain workflow
 
-use wow_mpq::{ArchiveBuilder, ListfileOption, PatchChain};
-use tempfile::TempDir;
 use std::path::Path;
+use tempfile::TempDir;
+use wow_mpq::{ArchiveBuilder, ListfileOption, PatchChain};
 
 /// Helper to create a test MPQ archive
 fn create_archive(dir: &Path, name: &str, files: &[(&str, &[u8])]) -> std::path::PathBuf {
@@ -56,7 +56,10 @@ fn test_patch_chain_with_regular_files() {
         chain.read_file("unchanged.txt").unwrap(),
         b"This file stays the same"
     );
-    assert_eq!(chain.read_file("new.txt").unwrap(), b"New file added in patch");
+    assert_eq!(
+        chain.read_file("new.txt").unwrap(),
+        b"New file added in patch"
+    );
 
     // Verify chain info
     let chain_info = chain.get_chain_info();
@@ -120,7 +123,10 @@ fn test_parallel_chain_loading() {
     let mut chain = PatchChain::from_archives_parallel(archives).unwrap();
 
     // Highest priority should win for common.txt
-    assert_eq!(chain.read_file("common.txt").unwrap(), b"Content from archive 4");
+    assert_eq!(
+        chain.read_file("common.txt").unwrap(),
+        b"Content from archive 4"
+    );
 
     // All unique files should be accessible
     for i in 0..5 {
@@ -166,8 +172,7 @@ fn test_chain_listing() {
     let temp = TempDir::new().unwrap();
 
     let base_files: Vec<(&str, &[u8])> = vec![("file1.txt", b"1"), ("file2.txt", b"2")];
-    let patch_files: Vec<(&str, &[u8])> =
-        vec![("file2.txt", b"2-patched"), ("file3.txt", b"3")];
+    let patch_files: Vec<(&str, &[u8])> = vec![("file2.txt", b"2-patched"), ("file3.txt", b"3")];
 
     let base_path = create_archive(temp.path(), "base.mpq", &base_files);
     let patch_path = create_archive(temp.path(), "patch.mpq", &patch_files);

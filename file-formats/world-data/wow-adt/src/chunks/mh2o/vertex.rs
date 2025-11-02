@@ -444,16 +444,16 @@ mod tests {
         // ✅ FIXED: Test with u16 values and /255.0 normalization
         let uv = UvMapEntry { u: 255, v: 128 };
         let (u, v) = uv.to_normalized();
-        assert!((u - 1.0).abs() < 0.001);      // 255 / 255.0 ≈ 1.0
-        assert!((v - 0.502).abs() < 0.01);     // 128 / 255.0 ≈ 0.502
+        assert!((u - 1.0).abs() < 0.001); // 255 / 255.0 ≈ 1.0
+        assert!((v - 0.502).abs() < 0.01); // 128 / 255.0 ≈ 0.502
     }
 
     #[test]
     fn test_uv_map_entry_from_normalized() {
         // ✅ FIXED: Test with correct normalization factor
         let uv = UvMapEntry::from_normalized(1.0, 0.5);
-        assert_eq!(uv.u, 255);  // 1.0 * 255.0
-        assert_eq!(uv.v, 127);  // 0.5 * 255.0 (rounded)
+        assert_eq!(uv.u, 255); // 1.0 * 255.0
+        assert_eq!(uv.v, 127); // 0.5 * 255.0 (rounded)
     }
 
     #[test]
@@ -573,8 +573,8 @@ mod tests {
             uv: UvMapEntry { u: 255, v: 128 },
         };
         let (u, v) = vertex.normalized_uv();
-        assert!((u - 1.0).abs() < 0.001);      // 255 / 255.0 ≈ 1.0
-        assert!((v - 0.502).abs() < 0.01);     // 128 / 255.0 ≈ 0.502
+        assert!((u - 1.0).abs() < 0.001); // 255 / 255.0 ≈ 1.0
+        assert!((v - 0.502).abs() < 0.01); // 128 / 255.0 ≈ 0.502
     }
 
     #[test]
@@ -678,8 +678,8 @@ mod tests {
             depth: 0,
         };
         let (u, v) = vertex.normalized_uv();
-        assert!((u - 1.0).abs() < 0.001);      // 255 / 255.0 ≈ 1.0
-        assert!((v - 0.502).abs() < 0.01);     // 128 / 255.0 ≈ 0.502
+        assert!((u - 1.0).abs() < 0.001); // 255 / 255.0 ≈ 1.0
+        assert!((v - 0.502).abs() < 0.01); // 128 / 255.0 ≈ 0.502
     }
 
     #[test]
