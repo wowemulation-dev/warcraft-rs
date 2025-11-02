@@ -74,9 +74,9 @@ fn test_parse_group_header() {
 
     // MOGP chunk (minimal group data)
     data.extend_from_slice(b"PGOM"); // MOGP reversed
-    data.extend_from_slice(&88u32.to_le_bytes()); // Size: 88 bytes (full header)
+    data.extend_from_slice(&68u32.to_le_bytes()); // Size: 68 bytes (serialized header size)
 
-    // MOGP header (88 bytes total - full structure)
+    // MOGP header (68 bytes when serialized)
     data.extend_from_slice(&5u32.to_le_bytes()); // group_name (offset into MOGN)
     data.extend_from_slice(&0u32.to_le_bytes()); // descriptive_group_name
     data.extend_from_slice(&0u32.to_le_bytes()); // flags
