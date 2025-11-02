@@ -612,7 +612,7 @@ impl AdtBuilder {
     ///     }
     ///
     ///     // Convert back to builder and write
-    ///     let built = AdtBuilder::from_parsed(root).build()?;
+    ///     let built = AdtBuilder::from_parsed(*root).build()?;
     ///     built.write_to_file("terrain_modified.adt")?;
     /// }
     /// # Ok(())

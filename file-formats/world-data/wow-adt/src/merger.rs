@@ -43,7 +43,7 @@
 //! };
 //!
 //! // Merge into unified structure
-//! let merged = merge_split_files(root, tex, obj)?;
+//! let merged = merge_split_files(*root, tex, obj)?;
 //!
 //! println!("Merged {} MCNK chunks", merged.mcnk_chunks.len());
 //! println!("Textures: {}", merged.textures.len());
@@ -309,9 +309,25 @@ mod tests {
         assert_eq!(merged.wmos.len(), 1);
         assert_eq!(merged.mcnk_chunks.len(), 2);
         assert!(merged.mcnk_chunks[0].doodad_refs.is_some());
-        assert_eq!(merged.mcnk_chunks[0].doodad_refs.as_ref().unwrap().doodad_refs.len(), 2);
+        assert_eq!(
+            merged.mcnk_chunks[0]
+                .doodad_refs
+                .as_ref()
+                .unwrap()
+                .doodad_refs
+                .len(),
+            2
+        );
         assert!(merged.mcnk_chunks[1].wmo_refs.is_some());
-        assert_eq!(merged.mcnk_chunks[1].wmo_refs.as_ref().unwrap().wmo_refs.len(), 1);
+        assert_eq!(
+            merged.mcnk_chunks[1]
+                .wmo_refs
+                .as_ref()
+                .unwrap()
+                .wmo_refs
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -339,7 +355,15 @@ mod tests {
         assert_eq!(merged.textures.len(), 0);
         assert_eq!(merged.models.len(), 1);
         assert!(merged.mcnk_chunks[0].doodad_refs.is_some());
-        assert_eq!(merged.mcnk_chunks[0].doodad_refs.as_ref().unwrap().doodad_refs.len(), 2);
+        assert_eq!(
+            merged.mcnk_chunks[0]
+                .doodad_refs
+                .as_ref()
+                .unwrap()
+                .doodad_refs
+                .len(),
+            2
+        );
     }
 
     #[test]

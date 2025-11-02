@@ -66,7 +66,7 @@ use std::path::{Path, PathBuf};
 /// Use [`SplitFileSet::discover`] to automatically derive all split file paths from a root ADT path:
 ///
 /// ```
-/// use std::path::Path;
+/// use std::path::{Path, PathBuf};
 /// use wow_adt::split_set::SplitFileSet;
 ///
 /// let root = Path::new("Azeroth_30_30.adt");
@@ -201,11 +201,11 @@ impl SplitFileSet {
     pub fn verify_existence(&self) -> SplitFilePresence {
         SplitFilePresence {
             has_root: self.root.exists(),
-            has_tex0: self.tex0.as_ref().map_or(false, |p| p.exists()),
-            has_tex1: self.tex1.as_ref().map_or(false, |p| p.exists()),
-            has_obj0: self.obj0.as_ref().map_or(false, |p| p.exists()),
-            has_obj1: self.obj1.as_ref().map_or(false, |p| p.exists()),
-            has_lod: self.lod.as_ref().map_or(false, |p| p.exists()),
+            has_tex0: self.tex0.as_ref().is_some_and(|p| p.exists()),
+            has_tex1: self.tex1.as_ref().is_some_and(|p| p.exists()),
+            has_obj0: self.obj0.as_ref().is_some_and(|p| p.exists()),
+            has_obj1: self.obj1.as_ref().is_some_and(|p| p.exists()),
+            has_lod: self.lod.as_ref().is_some_and(|p| p.exists()),
         }
     }
 
@@ -395,7 +395,10 @@ mod tests {
         let root = PathBuf::from("World/Maps/Azeroth/Azeroth_30_30.adt");
         let set = SplitFileSet::discover(&root);
 
-        assert_eq!(set.root, PathBuf::from("World/Maps/Azeroth/Azeroth_30_30.adt"));
+        assert_eq!(
+            set.root,
+            PathBuf::from("World/Maps/Azeroth/Azeroth_30_30.adt")
+        );
         assert_eq!(
             set.tex0,
             Some(PathBuf::from("World/Maps/Azeroth/Azeroth_30_30_tex0.adt"))
