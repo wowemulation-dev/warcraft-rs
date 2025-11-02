@@ -163,17 +163,17 @@ fn apply_bsd0_patch(patch: &PatchFile, base_data: &[u8]) -> Result<Vec<u8>> {
     let extra_start = data_start + data_block_size;
 
     // Validate block sizes
-    if extra_start > patch.data.len() {
+    if extra_start > bsdiff_data.len() {
         return Err(Error::invalid_format(format!(
             "BSD0 patch data too small: need {extra_start} bytes, have {}",
-            patch.data.len()
+            bsdiff_data.len()
         )));
     }
 
     // Extract data blocks
-    let ctrl_block = &patch.data[ctrl_start..data_start];
-    let data_block = &patch.data[data_start..extra_start];
-    let extra_block = &patch.data[extra_start..];
+    let ctrl_block = &bsdiff_data[ctrl_start..data_start];
+    let data_block = &bsdiff_data[data_start..extra_start];
+    let extra_block = &bsdiff_data[extra_start..];
 
     // Number of control blocks (each is 12 bytes: 3x u32)
     let num_ctrl_blocks = ctrl_block_size / 12;
@@ -228,7 +228,8 @@ fn apply_bsd0_patch(patch: &PatchFile, base_data: &[u8]) -> Result<Vec<u8>> {
         };
 
         for j in 0..combine_size {
-            new_data[new_offset + j] = new_data[new_offset + j].wrapping_add(base_data[old_offset + j]);
+            new_data[new_offset + j] =
+                new_data[new_offset + j].wrapping_add(base_data[old_offset + j]);
         }
 
         new_offset += add_data_length;
@@ -380,6 +381,24 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// Simple RLE compress for test data
+    /// RLE format: if byte has high bit set (0x80), copy (byte & 0x7F) + 1 literal bytes
+    fn rle_compress_test(data: &[u8]) -> Vec<u8> {
+        let mut compressed = Vec::new();
+
+        // Add 4-byte size header (decompressed size)
+        compressed.extend_from_slice(&(data.len() as u32).to_le_bytes());
+
+        // Encode data in chunks of up to 128 bytes (0x7F + 1)
+        for chunk in data.chunks(128) {
+            let count = chunk.len() as u8;
+            compressed.push(0x80 | (count - 1)); // High bit set + (count-1)
+            compressed.extend_from_slice(chunk);
+        }
+
+        compressed
+    }
+
     /// Helper to create a test BSD0 patch
     fn create_bsd0_patch(base_data: &[u8], new_data: &[u8], patch_data: Vec<u8>) -> PatchFile {
         use md5::{Digest, Md5};
@@ -393,12 +412,15 @@ mod tests {
         hasher.update(new_data);
         let md5_after: [u8; 16] = hasher.finalize().into();
 
+        // RLE compress the patch data (BSD0 patches use RLE compression)
+        let compressed_patch_data = rle_compress_test(&patch_data);
+
         // Build PTCH file with BSD0 type
         let mut data = Vec::new();
 
         // PTCH Header
         data.extend_from_slice(&0x48435450u32.to_le_bytes());
-        data.extend_from_slice(&(patch_data.len() as u32).to_le_bytes());
+        data.extend_from_slice(&(patch_data.len() as u32).to_le_bytes()); // Decompressed size
         data.extend_from_slice(&(base_data.len() as u32).to_le_bytes());
         data.extend_from_slice(&(new_data.len() as u32).to_le_bytes());
 
@@ -410,11 +432,11 @@ mod tests {
 
         // XFRM Block
         data.extend_from_slice(&0x4d524658u32.to_le_bytes());
-        data.extend_from_slice(&(12 + patch_data.len() as u32).to_le_bytes());
+        data.extend_from_slice(&(12u32 + compressed_patch_data.len() as u32).to_le_bytes());
         data.extend_from_slice(&0x30445342u32.to_le_bytes()); // BSD0
 
-        // Patch data
-        data.extend_from_slice(&patch_data);
+        // Compressed patch data
+        data.extend_from_slice(&compressed_patch_data);
 
         PatchFile::parse(&data).expect("Failed to create test BSD0 patch")
     }
