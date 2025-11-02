@@ -261,7 +261,7 @@ fn write_minimal_mcnk_chunk<W: Write + Seek>(
 ) -> Result<()> {
     // Calculate world position for this tile
     // Each tile is 33.33333 yards, ADT origin is at (0, 0)
-    let tile_size = 533.33333 / 16.0;
+    let tile_size = 533.33 / 16.0;
     let pos_x = x as f32 * tile_size;
     let pos_y = y as f32 * tile_size;
     let pos_z = 0.0; // Flat terrain at sea level
@@ -269,9 +269,9 @@ fn write_minimal_mcnk_chunk<W: Write + Seek>(
     // Track sub-chunk positions (relative to MCNK start, including 8-byte header)
     let mcnk_start = writer.stream_position()?;
 
-    // Reserve space for MCNK header (8-byte chunk header + 128-byte MCNK header)
+    // Reserve space for MCNK header (8-byte chunk header + 136-byte MCNK header)
     let header_start = writer.stream_position()?;
-    let placeholder = vec![0u8; 8 + 128]; // Total 136 bytes
+    let placeholder = vec![0u8; 8 + 136]; // Total 144 bytes
     writer.write_all(&placeholder)?;
 
     // Write MCVT sub-chunk (vertex heights)
@@ -359,7 +359,7 @@ fn write_minimal_mcnk_chunk<W: Write + Seek>(
         pred_tex: [0; 8],
         no_effect_doodad: [0; 8],
         unknown_8bytes: [0; 8], // Unknown 8-byte field
-        ofs_snd_emitters: 0, // No MCSE
+        ofs_snd_emitters: 0,    // No MCSE
         n_snd_emitters: 0,
         ofs_liquid: 0, // No MCLQ
         size_liquid: 0,
@@ -405,9 +405,9 @@ fn write_minimal_mcnk_chunk<W: Write + Seek>(
 fn write_mcnk_chunk<W: Write + Seek>(writer: &mut W, mcnk: &McnkChunk) -> Result<()> {
     let mcnk_start = writer.stream_position()?;
 
-    // Reserve space for MCNK header (8-byte chunk header + 128-byte MCNK header)
+    // Reserve space for MCNK header (8-byte chunk header + 136-byte MCNK header)
     let header_start = writer.stream_position()?;
-    let placeholder = vec![0u8; 8 + 128];
+    let placeholder = vec![0u8; 8 + 136];
     writer.write_all(&placeholder)?;
 
     // Track offsets for header
@@ -771,9 +771,9 @@ fn write_mh2o_chunk<W: Write + Seek>(writer: &mut W, mh2o: &Mh2oChunk) -> Result
 
             // Write instances with updated offsets
             for instance in &instances_with_offsets {
-                instance
-                    .write_le(writer)
-                    .map_err(|e| AdtError::BinrwError(format!("Failed to write MH2O instance: {e}")))?;
+                instance.write_le(writer).map_err(|e| {
+                    AdtError::BinrwError(format!("Failed to write MH2O instance: {e}"))
+                })?;
             }
 
             current_pos = writer.stream_position()?;
@@ -843,9 +843,9 @@ fn write_mh2o_chunk<W: Write + Seek>(writer: &mut W, mh2o: &Mh2oChunk) -> Result
             header.offset_attributes = (current_pos - data_start) as u32;
             writer.seek(SeekFrom::Start(current_pos))?;
 
-            attrs
-                .write_le(writer)
-                .map_err(|e| AdtError::BinrwError(format!("Failed to write MH2O attributes: {e}")))?;
+            attrs.write_le(writer).map_err(|e| {
+                AdtError::BinrwError(format!("Failed to write MH2O attributes: {e}"))
+            })?;
 
             current_pos = writer.stream_position()?;
         } else {
@@ -1149,25 +1149,31 @@ mod tests {
 
     #[test]
     fn test_mhdr_flags_with_mfbo() {
-        let mut positions = ChunkPositions::default();
-        positions.mfbo = Some(1000);
+        let positions = ChunkPositions {
+            mfbo: Some(1000),
+            ..Default::default()
+        };
         let flags = calculate_mhdr_flags(&positions);
         assert_eq!(flags, 0x01);
     }
 
     #[test]
     fn test_mhdr_flags_with_mh2o() {
-        let mut positions = ChunkPositions::default();
-        positions.mh2o = Some(2000);
+        let positions = ChunkPositions {
+            mh2o: Some(2000),
+            ..Default::default()
+        };
         let flags = calculate_mhdr_flags(&positions);
         assert_eq!(flags, 0x02);
     }
 
     #[test]
     fn test_mhdr_flags_with_both() {
-        let mut positions = ChunkPositions::default();
-        positions.mfbo = Some(1000);
-        positions.mh2o = Some(2000);
+        let positions = ChunkPositions {
+            mfbo: Some(1000),
+            mh2o: Some(2000),
+            ..Default::default()
+        };
         let flags = calculate_mhdr_flags(&positions);
         assert_eq!(flags, 0x03);
     }
@@ -1187,7 +1193,7 @@ mod tests {
                 offset_attributes: 0, // Will be calculated
             },
             instances: vec![Mh2oInstance {
-                liquid_type: 5, // Water
+                liquid_type: 5,          // Water
                 liquid_object_or_lvf: 0, // LVF 0
                 min_height_level: 100.0,
                 max_height_level: 105.0,
@@ -1196,13 +1202,13 @@ mod tests {
                 width: 8,
                 height: 8,
                 offset_exists_bitmap: 0, // No bitmap (full coverage)
-                offset_vertex_data: 0, // No vertex data
+                offset_vertex_data: 0,   // No vertex data
             }],
             vertex_data: vec![None], // No vertex data (uses min/max height)
             exists_bitmaps: vec![None], // No exists bitmap (full coverage)
             attributes: Some(Mh2oAttributes {
                 fishable: 0xFFFFFFFFFFFFFFFF, // All fishable
-                deep: 0x0000000000000000, // No deep water
+                deep: 0x0000000000000000,     // No deep water
             }),
         };
 
