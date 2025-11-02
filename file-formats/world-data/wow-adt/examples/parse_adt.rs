@@ -5,8 +5,9 @@
 
 use std::env;
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
-use wow_adt::{Adt, ValidationLevel, WaterLevelData};
+use wow_adt::{AdtVersion, ParsedAdt, parse_adt};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get command line arguments
@@ -27,116 +28,129 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    println!("🏔️  Parsing ADT File: {adt_path}");
+    println!("Parsing ADT File: {adt_path}");
     println!("{}", "=".repeat(50));
 
     // Open and parse the ADT file
     let file = File::open(adt_path)?;
-    let adt = Adt::from_reader(file)?;
+    let mut reader = BufReader::new(file);
+    let adt = parse_adt(&mut reader)?;
 
-    // Display basic information
-    println!("📊 Basic Information:");
-    println!("  • Version: {:?}", adt.version);
-    println!("  • Format: {}", get_format_description(&adt));
-
-    // Count active terrain chunks
-    let mut active_chunks = 0;
-    if let Some(mcin) = &adt.mcin {
-        for entry in &mcin.entries {
-            if entry.offset > 0 && entry.size > 0 {
-                active_chunks += 1;
-            }
+    // Process based on file type
+    match adt {
+        ParsedAdt::Root(root) => {
+            display_root_adt(&root);
+        }
+        ParsedAdt::Tex0(tex) => {
+            println!("Texture file (Cataclysm+)");
+            println!("  Version: {:?}", tex.version);
+            println!("  Total textures: {}", tex.textures.len());
+            println!("  Chunks with texture data: {}", tex.mcnk_textures.len());
+        }
+        ParsedAdt::Obj0(obj) => {
+            println!("Object file (Cataclysm+)");
+            println!("  Version: {:?}", obj.version);
+            println!("  M2 models: {}", obj.models.len());
+            println!("  WMO objects: {}", obj.wmos.len());
+            println!("  Chunks with objects: {}", obj.mcnk_objects.len());
+        }
+        ParsedAdt::Lod(lod) => {
+            println!("LOD file (Cataclysm+)");
+            println!("  Version: {:?}", lod.version);
+        }
+        _ => {
+            println!("Split file (Cataclysm+)");
         }
     }
-    println!("  • Active terrain chunks: {active_chunks}/256");
+
+    println!();
+    println!("Parsing completed successfully!");
+
+    Ok(())
+}
+
+fn display_root_adt(adt: &wow_adt::RootAdt) {
+    // Display basic information
+    println!("Basic Information:");
+    println!("  Version: {:?}", adt.version);
+    println!("  Format: {}", get_format_description(adt.version));
+
+    // Count active terrain chunks
+    let active_chunks = adt.terrain_chunk_count();
+    println!("  Active terrain chunks: {active_chunks}/256");
 
     // Display texture information
-    if let Some(mtex) = &adt.mtex {
-        println!();
-        println!("🎨 Textures:");
-        println!("  • Total textures: {}", mtex.filenames.len());
+    println!();
+    println!("Textures:");
+    println!("  Total textures: {}", adt.texture_count());
 
-        if !mtex.filenames.is_empty() {
-            println!("  • Sample textures:");
-            for (i, texture) in mtex.filenames.iter().take(5).enumerate() {
-                println!("    {}. {}", i + 1, texture);
-            }
-            if mtex.filenames.len() > 5 {
-                println!("    ... and {} more", mtex.filenames.len() - 5);
-            }
+    if !adt.textures.is_empty() {
+        println!("  Sample textures:");
+        for (i, texture) in adt.textures.iter().take(5).enumerate() {
+            println!("    {}. {}", i + 1, texture);
+        }
+        if adt.textures.len() > 5 {
+            println!("    ... and {} more", adt.textures.len() - 5);
         }
     }
 
     // Display model information
-    if let Some(mmdx) = &adt.mmdx {
-        println!();
-        println!("🌲 Doodad Models:");
-        println!("  • Total models: {}", mmdx.filenames.len());
+    println!();
+    println!("Doodad Models:");
+    println!("  Total models: {}", adt.model_count());
 
-        if !mmdx.filenames.is_empty() {
-            println!("  • Sample models:");
-            for (i, model) in mmdx.filenames.iter().take(3).enumerate() {
-                println!("    {}. {}", i + 1, model);
-            }
-            if mmdx.filenames.len() > 3 {
-                println!("    ... and {} more", mmdx.filenames.len() - 3);
-            }
+    if !adt.models.is_empty() {
+        println!("  Sample models:");
+        for (i, model) in adt.models.iter().take(3).enumerate() {
+            println!("    {}. {}", i + 1, model);
+        }
+        if adt.models.len() > 3 {
+            println!("    ... and {} more", adt.models.len() - 3);
         }
     }
 
     // Display WMO information
-    if let Some(mwmo) = &adt.mwmo {
-        println!();
-        println!("🏰 World Map Objects (WMOs):");
-        println!("  • Total WMOs: {}", mwmo.filenames.len());
+    println!();
+    println!("World Map Objects (WMOs):");
+    println!("  Total WMOs: {}", adt.wmo_count());
 
-        if !mwmo.filenames.is_empty() {
-            println!("  • Sample WMOs:");
-            for (i, wmo) in mwmo.filenames.iter().take(3).enumerate() {
-                println!("    {}. {}", i + 1, wmo);
-            }
-            if mwmo.filenames.len() > 3 {
-                println!("    ... and {} more", mwmo.filenames.len() - 3);
-            }
+    if !adt.wmos.is_empty() {
+        println!("  Sample WMOs:");
+        for (i, wmo) in adt.wmos.iter().take(3).enumerate() {
+            println!("    {}. {}", i + 1, wmo);
+        }
+        if adt.wmos.len() > 3 {
+            println!("    ... and {} more", adt.wmos.len() - 3);
         }
     }
 
     // Display water information (WotLK+)
-    if let Some(mh2o) = &adt.mh2o {
+    if let Some(mh2o) = &adt.water_data {
         let water_chunks = mh2o
-            .chunks
+            .entries
             .iter()
-            .filter(|chunk| !chunk.instances.is_empty())
+            .filter(|entry| entry.header.has_liquid())
             .count();
 
         if water_chunks > 0 {
             println!();
-            println!("💧 Water Information:");
-            println!("  • Chunks with water: {water_chunks}/256");
+            println!("Water Information:");
+            println!("  Chunks with water: {water_chunks}/256");
 
             // Find first water chunk with details
-            for (i, chunk) in mh2o.chunks.iter().enumerate() {
-                if let Some(instance) = chunk.instances.first() {
-                    println!("  • Sample water chunk {i} details:");
+            for (i, entry) in mh2o.entries.iter().enumerate() {
+                if let Some(instance) = entry.instances.first() {
+                    println!("  Sample water chunk {i} details:");
                     println!("    - Liquid type: {}", instance.liquid_type);
-                    println!("    - Has vertex data: {}", instance.vertex_data.is_some());
-                    match &instance.level_data {
-                        WaterLevelData::Uniform {
-                            min_height,
-                            max_height,
-                        } => {
-                            println!("    - Water level: {min_height:.2} - {max_height:.2}");
-                        }
-                        WaterLevelData::Variable {
-                            min_height,
-                            max_height,
-                            ..
-                        } => {
-                            println!(
-                                "    - Water level: {min_height:.2} - {max_height:.2} (variable)"
-                            );
-                        }
-                    }
+                    println!(
+                        "    - Dimensions: {}x{} tiles",
+                        instance.width, instance.height
+                    );
+                    println!("    - Vertex count: {}", instance.vertex_count());
+                    println!(
+                        "    - Height range: {:.2} - {:.2}",
+                        instance.min_height_level, instance.max_height_level
+                    );
                     break;
                 }
             }
@@ -144,52 +158,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Display flight boundary information (TBC+)
-    if let Some(mfbo) = &adt.mfbo {
+    if let Some(mfbo) = &adt.flight_bounds {
         println!();
-        println!("✈️  Flight Boundaries (36 bytes, 2 planes × 9 values):");
+        println!("Flight Boundaries (36 bytes, 2 planes × 9 values):");
         println!(
-            "  • Min plane first 2 values: ({}, {})",
-            mfbo.min[0], mfbo.min[1]
+            "  Min plane first 2 values: ({}, {})",
+            mfbo.min_plane[0], mfbo.min_plane[1]
         );
         println!(
-            "  • Max plane first 2 values: ({}, {})",
-            mfbo.max[0], mfbo.max[1]
+            "  Max plane first 2 values: ({}, {})",
+            mfbo.max_plane[0], mfbo.max_plane[1]
         );
-        println!("  • Total values per plane: 9 int16 coordinates");
+        println!("  Total values per plane: 9 int16 coordinates");
     }
-
-    // Perform basic validation
-    println!();
-    println!("🔍 Validation:");
-    match adt.validate() {
-        Ok(_) => println!("  ✅ Basic validation passed"),
-        Err(e) => println!("  ❌ Validation failed: {e}"),
-    }
-
-    match adt.validate_with_report(ValidationLevel::Standard) {
-        Ok(_) => println!("  ✅ Standard validation passed"),
-        Err(e) => println!("  ⚠️  Standard validation warnings: {e}"),
-    }
-
-    println!();
-    println!("✨ Parsing completed successfully!");
-
-    Ok(())
 }
 
-fn get_format_description(adt: &Adt) -> &'static str {
-    use wow_adt::AdtVersion;
-
-    match adt.version {
-        AdtVersion::Vanilla => "Classic World of Warcraft (1.x)",
+fn get_format_description(version: AdtVersion) -> &'static str {
+    match version {
+        AdtVersion::VanillaEarly => "Classic World of Warcraft (1.x - Early)",
+        AdtVersion::VanillaLate => "Classic World of Warcraft (1.x - Late)",
         AdtVersion::TBC => "The Burning Crusade (2.x)",
         AdtVersion::WotLK => "Wrath of the Lich King (3.x)",
-        AdtVersion::Cataclysm => "Cataclysm+ (4.x+)",
+        AdtVersion::Cataclysm => "Cataclysm (4.x)",
         AdtVersion::MoP => "Mists of Pandaria (5.x)",
-        AdtVersion::WoD => "Warlords of Draenor (6.x)",
-        AdtVersion::Legion => "Legion (7.x)",
-        AdtVersion::BfA => "Battle for Azeroth (8.x)",
-        AdtVersion::Shadowlands => "Shadowlands (9.x)",
-        AdtVersion::Dragonflight => "Dragonflight (10.x)",
     }
 }

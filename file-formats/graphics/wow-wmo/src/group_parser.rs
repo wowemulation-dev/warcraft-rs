@@ -200,7 +200,8 @@ pub fn parse_group_file<R: Read + Seek>(
 
                 // MOGP contains sub-chunks - we need to parse them
                 // The remaining chunk data contains nested chunks
-                let data_size = chunk_info.size - std::mem::size_of::<MogpHeader>() as u32;
+                // MogpHeader is 68 bytes when serialized (not std::mem::size_of due to Vec fields)
+                let data_size = chunk_info.size - 68;
                 let mut data_reader = std::io::Cursor::new(read_chunk_data(reader, data_size)?);
 
                 // Parse nested chunks within MOGP

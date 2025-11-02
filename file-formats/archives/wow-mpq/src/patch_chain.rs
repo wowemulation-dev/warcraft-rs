@@ -14,6 +14,18 @@ use std::path::{Path, PathBuf};
 /// archives override those in lower-priority ones. This mimics how World of Warcraft
 /// handles its patch system, where patch-N.MPQ files override files in the base archives.
 ///
+/// # Patch File Support
+///
+/// Starting with Cataclysm (4.x), WoW introduced binary patch files (PTCH format) that
+/// contain binary diffs instead of complete files. `PatchChain` automatically detects
+/// and applies these patches:
+///
+/// - Files with the `MPQ_FILE_PATCH_FILE` flag are automatically recognized
+/// - Base file is located in lower-priority archives
+/// - Patches are applied in order (lowest to highest priority)
+/// - Both COPY (replacement) and BSD0 (binary diff) patches are supported
+/// - MD5 verification ensures patch integrity
+///
 /// # Examples
 ///
 /// ```no_run
@@ -31,6 +43,7 @@ use std::path::{Path, PathBuf};
 /// chain.add_archive("Data/patch-3.MPQ", 300)?;
 ///
 /// // Extract file - will use the highest priority version available
+/// // If the file exists as a PTCH patch file, it will be automatically applied
 /// let data = chain.read_file("Interface/Icons/INV_Misc_QuestionMark.blp")?;
 /// # Ok(())
 /// # }
@@ -127,16 +140,126 @@ impl PatchChain {
     /// Read a file from the chain
     ///
     /// Returns the file from the highest-priority archive that contains it.
+    /// If the file is a patch file, this method will automatically:
+    /// 1. Find the base file in lower-priority archives
+    /// 2. Apply all patches in priority order
+    /// 3. Return the fully patched result
     pub fn read_file(&mut self, filename: &str) -> Result<Vec<u8>> {
         // Normalize filename and convert to uppercase for case-insensitive lookup
         // This matches MPQ hashing behavior which is always case-insensitive
         let lookup_key = crate::path::normalize_mpq_path(filename).to_uppercase();
 
         if let Some(&archive_idx) = self.file_map.get(&lookup_key) {
-            self.archives[archive_idx].archive.read_file(filename)
+            // Check if this is a patch file by examining the file info
+            let file_info = self.archives[archive_idx]
+                .archive
+                .find_file(filename)?
+                .ok_or_else(|| Error::FileNotFound(filename.to_string()))?;
+
+            if file_info.is_patch_file() {
+                // This is a patch file - need to find base and apply patches
+                self.read_patched_file(filename, archive_idx)
+            } else {
+                // Regular file - read normally
+                self.archives[archive_idx].archive.read_file(filename)
+            }
         } else {
             Err(Error::FileNotFound(filename.to_string()))
         }
+    }
+
+    /// Read a patch file and apply it to the base file
+    ///
+    /// This method handles the patch chain resolution:
+    /// 1. Find the base file (non-patch version) in lower-priority archives
+    /// 2. Read all patches for this file in priority order
+    /// 3. Apply patches sequentially to produce the final result
+    fn read_patched_file(&mut self, filename: &str, _patch_idx: usize) -> Result<Vec<u8>> {
+        use crate::patch::{PatchFile, apply_patch};
+
+        // Step 1: Find the base file (search lower priority archives)
+        let mut base_data: Option<Vec<u8>> = None;
+        let mut patches = Vec::new();
+
+        // Collect all versions of this file in priority order (highest first)
+        for (idx, entry) in self.archives.iter_mut().enumerate() {
+            if let Ok(Some(file_info)) = entry.archive.find_file(filename) {
+                if file_info.is_patch_file() {
+                    // This is a patch - read it raw (bypass the read_file check)
+                    match entry.archive.read_patch_file_raw(filename) {
+                        Ok(patch_data) => {
+                            // Parse the patch
+                            match PatchFile::parse(&patch_data) {
+                                Ok(patch) => patches.push((idx, patch)),
+                                Err(e) => {
+                                    log::warn!(
+                                        "Failed to parse patch file '{}' in archive {} (priority {}): {}",
+                                        filename,
+                                        entry.path.display(),
+                                        entry.priority,
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            log::warn!(
+                                "Failed to read patch file '{}' in archive {} (priority {}): {}",
+                                filename,
+                                entry.path.display(),
+                                entry.priority,
+                                e
+                            );
+                        }
+                    }
+                } else if base_data.is_none() {
+                    // This is a regular file - use as base if we haven't found one yet
+                    match entry.archive.read_file(filename) {
+                        Ok(data) => {
+                            log::debug!(
+                                "Found base file '{}' in archive {} (priority {})",
+                                filename,
+                                entry.path.display(),
+                                entry.priority
+                            );
+                            base_data = Some(data);
+                        }
+                        Err(e) => {
+                            log::warn!(
+                                "Failed to read base file '{}' in archive {} (priority {}): {}",
+                                filename,
+                                entry.path.display(),
+                                entry.priority,
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 2: Verify we have a base file
+        let mut current_data = base_data.ok_or_else(|| {
+            Error::FileNotFound(format!(
+                "No base file found for patch file '{filename}' in patch chain"
+            ))
+        })?;
+
+        // Step 3: Apply patches in reverse priority order (lowest to highest)
+        // This ensures patches are applied in the correct sequence
+        patches.reverse();
+        for (idx, patch) in patches {
+            log::debug!(
+                "Applying patch '{}' from archive {} (priority {})",
+                filename,
+                self.archives[idx].path.display(),
+                self.archives[idx].priority
+            );
+
+            current_data = apply_patch(&patch, &current_data)?;
+        }
+
+        Ok(current_data)
     }
 
     /// Check if a file exists in the chain
@@ -149,9 +272,9 @@ impl PatchChain {
     ///
     /// Returns the path to the archive containing the file, or None if not found.
     pub fn find_file_archive(&self, filename: &str) -> Option<&Path> {
-        let normalized_filename = crate::path::normalize_mpq_path(filename);
+        let lookup_key = crate::path::normalize_mpq_path(filename).to_uppercase();
         self.file_map
-            .get(&normalized_filename)
+            .get(&lookup_key)
             .map(|&idx| self.archives[idx].path.as_path())
     }
 

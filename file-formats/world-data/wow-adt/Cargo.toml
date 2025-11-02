@@ -1,6 +1,6 @@
 [package]
 name = "wow-adt"
-version = "0.5.0"
+version = "0.6.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -14,6 +14,7 @@ keywords = ["wow", "warcraft", "adt", "terrain", "gamedev"]
 categories = ["game-development", "parser-implementations"]
 
 [dependencies]
+binrw = "0.14"
 thiserror = { workspace = true }
 log = "0.4"
 image = { version = "0.25", optional = true }
@@ -24,6 +25,7 @@ memmap2 = { version = "0.9", optional = true }
 criterion = "0.6"
 tempfile = "3.20"
 pretty_assertions = "1.4"
+wow-mpq = { path = "../../archives/wow-mpq" }
 
 [features]
 default = []
@@ -33,5 +35,9 @@ mmap = ["dep:memmap2"]
 image = ["dep:image"]
 
 [[bench]]
-name = "parser_benchmark"
+name = "discovery"
+harness = false
+
+[[bench]]
+name = "parsing"
 harness = false

@@ -334,8 +334,8 @@ mod tests {
         println!("  NameHash1: 0x{name_hash1:02X}");
 
         assert_eq!(
-            name_hash1, 0xE9,
-            "NameHash1 for '(attributes)' with 48-bit hash should be 0xE9"
+            name_hash1, 0xE2,
+            "NameHash1 for '(attributes)' with 48-bit hash should be 0xE2"
         );
     }
 

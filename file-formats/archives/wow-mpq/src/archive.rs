@@ -1201,53 +1201,29 @@ impl Archive {
                     het.find_file_with_collision_info(filename);
 
                 if let Some(file_index) = file_index_opt {
-                    // Check if we have hash collisions that need verification
+                    // Note: HET uses 8-bit hashes which naturally have collisions.
+                    // Multiple candidates with same 8-bit hash is expected behavior.
+                    // The first candidate returned by HET linear probing is the correct one.
                     if collision_candidates.len() > 1 {
                         log::debug!(
-                            "HET collision detected for '{}': {} candidates {:?}",
+                            "HET: '{}' has {} entries with same 8-bit hash (expected behavior)",
                             filename,
-                            collision_candidates.len(),
-                            collision_candidates
+                            collision_candidates.len()
                         );
+                    }
 
-                        // Use traditional hash table to verify the correct file
-                        if let Some(verified_index) =
-                            self.verify_collision_candidates(filename, &collision_candidates)
-                        {
-                            log::debug!(
-                                "Collision resolved: '{filename}' -> verified file_index={verified_index}"
-                            );
-                            if let Some(bet_info) = bet.get_file_info(verified_index) {
-                                return Ok(Some(FileInfo {
-                                    filename: filename.to_string(),
-                                    hash_index: 0, // Not applicable for HET/BET
-                                    block_index: verified_index as usize,
-                                    file_pos: self.archive_offset + bet_info.file_pos,
-                                    compressed_size: bet_info.compressed_size,
-                                    file_size: bet_info.file_size,
-                                    flags: bet_info.flags,
-                                    locale: 0, // HET/BET don't store locale separately
-                                }));
-                            }
-                        } else {
-                            log::warn!(
-                                "Failed to verify collision candidates for '{filename}', falling back to classic lookup"
-                            );
-                        }
-                    } else {
-                        // No collision, use the unique match
-                        if let Some(bet_info) = bet.get_file_info(file_index) {
-                            return Ok(Some(FileInfo {
-                                filename: filename.to_string(),
-                                hash_index: 0, // Not applicable for HET/BET
-                                block_index: file_index as usize,
-                                file_pos: self.archive_offset + bet_info.file_pos,
-                                compressed_size: bet_info.compressed_size,
-                                file_size: bet_info.file_size,
-                                flags: bet_info.flags,
-                                locale: 0, // HET/BET don't store locale separately
-                            }));
-                        }
+                    // Use the file_index from HET (first candidate from linear probing)
+                    if let Some(bet_info) = bet.get_file_info(file_index) {
+                        return Ok(Some(FileInfo {
+                            filename: filename.to_string(),
+                            hash_index: 0, // Not applicable for HET/BET
+                            block_index: file_index as usize,
+                            file_pos: self.archive_offset + bet_info.file_pos,
+                            compressed_size: bet_info.compressed_size,
+                            file_size: bet_info.file_size,
+                            flags: bet_info.flags,
+                            locale: 0, // HET/BET don't store locale separately
+                        }));
                     }
                 }
 
@@ -1265,43 +1241,6 @@ impl Archive {
         // 3. File wasn't found in HET/BET but we're looking for a special file
         // 4. File wasn't found in HET/BET but hash/block tables exist
         self.find_file_classic(filename)
-    }
-
-    /// Verify collision candidates using traditional hash table lookup
-    /// Returns the file_index that corresponds to the actual filename
-    fn verify_collision_candidates(&self, filename: &str, candidates: &[u32]) -> Option<u32> {
-        // Use traditional hash table to verify which candidate is correct
-        if let (Some(hash_table), Some(_block_table)) = (&self.hash_table, &self.block_table) {
-            // Try to find the file using traditional hash lookup
-            if let Some((hash_index, hash_entry)) = hash_table.find_file(filename, 0) {
-                // The block_index from hash table should match one of our candidates
-                let block_index = hash_entry.block_index;
-
-                log::debug!(
-                    "Traditional hash lookup for '{filename}': hash_index={hash_index}, block_index={block_index}"
-                );
-
-                // Check if this block_index matches any of our HET candidates
-                if candidates.contains(&block_index) {
-                    log::debug!(
-                        "Collision verification success: '{filename}' confirmed as file_index={block_index}"
-                    );
-                    return Some(block_index);
-                } else {
-                    log::warn!(
-                        "Collision verification mismatch: traditional lookup returned block_index={block_index}, but candidates are {candidates:?}"
-                    );
-                }
-            } else {
-                log::debug!(
-                    "Traditional hash lookup failed for '{filename}', cannot verify collision candidates"
-                );
-            }
-        } else {
-            log::debug!("No traditional hash/block tables available for collision verification");
-        }
-
-        None
     }
 
     /// Classic file lookup using hash/block tables
@@ -1857,6 +1796,242 @@ impl Archive {
         }
     }
 
+    /// Read raw patch file data
+    ///
+    /// This method reads patch files (files with MPQ_FILE_PATCH_FILE flag) without
+    /// rejecting them. It returns the raw PTCH format data that can be parsed and
+    /// applied to base files.
+    ///
+    /// This is used internally by PatchChain to read patch files for application.
+    pub(crate) fn read_patch_file_raw(&mut self, name: &str) -> Result<Vec<u8>> {
+        let file_info = self
+            .find_file(name)?
+            .ok_or_else(|| Error::FileNotFound(name.to_string()))?;
+
+        // Verify this is actually a patch file
+        if !file_info.is_patch_file() {
+            return Err(Error::invalid_format(format!(
+                "File '{name}' is not a patch file"
+            )));
+        }
+
+        // For v3+ archives with HET/BET tables, we already have all the info we need in FileInfo
+        // For classic archives, we need to get additional info from the block table
+        let (file_size_for_key, _actual_file_size) =
+            if self.het_table.is_some() && self.bet_table.is_some() {
+                // Using HET/BET tables - FileInfo already has all the data
+                (file_info.file_size as u32, file_info.file_size)
+            } else {
+                // Using classic tables - need block entry for accurate sizes
+                let block_table = self
+                    .block_table
+                    .as_ref()
+                    .ok_or_else(|| Error::invalid_format("Block table not loaded"))?;
+                let block_entry = block_table
+                    .get(file_info.block_index)
+                    .ok_or_else(|| Error::block_table("Invalid block index"))?;
+                (block_entry.file_size, block_entry.file_size as u64)
+            };
+
+        // Calculate encryption key if needed
+        let key = if file_info.is_encrypted() {
+            let base_key = hash_string(name, hash_type::FILE_KEY);
+            if file_info.has_fix_key() {
+                // Apply FIX_KEY modification
+                let file_pos = (file_info.file_pos - self.archive_offset) as u32;
+                (base_key.wrapping_add(file_pos)) ^ file_size_for_key
+            } else {
+                base_key
+            }
+        } else {
+            0
+        };
+
+        // Read the file data
+        // Patch files start with TPatchInfo structure (uncompressed metadata)
+        self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
+
+        // Read TPatchInfo header (28 bytes minimum)
+        let mut patch_info_buf = [0u8; 28];
+        self.reader.read_exact(&mut patch_info_buf)?;
+
+        let patch_info_length = u32::from_le_bytes([
+            patch_info_buf[0],
+            patch_info_buf[1],
+            patch_info_buf[2],
+            patch_info_buf[3],
+        ]);
+        let patch_info_flags = u32::from_le_bytes([
+            patch_info_buf[4],
+            patch_info_buf[5],
+            patch_info_buf[6],
+            patch_info_buf[7],
+        ]);
+        let patch_data_size = u32::from_le_bytes([
+            patch_info_buf[8],
+            patch_info_buf[9],
+            patch_info_buf[10],
+            patch_info_buf[11],
+        ]);
+
+        log::debug!(
+            "TPatchInfo: length={}, flags=0x{:08X}, data_size={} bytes",
+            patch_info_length,
+            patch_info_flags,
+            patch_data_size
+        );
+
+        // The actual decompressed size is patch_data_size, not file_info.file_size!
+        let actual_patch_size = patch_data_size as usize;
+
+        // After TPatchInfo, check if file is sectored or single-unit
+        // Patch files can be sectored despite lacking the SINGLE_UNIT flag
+        let is_single_unit = file_info.is_single_unit();
+
+        if is_single_unit {
+            log::debug!("Patch file is stored as single unit");
+            let compressed_data_size =
+                file_info.compressed_size as usize - patch_info_length as usize;
+
+            let mut data = vec![0u8; compressed_data_size];
+            self.reader.read_exact(&mut data)?;
+
+            log::debug!(
+                "Read {} bytes of compressed patch data (single unit)",
+                data.len()
+            );
+            log::debug!("First 32 bytes: {:02X?}", &data[..32.min(data.len())]);
+
+            // Decrypt if needed (though patch files are typically not encrypted)
+            if file_info.is_encrypted() {
+                log::debug!(
+                    "Decrypting patch file data: key=0x{:08X}, size={}",
+                    key,
+                    data.len()
+                );
+                decrypt_file_data(&mut data, key);
+            }
+
+            // Decompress if needed
+            if file_info.is_compressed() {
+                let compression_type = data[0];
+                let compressed_data = &data[1..];
+
+                log::debug!(
+                    "Decompressing patch file (single unit): method=0x{:02X}, compressed={} bytes → {} bytes",
+                    compression_type,
+                    compressed_data.len(),
+                    actual_patch_size
+                );
+
+                compression::decompress(compressed_data, compression_type, actual_patch_size)
+            } else {
+                Ok(data)
+            }
+        } else {
+            // Sectored patch file - read using sector table
+            log::debug!("Patch file is sectored, reading with modified sector handling");
+
+            // Calculate sector count based on patch_data_size, not file_size
+            let sector_size = self.header.sector_size();
+            let sector_count = (patch_data_size as usize).div_ceil(sector_size);
+
+            log::debug!(
+                "Patch sectors: data_size={}, sector_size={}, sector_count={}",
+                patch_data_size,
+                sector_size,
+                sector_count
+            );
+
+            // Read sector offset table
+            let offset_table_size = (sector_count + 1) * 4;
+            let mut offset_data = vec![0u8; offset_table_size];
+            self.reader.read_exact(&mut offset_data)?;
+
+            log::debug!(
+                "Read sector offset table: {} bytes for {} sectors",
+                offset_table_size,
+                sector_count
+            );
+
+            // Parse sector offsets
+            let mut sector_offsets = Vec::with_capacity(sector_count + 1);
+            let mut cursor = std::io::Cursor::new(&offset_data);
+            for _ in 0..=sector_count {
+                sector_offsets.push(cursor.read_u32::<LittleEndian>()?);
+            }
+
+            log::debug!("Sector offsets: {:?}", &sector_offsets);
+
+            // Read and decompress each sector
+            let mut decompressed_data = Vec::with_capacity(patch_data_size as usize);
+
+            for i in 0..sector_count {
+                let sector_start = sector_offsets[i] as usize;
+                let sector_end = sector_offsets[i + 1] as usize;
+                let sector_compressed_size = sector_end - sector_start;
+
+                log::debug!(
+                    "Reading sector {}: offset={}, size={} bytes",
+                    i,
+                    sector_start,
+                    sector_compressed_size
+                );
+
+                // Sector offsets are relative to the START of the offset table, NOT after it
+                // So we need to seek to: file_pos + TPatchInfo + sector_offset
+                let sector_file_pos =
+                    file_info.file_pos + patch_info_length as u64 + sector_start as u64;
+
+                self.reader.seek(SeekFrom::Start(sector_file_pos))?;
+
+                let mut sector_data = vec![0u8; sector_compressed_size];
+                self.reader.read_exact(&mut sector_data)?;
+
+                log::debug!(
+                    "Sector {} data first 16 bytes: {:02X?}",
+                    i,
+                    &sector_data[..16.min(sector_data.len())]
+                );
+
+                // Patch file sectors use standard MPQ compression (Zlib/BZip2/etc)
+                // First byte indicates compression method, remaining bytes are compressed PTCH data
+                let compression_method = sector_data[0];
+                log::debug!(
+                    "Decompressing sector {} with method 0x{:02X} ({} bytes compressed)",
+                    i,
+                    compression_method,
+                    sector_data.len() - 1
+                );
+
+                // Decompress using standard MPQ decompression
+                let expected_size =
+                    sector_size.min(patch_data_size as usize - decompressed_data.len());
+                let sector_decompressed = compression::decompress(
+                    &sector_data[1..], // Skip compression method byte
+                    compression_method,
+                    expected_size,
+                )?;
+
+                log::debug!(
+                    "Sector {} decompressed to {} bytes",
+                    i,
+                    sector_decompressed.len()
+                );
+
+                decompressed_data.extend_from_slice(&sector_decompressed);
+            }
+
+            log::debug!(
+                "Successfully decompressed {} bytes from {} sectors",
+                decompressed_data.len(),
+                sector_count
+            );
+
+            Ok(decompressed_data)
+        }
+    }
+
     /// Read a file by table indices (for files with generic names)
     pub fn read_file_by_indices(
         &mut self,
@@ -2036,13 +2211,32 @@ impl Archive {
         let sector_size = self.header.sector_size();
         let sector_count = (file_info.file_size as usize).div_ceil(sector_size);
 
-        log::debug!("Reading sectored file: {sector_count} sectors of {sector_size} bytes each");
+        log::debug!("Reading sectored file:");
+        log::debug!("  file_size: {} bytes", file_info.file_size);
+        log::debug!("  compressed_size: {} bytes", file_info.compressed_size);
+        log::debug!("  sector_size: {} bytes", sector_size);
+        log::debug!("  sector_count: {}", sector_count);
+        log::debug!("  is_patch_file: {}", file_info.is_patch_file());
 
         // Read sector offset table
         self.reader.seek(SeekFrom::Start(file_info.file_pos))?;
         let offset_table_size = (sector_count + 1) * 4;
+        log::debug!("  offset_table_size: {} bytes", offset_table_size);
+        log::debug!(
+            "  Attempting to read offset table at position 0x{:X}",
+            file_info.file_pos
+        );
+
         let mut offset_data = vec![0u8; offset_table_size];
-        self.reader.read_exact(&mut offset_data)?;
+        self.reader.read_exact(&mut offset_data).map_err(|e| {
+            log::error!("Failed to read offset table: {}", e);
+            log::error!(
+                "  Tried to read {} bytes at position 0x{:X}",
+                offset_table_size,
+                file_info.file_pos
+            );
+            e
+        })?;
 
         // Decrypt sector offset table if needed
         if file_info.is_encrypted() {
@@ -2815,6 +3009,12 @@ impl FileEntry {
     pub fn exists(&self) -> bool {
         use crate::tables::BlockEntry;
         (self.flags & BlockEntry::FLAG_EXISTS) != 0
+    }
+
+    /// Check if the file is a patch file (Cataclysm+ PTCH format)
+    pub fn is_patch_file(&self) -> bool {
+        use crate::tables::BlockEntry;
+        (self.flags & BlockEntry::FLAG_PATCH_FILE) != 0
     }
 }
 

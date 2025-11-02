@@ -30,6 +30,19 @@ cargo run --example <example_name> [arguments]
   cargo run --example version_info
   ```
 
+- **`selective_parsing.rs`** - Two-pass parsing with selective chunk extraction
+
+  ```bash
+  cargo run --example selective_parsing path/to/map_x_y.adt
+  ```
+
+- **`load_split_adt.rs`** - Load and merge Cataclysm+ split ADT files
+
+  ```bash
+  cargo run --example load_split_adt path/to/map_x_y.adt
+  cargo run --example load_split_adt path/to/map_x_y.adt --verbose
+  ```
+
 ### Planned Examples
 
 - **`extract_heightmap.rs`** - Extract terrain height data

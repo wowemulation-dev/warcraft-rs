@@ -37,8 +37,8 @@ comprehensive support for all format versions and features.
   PKWare, Huffman
 - **Full Cryptography** - File encryption/decryption, signature verification
   and generation
-- **Patch Chain Support** - Complete World of Warcraft patch archive
-  management
+- **Patch Chain Support** - Complete World of Warcraft patch archive management
+- **Binary Patch Files** - PTCH format support with COPY and BSD0 (bsdiff40) patch types
 - **Advanced Tables** - HET/BET tables for v3+ archives with optimal
   compression
 - **StormLib Compatibility** - 100% bidirectional compatibility with the
@@ -105,8 +105,7 @@ mutable.flush()?; // Save all changes
 
 ### Patch Chain Support
 
-Handle World of Warcraft's patch archive system with automatic priority-based file
-resolution:
+Handle World of Warcraft's patch archive system with automatic priority-based file resolution and binary patch application (PTCH format):
 
 ```rust
 use wow_mpq::PatchChain;
@@ -117,7 +116,46 @@ chain.add_archive("Data/patch.MPQ", 100)?;     // Patch priority
 chain.add_archive("Data/patch-2.MPQ", 200)?;  // Higher priority
 
 // Automatically gets the highest priority version
+// If patch archives contain PTCH files, they are automatically applied
 let data = chain.read_file("DBFilesClient\\Spell.dbc")?;
+```
+
+**Patch File Support (Cataclysm+)**
+
+Starting with Cataclysm (4.x), WoW introduced binary patch files (PTCH format) in update archives. These files cannot be extracted directly - they must be applied to base files. This crate handles patch files automatically:
+
+- **COPY Patches** - Simple file replacement
+- **BSD0 Patches** - Binary diff using bsdiff40 algorithm
+- **Automatic Application** - PatchChain detects and applies patches transparently
+- **MD5 Verification** - Validates patch integrity before and after application
+
+```rust
+// Example: Cataclysm terrain file with patches
+let mut chain = PatchChain::new();
+chain.add_archive("World/Maps/Azeroth/Azeroth.MPQ", 0)?;
+chain.add_archive("World/Maps/Azeroth/Azeroth_1.MPQ", 100)?;
+chain.add_archive("World/Maps/Azeroth/Azeroth_2.MPQ", 200)?;
+
+// If Azeroth_30_30.adt exists as a patch file in updates,
+// it will be automatically applied to the base file
+let adt_data = chain.read_file("World\\Maps\\Azeroth\\Azeroth_30_30.adt")?;
+```
+
+**CLI Usage**
+
+The `mpq extract` command supports patch chains via the `--patch` flag:
+
+```bash
+# Extract files with patch chain
+mpq extract common.MPQ --output extracted/ \
+  --patch common-patch-1.MPQ \
+  --patch common-patch-2.MPQ
+
+# Extract specific file from Cataclysm with patches
+mpq extract World.MPQ --output terrain/ \
+  --patch World-update-1.MPQ \
+  --patch World-update-2.MPQ \
+  World/Maps/Azeroth/Azeroth_30_30.adt
 ```
 
 ### Archive Rebuilding

@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **PTCH Patch File Support** - Complete binary patch file implementation for Cataclysm+
+  - COPY patches for simple file replacement
+  - BSD0 patches using bsdiff40 algorithm for binary diffs
+  - Automatic patch detection and application in PatchChain
+  - MD5 verification for patch integrity validation
+  - New `patch` module with `PatchFile`, `PatchHeader`, and `apply_patch` APIs
+- **RLE Compression Algorithm** - Run-length encoding support for compressed files
+  - Added `rle.rs` implementation in compression algorithms
+  - Integration with existing compression pipeline
+- **Patch Chain Enhancements** - Improved automatic patch handling
+  - Transparent patch application when reading files through PatchChain
+  - Detection of patch files via PTCH header signature
+  - Fallback to direct file reading for non-patch files
+- **Test Coverage** - New test programs for patch functionality
+  - `check_patch_flags` - Verify patch file flags and attributes
+  - `test_patch_chain` - Test patch chain loading and file resolution
+  - `test_patch_chain_cata` - Cataclysm-specific patch chain testing
+  - `test_read_patch` - Direct patch file parsing tests
+  - Integration tests for patch chain functionality
+
+### Changed
+
+- **Archive API** - Enhanced Archive struct with better patch file handling
+  - Improved error messages for patch file detection
+  - Better handling of PATCH flag in file attributes
+- **PatchChain** - Refactored for automatic patch application
+  - Now automatically applies PTCH patches during file reads
+  - Simplified API with transparent patch handling
+  - Enhanced priority-based file resolution with patch support
+
+### Fixed
+
+- **Compression Module** - Minor fixes in compression algorithm selection
+- **Documentation** - Updated README with comprehensive patch file documentation
+  - Added PTCH format explanation and usage examples
+  - Documented automatic patch application in PatchChain
+  - Added CLI usage examples for patch chains
+
 ## [0.3.0] - 2025-08-07
 
 ### Changed

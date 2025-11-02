@@ -133,6 +133,7 @@ pub mod header;
 pub mod io;
 pub mod modification;
 pub mod parallel;
+pub mod patch;
 pub mod patch_chain;
 pub mod path;
 pub mod rebuild;

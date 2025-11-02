@@ -43,10 +43,13 @@ impl From<VersionArg> for FormatVersion {
 
 #[derive(Subcommand)]
 pub enum MpqCommands {
-    /// Show information about an MPQ archive
+    /// Show information about an MPQ archive or specific file
     Info {
         /// Path to the MPQ archive
         archive: String,
+
+        /// Optional file to show detailed information for
+        file: Option<String>,
 
         /// Show hash table details
         #[arg(long)]
@@ -91,6 +94,10 @@ pub enum MpqCommands {
         /// Automatically record found filenames to database
         #[arg(long)]
         record_to_db: bool,
+
+        /// Show only files with patch flag (Cataclysm+ PTCH files)
+        #[arg(long)]
+        show_patches: bool,
     },
 
     /// Extract files from an MPQ archive
@@ -286,6 +293,20 @@ pub enum MpqCommands {
         all: bool,
     },
 
+    /// Visualize patch chain information
+    PatchChain {
+        /// Base MPQ archive
+        base: String,
+
+        /// Patch archives to include (in priority order)
+        #[arg(long = "patch", action = clap::ArgAction::Append)]
+        patches: Vec<String>,
+
+        /// Show detailed file-level information
+        #[arg(short, long)]
+        detailed: bool,
+    },
+
     /// Database operations for MPQ hash resolution
     #[command(subcommand)]
     Db(DbCommands),
@@ -374,7 +395,8 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             filter,
             use_db,
             record_to_db,
-        } => list_archive(&archive, long, filter, use_db, record_to_db),
+            show_patches,
+        } => list_archive(&archive, long, filter, use_db, record_to_db, show_patches),
         MpqCommands::Extract {
             archive,
             output,
@@ -403,9 +425,10 @@ pub fn execute(command: MpqCommands) -> Result<()> {
         } => create_archive(&archive, add, &version, &compression, with_listfile),
         MpqCommands::Info {
             archive,
+            file,
             show_hash_table,
             show_block_table,
-        } => show_info(&archive, show_hash_table, show_block_table),
+        } => show_info(&archive, file.as_deref(), show_hash_table, show_block_table),
         MpqCommands::Validate {
             archive,
             check_checksums,
@@ -488,6 +511,11 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             find_file: find,
             raw_dump: raw,
         }),
+        MpqCommands::PatchChain {
+            base,
+            patches,
+            detailed,
+        } => visualize_patch_chain(&base, patches, detailed),
         MpqCommands::Db(db_command) => execute_db_command(db_command),
     }
 }
@@ -498,6 +526,7 @@ fn list_archive(
     filter: Option<String>,
     use_db: bool,
     record_to_db: bool,
+    show_patches: bool,
 ) -> Result<()> {
     use wow_mpq::database::Database;
 
@@ -523,18 +552,25 @@ fn list_archive(
     }
 
     // Get file list
-    let files: Vec<String> = if use_db {
+    let entries = if use_db {
         if let Some(ref db) = db {
-            archive
-                .list_with_db(db)?
-                .into_iter()
-                .map(|e| e.name)
-                .collect()
+            archive.list_with_db(db)?
         } else {
-            archive.list()?.into_iter().map(|e| e.name).collect()
+            archive.list()?
         }
     } else {
-        archive.list()?.into_iter().map(|e| e.name).collect()
+        archive.list()?
+    };
+
+    // Filter for patch files if requested
+    let files: Vec<String> = if show_patches {
+        entries
+            .into_iter()
+            .filter(|e| e.is_patch_file())
+            .map(|e| e.name)
+            .collect()
+    } else {
+        entries.into_iter().map(|e| e.name).collect()
     };
 
     let pattern = filter.as_deref().unwrap_or("*");
@@ -763,6 +799,13 @@ fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
             format!("Extraction complete: {success_count} files")
         };
         pb.finish_with_message(msg);
+
+        // Return error if skip_errors is false and some files failed
+        if !skip_errors && error_count > 0 {
+            anyhow::bail!(
+                "Failed to extract {error_count} file(s). Use --skip-errors to ignore extraction failures."
+            );
+        }
     } else {
         // Use patch chain logic
         let spinner = create_spinner("Building patch chain...");
@@ -795,6 +838,9 @@ fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
 
         let pb = create_progress_bar(files_to_extract.len() as u64, "Extracting files");
 
+        let mut success_count = 0;
+        let mut error_count = 0;
+
         for file in files_to_extract.iter() {
             pb.set_message(format!("Extracting: {file}"));
 
@@ -816,6 +862,7 @@ fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
                     }
 
                     fs::write(&output_path, data)?;
+                    success_count += 1;
 
                     // Show which archive the file came from
                     if let Some(source) = chain.find_file_archive(file) {
@@ -824,13 +871,19 @@ fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
                 }
                 Err(e) => {
                     log::warn!("Failed to extract {file}: {e}");
+                    error_count += 1;
                 }
             }
 
             pb.inc(1);
         }
 
-        pb.finish_with_message("Extraction complete");
+        let msg = if error_count > 0 {
+            format!("Extraction complete: {success_count} succeeded, {error_count} failed")
+        } else {
+            format!("Extraction complete: {success_count} files")
+        };
+        pb.finish_with_message(msg);
 
         // Show patch chain info
         println!("\nPatch chain info:");
@@ -840,6 +893,13 @@ fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
                 info.path.display(),
                 info.priority,
                 info.file_count
+            );
+        }
+
+        // Return error if skip_errors is false and some files failed
+        if !skip_errors && error_count > 0 {
+            anyhow::bail!(
+                "Failed to extract {error_count} file(s) from patch chain. Use --skip-errors to ignore extraction failures."
             );
         }
     }
@@ -902,11 +962,23 @@ fn create_archive(
     Ok(())
 }
 
-fn show_info(path: &str, include_hash_table: bool, include_block_table: bool) -> Result<()> {
+fn show_info(
+    path: &str,
+    file: Option<&str>,
+    include_hash_table: bool,
+    include_block_table: bool,
+) -> Result<()> {
     let spinner = create_spinner("Opening archive...");
     let mut archive = Archive::open(path).context("Failed to open archive")?;
     spinner.finish_and_clear();
 
+    // If a specific file is requested, show file-specific information
+    if let Some(filename) = file {
+        show_file_info(&mut archive, filename)?;
+        return Ok(());
+    }
+
+    // Otherwise show archive-level information
     let info = archive.get_info()?;
 
     println!("MPQ Archive Information");
@@ -924,6 +996,70 @@ fn show_info(path: &str, include_hash_table: bool, include_block_table: bool) ->
     if include_block_table {
         println!();
         show_block_table(&mut archive, false)?;
+    }
+
+    Ok(())
+}
+
+fn show_file_info(archive: &mut Archive, filename: &str) -> Result<()> {
+    // Flag constants from BlockEntry
+    const FLAG_IMPLODE: u32 = 0x00000100;
+    const FLAG_COMPRESS: u32 = 0x00000200;
+    const FLAG_ENCRYPTED: u32 = 0x00010000;
+    const FLAG_FIX_KEY: u32 = 0x00020000;
+    const FLAG_PATCH_FILE: u32 = 0x00100000;
+    const FLAG_SINGLE_UNIT: u32 = 0x01000000;
+    const FLAG_DELETE_MARKER: u32 = 0x02000000;
+    const FLAG_SECTOR_CRC: u32 = 0x04000000;
+    const FLAG_EXISTS: u32 = 0x80000000;
+
+    let file_info = archive
+        .find_file(filename)?
+        .ok_or_else(|| anyhow::anyhow!("File not found: {filename}"))?;
+
+    println!("File Information");
+    println!("================");
+    println!("Filename: {filename}");
+    println!("File size: {}", format_bytes(file_info.file_size));
+    println!(
+        "Compressed size: {}",
+        format_bytes(file_info.compressed_size)
+    );
+    println!(
+        "Compression ratio: {}",
+        format_compression_ratio(file_info.file_size, file_info.compressed_size)
+    );
+    println!("File position: 0x{:X}", file_info.file_pos);
+    println!("Flags: 0x{:08X}", file_info.flags);
+
+    // Decode flags
+    println!("\nFlag Details:");
+    if file_info.flags & FLAG_IMPLODE != 0 {
+        println!("  - Compressed (PKWARE DCL)");
+    }
+    if file_info.flags & FLAG_COMPRESS != 0 {
+        println!("  - Compressed");
+    }
+    if file_info.flags & FLAG_ENCRYPTED != 0 {
+        println!("  - Encrypted");
+    }
+    if file_info.flags & FLAG_FIX_KEY != 0 {
+        println!("  - Fix Key");
+    }
+    if file_info.flags & FLAG_PATCH_FILE != 0 {
+        println!("  - ⚠️  PATCH FILE (binary patch, cannot be extracted directly)");
+    }
+    if file_info.flags & FLAG_SINGLE_UNIT != 0 {
+        println!("  - Single Unit");
+    }
+    if file_info.flags & FLAG_DELETE_MARKER != 0 {
+        println!("  - Delete Marker");
+    }
+    if file_info.flags & FLAG_SECTOR_CRC != 0 {
+        println!("  - Sector CRC");
+    }
+    if file_info.flags & FLAG_EXISTS != 0 {
+        println!("  - Exists");
     }
 
     Ok(())
@@ -2171,4 +2307,88 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn visualize_patch_chain(base: &str, patches: Vec<String>, detailed: bool) -> Result<()> {
+    println!("Building patch chain...");
+
+    let mut chain = PatchChain::new();
+
+    // Add base archive with priority 0
+    chain
+        .add_archive(base, 0)
+        .context("Failed to add base archive")?;
+    println!("  [0] {} (base)", base);
+
+    // Add patch archives with increasing priority
+    for (index, patch_path) in patches.iter().enumerate() {
+        let priority = (index + 1) * 100;
+        chain
+            .add_archive(patch_path, priority as i32)
+            .with_context(|| format!("Failed to add patch archive: {patch_path}"))?;
+        println!("  [{}] {} (priority: {})", index + 1, patch_path, priority);
+    }
+
+    println!("\nChain summary:");
+    let chain_info = chain.get_chain_info();
+    let total_files: usize = chain_info.iter().map(|i| i.file_count).sum();
+    println!("  Total archives: {}", chain_info.len());
+    println!("  Total files (with overlaps): {total_files}");
+
+    // Count unique files
+    let unique_files = chain.list()?.len();
+    println!("  Unique files: {unique_files}");
+
+    if detailed {
+        println!("\nDetailed archive information:");
+        let mut table = create_table(vec!["Archive", "Priority", "Files", "Path"]);
+
+        for info in chain_info {
+            add_table_row(
+                &mut table,
+                vec![
+                    info.path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("?")
+                        .to_string(),
+                    info.priority.to_string(),
+                    info.file_count.to_string(),
+                    truncate_path(&info.path.display().to_string(), 60),
+                ],
+            );
+        }
+
+        table.printstd();
+
+        // Show sample of files that have patches
+        println!("\nScanning for patch files...");
+        let mut patch_count = 0;
+        let entries = chain.list()?;
+
+        for entry in &entries {
+            if entry.is_patch_file() {
+                patch_count += 1;
+            }
+        }
+
+        if patch_count > 0 {
+            println!("  Found {} file(s) with patch flag", patch_count);
+
+            if patch_count <= 20 {
+                println!("\nPatch files:");
+                for entry in entries {
+                    if entry.is_patch_file() {
+                        println!("  - {} ({} bytes)", entry.name, entry.size);
+                    }
+                }
+            } else {
+                println!("  (Use 'mpq list <archive> --show-patches' to see all patch files)");
+            }
+        } else {
+            println!("  No PTCH format patch files found (files may use replacement method)");
+        }
+    }
+
+    Ok(())
 }

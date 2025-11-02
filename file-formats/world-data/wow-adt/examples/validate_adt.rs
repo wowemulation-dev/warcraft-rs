@@ -1,271 +1,251 @@
-//! Example: ADT File Validation
+//! Example: ADT File Parsing and Validation
 //!
-//! This example demonstrates how to validate ADT files at different validation levels
-//! and provides detailed information about potential issues.
+//! Demonstrates how to parse ADT files with automatic version detection
+//! and provides detailed information about file structure and contents.
 
 use std::env;
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
-use wow_adt::{Adt, ValidationLevel};
+use wow_adt::{AdtVersion, ParsedAdt, parse_adt_with_metadata};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get command line arguments
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2 || args.len() > 3 {
-        eprintln!("Usage: {} <path_to_adt_file> [validation_level]", args[0]);
-        eprintln!();
-        eprintln!("Validation levels:");
-        eprintln!("  basic     - Basic structure validation (default)");
-        eprintln!("  standard  - Standard validation with warnings");
-        eprintln!("  strict    - Strict validation (fails on warnings)");
+    if args.len() != 2 {
+        eprintln!("Usage: {} <path_to_adt_file>", args[0]);
         eprintln!();
         eprintln!("Examples:");
         eprintln!("  {} Azeroth_32_32.adt", args[0]);
-        eprintln!("  {} Azeroth_32_32.adt strict", args[0]);
+        eprintln!("  {} Kalimdor_48_30.adt", args[0]);
         std::process::exit(1);
     }
 
     let adt_path = &args[1];
-    let validation_level = if args.len() > 2 {
-        match args[2].as_str() {
-            "basic" => ValidationLevel::Basic,
-            "standard" => ValidationLevel::Standard,
-            "strict" => ValidationLevel::Strict,
-            _ => {
-                eprintln!("Error: Unknown validation level '{}'", args[2]);
-                eprintln!("Valid levels: basic, standard, strict");
-                std::process::exit(1);
-            }
-        }
-    } else {
-        ValidationLevel::Basic
-    };
 
     // Check if file exists
     if !Path::new(adt_path).exists() {
-        eprintln!("Error: File '{adt_path}' does not exist");
+        eprintln!("Error: File '{}' does not exist", adt_path);
         std::process::exit(1);
     }
 
-    println!("🔍 Validating ADT File: {adt_path}");
-    println!("📊 Validation Level: {validation_level:?}");
+    println!("Parsing ADT File: {}", adt_path);
     println!("{}", "=".repeat(60));
 
     // Open and parse the ADT file
-    println!("📖 Reading ADT file...");
+    println!("Reading ADT file...");
     let file = File::open(adt_path)?;
-    let adt = match Adt::from_reader(file) {
-        Ok(adt) => {
-            println!("✅ Successfully parsed ADT file");
-            adt
+    let mut reader = BufReader::new(file);
+
+    let (adt, metadata) = match parse_adt_with_metadata(&mut reader) {
+        Ok(result) => {
+            println!("Successfully parsed ADT file");
+            result
         }
         Err(e) => {
-            println!("❌ Failed to parse ADT file: {e}");
+            println!("Failed to parse ADT file: {}", e);
             std::process::exit(1);
         }
     };
+
+    // Display parse statistics
+    println!();
+    println!("Parse Statistics:");
+    println!("  Discovery time: {:?}", metadata.discovery_duration);
+    println!("  Parse time: {:?}", metadata.parse_duration);
+    println!("  Total chunks: {}", metadata.chunk_count);
 
     // Display basic file information
     println!();
-    println!("📋 File Information:");
-    println!("  • Version: {:?}", adt.version);
-    println!("  • Format: {}", get_format_description(&adt));
+    println!("File Information:");
+    println!("  Version: {}", get_version_description(metadata.version));
+    println!("  File Type: {:?}", metadata.file_type);
+    println!("  Format: {}", metadata.version);
 
-    // Count chunks for overview
-    let chunk_counts = get_chunk_counts(&adt);
-    println!("  • Structure overview:");
-    for (chunk_type, count) in chunk_counts {
-        println!("    - {chunk_type}: {count}");
-    }
-
-    // Perform validation
-    println!();
-    println!("🔍 Running {validation_level:?} validation...");
-    println!("{}", "-".repeat(40));
-
-    let validation_start = std::time::Instant::now();
-    let validation_result = match validation_level {
-        ValidationLevel::Basic => adt.validate().map(|_| ()),
-        _ => adt.validate_with_report(validation_level).map(|_| ()),
-    };
-    let validation_duration = validation_start.elapsed();
-
-    match validation_result {
-        Ok(_) => {
-            println!("✅ Validation PASSED");
-            println!("⏱️  Validation completed in {validation_duration:?}");
-
-            // Provide additional insights for successful validation
-            provide_validation_insights(&adt, validation_level);
-        }
-        Err(e) => {
-            println!("❌ Validation FAILED");
-            println!("⏱️  Validation completed in {validation_duration:?}");
-            println!();
-            println!("🚨 Validation Error:");
-            println!("  {e}");
-
-            // Provide suggestions for common issues
-            provide_validation_suggestions(&e.to_string());
-
-            std::process::exit(1);
+    // Display warnings if any
+    if !metadata.warnings.is_empty() {
+        println!();
+        println!("Warnings:");
+        for warning in &metadata.warnings {
+            println!("  - {}", warning);
         }
     }
 
+    // Display file-specific information
     println!();
-    println!("✨ Validation completed successfully!");
+    match adt {
+        ParsedAdt::Root(root) => display_root_info(&root),
+        ParsedAdt::Tex0(tex) | ParsedAdt::Tex1(tex) => display_tex_info(&tex),
+        ParsedAdt::Obj0(obj) | ParsedAdt::Obj1(obj) => display_obj_info(&obj),
+        ParsedAdt::Lod(_) => println!("LOD file (level-of-detail data)"),
+    }
+
+    println!();
+    println!("Parsing completed successfully");
 
     Ok(())
 }
 
-fn get_format_description(adt: &Adt) -> &'static str {
-    use wow_adt::AdtVersion;
-
-    match adt.version {
-        AdtVersion::Vanilla => "Classic World of Warcraft (1.x)",
-        AdtVersion::TBC => "The Burning Crusade (2.x)",
-        AdtVersion::WotLK => "Wrath of the Lich King (3.x)",
-        AdtVersion::Cataclysm => "Cataclysm+ (4.x+)",
-        AdtVersion::MoP => "Mists of Pandaria (5.x)",
-        AdtVersion::WoD => "Warlords of Draenor (6.x)",
-        AdtVersion::Legion => "Legion (7.x)",
-        AdtVersion::BfA => "Battle for Azeroth (8.x)",
-        AdtVersion::Shadowlands => "Shadowlands (9.x)",
-        AdtVersion::Dragonflight => "Dragonflight (10.x)",
+fn get_version_description(version: AdtVersion) -> &'static str {
+    match version {
+        AdtVersion::VanillaEarly => "Vanilla 1.x (Early) - Basic terrain",
+        AdtVersion::VanillaLate => "Vanilla 1.9+ - Added vertex colors",
+        AdtVersion::TBC => "The Burning Crusade 2.x - Added flight boundaries",
+        AdtVersion::WotLK => "Wrath of the Lich King 3.x - Added advanced water",
+        AdtVersion::Cataclysm => "Cataclysm 4.x - Split file architecture",
+        AdtVersion::MoP => "Mists of Pandaria 5.x - Texture parameters",
     }
 }
 
-fn get_chunk_counts(adt: &Adt) -> Vec<(&'static str, String)> {
-    let mut counts = Vec::new();
+fn display_root_info(root: &wow_adt::RootAdt) {
+    println!("Root ADT Contents:");
+    println!("  Terrain chunks: {}", root.mcnk_chunks.len());
+    println!("  Textures: {}", root.textures.len());
+    println!("  M2 models: {}", root.models.len());
+    println!("  WMO objects: {}", root.wmos.len());
+    println!("  Doodad placements: {}", root.doodad_placements.len());
+    println!("  WMO placements: {}", root.wmo_placements.len());
 
-    counts.push(("MVER", "✓".to_string()));
-    if adt.mhdr.is_some() {
-        counts.push(("MHDR", "✓".to_string()));
-    }
-    if adt.mcin.is_some() {
-        counts.push(("MCIN", "✓".to_string()));
-    }
-
-    if let Some(mtex) = &adt.mtex {
-        counts.push(("MTEX", format!("{} textures", mtex.filenames.len())));
-    }
-
-    if let Some(mmdx) = &adt.mmdx {
-        counts.push(("MMDX", format!("{} models", mmdx.filenames.len())));
-    }
-
-    if let Some(mwmo) = &adt.mwmo {
-        counts.push(("MWMO", format!("{} WMOs", mwmo.filenames.len())));
-    }
-
-    if let Some(mddf) = &adt.mddf {
-        counts.push(("MDDF", format!("{} doodads", mddf.doodads.len())));
-    }
-
-    if let Some(modf) = &adt.modf {
-        counts.push(("MODF", format!("{} WMO placements", modf.models.len())));
-    }
-
-    if adt.mfbo.is_some() {
-        counts.push(("MFBO", "✓".to_string()));
-    }
-    if adt.mh2o.is_some() {
-        counts.push(("MH2O", "✓".to_string()));
-    }
-
-    // Count MCNK chunks
-    let mcnk_count = adt.mcnk_chunks.len();
-    if mcnk_count > 0 {
-        counts.push(("MCNK", format!("{mcnk_count} terrain chunks")));
-    }
-
-    counts
-}
-
-fn provide_validation_insights(adt: &Adt, level: ValidationLevel) {
-    println!();
-    println!("💡 Validation Insights:");
-
-    // Terrain chunk analysis
-    let active_chunks = adt.mcnk_chunks.len();
-    if active_chunks == 0 {
-        println!("  • No terrain chunks found (this might be a split-format file)");
-    } else if active_chunks < 256 {
-        println!("  • Partial terrain coverage: {active_chunks}/256 chunks active");
-    } else {
-        println!("  • Full terrain coverage: all 256 chunks present");
-    }
-
-    // Version-specific insights
-    match adt.version {
-        wow_adt::AdtVersion::Vanilla => {
-            println!("  • Classic format detected - no modern features expected");
-        }
-        wow_adt::AdtVersion::TBC => {
-            println!("  • TBC format - may include MFBO flight boundaries");
-        }
-        wow_adt::AdtVersion::WotLK => {
-            println!("  • WotLK format - may include MH2O water data");
-        }
-        _ => {
-            println!("  • Modern format - may include split ADT files and extended features");
-        }
-    }
-
-    // Water analysis
-    if let Some(mh2o) = &adt.mh2o {
-        let water_chunks = mh2o
-            .chunks
+    // Version-specific features
+    if let Some(water) = &root.water_data {
+        let chunks_with_water = water
+            .entries
             .iter()
-            .filter(|chunk| !chunk.instances.is_empty())
+            .filter(|entry| entry.header.has_liquid())
             .count();
-        if water_chunks > 0 {
-            println!("  • Water features: {water_chunks} chunks contain water data");
+        println!("  Water chunks: {}", chunks_with_water);
+    }
+
+    if root.flight_bounds.is_some() {
+        println!("  Flight boundaries: Present");
+    }
+
+    if root.texture_flags.is_some() {
+        println!("  Texture flags: Present");
+    }
+
+    if root.texture_amplifier.is_some() {
+        println!("  Texture amplifier: Present");
+    }
+
+    if root.texture_params.is_some() {
+        println!("  Texture parameters: Present");
+    }
+
+    // Display sample textures
+    if !root.textures.is_empty() {
+        println!();
+        println!("Sample Textures:");
+        for (i, texture) in root.textures.iter().take(5).enumerate() {
+            println!("    [{}] {}", i, texture);
+        }
+        if root.textures.len() > 5 {
+            println!("    ... and {} more", root.textures.len() - 5);
         }
     }
 
-    match level {
-        ValidationLevel::Strict => {
-            println!("  • Strict validation passed - file meets all quality standards");
-        }
-        ValidationLevel::Standard => {
-            println!(
-                "  • Standard validation passed - file is well-formed with minor issues tolerated"
-            );
-        }
-        ValidationLevel::Basic => {
-            println!("  • Basic validation passed - file structure is valid");
-        }
+    // Display terrain coverage
+    let active_chunks = root.mcnk_chunks.len();
+    println!();
+    println!("Terrain Coverage:");
+    if active_chunks == 0 {
+        println!("  No terrain chunks (split-format file)");
+    } else if active_chunks < 256 {
+        println!(
+            "  Partial: {}/256 chunks ({:.1}%)",
+            active_chunks,
+            (active_chunks as f32 / 256.0) * 100.0
+        );
+    } else {
+        println!("  Complete: 256/256 chunks (100%)");
     }
 }
 
-fn provide_validation_suggestions(error_msg: &str) {
+fn display_tex_info(tex: &wow_adt::Tex0Adt) {
+    println!("Texture File Contents:");
+    println!("  Textures: {}", tex.textures.len());
+    println!("  MCNK texture chunks: {}", tex.mcnk_textures.len());
+
+    if tex.texture_params.is_some() {
+        println!("  Texture parameters: Present");
+    }
+
+    // Sample textures
+    if !tex.textures.is_empty() {
+        println!();
+        println!("Sample Textures:");
+        for (i, texture) in tex.textures.iter().take(10).enumerate() {
+            println!("    [{}] {}", i, texture);
+        }
+        if tex.textures.len() > 10 {
+            println!("    ... and {} more", tex.textures.len() - 10);
+        }
+    }
+
+    // Analyze texture chunks
+    let chunks_with_layers = tex
+        .mcnk_textures
+        .iter()
+        .filter(|chunk| chunk.layers.is_some())
+        .count();
+    let chunks_with_alpha = tex
+        .mcnk_textures
+        .iter()
+        .filter(|chunk| chunk.alpha_maps.is_some())
+        .count();
+
     println!();
-    println!("💡 Suggestions:");
+    println!("Texture Coverage:");
+    println!("  Chunks with layers: {}", chunks_with_layers);
+    println!("  Chunks with alpha maps: {}", chunks_with_alpha);
+}
 
-    if error_msg.contains("MCNK") {
-        println!("  • MCNK chunk issues often occur in split-format ADT files");
-        println!("  • For Cataclysm+ files, check for corresponding _tex0.adt and _obj0.adt files");
+fn display_obj_info(obj: &wow_adt::Obj0Adt) {
+    println!("Object File Contents:");
+    println!("  M2 models: {}", obj.models.len());
+    println!("  WMO objects: {}", obj.wmos.len());
+    println!("  Doodad placements: {}", obj.doodad_placements.len());
+    println!("  WMO placements: {}", obj.wmo_placements.len());
+    println!("  MCNK object chunks: {}", obj.mcnk_objects.len());
+
+    // Sample models
+    if !obj.models.is_empty() {
+        println!();
+        println!("Sample M2 Models:");
+        for (i, model) in obj.models.iter().take(5).enumerate() {
+            println!("    [{}] {}", i, model);
+        }
+        if obj.models.len() > 5 {
+            println!("    ... and {} more", obj.models.len() - 5);
+        }
     }
 
-    if error_msg.contains("MH2O") {
-        println!("  • MH2O water data parsing issues are common in WotLK+ files");
-        println!("  • Some original Blizzard files have incomplete water data");
+    // Sample WMOs
+    if !obj.wmos.is_empty() {
+        println!();
+        println!("Sample WMO Objects:");
+        for (i, wmo) in obj.wmos.iter().take(5).enumerate() {
+            println!("    [{}] {}", i, wmo);
+        }
+        if obj.wmos.len() > 5 {
+            println!("    ... and {} more", obj.wmos.len() - 5);
+        }
     }
 
-    if error_msg.contains("MFBO") {
-        println!("  • MFBO chunk size variations exist between expansions");
-        println!("  • TBC uses 8-byte format, Cataclysm+ uses extended 36-byte format");
-    }
+    // Analyze object distribution
+    let total_doodad_refs: usize = obj
+        .mcnk_objects
+        .iter()
+        .map(|chunk| chunk.doodad_refs.len())
+        .sum();
+    let total_wmo_refs: usize = obj
+        .mcnk_objects
+        .iter()
+        .map(|chunk| chunk.wmo_refs.len())
+        .sum();
 
-    if error_msg.contains("model reference")
-        || error_msg.contains("MMID")
-        || error_msg.contains("MWID")
-    {
-        println!("  • Model reference validation failures indicate corrupted doodad/WMO indices");
-        println!("  • This is often found in original Blizzard files and may be tolerable");
-    }
-
-    println!("  • Try using a lower validation level (basic/standard) if strict validation fails");
-    println!("  • Consider if this is a split-format file that requires additional components");
+    println!();
+    println!("Object Distribution:");
+    println!("  Total doodad references: {}", total_doodad_refs);
+    println!("  Total WMO references: {}", total_wmo_refs);
 }

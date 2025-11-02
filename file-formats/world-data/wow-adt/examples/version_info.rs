@@ -5,11 +5,11 @@
 
 use std::env;
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
-use wow_adt::{Adt, AdtVersion};
+use wow_adt::{AdtVersion, ParsedAdt, RootAdt, parse_adt};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Get command line arguments
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: {} <path_to_adt_file>", args[0]);
@@ -23,59 +23,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let adt_path = &args[1];
 
-    // Check if file exists
     if !Path::new(adt_path).exists() {
         eprintln!("Error: File '{adt_path}' does not exist");
         std::process::exit(1);
     }
 
-    println!("🔍 ADT Version Analysis: {adt_path}");
+    println!("ADT Version Analysis: {adt_path}");
     println!("{}", "=".repeat(60));
 
-    // Open and parse the ADT file
     let file = File::open(adt_path)?;
-    let adt = Adt::from_reader(file)?;
+    let mut reader = BufReader::new(file);
+    let parsed = parse_adt(&mut reader)?;
 
-    // Display version information
-    println!("📊 Version Information:");
-    println!("  • Detected version: {:?}", adt.version);
-    println!("  • Expansion: {}", get_expansion_name(&adt.version));
+    let adt = match parsed {
+        ParsedAdt::Root(root) => root,
+        _ => {
+            eprintln!("Error: This example only works with root ADT files");
+            std::process::exit(1);
+        }
+    };
+
+    println!("Version Information:");
+    println!("  Detected version: {:?}", adt.version);
+    println!("  Expansion: {}", get_expansion_name(&adt.version));
     println!(
-        "  • Release timeframe: {}",
+        "  Release timeframe: {}",
         get_release_timeframe(&adt.version)
     );
 
-    // Display MVER chunk information
-    println!("  • MVER value: {}", adt.mver.version);
-    println!("  • Standard MVER: {}", adt.version.to_mver_value());
-
-    if adt.mver.version != adt.version.to_mver_value() {
-        println!("    ⚠️  Non-standard MVER value detected!");
-    }
-
-    // Analyze version-specific features
     println!();
-    println!("🎯 Version-Specific Features:");
+    println!("Version-Specific Features:");
     analyze_version_features(&adt);
 
-    // Analyze compatibility
     println!();
-    println!("🔄 Compatibility Analysis:");
+    println!("Compatibility Analysis:");
     analyze_compatibility(&adt);
 
-    // Display chunk presence matrix
     println!();
-    println!("📋 Chunk Presence by Version:");
+    println!("Chunk Presence by Version:");
     display_chunk_matrix(&adt);
 
-    // Performance characteristics
     println!();
-    println!("⚡ Performance Characteristics:");
+    println!("Performance Characteristics:");
     analyze_performance(&adt);
 
-    // Migration information
     println!();
-    println!("🔄 Migration Information:");
+    println!("Migration Information:");
     provide_migration_info(&adt.version);
 
     Ok(())
@@ -83,60 +76,51 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn get_expansion_name(version: &AdtVersion) -> &'static str {
     match version {
-        AdtVersion::Vanilla => "World of Warcraft: Classic",
+        AdtVersion::VanillaEarly => "World of Warcraft: Classic (Early)",
+        AdtVersion::VanillaLate => "World of Warcraft: Classic (Late)",
         AdtVersion::TBC => "The Burning Crusade",
         AdtVersion::WotLK => "Wrath of the Lich King",
         AdtVersion::Cataclysm => "Cataclysm",
         AdtVersion::MoP => "Mists of Pandaria",
-        AdtVersion::Legion => "Legion",
-        AdtVersion::BfA => "Battle for Azeroth",
-        AdtVersion::WoD => "Warlords of Draenor",
-        AdtVersion::Shadowlands => "Shadowlands",
-        AdtVersion::Dragonflight => "Dragonflight",
     }
 }
 
 fn get_release_timeframe(version: &AdtVersion) -> &'static str {
     match version {
-        AdtVersion::Vanilla => "2004-2007",
+        AdtVersion::VanillaEarly => "2004-2005 (1.0-1.8.4)",
+        AdtVersion::VanillaLate => "2005-2007 (1.9+)",
         AdtVersion::TBC => "2007-2008",
         AdtVersion::WotLK => "2008-2010",
         AdtVersion::Cataclysm => "2010-2012",
         AdtVersion::MoP => "2012-2014",
-        AdtVersion::WoD => "2014-2016",
-        AdtVersion::Legion => "2016-2018",
-        AdtVersion::BfA => "2018-2020",
-        AdtVersion::Shadowlands => "2020-2022",
-        AdtVersion::Dragonflight => "2022+",
     }
 }
 
-fn analyze_version_features(adt: &Adt) {
+fn analyze_version_features(adt: &RootAdt) {
     let features = get_version_features(&adt.version);
 
     for feature in &features {
         let present = check_feature_present(adt, feature);
-        let status = if present { "✅" } else { "❌" };
+        let status = if present { "[YES]" } else { "[NO]" };
         println!("  {} {}: {}", status, feature.name, feature.description);
     }
 }
 
-fn analyze_compatibility(adt: &Adt) {
+fn analyze_compatibility(adt: &RootAdt) {
     let all_versions = [
-        AdtVersion::Vanilla,
+        AdtVersion::VanillaEarly,
+        AdtVersion::VanillaLate,
         AdtVersion::TBC,
         AdtVersion::WotLK,
         AdtVersion::Cataclysm,
         AdtVersion::MoP,
-        AdtVersion::Legion,
-        AdtVersion::BfA,
     ];
 
     println!("  Forward compatibility:");
     for version in &all_versions {
         if *version as u8 > adt.version as u8 {
             let compatible = is_forward_compatible(&adt.version, version);
-            let status = if compatible { "✅" } else { "❌" };
+            let status = if compatible { "[YES]" } else { "[NO]" };
             println!(
                 "    {} {}: {}",
                 status,
@@ -154,7 +138,7 @@ fn analyze_compatibility(adt: &Adt) {
     for version in &all_versions {
         if (*version as u8) < (adt.version as u8) {
             let compatible = is_backward_compatible(&adt.version, version);
-            let status = if compatible { "✅" } else { "❌" };
+            let status = if compatible { "[YES]" } else { "[NO]" };
             println!(
                 "    {} {}: {}",
                 status,
@@ -169,25 +153,25 @@ fn analyze_compatibility(adt: &Adt) {
     }
 }
 
-fn display_chunk_matrix(adt: &Adt) {
+fn display_chunk_matrix(adt: &RootAdt) {
     let chunks = [
-        ("MVER", true), // Always present
-        ("MHDR", adt.mhdr.is_some()),
-        ("MCIN", adt.mcin.is_some()),
-        ("MTEX", adt.mtex.is_some()),
-        ("MMDX", adt.mmdx.is_some()),
-        ("MMID", adt.mmid.is_some()),
-        ("MWMO", adt.mwmo.is_some()),
-        ("MWID", adt.mwid.is_some()),
-        ("MDDF", adt.mddf.is_some()),
-        ("MODF", adt.modf.is_some()),
-        ("MFBO", adt.mfbo.is_some()),
-        ("MH2O", adt.mh2o.is_some()),
+        ("MVER", true),
+        ("MHDR", true),
+        ("MCIN", true),
+        ("MTEX", !adt.textures.is_empty()),
+        ("MMDX", !adt.models.is_empty()),
+        ("MMID", !adt.model_indices.is_empty()),
+        ("MWMO", !adt.wmos.is_empty()),
+        ("MWID", !adt.wmo_indices.is_empty()),
+        ("MDDF", !adt.doodad_placements.is_empty()),
+        ("MODF", !adt.wmo_placements.is_empty()),
+        ("MFBO", adt.flight_bounds.is_some()),
+        ("MH2O", adt.water_data.is_some()),
         ("MCNK", !adt.mcnk_chunks.is_empty()),
     ];
 
     for (chunk_name, present) in chunks {
-        let status = if present { "✅" } else { "❌" };
+        let status = if present { "[YES]" } else { "[NO]" };
         let introduced = get_chunk_introduction(chunk_name);
         println!(
             "  {} {}: {} (introduced in {})",
@@ -199,63 +183,46 @@ fn display_chunk_matrix(adt: &Adt) {
     }
 }
 
-fn analyze_performance(adt: &Adt) {
-    // Estimate memory usage
+fn analyze_performance(adt: &RootAdt) {
     let mut estimated_size = 0;
 
-    if let Some(mcin) = &adt.mcin {
-        estimated_size += mcin.entries.len() * 16; // 16 bytes per entry
-    }
+    estimated_size += adt.mcin.entries.len() * 16;
+    estimated_size += adt.textures.iter().map(|s| s.len()).sum::<usize>();
+    estimated_size += adt.models.iter().map(|s| s.len()).sum::<usize>();
 
-    if let Some(mtex) = &adt.mtex {
-        estimated_size += mtex.filenames.iter().map(|s| s.len()).sum::<usize>();
-    }
+    println!("  Estimated parsed size: ~{} KB", estimated_size / 1024);
+    println!("  Terrain chunks: {}", adt.mcnk_chunks.len());
 
-    if let Some(mmdx) = &adt.mmdx {
-        estimated_size += mmdx.filenames.iter().map(|s| s.len()).sum::<usize>();
-    }
-
-    println!("  • Estimated parsed size: ~{} KB", estimated_size / 1024);
-    println!("  • Terrain chunks: {}", adt.mcnk_chunks.len());
-
-    // Version-specific performance notes
     match adt.version {
-        AdtVersion::Vanilla | AdtVersion::TBC => {
-            println!("  • Legacy format: Simple structure, fast parsing");
+        AdtVersion::VanillaEarly | AdtVersion::VanillaLate | AdtVersion::TBC => {
+            println!("  Legacy format: Simple structure, fast parsing");
         }
         AdtVersion::WotLK => {
-            println!("  • Added water data: Moderate complexity increase");
+            println!("  Added water data: Moderate complexity increase");
         }
         AdtVersion::Cataclysm | AdtVersion::MoP => {
-            println!("  • Split format: May require loading multiple files");
-        }
-        _ => {
-            println!("  • Modern format: Complex structure, slower parsing");
+            println!("  Split format: May require loading multiple files");
         }
     }
 }
 
 fn provide_migration_info(version: &AdtVersion) {
     match version {
-        AdtVersion::Vanilla => {
-            println!("  • To upgrade: Add MFBO chunk for TBC compatibility");
-            println!("  • Water support: Requires MH2O chunk for WotLK+ features");
+        AdtVersion::VanillaEarly | AdtVersion::VanillaLate => {
+            println!("  To upgrade: Add MFBO chunk for TBC compatibility");
+            println!("  Water support: Requires MH2O chunk for WotLK+ features");
         }
         AdtVersion::TBC => {
-            println!("  • From Vanilla: Compatible with minimal changes");
-            println!("  • To WotLK: Add MH2O chunk for water features");
+            println!("  From Vanilla: Compatible with minimal changes");
+            println!("  To WotLK: Add MH2O chunk for water features");
         }
         AdtVersion::WotLK => {
-            println!("  • From TBC: Backward compatible");
-            println!("  • To Cataclysm: Major format changes - split ADT files");
+            println!("  From TBC: Backward compatible");
+            println!("  To Cataclysm: Major format changes - split ADT files");
         }
         AdtVersion::Cataclysm | AdtVersion::MoP => {
-            println!("  • Split format: Requires _tex0.adt, _obj0.adt companions");
-            println!("  • Backward compatibility: Limited due to format changes");
-        }
-        _ => {
-            println!("  • Modern format: Significant differences from legacy");
-            println!("  • Legacy support: May require format conversion");
+            println!("  Split format: Requires _tex0.adt, _obj0.adt companions");
+            println!("  Backward compatibility: Limited due to format changes");
         }
     }
 }
@@ -263,7 +230,7 @@ fn provide_migration_info(version: &AdtVersion) {
 struct VersionFeature {
     name: &'static str,
     description: &'static str,
-    check_fn: fn(&Adt) -> bool,
+    check_fn: fn(&RootAdt) -> bool,
 }
 
 fn get_version_features(version: &AdtVersion) -> Vec<VersionFeature> {
@@ -276,12 +243,12 @@ fn get_version_features(version: &AdtVersion) -> Vec<VersionFeature> {
         VersionFeature {
             name: "Textures",
             description: "MTEX texture references",
-            check_fn: |adt| adt.mtex.is_some(),
+            check_fn: |adt| !adt.textures.is_empty(),
         },
         VersionFeature {
             name: "Models",
             description: "MMDX/MMID model system",
-            check_fn: |adt| adt.mmdx.is_some() && adt.mmid.is_some(),
+            check_fn: |adt| !adt.models.is_empty() && !adt.model_indices.is_empty(),
         },
     ];
 
@@ -289,7 +256,7 @@ fn get_version_features(version: &AdtVersion) -> Vec<VersionFeature> {
         features.push(VersionFeature {
             name: "Flight boundaries",
             description: "MFBO flight restriction data",
-            check_fn: |adt| adt.mfbo.is_some(),
+            check_fn: |adt| adt.flight_bounds.is_some(),
         });
     }
 
@@ -297,28 +264,26 @@ fn get_version_features(version: &AdtVersion) -> Vec<VersionFeature> {
         features.push(VersionFeature {
             name: "Water system",
             description: "MH2O water and liquid data",
-            check_fn: |adt| adt.mh2o.is_some(),
+            check_fn: |adt| adt.water_data.is_some(),
         });
     }
 
     features
 }
 
-fn check_feature_present(adt: &Adt, feature: &VersionFeature) -> bool {
+fn check_feature_present(adt: &RootAdt, feature: &VersionFeature) -> bool {
     (feature.check_fn)(adt)
 }
 
 fn is_forward_compatible(current: &AdtVersion, target: &AdtVersion) -> bool {
-    // Generally, older formats work in newer clients
     (*current as u8) <= (*target as u8)
 }
 
 fn is_backward_compatible(current: &AdtVersion, target: &AdtVersion) -> bool {
-    // Newer formats generally don't work in older clients
     match (current, target) {
-        (AdtVersion::TBC, AdtVersion::Vanilla) => true, // TBC files can work in vanilla with limitations
-        (AdtVersion::WotLK, AdtVersion::TBC) => true,   // Some compatibility
-        _ => (*current as u8) <= (*target as u8),
+        (AdtVersion::TBC, AdtVersion::VanillaLate) => true,
+        (AdtVersion::WotLK, AdtVersion::TBC) => true,
+        _ => current <= target,
     }
 }
 

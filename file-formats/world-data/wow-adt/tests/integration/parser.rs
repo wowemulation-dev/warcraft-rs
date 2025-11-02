@@ -1,11 +1,13 @@
-//! tests/parser_tests.rs - Tests for the ADT parser
+//! Integration tests for the ADT parser
 
 use pretty_assertions::assert_eq;
 use std::io::Cursor;
-use wow_adt::{Adt, AdtVersion, ChunkHeader, MverChunk};
+use wow_adt::{AdtVersion, ChunkHeader, MverChunk};
 
 #[test]
 fn test_chunk_header_parsing() {
+    use binrw::BinRead;
+
     // Create a simple chunk header
     let mut data = Vec::new();
     data.extend_from_slice(b"REVM"); // Magic (stored reversed in file)
@@ -24,6 +26,8 @@ fn test_chunk_header_parsing() {
 
 #[test]
 fn test_mver_parsing() {
+    use binrw::BinRead;
+
     // Create a simple MVER chunk
     let mut data = Vec::new();
     data.extend_from_slice(b"REVM"); // Magic (stored reversed in file)
@@ -40,59 +44,21 @@ fn test_mver_parsing() {
 }
 
 #[test]
-fn test_version_detection() {
-    // Test converting various MVER values to AdtVersion
-    let vanilla = AdtVersion::from_mver(18).unwrap();
-    assert_eq!(vanilla, AdtVersion::Vanilla);
-
-    // Test error for invalid version
-    let invalid = AdtVersion::from_mver(42);
-    assert!(invalid.is_err());
-}
-
-#[test]
 fn test_version_comparison() {
-    // Test version ordering
-    assert!(AdtVersion::Vanilla < AdtVersion::TBC);
+    // Test version ordering for supported versions
+    assert!(AdtVersion::VanillaEarly < AdtVersion::VanillaLate);
+    assert!(AdtVersion::VanillaLate < AdtVersion::TBC);
     assert!(AdtVersion::TBC < AdtVersion::WotLK);
     assert!(AdtVersion::WotLK < AdtVersion::Cataclysm);
     assert!(AdtVersion::Cataclysm < AdtVersion::MoP);
-    assert!(AdtVersion::MoP < AdtVersion::WoD);
-    assert!(AdtVersion::WoD < AdtVersion::Legion);
-    assert!(AdtVersion::Legion < AdtVersion::BfA);
-    assert!(AdtVersion::BfA < AdtVersion::Shadowlands);
-    assert!(AdtVersion::Shadowlands < AdtVersion::Dragonflight);
-}
-
-#[test]
-fn test_empty_adt_creation() {
-    // Create a minimal ADT with just a MVER chunk
-    let mut data = Vec::new();
-    data.extend_from_slice(b"REVM"); // Magic (stored reversed in file)
-    data.extend_from_slice(&[4, 0, 0, 0]); // Size (4 bytes, little endian)
-    data.extend_from_slice(&[18, 0, 0, 0]); // Version (18)
-
-    let mut cursor = Cursor::new(data);
-
-    // Parse the ADT
-    let adt = Adt::from_reader(&mut cursor);
-
-    // Since this isn't a complete ADT (missing MHDR, etc.), it should fail to parse
-    assert!(adt.is_err());
-    // The error should be about the file being too small
-    if let Err(e) = adt {
-        let error_msg = format!("{e:?}");
-        assert!(error_msg.contains("too small") || error_msg.contains("InvalidFileSize"));
-    }
 }
 
 #[test]
 fn test_version_to_string() {
-    assert_eq!(AdtVersion::Vanilla.to_string(), "Vanilla (1.x)");
-    assert_eq!(AdtVersion::TBC.to_string(), "The Burning Crusade (2.x)");
-    assert_eq!(
-        AdtVersion::WotLK.to_string(),
-        "Wrath of the Lich King (3.x)"
-    );
-    assert_eq!(AdtVersion::Cataclysm.to_string(), "Cataclysm (4.x)");
+    assert_eq!(AdtVersion::VanillaEarly.to_string(), "Vanilla 1.x (Early)");
+    assert_eq!(AdtVersion::VanillaLate.to_string(), "Vanilla 1.9+");
+    assert_eq!(AdtVersion::TBC.to_string(), "The Burning Crusade 2.x");
+    assert_eq!(AdtVersion::WotLK.to_string(), "Wrath of the Lich King 3.x");
+    assert_eq!(AdtVersion::Cataclysm.to_string(), "Cataclysm 4.x");
+    assert_eq!(AdtVersion::MoP.to_string(), "Mists of Pandaria 5.x");
 }
