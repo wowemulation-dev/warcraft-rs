@@ -10,6 +10,77 @@ and this project adheres to
 
 ### Added
 
+- **M2 Format**: Animation runtime system for bone transform computation
+  - `animation` module with interpolation, state management, and bone transforms
+  - `BoneTransformComputer` for skeletal animation evaluation
+  - `AnimationManager` for animation playback control
+  - Interpolation utilities with quaternion slerp support
+- **M2 Format**: Particle system simulation
+  - `particles` module with emitter simulation and particle lifecycle
+  - `ParticleEmitter` for GPU-style particle generation
+  - `EmissionType` variants for different emission patterns
+  - Particle and ribbon emitter parsing integrated into `M2Model`
+- **WMO Format**: BSP tree point query for group collision
+  - `bsp` module with efficient point-in-group testing
+  - `BspTree` for accelerated spatial queries
+  - `BspNodeExt` trait for node traversal
+- **WMO Format**: Portal-based visibility culling
+  - `portal` module for interior rendering optimization
+  - `PortalCuller` for view frustum clipping through portals
+  - `ConvexHull` and `Plane` geometry utilities
+- **WMO Format**: Complete MOHD header parsing
+  - Ambient color, WMO ID, bounding box, flags, and LOD count
+  - Previously skipped 36 bytes now fully parsed
+- **ADT Format**: MoP 5.3+ high_res_holes subchunk scanning
+  - `parse_with_offset_and_size` for MCVT/MCNR discovery when offsets are zero
+  - `scan_for_subchunk` utility for sequential chunk searching
+- **ADT Format**: `TextureHeightParams` structure for MTXP entries
+  - Height scale/offset for terrain texture blending
+  - `uses_height_texture()` helper for `_h.blp` texture loading
+- **ADT Format**: `CombinedAlphaMap` public API for alpha map extraction
+- **Build**: Cargo configuration with aliases and stricter lints
+  - `.cargo/config.toml` with `lint`, `test-all`, `qa` aliases
+  - Enhanced clippy lints: `unwrap_used`, `panic`, `todo`, `dbg_macro`
+
+### Changed
+
+- **ADT Format**: MH2O vertex storage changed from `Vec` to 9×9 sparse grid (BREAKING)
+  - `VertexDataArray` now uses `Box<[Option<T>; 81]>` for grid-aligned access
+  - Vertex indexing as `z * 9 + x` matches noggit-red approach
+  - `validate_coverage()` replaces `validate_count()` for position-based validation
+- **ADT Format**: MTXP chunk parsing updated to proper structure
+  - Changed from `Vec<u32>` to `Vec<TextureHeightParams>` (16 bytes per entry)
+  - Includes flags, height_scale, height_offset fields
+- **DBC Format**: WDB2 parser handles extended header (Cataclysm 4.0+)
+  - Basic header (build <= 12880): 28 bytes
+  - Extended header (build > 12880): 48 bytes + index arrays
+  - Properly skips index/string length arrays before record data
+- **Build**: Workspace lints expanded with safety and quality checks
+  - `unwrap_used`, `expect_used`, `panic` warnings for library code
+  - `print_stdout`, `print_stderr` warnings to prefer logging
+
+### Fixed
+
+- **MPQ Format**: HET/BET file lookup collision resolution
+  - Now verifies BET hash for each HET collision candidate
+  - Prevents incorrect file matches when 8-bit HET hash collides
+- **BLP Format**: DXT decompression handles undersized mipmap buffers
+  - Zero-pads compressed data when smaller than required block size
+  - Matches SereniaBLPLib behavior for small mipmaps
+- **ADT Format**: MCNK position coordinate order documented and exposed
+  - File stores `[Z, X, Y]`, added `world_position()` helper returning `[X, Y, Z]`
+  - Documentation clarifies raw field access order
+- **ADT Format**: MCNK `do_not_fix_alpha_map` flag corrected to bit 15 (0x8000)
+  - Was incorrectly checking bit 8 (0x100)
+- **ADT Format**: MH2O exists bitmap reads exact byte count
+  - Calculates `(width * height + 7) / 8` bytes instead of fixed 8 bytes
+  - Prevents reading into vertex data for small liquid instances
+- **ADT Format**: CombinedAlphaMap layer access updated for BinRead structure
+  - Uses `chunk.layers` (MclyChunk) and `chunk.alpha` (McalChunk)
+  - Accesses `layer.flags.alpha_map_compressed()` method
+- **ADT Format**: RLE decompression simplified to not enforce row boundaries
+  - Runs can span row boundaries per actual WoW file behavior
+
 - **ADT Format**: Complete BinRead-based parser rewrite with two-phase parsing architecture
   - Declarative chunk parsing using BinRead derive macros
   - Two-phase parsing: fast chunk discovery followed by selective typed parsing
