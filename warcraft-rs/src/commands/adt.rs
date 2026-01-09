@@ -932,7 +932,7 @@ fn build_root_adt_tree(
 
     if let Some(params) = &adt.texture_params {
         let mut params_node = TreeNode::new(
-            format!("MTXP ({} texture params)", params.height_params.len()),
+            format!("MTXP ({} texture params)", params.entries.len()),
             NodeType::Chunk,
         );
         if !no_metadata {
@@ -1064,7 +1064,7 @@ fn build_tex_adt_tree(
     // Texture parameters
     if let Some(params) = &adt.texture_params {
         let mut params_node = TreeNode::new(
-            format!("MTXP ({} params)", params.height_params.len()),
+            format!("MTXP ({} params)", params.entries.len()),
             NodeType::Chunk,
         );
         if !no_metadata {
