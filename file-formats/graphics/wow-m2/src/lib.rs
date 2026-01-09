@@ -139,6 +139,7 @@
 
 // Re-export main components
 pub mod anim;
+pub mod animation;
 pub mod chunks;
 pub mod common;
 pub mod converter;
@@ -151,12 +152,18 @@ pub mod io_ext;
 pub mod model;
 pub mod model_animation_resolver;
 pub mod model_enhanced;
+pub mod particles;
 pub mod skin;
 pub mod skinning;
 pub mod version;
 
 // Re-export common types
 pub use anim::{AnimFile, AnimFormat, AnimMetadata, AnimSection, MemoryUsage};
+pub use animation::{
+    AnimSequence, AnimationManager, AnimationState, BoneFlags, BoneTransformComputer, ComputedBone,
+    Fixedi16, Lerp, Mat4 as AnimMat4, Quat, ResolvedBone, ResolvedTrack, Vec3 as AnimVec3,
+};
+pub use chunks::particle_emitter::{M2ParticleEmitter, M2ParticleEmitterType, M2ParticleFlags};
 pub use chunks::vertex::ValidationMode;
 pub use converter::M2Converter;
 pub use coordinate::{
@@ -169,6 +176,7 @@ pub use model_animation_resolver::{M2ModelAnimationExt, ResolvedBoneAnimation};
 pub use model_enhanced::{
     AnimationInfo, BoneInfo, BoundingBox, EnhancedModelData, MaterialInfo, ModelStats, TextureInfo,
 };
+pub use particles::{EmissionType, EmitterParams, Particle, ParticleEmitter, TEXELS_PER_PARTICLE};
 pub use skin::{OldSkin, Skin, SkinFile, load_skin, parse_skin};
 pub use skinning::{BoneTransform, M2Skinner, SkinningOptions};
 pub use version::M2Version;

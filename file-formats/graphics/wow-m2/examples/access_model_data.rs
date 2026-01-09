@@ -159,12 +159,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("\nParticle geoset data available");
         }
 
-        // Particle emitters (in raw data)
-        if !model.raw_data.particle_emitters.is_empty() {
-            println!(
-                "Particle emitters: {} bytes",
-                model.raw_data.particle_emitters.len()
-            );
+        // Particle emitters (parsed)
+        if !model.particle_emitters.is_empty() {
+            println!("Particle emitters: {}", model.particle_emitters.len());
+            for (i, emitter) in model.particle_emitters.iter().enumerate() {
+                println!(
+                    "  Emitter {}: type={:?}, bone={}, flags={:?}",
+                    i, emitter.emitter_type, emitter.bone_index, emitter.flags
+                );
+            }
         }
 
         // Texture animations

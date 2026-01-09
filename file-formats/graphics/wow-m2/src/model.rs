@@ -8,6 +8,8 @@ use crate::chunks::animation::M2Animation;
 use crate::chunks::bone::M2Bone;
 use crate::chunks::infrastructure::{ChunkHeader, ChunkReader};
 use crate::chunks::material::M2Material;
+use crate::chunks::particle_emitter::M2ParticleEmitter;
+use crate::chunks::ribbon_emitter::M2RibbonEmitter;
 use crate::chunks::{
     AfraChunk, AnimationFileIds, BoneData, BoneFileIds, CollisionMeshData, DbocChunk, DpivChunk,
     EdgeFadeData, ExtendedParticleData, GeometryParticleIds, LightingDetails, LodData, M2Texture,
@@ -54,6 +56,10 @@ pub struct M2Model {
     pub textures: Vec<M2Texture>,
     /// Materials (render flags)
     pub materials: Vec<M2Material>,
+    /// Particle emitters
+    pub particle_emitters: Vec<M2ParticleEmitter>,
+    /// Ribbon emitters
+    pub ribbon_emitters: Vec<M2RibbonEmitter>,
     /// Raw data for other sections
     /// This is used to preserve data that we don't fully parse yet
     pub raw_data: M2RawData,
@@ -264,6 +270,8 @@ impl Default for M2Model {
             vertices: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            particle_emitters: Vec::new(),
+            ribbon_emitters: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -858,6 +866,8 @@ impl M2Model {
             vertices: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            particle_emitters: Vec::new(),
+            ribbon_emitters: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -1094,15 +1104,17 @@ impl M2Model {
 
         Ok(Self {
             header,
-            name: None,                   // TODO: Parse name from chunk-relative offset
-            global_sequences: Vec::new(), // TODO: Parse from chunk
-            animations: Vec::new(),       // TODO: Parse from chunk
-            animation_lookup: Vec::new(), // TODO: Parse from chunk
-            bones: Vec::new(),            // TODO: Parse from chunk
-            key_bone_lookup: Vec::new(),  // TODO: Parse from chunk
-            vertices: Vec::new(),         // TODO: Parse from chunk
-            textures: Vec::new(),         // TODO: Parse from chunk
-            materials: Vec::new(),        // TODO: Parse from chunk
+            name: None,                    // TODO: Parse name from chunk-relative offset
+            global_sequences: Vec::new(),  // TODO: Parse from chunk
+            animations: Vec::new(),        // TODO: Parse from chunk
+            animation_lookup: Vec::new(),  // TODO: Parse from chunk
+            bones: Vec::new(),             // TODO: Parse from chunk
+            key_bone_lookup: Vec::new(),   // TODO: Parse from chunk
+            vertices: Vec::new(),          // TODO: Parse from chunk
+            textures: Vec::new(),          // TODO: Parse from chunk
+            materials: Vec::new(),         // TODO: Parse from chunk
+            particle_emitters: Vec::new(), // TODO: Parse from chunk
+            ribbon_emitters: Vec::new(),   // TODO: Parse from chunk
             raw_data: M2RawData::default(),
             skin_file_ids: None,              // Will be populated from SFID chunk
             animation_file_ids: None,         // Will be populated from AFID chunk
@@ -1230,6 +1242,16 @@ impl M2Model {
             M2Material::parse(r, header.version)
         })?;
 
+        // Parse particle emitters
+        let particle_emitters = read_array(reader, &header.particle_emitters.convert(), |r| {
+            M2ParticleEmitter::parse(r, header.version)
+        })?;
+
+        // Parse ribbon emitters
+        let ribbon_emitters = read_array(reader, &header.ribbon_emitters.convert(), |r| {
+            M2RibbonEmitter::parse(r, header.version)
+        })?;
+
         // Parse raw data for other sections
         // These are sections we won't fully parse yet but want to preserve
         let raw_data = M2RawData {
@@ -1265,6 +1287,8 @@ impl M2Model {
             vertices,
             textures,
             materials,
+            particle_emitters,
+            ribbon_emitters,
             raw_data,
             skin_file_ids: None,
             animation_file_ids: None,
@@ -2291,6 +2315,8 @@ mod tests {
             vertices: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            particle_emitters: Vec::new(),
+            ribbon_emitters: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -2352,6 +2378,8 @@ mod tests {
             vertices: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            particle_emitters: Vec::new(),
+            ribbon_emitters: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: Some(SkinFileIds {
                 ids: vec![123456, 789012],
@@ -2514,6 +2542,8 @@ mod tests {
             vertices: Vec::new(),
             textures: vec![texture],
             materials: Vec::new(),
+            particle_emitters: Vec::new(),
+            ribbon_emitters: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -2578,6 +2608,8 @@ mod tests {
             vertices: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            particle_emitters: Vec::new(),
+            ribbon_emitters: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,

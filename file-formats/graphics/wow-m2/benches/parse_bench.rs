@@ -20,6 +20,8 @@ fn create_test_model() -> M2Model {
         vertices: vec![],
         textures: vec![],
         materials: vec![],
+        particle_emitters: vec![],
+        ribbon_emitters: vec![],
         raw_data: Default::default(),
         // File reference fields
         skin_file_ids: None,
