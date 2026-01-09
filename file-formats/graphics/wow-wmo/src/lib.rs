@@ -108,6 +108,7 @@
 //! - The War Within (11.0+)
 
 pub mod api;
+pub mod bsp;
 pub mod chunk;
 pub mod chunk_discovery;
 pub mod chunk_header;
@@ -118,6 +119,7 @@ pub mod error;
 pub mod file_type;
 pub mod group_parser;
 pub mod parser;
+pub mod portal;
 pub mod root_parser;
 pub mod types;
 pub mod validator;
@@ -159,6 +161,15 @@ pub use wmo_group_types::{
     WmoLiquidVertex, WmoMaterialInfo, WmoPlane,
 };
 pub use writer::WmoWriter;
+
+// Portal culling exports
+pub use portal::{
+    AABB, Axis, ConvexHull, GroupLocationData, GroupPortalInfo, Plane, Portal, PortalCuller,
+    PortalRef, VisibilityResult, WmoGroupLocator,
+};
+
+// BSP tree exports
+pub use bsp::{BspAxisType, BspNodeExt, BspTree, point_in_group};
 
 /// Re-export of chunk-related types
 pub use chunk::Chunk;

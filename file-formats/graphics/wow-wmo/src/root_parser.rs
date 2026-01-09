@@ -27,6 +27,18 @@ pub struct WmoRoot {
     pub n_doodad_defs: u32,
     /// Number of doodad sets (from MOHD)
     pub n_doodad_sets: u32,
+    /// Ambient color as BGRA (from MOHD) - base/ambient lighting color
+    pub ambient_color: [u8; 4],
+    /// WMO ID (foreign key to WMOAreaTable.dbc)
+    pub wmo_id: u32,
+    /// Bounding box minimum corner
+    pub bounding_box_min: [f32; 3],
+    /// Bounding box maximum corner
+    pub bounding_box_max: [f32; 3],
+    /// WMO flags
+    pub flags: u16,
+    /// Number of LOD levels
+    pub num_lod: u16,
 
     // Extended chunk data
     /// Texture filenames (MOTX)
@@ -77,18 +89,36 @@ pub struct WmoRoot {
 }
 
 /// MOHD chunk structure (WMO Header)
+/// Reference: https://wowdev.wiki/WMO#MOHD_chunk
 #[derive(Debug, Clone, BinRead)]
 #[br(little)]
 struct Mohd {
+    /// Number of textures (0x00)
     n_materials: u32,
+    /// Number of groups (0x04)
     n_groups: u32,
+    /// Number of portals (0x08)
     n_portals: u32,
+    /// Number of lights (0x0C)
     n_lights: u32,
+    /// Number of doodad names (0x10)
     n_doodad_names: u32,
+    /// Number of doodad definitions (0x14)
     n_doodad_defs: u32,
+    /// Number of doodad sets (0x18)
     n_doodad_sets: u32,
-    #[br(count = 36)]
-    _padding: Vec<u8>, // Remaining bytes to reach 64 bytes total
+    /// Ambient color as BGRA (0x1C) - base/ambient lighting color for the WMO
+    ambient_color: [u8; 4],
+    /// WMO ID (foreign key to WMOAreaTable.dbc) (0x20)
+    wmo_id: u32,
+    /// Bounding box min (0x24)
+    bounding_box_min: [f32; 3],
+    /// Bounding box max (0x30)
+    bounding_box_max: [f32; 3],
+    /// Flags (0x3C)
+    flags: u16,
+    /// Number of LOD levels (0x3E)
+    num_lod: u16,
 }
 
 /// Parse a WMO root file using discovered chunks
@@ -105,6 +135,12 @@ pub fn parse_root_file<R: Read + Seek>(
         n_doodad_names: 0,
         n_doodad_defs: 0,
         n_doodad_sets: 0,
+        ambient_color: [128, 128, 128, 255], // Default to mid-gray
+        wmo_id: 0,
+        bounding_box_min: [0.0; 3],
+        bounding_box_max: [0.0; 3],
+        flags: 0,
+        num_lod: 0,
         textures: Vec::new(),
         texture_offset_index_map: HashMap::new(),
         materials: Vec::new(),
@@ -141,7 +177,7 @@ pub fn parse_root_file<R: Read + Seek>(
                 root.version = reader.read_le()?;
             }
             "MOHD" => {
-                // Read header and populate all count fields
+                // Read header and populate all fields
                 let mohd = Mohd::read(reader)?;
                 root.n_materials = mohd.n_materials;
                 root.n_groups = mohd.n_groups;
@@ -150,6 +186,12 @@ pub fn parse_root_file<R: Read + Seek>(
                 root.n_doodad_names = mohd.n_doodad_names;
                 root.n_doodad_defs = mohd.n_doodad_defs;
                 root.n_doodad_sets = mohd.n_doodad_sets;
+                root.ambient_color = mohd.ambient_color;
+                root.wmo_id = mohd.wmo_id;
+                root.bounding_box_min = mohd.bounding_box_min;
+                root.bounding_box_max = mohd.bounding_box_max;
+                root.flags = mohd.flags;
+                root.num_lod = mohd.num_lod;
             }
             "MOTX" => {
                 // Read texture filenames
