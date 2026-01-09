@@ -1,0 +1,55 @@
+# Cargo configuration for warcraft-rs workspace
+# https://doc.rust-lang.org/cargo/reference/config.html
+
+[build]
+# Treat all warnings as errors in CI and development
+# This replaces RUSTFLAGS="-D warnings" from qa.sh
+rustflags = ["-D", "warnings"]
+rustdocflags = ["-D", "warnings"]
+
+# Use all available CPU cores for parallel compilation
+jobs = -1
+
+[term]
+# Always show colors in terminal output
+color = "always"
+
+# Show warnings even in dependencies during development
+# quiet = false
+
+[alias]
+# Quick format check (no changes)
+fmt-check = "fmt --all -- --check"
+
+# Run clippy on entire workspace with all features
+# This is the primary quality gate
+lint = "clippy --workspace --all-targets --all-features"
+
+# Run all tests with all features enabled
+test-all = "test --workspace --all-features"
+
+# Run only library unit tests (faster iteration)
+test-lib = "test --lib --workspace"
+
+# Run only doc tests
+test-doc = "test --doc --workspace"
+
+# Build documentation for all crates
+docs = "doc --workspace --all-features --no-deps"
+
+# Full QA suite: format, lint, and test
+# Usage: cargo qa
+qa = ["fmt-check", "lint", "test-all"]
+
+# Quick check without full compilation (type checking only)
+check-all = "check --workspace --all-targets --all-features"
+
+# Release build for all workspace members
+build-release = "build --workspace --release"
+
+# Clean and rebuild (useful when things get weird)
+rebuild = ["clean", "build --workspace"]
+
+[env]
+# Enable backtraces for better error messages during development
+RUST_BACKTRACE = "1"

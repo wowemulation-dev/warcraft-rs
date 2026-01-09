@@ -21,9 +21,6 @@ members = [
 
   # CLI
   "warcraft-rs",
-
-  # Viewers
-  # "viewers/adt-mesh-viewer",
 ]
 resolver = "2"
 
@@ -82,11 +79,26 @@ test-case = "3.3"
 unsafe_code = "warn"
 
 [workspace.lints.clippy]
+# Enable all major lint groups
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
-# Only the truly necessary allows
+
+# Strict safety lints (library code should not panic)
+unwrap_used = "warn"                     # Use expect() with message or proper error handling
+expect_used = "warn"                     # Prefer proper error handling over expect()
+panic = "warn"                           # Libraries should return Result, not panic
+unreachable = "warn"                     # Use proper error types instead
+
+# Code quality lints
+dbg_macro = "warn"                       # Remove debug macros before commit
+print_stdout = "warn"                    # Use log/tracing instead of println!
+print_stderr = "warn"                    # Use log/tracing instead of eprintln!
+todo = "warn"                            # Track incomplete code
+unimplemented = "warn"                   # Track unimplemented code
+
+# Domain-specific allows (binary format parsing)
 module_name_repetitions = "allow"        # wow_mpq::mpq is reasonable
 multiple_crate_versions = "allow"        # Dependencies may pull in multiple versions
 missing_errors_doc = "allow"             # Error types are self-documenting via thiserror
