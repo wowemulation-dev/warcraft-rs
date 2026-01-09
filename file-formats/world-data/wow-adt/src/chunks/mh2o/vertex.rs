@@ -353,8 +353,12 @@ impl HeightUvDepthVertex {
 
 /// Vertex data array for a liquid instance.
 ///
-/// Stores the actual vertex data for a liquid layer in one of the four supported formats.
-/// The format must match the instance's LVF (Liquid Vertex Format) value.
+/// **BREAKING CHANGE (0.x)**: Changed from compact Vec to sparse 9×9 array to match
+/// WoW's chunk grid structure and simplify vertex indexing.
+///
+/// Stores vertex data in a 9×9 sparse array where each position corresponds to a vertex
+/// in the chunk's grid. Vertices are indexed as `z * 9 + x` where x,y are chunk-relative
+/// coordinates (0-8). Positions outside the instance's dimensions are `None`.
 ///
 /// # Format Selection
 ///
@@ -363,36 +367,42 @@ impl HeightUvDepthVertex {
 /// - **DepthOnly (LVF 2)**: Rare format with only depth/transparency (no height variation)
 /// - **HeightUvDepth (LVF 3)**: Full-featured water with all properties
 ///
-/// # Vertex Count
+/// # Grid Layout
 ///
-/// Vertex count = `(width + 1) × (height + 1)` where width/height come from the instance.
+/// The 9×9 grid covers the entire chunk (0-8 in both X and Z). An instance with
+/// `x_offset=2, y_offset=3, width=3, height=2` would have vertices at:
+/// - `vertices[3 * 9 + 2]` through `vertices[3 * 9 + 5]` (y=3, x=2-5)
+/// - `vertices[4 * 9 + 2]` through `vertices[4 * 9 + 5]` (y=4, x=2-5)
+/// - `vertices[5 * 9 + 2]` through `vertices[5 * 9 + 5]` (y=5, x=2-5)
+///
+/// Reference: noggit-red liquid_layer.cpp lines 133-142
 #[derive(Debug, Clone)]
 pub enum VertexDataArray {
-    /// LVF 0: Height + Depth (5 bytes/vertex)
-    HeightDepth(Vec<HeightDepthVertex>),
+    /// LVF 0: Height + Depth (5 bytes/vertex) - 9×9 sparse grid
+    HeightDepth(Box<[Option<HeightDepthVertex>; 81]>),
 
-    /// LVF 1: Height + UV (8 bytes/vertex)
-    HeightUv(Vec<HeightUvVertex>),
+    /// LVF 1: Height + UV (8 bytes/vertex) - 9×9 sparse grid
+    HeightUv(Box<[Option<HeightUvVertex>; 81]>),
 
-    /// LVF 2: Depth Only (1 byte/vertex)
-    DepthOnly(Vec<DepthOnlyVertex>),
+    /// LVF 2: Depth Only (1 byte/vertex) - 9×9 sparse grid
+    DepthOnly(Box<[Option<DepthOnlyVertex>; 81]>),
 
-    /// LVF 3: Height + UV + Depth (9 bytes/vertex)
-    HeightUvDepth(Vec<HeightUvDepthVertex>),
+    /// LVF 3: Height + UV + Depth (9 bytes/vertex) - 9×9 sparse grid
+    HeightUvDepth(Box<[Option<HeightUvDepthVertex>; 81]>),
 }
 
 impl VertexDataArray {
-    /// Get the number of vertices in this array.
+    /// Get the number of valid (Some) vertices in this sparse array.
     pub fn len(&self) -> usize {
         match self {
-            Self::HeightDepth(v) => v.len(),
-            Self::HeightUv(v) => v.len(),
-            Self::DepthOnly(v) => v.len(),
-            Self::HeightUvDepth(v) => v.len(),
+            Self::HeightDepth(v) => v.as_ref().iter().filter(|v| v.is_some()).count(),
+            Self::HeightUv(v) => v.as_ref().iter().filter(|v| v.is_some()).count(),
+            Self::DepthOnly(v) => v.as_ref().iter().filter(|v| v.is_some()).count(),
+            Self::HeightUvDepth(v) => v.as_ref().iter().filter(|v| v.is_some()).count(),
         }
     }
 
-    /// Check if the array is empty.
+    /// Check if the array has no valid vertices.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -407,24 +417,55 @@ impl VertexDataArray {
         }
     }
 
-    /// Get the total size in bytes for this vertex data.
+    /// Get the total size in bytes for valid vertex data.
     pub fn byte_size(&self) -> usize {
         self.len() * self.format().bytes_per_vertex()
     }
 
-    /// Validate vertex count matches expected count for given dimensions.
+    /// Get vertex at chunk-relative position (x, z).
     ///
     /// # Arguments
     ///
-    /// * `width` - Instance width (1-8)
-    /// * `height` - Instance height (1-8)
+    /// * `x` - X coordinate in chunk (0-8)
+    /// * `z` - Z coordinate in chunk (0-8)
     ///
     /// # Returns
     ///
-    /// True if vertex count matches `(width + 1) × (height + 1)`
-    pub fn validate_count(&self, width: u8, height: u8) -> bool {
-        let expected = (width as usize + 1) * (height as usize + 1);
-        self.len() == expected
+    /// Vertex at position, or None if out of bounds or no vertex exists
+    pub fn get(&self, x: usize, z: usize) -> Option<&dyn std::any::Any> {
+        if x > 8 || z > 8 {
+            return None;
+        }
+        let idx = z * 9 + x;
+        match self {
+            Self::HeightDepth(v) => v[idx].as_ref().map(|v| v as &dyn std::any::Any),
+            Self::HeightUv(v) => v[idx].as_ref().map(|v| v as &dyn std::any::Any),
+            Self::DepthOnly(v) => v[idx].as_ref().map(|v| v as &dyn std::any::Any),
+            Self::HeightUvDepth(v) => v[idx].as_ref().map(|v| v as &dyn std::any::Any),
+        }
+    }
+
+    /// Validate vertex positions match instance dimensions.
+    ///
+    /// # Arguments
+    ///
+    /// * `x_offset` - Instance X offset (0-8)
+    /// * `y_offset` - Instance Y offset (0-8)
+    /// * `width` - Instance width (0-8)
+    /// * `height` - Instance height (0-8)
+    ///
+    /// # Returns
+    ///
+    /// True if all expected positions have vertices
+    pub fn validate_coverage(&self, x_offset: u8, y_offset: u8, width: u8, height: u8) -> bool {
+        for z in y_offset..=y_offset + height {
+            for x in x_offset..=x_offset + width {
+                if self.get(x as usize, z as usize).is_none() {
+                    return false;
+                }
+            }
+        }
+        true
     }
 }
 

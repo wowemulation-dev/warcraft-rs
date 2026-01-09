@@ -792,7 +792,7 @@ fn write_mh2o_chunk<W: Write + Seek>(writer: &mut W, mh2o: &Mh2oChunk) -> Result
 
                     match vertex_data {
                         VertexDataArray::HeightDepth(vertices) => {
-                            for vertex in vertices {
+                            for vertex in vertices.as_ref().iter().filter_map(|v| v.as_ref()) {
                                 vertex.write_le(writer).map_err(|e| {
                                     AdtError::BinrwError(format!(
                                         "Failed to write HeightDepth vertex: {e}"
@@ -801,7 +801,7 @@ fn write_mh2o_chunk<W: Write + Seek>(writer: &mut W, mh2o: &Mh2oChunk) -> Result
                             }
                         }
                         VertexDataArray::HeightUv(vertices) => {
-                            for vertex in vertices {
+                            for vertex in vertices.as_ref().iter().filter_map(|v| v.as_ref()) {
                                 vertex.write_le(writer).map_err(|e| {
                                     AdtError::BinrwError(format!(
                                         "Failed to write HeightUv vertex: {e}"
@@ -810,7 +810,7 @@ fn write_mh2o_chunk<W: Write + Seek>(writer: &mut W, mh2o: &Mh2oChunk) -> Result
                             }
                         }
                         VertexDataArray::DepthOnly(vertices) => {
-                            for vertex in vertices {
+                            for vertex in vertices.as_ref().iter().filter_map(|v| v.as_ref()) {
                                 vertex.write_le(writer).map_err(|e| {
                                     AdtError::BinrwError(format!(
                                         "Failed to write DepthOnly vertex: {e}"
@@ -819,7 +819,7 @@ fn write_mh2o_chunk<W: Write + Seek>(writer: &mut W, mh2o: &Mh2oChunk) -> Result
                             }
                         }
                         VertexDataArray::HeightUvDepth(vertices) => {
-                            for vertex in vertices {
+                            for vertex in vertices.as_ref().iter().filter_map(|v| v.as_ref()) {
                                 vertex.write_le(writer).map_err(|e| {
                                     AdtError::BinrwError(format!(
                                         "Failed to write HeightUvDepth vertex: {e}"

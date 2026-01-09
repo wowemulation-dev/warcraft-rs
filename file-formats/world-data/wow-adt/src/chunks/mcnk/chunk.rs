@@ -30,6 +30,7 @@
 //! See: `/specs/001-adt-binrw-refactor/CROSS_REFERENCE_MCNK.md` for full analysis
 
 use crate::chunk_header::ChunkHeader;
+use crate::chunk_id::ChunkId;
 use binrw::{BinRead, BinResult};
 use std::io::{Read, Seek, SeekFrom};
 
@@ -167,69 +168,73 @@ impl McnkChunk {
         reader: &mut R,
         mcnk_start_offset: u64,
     ) -> BinResult<Self> {
+        // Default chunk size for backwards compatibility (256KB should be plenty)
+        Self::parse_with_offset_and_size(reader, mcnk_start_offset, 0x40000)
+    }
+
+    /// Parse MCNK chunk with known chunk size.
+    ///
+    /// For MoP 5.3+ with high_res_holes flag, the MCVT/MCNR offsets are not stored
+    /// in the header. This variant accepts the chunk size to enable scanning for
+    /// subchunks in that case.
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Reader positioned at MCNK chunk data (after chunk header)
+    /// * `mcnk_start_offset` - File offset where MCNK chunk header begins
+    /// * `mcnk_size` - Total size of MCNK chunk data (excluding 8-byte header)
+    ///
+    /// # Returns
+    ///
+    /// Parsed MCNK chunk with populated subchunks
+    pub fn parse_with_offset_and_size<R: Read + Seek>(
+        reader: &mut R,
+        mcnk_start_offset: u64,
+        mcnk_size: u32,
+    ) -> BinResult<Self> {
         // Read 128-byte header
         let header = McnkHeader::read_le(reader)?;
 
-        // Helper to seek to subchunk and read it
-        let mut read_subchunk = |offset: u32, name: &str| -> BinResult<Vec<u8>> {
-            if offset == 0 {
-                return Ok(Vec::new());
-            }
-
-            // Seek to subchunk (offset is relative to MCNK chunk start)
-            let subchunk_pos = mcnk_start_offset + u64::from(offset);
-            reader
-                .seek(SeekFrom::Start(subchunk_pos))
-                .map_err(|e| binrw::Error::Custom {
-                    pos: subchunk_pos,
-                    err: Box::new(format!(
-                        "Failed to seek to {} subchunk at offset {}: {}",
-                        name, offset, e
-                    )),
-                })?;
-
-            // Read subchunk header
-            let subchunk_header =
-                ChunkHeader::read_le(reader).map_err(|e| binrw::Error::Custom {
-                    pos: subchunk_pos,
-                    err: Box::new(format!(
-                        "Failed to read {} subchunk header at file offset {} (MCNK+{}): {:?}",
-                        name, subchunk_pos, offset, e
-                    )),
-                })?;
-
-            // Read subchunk data
-            let mut data = vec![0u8; subchunk_header.size as usize];
-            reader.read_exact(&mut data)?;
-
-            Ok(data)
-        };
-
         // Parse subchunks based on header offsets
+        // For Cata+ split files or MoP with high_res_holes, offsets may be 0 - fall back to scanning
         let heights = if header.has_height() {
-            let data = read_subchunk(header.ofs_height(), "MCVT")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_height(), "MCVT")?;
             if !data.is_empty() {
                 Some(McvtChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
                 None
             }
         } else {
-            None
+            // Offset is 0 - try scanning for MCVT within chunk bounds
+            // This handles MoP 5.3+ high_res_holes and Cata+ split files
+            let data = scan_for_subchunk(reader, mcnk_start_offset, mcnk_size, ChunkId::MCVT)?;
+            if !data.is_empty() {
+                Some(McvtChunk::read_le(&mut std::io::Cursor::new(data))?)
+            } else {
+                None
+            }
         };
 
         let normals = if header.has_normal() {
-            let data = read_subchunk(header.ofs_normal(), "MCNR")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_normal(), "MCNR")?;
             if !data.is_empty() {
                 Some(McnrChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
                 None
             }
         } else {
-            None
+            // Offset is 0 - try scanning for MCNR within chunk bounds
+            // This handles MoP 5.3+ high_res_holes and Cata+ split files
+            let data = scan_for_subchunk(reader, mcnk_start_offset, mcnk_size, ChunkId::MCNR)?;
+            if !data.is_empty() {
+                Some(McnrChunk::read_le(&mut std::io::Cursor::new(data))?)
+            } else {
+                None
+            }
         };
 
         let layers = if header.has_layer() {
-            let data = read_subchunk(header.ofs_layer, "MCLY")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_layer, "MCLY")?;
             if !data.is_empty() {
                 Some(MclyChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -245,7 +250,7 @@ impl McnkChunk {
         let materials = None;
 
         let refs = if header.has_refs() {
-            let data = read_subchunk(header.ofs_refs, "MCRF")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_refs, "MCRF")?;
             if !data.is_empty() {
                 Some(McrfChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -258,7 +263,7 @@ impl McnkChunk {
         // MCRD shares ofs_refs with MCRF (Cataclysm+ split files)
         // TODO: Add version/file-type detection to distinguish MCRF vs MCRD
         let doodad_refs = if header.has_refs() {
-            let data = read_subchunk(header.ofs_refs, "MCRF")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_refs, "MCRF")?;
             if !data.is_empty() {
                 Some(McrdChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -271,7 +276,7 @@ impl McnkChunk {
         // MCRW shares ofs_refs with MCRF (Cataclysm+ split files)
         // TODO: Add version/file-type detection to distinguish MCRF vs MCRD/MCRW
         let wmo_refs = if header.has_refs() {
-            let data = read_subchunk(header.ofs_refs, "MCRF")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_refs, "MCRF")?;
             if !data.is_empty() {
                 Some(McrwChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -282,7 +287,7 @@ impl McnkChunk {
         };
 
         let alpha = if header.has_alpha() {
-            let data = read_subchunk(header.ofs_alpha, "MCAL")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_alpha, "MCAL")?;
             if !data.is_empty() {
                 Some(McalChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -293,7 +298,7 @@ impl McnkChunk {
         };
 
         let shadow = if header.has_shadow() {
-            let data = read_subchunk(header.ofs_shadow, "MCSH")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_shadow, "MCSH")?;
             if !data.is_empty() {
                 Some(McshChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -304,7 +309,7 @@ impl McnkChunk {
         };
 
         let vertex_colors = if header.has_vertex_colors() {
-            let data = read_subchunk(header.ofs_mccv, "MCCV")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_mccv, "MCCV")?;
             if !data.is_empty() {
                 Some(MccvChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -315,7 +320,7 @@ impl McnkChunk {
         };
 
         let vertex_lighting = if header.has_baked_lighting() {
-            let data = read_subchunk(header.ofs_mclv, "MCLV")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_mclv, "MCLV")?;
             if !data.is_empty() {
                 Some(MclvChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -326,7 +331,7 @@ impl McnkChunk {
         };
 
         let sound_emitters = if header.has_sound_emitters() {
-            let data = read_subchunk(header.ofs_snd_emitters, "MCSE")?;
+            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_snd_emitters, "MCSE")?;
             if !data.is_empty() {
                 Some(McseChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -450,6 +455,95 @@ impl McnkChunk {
             && (self.header.has_vertex_colors() == self.has_vertex_colors())
             && (self.header.has_legacy_liquid() == self.has_liquid())
     }
+}
+
+/// Read a subchunk from within an MCNK chunk.
+///
+/// Seeks to the specified offset (relative to MCNK chunk start), reads the
+/// subchunk header, and returns the subchunk data.
+fn read_subchunk<R: Read + Seek>(
+    reader: &mut R,
+    mcnk_start_offset: u64,
+    offset: u32,
+    name: &str,
+) -> BinResult<Vec<u8>> {
+    if offset == 0 {
+        return Ok(Vec::new());
+    }
+
+    // Seek to subchunk (offset is relative to MCNK chunk start)
+    let subchunk_pos = mcnk_start_offset + u64::from(offset);
+    reader
+        .seek(SeekFrom::Start(subchunk_pos))
+        .map_err(|e| binrw::Error::Custom {
+            pos: subchunk_pos,
+            err: Box::new(format!(
+                "Failed to seek to {} subchunk at offset {}: {}",
+                name, offset, e
+            )),
+        })?;
+
+    // Read subchunk header
+    let subchunk_header = ChunkHeader::read_le(reader).map_err(|e| binrw::Error::Custom {
+        pos: subchunk_pos,
+        err: Box::new(format!(
+            "Failed to read {} subchunk header at file offset {} (MCNK+{}): {:?}",
+            name, subchunk_pos, offset, e
+        )),
+    })?;
+
+    // Read subchunk data
+    let mut data = vec![0u8; subchunk_header.size as usize];
+    reader.read_exact(&mut data)?;
+
+    Ok(data)
+}
+
+/// Scan for a subchunk by chunk ID (used for MoP 5.3+ when offsets aren't in header).
+///
+/// When `high_res_holes` flag is set, the MCNK header's `multipurpose_field` contains
+/// holes data instead of MCVT/MCNR offsets. This function scans the chunk data
+/// sequentially to find the subchunks by their magic bytes.
+fn scan_for_subchunk<R: Read + Seek>(
+    reader: &mut R,
+    mcnk_start_offset: u64,
+    mcnk_size: u32,
+    target_id: ChunkId,
+) -> BinResult<Vec<u8>> {
+    // Scan from after the 128-byte header to end of chunk
+    let scan_start = mcnk_start_offset + 8 + 128; // 8-byte chunk header + 128-byte MCNK header
+    let scan_end = mcnk_start_offset + 8 + u64::from(mcnk_size);
+
+    let mut pos = scan_start;
+    while pos + 8 <= scan_end {
+        reader
+            .seek(SeekFrom::Start(pos))
+            .map_err(|e| binrw::Error::Custom {
+                pos,
+                err: Box::new(format!("Failed to seek during subchunk scan: {}", e)),
+            })?;
+
+        // Read potential chunk header
+        let subchunk_header = match ChunkHeader::read_le(reader) {
+            Ok(h) => h,
+            Err(_) => {
+                pos += 1;
+                continue;
+            }
+        };
+
+        if subchunk_header.id == target_id {
+            // Found it! Read the data
+            let mut data = vec![0u8; subchunk_header.size as usize];
+            reader.read_exact(&mut data)?;
+            return Ok(data);
+        }
+
+        // Move to next potential chunk (header + data)
+        pos += 8 + u64::from(subchunk_header.size);
+    }
+
+    Ok(Vec::new()) // Not found
 }
 
 #[cfg(test)]

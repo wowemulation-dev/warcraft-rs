@@ -459,13 +459,34 @@ fn parse_mh2o_chunk<R: Read + Seek>(
 
         for instance in &instances {
             // Parse exists bitmap if present
+            // CRITICAL: According to wowdev.wiki, bitmap size is (width * height + 7) / 8 bytes
+            // NOT always 8 bytes! Smaller instances (like 3x3 = 9 bits = 2 bytes) should only
+            // read the correct number of bytes to avoid reading into vertex data.
             let exists_bitmap = if instance.offset_exists_bitmap != 0
                 && u64::from(instance.offset_exists_bitmap) < u64::from(chunk_size)
             {
                 reader.seek(SeekFrom::Start(
                     data_start + u64::from(instance.offset_exists_bitmap),
                 ))?;
-                u64::read_le(reader).ok()
+
+                // Calculate exact byte count needed for bitmap
+                let tile_count = (instance.width as usize) * (instance.height as usize);
+                let byte_count = tile_count.div_ceil(8);
+
+                // Read only the exact bytes needed (not padded to 8)
+                let mut bitmap_bytes = vec![0u8; byte_count];
+                match reader.read_exact(&mut bitmap_bytes) {
+                    Ok(_) => {
+                        // Convert to u64 by padding with zeros
+                        let mut padded = [0u8; 8];
+                        for (i, &byte) in bitmap_bytes.iter().enumerate() {
+                            padded[i] = byte;
+                        }
+                        let bitmap = u64::from_le_bytes(padded);
+                        Some(bitmap)
+                    }
+                    Err(_) => return Ok(None),
+                }
             } else {
                 None
             };
@@ -487,66 +508,85 @@ fn parse_mh2o_chunk<R: Read + Seek>(
                 // Determine LVF format from instance (WotLK mode)
                 let lvf_opt = instance.get_lvf_wotlk();
 
-                // Calculate vertex count
-                let vertex_count = instance.vertex_count();
-
                 // Parse vertices based on format (if format is known)
+                // CRITICAL: Store in 9×9 sparse array matching chunk grid (noggit-red approach)
                 match lvf_opt {
                     Some(crate::chunks::mh2o::LiquidVertexFormat::HeightDepth) => {
-                        let mut vertices = Vec::with_capacity(vertex_count);
-                        for _ in 0..vertex_count {
-                            match HeightDepthVertex::read_le(reader) {
-                                Ok(v) => vertices.push(v),
-                                Err(_) => break,
+                        // Create 9×9 sparse grid (81 vertices, initially None)
+                        let mut grid: [Option<HeightDepthVertex>; 81] = [None; 81];
+
+                        // Read vertices and place them at correct grid positions
+                        // Vertices are stored in row-major order: z * 9 + x
+                        // CRITICAL: Clamp coordinates to [0, 8] - some WoW files have invalid ranges
+                        let z_end = ((instance.y_offset + instance.height) as usize).min(8);
+                        let x_end = ((instance.x_offset + instance.width) as usize).min(8);
+
+                        for z in instance.y_offset as usize..=z_end {
+                            for x in instance.x_offset as usize..=x_end {
+                                match HeightDepthVertex::read_le(reader) {
+                                    Ok(v) => {
+                                        let idx = z * 9 + x;
+                                        grid[idx] = Some(v);
+                                    }
+                                    Err(_) => return Ok(None), // Parsing error
+                                }
                             }
                         }
-                        if vertices.len() == vertex_count {
-                            Some(VertexDataArray::HeightDepth(vertices))
-                        } else {
-                            None
-                        }
+                        Some(VertexDataArray::HeightDepth(Box::new(grid)))
                     }
                     Some(crate::chunks::mh2o::LiquidVertexFormat::HeightUv) => {
-                        let mut vertices = Vec::with_capacity(vertex_count);
-                        for _ in 0..vertex_count {
-                            match HeightUvVertex::read_le(reader) {
-                                Ok(v) => vertices.push(v),
-                                Err(_) => break,
+                        let mut grid: [Option<HeightUvVertex>; 81] = [None; 81];
+                        let z_end = ((instance.y_offset + instance.height) as usize).min(8);
+                        let x_end = ((instance.x_offset + instance.width) as usize).min(8);
+
+                        for z in instance.y_offset as usize..=z_end {
+                            for x in instance.x_offset as usize..=x_end {
+                                match HeightUvVertex::read_le(reader) {
+                                    Ok(v) => {
+                                        let idx = z * 9 + x;
+                                        grid[idx] = Some(v);
+                                    }
+                                    Err(_) => return Ok(None),
+                                }
                             }
                         }
-                        if vertices.len() == vertex_count {
-                            Some(VertexDataArray::HeightUv(vertices))
-                        } else {
-                            None
-                        }
+                        Some(VertexDataArray::HeightUv(Box::new(grid)))
                     }
                     Some(crate::chunks::mh2o::LiquidVertexFormat::DepthOnly) => {
-                        let mut vertices = Vec::with_capacity(vertex_count);
-                        for _ in 0..vertex_count {
-                            match DepthOnlyVertex::read_le(reader) {
-                                Ok(v) => vertices.push(v),
-                                Err(_) => break,
+                        let mut grid: [Option<DepthOnlyVertex>; 81] = [None; 81];
+                        let z_end = ((instance.y_offset + instance.height) as usize).min(8);
+                        let x_end = ((instance.x_offset + instance.width) as usize).min(8);
+
+                        for z in instance.y_offset as usize..=z_end {
+                            for x in instance.x_offset as usize..=x_end {
+                                match DepthOnlyVertex::read_le(reader) {
+                                    Ok(v) => {
+                                        let idx = z * 9 + x;
+                                        grid[idx] = Some(v);
+                                    }
+                                    Err(_) => return Ok(None),
+                                }
                             }
                         }
-                        if vertices.len() == vertex_count {
-                            Some(VertexDataArray::DepthOnly(vertices))
-                        } else {
-                            None
-                        }
+                        Some(VertexDataArray::DepthOnly(Box::new(grid)))
                     }
                     Some(crate::chunks::mh2o::LiquidVertexFormat::HeightUvDepth) => {
-                        let mut vertices = Vec::with_capacity(vertex_count);
-                        for _ in 0..vertex_count {
-                            match HeightUvDepthVertex::read_le(reader) {
-                                Ok(v) => vertices.push(v),
-                                Err(_) => break,
+                        let mut grid: [Option<HeightUvDepthVertex>; 81] = [None; 81];
+                        let z_end = ((instance.y_offset + instance.height) as usize).min(8);
+                        let x_end = ((instance.x_offset + instance.width) as usize).min(8);
+
+                        for z in instance.y_offset as usize..=z_end {
+                            for x in instance.x_offset as usize..=x_end {
+                                match HeightUvDepthVertex::read_le(reader) {
+                                    Ok(v) => {
+                                        let idx = z * 9 + x;
+                                        grid[idx] = Some(v);
+                                    }
+                                    Err(_) => return Ok(None),
+                                }
                             }
                         }
-                        if vertices.len() == vertex_count {
-                            Some(VertexDataArray::HeightUvDepth(vertices))
-                        } else {
-                            None
-                        }
+                        Some(VertexDataArray::HeightUvDepth(Box::new(grid)))
                     }
                     None => None, // Unknown LVF format
                 }
@@ -594,16 +634,18 @@ fn parse_mcnk_chunks<R: Read + Seek>(
         // Seek to MCNK chunk (skip the 8-byte header to get to data)
         reader.seek(SeekFrom::Start(chunk_info.offset + 8))?;
 
-        // Parse using the special two-level parser
-        let mcnk = McnkChunk::parse_with_offset(reader, chunk_info.offset).map_err(|e| {
-            log::error!(
-                "Failed to parse MCNK chunk {} at offset {}: {:?}",
-                index,
-                chunk_info.offset,
-                e
-            );
-            e
-        })?;
+        // Parse using the special two-level parser (pass chunk size for MoP 5.3+ scanning)
+        let mcnk =
+            McnkChunk::parse_with_offset_and_size(reader, chunk_info.offset, chunk_info.size)
+                .map_err(|e| {
+                    log::error!(
+                        "Failed to parse MCNK chunk {} at offset {}: {:?}",
+                        index,
+                        chunk_info.offset,
+                        e
+                    );
+                    e
+                })?;
 
         mcnk_chunks.push(mcnk);
     }

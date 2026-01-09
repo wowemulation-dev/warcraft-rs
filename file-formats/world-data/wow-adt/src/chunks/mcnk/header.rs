@@ -58,8 +58,9 @@ impl McnkFlags {
     }
 
     /// Do not fix alpha map (use full 64×64 instead of 63×63)
+    /// Bit 15 (0x8000) - When set, alpha maps are full 64×64; when clear, they're 63×63
     pub fn do_not_fix_alpha_map(&self) -> bool {
-        self.value & 0x100 != 0
+        self.value & 0x8000 != 0
     }
 
     /// High-resolution holes (64-bit hole map, ~MoP 5.3+)
@@ -234,9 +235,16 @@ pub struct McnkHeader {
     #[br(map = |x: u32| if x >= 0x100000 { 0 } else { x })]
     pub size_liquid: u32,
 
-    /// World position of chunk [X, Y, Z]
+    /// World position of chunk stored as [Z, X, Y] in file
     ///
-    /// Coordinates in WoW's world space. Vertex heights are relative to this position.
+    /// **IMPORTANT:** The file format stores this as [Z, X, Y] (verified against noggit-red).
+    /// Use the `world_position()` helper method to get [X, Y, Z] coordinates.
+    /// Vertex heights are relative to this position.
+    ///
+    /// Raw field access:
+    /// - `position[0]` = Z (vertical height)
+    /// - `position[1]` = X (north/south)
+    /// - `position[2]` = Y (west/east)
     pub position: [f32; 3],
 
     /// Offset to MCCV chunk (vertex colors, WotLK 3.x+)
@@ -323,14 +331,40 @@ impl McnkHeader {
         }
     }
 
-    /// Check if MCVT (height) subchunk is present.
+    /// Check if MCVT (height) subchunk offset is present and valid in header.
+    ///
+    /// Returns false for:
+    /// - MoP 5.3+ when `high_res_holes` flag is set (multipurpose_field contains holes)
+    /// - Zero offset (no data)
+    /// - Garbage offsets (> 256KB, typical max MCNK size)
+    ///
+    /// In cases where this returns false, MCVT must be found by scanning chunk data.
     pub fn has_height(&self) -> bool {
-        self.ofs_height() != 0
+        // When high_res_holes is set, multipurpose_field contains holes, not offsets
+        if self.flags.high_res_holes() {
+            return false;
+        }
+        let ofs = self.ofs_height();
+        // Offset 0 means no data; > 256KB is likely garbage (typical MCNK is 1-64KB)
+        ofs != 0 && ofs < 0x40000
     }
 
-    /// Check if MCNR (normal) subchunk is present.
+    /// Check if MCNR (normal) subchunk offset is present and valid in header.
+    ///
+    /// Returns false for:
+    /// - MoP 5.3+ when `high_res_holes` flag is set (multipurpose_field contains holes)
+    /// - Zero offset (no data)
+    /// - Garbage offsets (> 256KB, typical max MCNK size)
+    ///
+    /// In cases where this returns false, MCNR must be found by scanning chunk data.
     pub fn has_normal(&self) -> bool {
-        self.ofs_normal() != 0
+        // When high_res_holes is set, multipurpose_field contains holes, not offsets
+        if self.flags.high_res_holes() {
+            return false;
+        }
+        let ofs = self.ofs_normal();
+        // Offset 0 means no data; > 256KB is likely garbage (typical MCNK is 1-64KB)
+        ofs != 0 && ofs < 0x40000
     }
 
     /// Check if MCLY (layer) subchunk is present.
@@ -346,6 +380,24 @@ impl McnkHeader {
     /// Check if MCSH (shadow) subchunk is present.
     pub fn has_shadow(&self) -> bool {
         self.flags.has_mcsh() && self.ofs_shadow != 0
+    }
+
+    /// Get the world position in correct [X, Y, Z] order.
+    ///
+    /// The file stores position as [Z, X, Y], but this method returns [X, Y, Z]
+    /// for correct world-space coordinates.
+    ///
+    /// # Returns
+    ///
+    /// - `[0]` = X (north/south)
+    /// - `[1]` = Y (west/east)
+    /// - `[2]` = Z (vertical height)
+    pub fn world_position(&self) -> [f32; 3] {
+        [
+            self.position[1], // X from file position[1]
+            self.position[2], // Y from file position[2]
+            self.position[0], // Z from file position[0]
+        ]
     }
 
     /// Check if MCRF (refs) subchunk is present.
@@ -463,7 +515,8 @@ mod tests {
 
     #[test]
     fn test_mcnk_flags() {
-        let flags = McnkFlags { value: 0x0149 }; // has_mcsh | has_ocean | has_mccv | do_not_fix_alpha_map
+        // 0x8049 = has_mcsh (0x01) | has_ocean (0x08) | has_mccv (0x40) | do_not_fix_alpha_map (0x8000)
+        let flags = McnkFlags { value: 0x8049 };
 
         assert!(flags.has_mcsh());
         assert!(!flags.impassable());

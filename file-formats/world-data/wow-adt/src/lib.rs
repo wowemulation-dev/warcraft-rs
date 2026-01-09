@@ -180,6 +180,7 @@ pub mod chunk_discovery;
 pub mod chunk_header;
 pub mod chunk_id;
 pub mod chunks;
+pub mod combined_alpha_map;
 pub mod error;
 pub mod file_type;
 pub mod merger;
@@ -200,6 +201,7 @@ pub use builder::{AdtBuilder, BuiltAdt};
 pub use chunk_discovery::{ChunkDiscovery, ChunkLocation, discover_chunks};
 pub use chunk_header::ChunkHeader;
 pub use chunk_id::ChunkId;
+pub use combined_alpha_map::CombinedAlphaMap;
 pub use error::{AdtError, Result};
 pub use file_type::AdtFileType;
 pub use version::AdtVersion;
@@ -254,6 +256,7 @@ pub use chunks::{
     MwidChunk,
     MwmoChunk,
     SoundEmitter,
+    TextureHeightParams,
     UvMapEntry,
     VertexColor,
     VertexNormal,

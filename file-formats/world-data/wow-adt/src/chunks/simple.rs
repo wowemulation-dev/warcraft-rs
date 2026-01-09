@@ -227,11 +227,19 @@ pub struct MampChunk {
 
 /// MTXP - Texture height parameters (MoP+)
 ///
-/// Defines height scaling factors for each texture in the MTEX chunk.
-/// Each value corresponds to a texture by index.
-/// Variable length - contains one u32 per texture.
+/// Defines height blending parameters for each texture in the MTEX chunk.
+/// Each entry contains height scale/offset values for height-based texture blending.
+/// Variable length - contains one `TextureHeightParams` per texture.
+///
+/// Height blending uses `_h.blp` height textures to create more natural transitions
+/// between terrain texture layers based on height values rather than simple alpha blending.
 ///
 /// Reference: <https://wowdev.wiki/ADT/v18#MTXP_chunk>
+///
+/// ## Height Texture Loading
+///
+/// If `height_scale == 0.0` and `height_offset == 1.0`, no `_h.blp` texture is loaded.
+/// Otherwise, the corresponding `<texture>_h.blp` file should be loaded.
 ///
 /// ## Version Support
 ///
@@ -244,28 +252,55 @@ pub struct MampChunk {
 #[brw(little)]
 pub struct MtxpChunk {
     /// Height parameters for each texture (one per MTEX entry)
-    #[br(parse_with = parse_height_params)]
-    #[bw(write_with = write_height_params)]
-    pub height_params: Vec<u32>,
+    #[br(parse_with = parse_texture_height_params)]
+    #[bw(write_with = write_texture_height_params)]
+    pub entries: Vec<TextureHeightParams>,
 }
 
-/// Parse height parameters until end of stream
+/// Height blending parameters for a single texture (SMTextureParams)
+///
+/// Controls how height textures (`_h.blp`) affect terrain blending.
+#[derive(Debug, Clone, Copy, BinRead, BinWrite)]
+#[brw(little)]
+pub struct TextureHeightParams {
+    /// Texture flags (same format as MTXF flags)
+    pub flags: u32,
+    /// Height scale factor - `_h.blp` values are scaled to [0, height_scale)
+    /// Default: 0.0 (no height blending)
+    pub height_scale: f32,
+    /// Height offset for blending calculations
+    /// Default: 1.0
+    pub height_offset: f32,
+    /// Reserved/padding
+    pub padding: u32,
+}
+
+impl TextureHeightParams {
+    /// Check if this texture should load a height texture (`_h.blp`)
+    ///
+    /// Returns false if height_scale == 0.0 and height_offset == 1.0 (default values)
+    pub fn uses_height_texture(&self) -> bool {
+        self.height_scale != 0.0 || self.height_offset != 1.0
+    }
+}
+
+/// Parse texture height parameters until end of stream
 #[binrw::parser(reader, endian)]
 #[allow(clippy::while_let_loop)]
-fn parse_height_params() -> binrw::BinResult<Vec<u32>> {
+fn parse_texture_height_params() -> binrw::BinResult<Vec<TextureHeightParams>> {
     let mut params = Vec::new();
     loop {
-        match u32::read_options(reader, endian, ()) {
-            Ok(value) => params.push(value),
+        match TextureHeightParams::read_options(reader, endian, ()) {
+            Ok(entry) => params.push(entry),
             Err(_) => break,
         }
     }
     Ok(params)
 }
 
-/// Write height parameters
+/// Write texture height parameters
 #[binrw::writer(writer, endian)]
-fn write_height_params(params: &Vec<u32>) -> binrw::BinResult<()> {
+fn write_texture_height_params(params: &Vec<TextureHeightParams>) -> binrw::BinResult<()> {
     for param in params {
         param.write_options(writer, endian, ())?;
     }
@@ -480,18 +515,29 @@ mod tests {
 
     #[test]
     fn test_mtxp_chunk_parse() {
-        // 3 textures with height params 1, 2, 3
+        // 2 texture entries (16 bytes each = 32 bytes total)
+        // Entry format: flags (u32), height_scale (f32), height_offset (f32), padding (u32)
         let data = vec![
-            0x01, 0x00, 0x00, 0x00, // height_param[0] = 1
-            0x02, 0x00, 0x00, 0x00, // height_param[1] = 2
-            0x03, 0x00, 0x00, 0x00, // height_param[2] = 3
+            // Entry 0: flags=1, height_scale=0.5, height_offset=1.0, padding=0
+            0x01, 0x00, 0x00, 0x00, // flags = 1
+            0x00, 0x00, 0x00, 0x3F, // height_scale = 0.5 (0x3F000000)
+            0x00, 0x00, 0x80, 0x3F, // height_offset = 1.0 (0x3F800000)
+            0x00, 0x00, 0x00, 0x00, // padding = 0
+            // Entry 1: flags=2, height_scale=1.0, height_offset=0.5, padding=0
+            0x02, 0x00, 0x00, 0x00, // flags = 2
+            0x00, 0x00, 0x80, 0x3F, // height_scale = 1.0 (0x3F800000)
+            0x00, 0x00, 0x00, 0x3F, // height_offset = 0.5 (0x3F000000)
+            0x00, 0x00, 0x00, 0x00, // padding = 0
         ];
         let mut cursor = Cursor::new(data);
         let mtxp = MtxpChunk::read_le(&mut cursor).unwrap();
-        assert_eq!(mtxp.height_params.len(), 3);
-        assert_eq!(mtxp.height_params[0], 1);
-        assert_eq!(mtxp.height_params[1], 2);
-        assert_eq!(mtxp.height_params[2], 3);
+        assert_eq!(mtxp.entries.len(), 2);
+        assert_eq!(mtxp.entries[0].flags, 1);
+        assert!((mtxp.entries[0].height_scale - 0.5).abs() < 0.001);
+        assert!((mtxp.entries[0].height_offset - 1.0).abs() < 0.001);
+        assert_eq!(mtxp.entries[1].flags, 2);
+        assert!((mtxp.entries[1].height_scale - 1.0).abs() < 0.001);
+        assert!((mtxp.entries[1].height_offset - 0.5).abs() < 0.001);
     }
 
     #[test]
@@ -499,13 +545,26 @@ mod tests {
         let data = vec![];
         let mut cursor = Cursor::new(data);
         let mtxp = MtxpChunk::read_le(&mut cursor).unwrap();
-        assert_eq!(mtxp.height_params.len(), 0);
+        assert_eq!(mtxp.entries.len(), 0);
     }
 
     #[test]
     fn test_mtxp_chunk_round_trip() {
         let original = MtxpChunk {
-            height_params: vec![100, 200, 300, 400],
+            entries: vec![
+                TextureHeightParams {
+                    flags: 1,
+                    height_scale: 0.5,
+                    height_offset: 1.0,
+                    padding: 0,
+                },
+                TextureHeightParams {
+                    flags: 2,
+                    height_scale: 2.0,
+                    height_offset: 0.25,
+                    padding: 0,
+                },
+            ],
         };
         let mut buffer = Cursor::new(Vec::new());
         original.write_le(&mut buffer).unwrap();
@@ -514,8 +573,42 @@ mod tests {
         let mut cursor = Cursor::new(data);
         let parsed = MtxpChunk::read_le(&mut cursor).unwrap();
 
-        assert_eq!(original.height_params.len(), parsed.height_params.len());
-        assert_eq!(original.height_params, parsed.height_params);
+        assert_eq!(original.entries.len(), parsed.entries.len());
+        for (orig, parsed) in original.entries.iter().zip(parsed.entries.iter()) {
+            assert_eq!(orig.flags, parsed.flags);
+            assert!((orig.height_scale - parsed.height_scale).abs() < 0.001);
+            assert!((orig.height_offset - parsed.height_offset).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn test_texture_height_params_uses_height_texture() {
+        // Default values (0.0, 1.0) should NOT use height texture
+        let default_params = TextureHeightParams {
+            flags: 0,
+            height_scale: 0.0,
+            height_offset: 1.0,
+            padding: 0,
+        };
+        assert!(!default_params.uses_height_texture());
+
+        // Non-default height_scale should use height texture
+        let with_scale = TextureHeightParams {
+            flags: 0,
+            height_scale: 0.5,
+            height_offset: 1.0,
+            padding: 0,
+        };
+        assert!(with_scale.uses_height_texture());
+
+        // Non-default height_offset should use height texture
+        let with_offset = TextureHeightParams {
+            flags: 0,
+            height_scale: 0.0,
+            height_offset: 0.5,
+            padding: 0,
+        };
+        assert!(with_offset.uses_height_texture());
     }
 
     #[test]

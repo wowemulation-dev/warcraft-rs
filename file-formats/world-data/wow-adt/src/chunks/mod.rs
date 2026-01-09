@@ -22,6 +22,7 @@ pub mod strings;
 // Re-export simple chunk structures
 pub use simple::{
     MampChunk, McinChunk, McinEntry, MfboChunk, MhdrChunk, MtxfChunk, MtxpChunk, MverChunk,
+    TextureHeightParams,
 };
 
 // Re-export string chunk structures

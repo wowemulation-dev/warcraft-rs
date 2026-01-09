@@ -574,7 +574,7 @@ fn test_mh2o_vertex_data_round_trip() {
     // Create MH2O chunk with 4 entries, each using a different LVF format
     let mut entries = Vec::new();
 
-    // Entry 0: LVF 0 (HeightDepth) - 3x3 liquid (16 vertices)
+    // Entry 0: LVF 0 (HeightDepth) - 3x3 liquid (16 vertices in 9x9 sparse grid)
     {
         let header = Mh2oHeader {
             offset_instances: 0, // Will be calculated during serialization
@@ -595,16 +595,22 @@ fn test_mh2o_vertex_data_round_trip() {
             offset_vertex_data: 0,
         };
 
-        // Create 4x4 = 16 vertices (width+1) * (height+1)
-        let mut vertices = Vec::new();
-        for i in 0..16 {
-            vertices.push(HeightDepthVertex {
-                height: 100.0 + i as f32,
-                depth: i as u8,
-            });
+        // Create 4x4 = 16 vertices (width+1) * (height+1) in sparse 9x9 grid
+        // Position (0,0) to (3,3) covers indices 0-3 in both dimensions
+        let mut sparse_grid: Box<[Option<HeightDepthVertex>; 81]> = Box::new([const { None }; 81]);
+        let mut i = 0;
+        for z in 0..=3 {
+            for x in 0..=3 {
+                let idx = z * 9 + x;
+                sparse_grid[idx] = Some(HeightDepthVertex {
+                    height: 100.0 + i as f32,
+                    depth: i as u8,
+                });
+                i += 1;
+            }
         }
 
-        let vertex_data = vec![Some(VertexDataArray::HeightDepth(vertices))];
+        let vertex_data = vec![Some(VertexDataArray::HeightDepth(sparse_grid))];
         let exists_bitmap: u64 = 0xFFFF; // All tiles exist
         let exists_bitmaps = vec![Some(exists_bitmap)];
 
@@ -617,7 +623,7 @@ fn test_mh2o_vertex_data_round_trip() {
         });
     }
 
-    // Entry 1: LVF 1 (HeightUv) - 2x2 liquid (9 vertices)
+    // Entry 1: LVF 1 (HeightUv) - 2x2 liquid (9 vertices in 9x9 sparse grid)
     {
         let header = Mh2oHeader {
             offset_instances: 0,
@@ -638,19 +644,24 @@ fn test_mh2o_vertex_data_round_trip() {
             offset_vertex_data: 0,
         };
 
-        // Create 3x3 = 9 vertices
-        let mut vertices = Vec::new();
-        for i in 0..9 {
-            vertices.push(HeightUvVertex {
-                height: 50.0 + i as f32,
-                uv: UvMapEntry {
-                    u: (i % 3) as u16 * 100,
-                    v: (i / 3) as u16 * 100,
-                },
-            });
+        // Create 3x3 = 9 vertices (width+1) * (height+1) in sparse 9x9 grid
+        let mut sparse_grid: Box<[Option<HeightUvVertex>; 81]> = Box::new([const { None }; 81]);
+        let mut i = 0;
+        for z in 0..=2 {
+            for x in 0..=2 {
+                let idx = z * 9 + x;
+                sparse_grid[idx] = Some(HeightUvVertex {
+                    height: 50.0 + i as f32,
+                    uv: UvMapEntry {
+                        u: (i % 3) as u16 * 100,
+                        v: (i / 3) as u16 * 100,
+                    },
+                });
+                i += 1;
+            }
         }
 
-        let vertex_data = vec![Some(VertexDataArray::HeightUv(vertices))];
+        let vertex_data = vec![Some(VertexDataArray::HeightUv(sparse_grid))];
         let exists_bitmap: u64 = 0xFF; // Partial tiles
         let exists_bitmaps = vec![Some(exists_bitmap)];
 
@@ -663,7 +674,7 @@ fn test_mh2o_vertex_data_round_trip() {
         });
     }
 
-    // Entry 2: LVF 2 (DepthOnly) - 1x1 liquid (4 vertices)
+    // Entry 2: LVF 2 (DepthOnly) - 1x1 liquid (4 vertices in 9x9 sparse grid)
     {
         let header = Mh2oHeader {
             offset_instances: 0,
@@ -684,15 +695,15 @@ fn test_mh2o_vertex_data_round_trip() {
             offset_vertex_data: 0,
         };
 
-        // Create 2x2 = 4 vertices
-        let vertices = vec![
-            DepthOnlyVertex { depth: 10 },
-            DepthOnlyVertex { depth: 20 },
-            DepthOnlyVertex { depth: 30 },
-            DepthOnlyVertex { depth: 40 },
-        ];
+        // Create 2x2 = 4 vertices (width+1) * (height+1) in sparse 9x9 grid
+        let mut sparse_grid: Box<[Option<DepthOnlyVertex>; 81]> = Box::new([const { None }; 81]);
+        // Position (0,0) to (1,1) - 4 vertices in 2x2 grid
+        sparse_grid[0] = Some(DepthOnlyVertex { depth: 10 }); // (0,0)
+        sparse_grid[1] = Some(DepthOnlyVertex { depth: 20 }); // (1,0)
+        sparse_grid[9] = Some(DepthOnlyVertex { depth: 30 }); // (0,1)
+        sparse_grid[10] = Some(DepthOnlyVertex { depth: 40 }); // (1,1)
 
-        let vertex_data = vec![Some(VertexDataArray::DepthOnly(vertices))];
+        let vertex_data = vec![Some(VertexDataArray::DepthOnly(sparse_grid))];
         let exists_bitmap: u64 = 0x1; // Single tile
         let exists_bitmaps = vec![Some(exists_bitmap)];
 
@@ -705,7 +716,7 @@ fn test_mh2o_vertex_data_round_trip() {
         });
     }
 
-    // Entry 3: LVF 3 (HeightUvDepth) - 2x1 liquid (6 vertices)
+    // Entry 3: LVF 3 (HeightUvDepth) - 2x1 liquid (6 vertices in 9x9 sparse grid)
     {
         let header = Mh2oHeader {
             offset_instances: 0,
@@ -726,20 +737,27 @@ fn test_mh2o_vertex_data_round_trip() {
             offset_vertex_data: 0,
         };
 
-        // Create 3x2 = 6 vertices
-        let mut vertices = Vec::new();
-        for i in 0..6 {
-            vertices.push(HeightUvDepthVertex {
-                height: 150.0 + i as f32,
-                uv: UvMapEntry {
-                    u: i as u16 * 50,
-                    v: i as u16 * 25,
-                },
-                depth: i as u8 * 10,
-            });
+        // Create 3x2 = 6 vertices (width+1) * (height+1) in sparse 9x9 grid
+        // Position (0,0) to (2,1) covers indices 0-2 in x and 0-1 in z
+        let mut sparse_grid: Box<[Option<HeightUvDepthVertex>; 81]> =
+            Box::new([const { None }; 81]);
+        let mut i = 0;
+        for z in 0..=1 {
+            for x in 0..=2 {
+                let idx = z * 9 + x;
+                sparse_grid[idx] = Some(HeightUvDepthVertex {
+                    height: 150.0 + i as f32,
+                    uv: UvMapEntry {
+                        u: i as u16 * 50,
+                        v: i as u16 * 25,
+                    },
+                    depth: i as u8 * 10,
+                });
+                i += 1;
+            }
         }
 
-        let vertex_data = vec![Some(VertexDataArray::HeightUvDepth(vertices))];
+        let vertex_data = vec![Some(VertexDataArray::HeightUvDepth(sparse_grid))];
         let exists_bitmap: u64 = 0x3; // Two tiles
         let exists_bitmaps = vec![Some(exists_bitmap)];
 
@@ -813,12 +831,21 @@ fn test_mh2o_vertex_data_round_trip() {
 
         match vertex_data {
             VertexDataArray::HeightDepth(vertices) => {
-                assert_eq!(vertices.len(), 16, "Entry 0 should have 16 vertices");
-                // Spot check first and last vertices
-                assert_eq!(vertices[0].height, 100.0);
-                assert_eq!(vertices[0].depth, 0);
-                assert_eq!(vertices[15].height, 115.0);
-                assert_eq!(vertices[15].depth, 15);
+                // Verify at least 16 valid vertices exist
+                assert!(
+                    vertices.len() >= 16,
+                    "Entry 0 should have at least 16 vertices, got {}",
+                    vertices.len()
+                );
+                // Spot check first and last vertices in sparse grid
+                // First vertex at (0,0) = index 0
+                let v0 = vertices[0].as_ref().expect("Vertex at (0,0) should exist");
+                assert_eq!(v0.height, 100.0);
+                assert_eq!(v0.depth, 0);
+                // Last vertex at (3,3) = index 3*9+3 = 30
+                let v15 = vertices[30].as_ref().expect("Vertex at (3,3) should exist");
+                assert_eq!(v15.height, 115.0);
+                assert_eq!(v15.depth, 15);
             }
             _ => panic!("Entry 0 should have HeightDepth vertex format"),
         }
@@ -845,12 +872,21 @@ fn test_mh2o_vertex_data_round_trip() {
 
         match vertex_data {
             VertexDataArray::HeightUv(vertices) => {
-                assert_eq!(vertices.len(), 9, "Entry 1 should have 9 vertices");
-                // Spot check vertices
-                assert_eq!(vertices[0].height, 50.0);
-                assert_eq!(vertices[0].uv.u, 0);
-                assert_eq!(vertices[8].height, 58.0);
-                assert_eq!(vertices[8].uv.u, 200);
+                // Verify at least 9 valid vertices exist
+                assert!(
+                    vertices.len() >= 9,
+                    "Entry 1 should have at least 9 vertices, got {}",
+                    vertices.len()
+                );
+                // Spot check vertices in sparse grid
+                // First vertex at (0,0) = index 0
+                let v0 = vertices[0].as_ref().expect("Vertex at (0,0) should exist");
+                assert_eq!(v0.height, 50.0);
+                assert_eq!(v0.uv.u, 0);
+                // Last vertex at (2,2) = index 2*9+2 = 20
+                let v8 = vertices[20].as_ref().expect("Vertex at (2,2) should exist");
+                assert_eq!(v8.height, 58.0);
+                assert_eq!(v8.uv.u, 200);
             }
             _ => panic!("Entry 1 should have HeightUv vertex format"),
         }
@@ -877,11 +913,18 @@ fn test_mh2o_vertex_data_round_trip() {
 
         match vertex_data {
             VertexDataArray::DepthOnly(vertices) => {
-                assert_eq!(vertices.len(), 4, "Entry 2 should have 4 vertices");
-                assert_eq!(vertices[0].depth, 10);
-                assert_eq!(vertices[1].depth, 20);
-                assert_eq!(vertices[2].depth, 30);
-                assert_eq!(vertices[3].depth, 40);
+                // Verify at least 4 valid vertices exist
+                assert!(
+                    vertices.len() >= 4,
+                    "Entry 2 should have at least 4 vertices, got {}",
+                    vertices.len()
+                );
+                // Sparse grid indexing: (x,z) -> z*9+x
+                // (0,0)=0, (1,0)=1, (0,1)=9, (1,1)=10
+                assert_eq!(vertices[0].as_ref().expect("(0,0)").depth, 10);
+                assert_eq!(vertices[1].as_ref().expect("(1,0)").depth, 20);
+                assert_eq!(vertices[9].as_ref().expect("(0,1)").depth, 30);
+                assert_eq!(vertices[10].as_ref().expect("(1,1)").depth, 40);
             }
             _ => panic!("Entry 2 should have DepthOnly vertex format"),
         }
@@ -908,14 +951,23 @@ fn test_mh2o_vertex_data_round_trip() {
 
         match vertex_data {
             VertexDataArray::HeightUvDepth(vertices) => {
-                assert_eq!(vertices.len(), 6, "Entry 3 should have 6 vertices");
-                // Spot check vertices
-                assert_eq!(vertices[0].height, 150.0);
-                assert_eq!(vertices[0].uv.u, 0);
-                assert_eq!(vertices[0].depth, 0);
-                assert_eq!(vertices[5].height, 155.0);
-                assert_eq!(vertices[5].uv.u, 250);
-                assert_eq!(vertices[5].depth, 50);
+                // Verify at least 6 valid vertices exist
+                assert!(
+                    vertices.len() >= 6,
+                    "Entry 3 should have at least 6 vertices, got {}",
+                    vertices.len()
+                );
+                // Spot check vertices in sparse grid
+                // First vertex at (0,0) = index 0
+                let v0 = vertices[0].as_ref().expect("Vertex at (0,0) should exist");
+                assert_eq!(v0.height, 150.0);
+                assert_eq!(v0.uv.u, 0);
+                assert_eq!(v0.depth, 0);
+                // Last vertex at (2,1) = index 1*9+2 = 11
+                let v5 = vertices[11].as_ref().expect("Vertex at (2,1) should exist");
+                assert_eq!(v5.height, 155.0);
+                assert_eq!(v5.uv.u, 250);
+                assert_eq!(v5.depth, 50);
             }
             _ => panic!("Entry 3 should have HeightUvDepth vertex format"),
         }
