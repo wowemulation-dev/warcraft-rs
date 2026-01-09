@@ -287,6 +287,10 @@ pub struct DbcParser {
     pub(crate) data: Vec<u8>,
     /// The DBC version
     version: DbcVersion,
+    /// Offset to the record data (accounts for version-specific headers)
+    record_data_offset: u64,
+    /// Offset to the string block
+    string_block_offset: u64,
 }
 
 impl DbcParser {
@@ -295,16 +299,25 @@ impl DbcParser {
         // Detect the DBC version
         let version = DbcVersion::detect(reader)?;
 
-        // Parse the header based on the version
-        let header = match version {
-            DbcVersion::WDBC => DbcHeader::parse(reader)?,
+        // Parse the header based on the version and get offsets
+        let (header, record_data_offset, string_block_offset) = match version {
+            DbcVersion::WDBC => {
+                let h = DbcHeader::parse(reader)?;
+                let record_offset = DbcHeader::SIZE as u64;
+                let string_offset = h.string_block_offset();
+                (h, record_offset, string_offset)
+            }
             DbcVersion::WDB2 => {
                 let wdb2_header = Wdb2Header::parse(reader)?;
-                wdb2_header.to_dbc_header()
+                let record_offset = wdb2_header.record_data_offset();
+                let string_offset = wdb2_header.string_block_offset();
+                (wdb2_header.to_dbc_header(), record_offset, string_offset)
             }
             DbcVersion::WDB5 => {
                 let wdb5_header = Wdb5Header::parse(reader)?;
-                wdb5_header.to_dbc_header()
+                let record_offset = Wdb5Header::SIZE as u64;
+                let string_offset = wdb5_header.string_block_offset();
+                (wdb5_header.to_dbc_header(), record_offset, string_offset)
             }
             _ => {
                 return Err(Error::InvalidHeader(format!(
@@ -317,7 +330,7 @@ impl DbcParser {
         reader.seek(SeekFrom::Start(0))?;
 
         // Read the entire file
-        let mut data = Vec::with_capacity(header.total_size() as usize);
+        let mut data = Vec::new();
         reader.read_to_end(&mut data)?;
 
         Ok(Self {
@@ -325,6 +338,8 @@ impl DbcParser {
             schema: None,
             data,
             version,
+            record_data_offset,
+            string_block_offset,
         })
     }
 
@@ -348,8 +363,8 @@ impl DbcParser {
     pub fn parse_records(&self) -> Result<RecordSet> {
         let mut cursor = Cursor::new(self.data.as_slice());
 
-        // Skip the header
-        cursor.seek(SeekFrom::Start(DbcHeader::SIZE as u64))?;
+        // Skip to the record data (uses version-specific offset)
+        cursor.seek(SeekFrom::Start(self.record_data_offset))?;
 
         let mut records = Vec::with_capacity(self.header.record_count as usize);
 
@@ -362,10 +377,10 @@ impl DbcParser {
             records.push(record);
         }
 
-        // Parse the string block
+        // Parse the string block (uses version-specific offset)
         let string_block = StringBlock::parse(
             &mut cursor,
-            self.header.string_block_offset(),
+            self.string_block_offset,
             self.header.string_block_size,
         )?;
 

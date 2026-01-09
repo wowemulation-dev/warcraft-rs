@@ -51,8 +51,15 @@ impl DbcVersion {
     }
 }
 
-/// WDB2 header (The Burning Crusade)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// WDB2 header (Cataclysm 4.0+)
+///
+/// The WDB2 format was introduced in Cataclysm and has two variants:
+/// - Basic header (build <= 12880): 28 bytes
+/// - Extended header (build > 12880): 48 bytes + optional index arrays
+///
+/// Reference: https://wowdev.wiki/DB2
+/// Reference: TrinityCore DB2StorageLoader.cpp
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Wdb2Header {
     /// The magic signature, should be "WDB2"
     pub magic: [u8; 4],
@@ -68,13 +75,37 @@ pub struct Wdb2Header {
     pub table_hash: u32,
     /// Build number
     pub build: u32,
+    /// Timestamp (only present in extended header)
+    pub timestamp: u32,
+    // Extended header fields (build > 12880)
+    /// Minimum ID in the file
+    pub min_index: i32,
+    /// Maximum ID in the file
+    pub max_index: i32,
+    /// Locale flags
+    pub locale: i32,
+    /// Copy table size (unused in Cataclysm, always 0)
+    pub copy_table_size: u32,
+    /// Whether this header uses the extended format
+    pub has_extended_header: bool,
+    /// Size of the index array section (to be skipped)
+    pub index_array_size: u64,
 }
 
 impl Wdb2Header {
-    /// The size of a WDB2 header in bytes
-    pub const SIZE: usize = 28;
+    /// The size of a basic WDB2 header in bytes (build <= 12880)
+    pub const BASIC_SIZE: usize = 28;
+
+    /// The size of an extended WDB2 header in bytes (build > 12880)
+    pub const EXTENDED_SIZE: usize = 48;
+
+    /// Build number threshold for extended header format
+    pub const EXTENDED_BUILD_THRESHOLD: u32 = 12880;
 
     /// Parse a WDB2 header from a reader
+    ///
+    /// This handles both the basic (build <= 12880) and extended (build > 12880) formats.
+    /// For builds > 12880, also skips the index arrays if max_index != 0.
     pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         // Ensure we're at the beginning of the file
         reader.seek(SeekFrom::Start(0))?;
@@ -91,7 +122,7 @@ impl Wdb2Header {
             )));
         }
 
-        // Read the rest of the header
+        // Read the basic header fields
         let mut buf = [0u8; 4];
 
         reader.read_exact(&mut buf)?;
@@ -112,6 +143,54 @@ impl Wdb2Header {
         reader.read_exact(&mut buf)?;
         let build = u32::from_le_bytes(buf);
 
+        // Read timestamp (present in all WDB2 files)
+        reader.read_exact(&mut buf)?;
+        let timestamp = u32::from_le_bytes(buf);
+
+        // Check if this is an extended header (build > 12880)
+        let has_extended_header = build > Self::EXTENDED_BUILD_THRESHOLD;
+
+        let (min_index, max_index, locale, copy_table_size, index_array_size) =
+            if has_extended_header {
+                // Read extended header fields
+                reader.read_exact(&mut buf)?;
+                let min_index = i32::from_le_bytes(buf);
+
+                reader.read_exact(&mut buf)?;
+                let max_index = i32::from_le_bytes(buf);
+
+                reader.read_exact(&mut buf)?;
+                let locale = i32::from_le_bytes(buf);
+
+                reader.read_exact(&mut buf)?;
+                let copy_table_size = u32::from_le_bytes(buf);
+
+                // Calculate index array size to skip
+                let index_array_size = if max_index > 0 {
+                    let diff = (max_index - min_index + 1) as u64;
+                    // Index array: diff * 4 bytes (u32 per entry)
+                    // String length array: diff * 2 bytes (u16 per entry)
+                    diff * 4 + diff * 2
+                } else {
+                    0
+                };
+
+                // Skip the index arrays
+                if index_array_size > 0 {
+                    reader.seek(SeekFrom::Current(index_array_size as i64))?;
+                }
+
+                (
+                    min_index,
+                    max_index,
+                    locale,
+                    copy_table_size,
+                    index_array_size,
+                )
+            } else {
+                (0, 0, 0, 0, 0)
+            };
+
         Ok(Self {
             magic,
             record_count,
@@ -120,6 +199,13 @@ impl Wdb2Header {
             string_block_size,
             table_hash,
             build,
+            timestamp,
+            min_index,
+            max_index,
+            locale,
+            copy_table_size,
+            has_extended_header,
+            index_array_size,
         })
     }
 
@@ -134,9 +220,23 @@ impl Wdb2Header {
         }
     }
 
+    /// Calculates the size of the header including any index arrays
+    pub fn header_size(&self) -> u64 {
+        if self.has_extended_header {
+            Self::EXTENDED_SIZE as u64 + self.index_array_size
+        } else {
+            Self::BASIC_SIZE as u64
+        }
+    }
+
+    /// Calculates the offset to the record data
+    pub fn record_data_offset(&self) -> u64 {
+        self.header_size()
+    }
+
     /// Calculates the offset to the string block
     pub fn string_block_offset(&self) -> u64 {
-        Self::SIZE as u64 + (self.record_count as u64 * self.record_size as u64)
+        self.header_size() + (self.record_count as u64 * self.record_size as u64)
     }
 
     /// Calculates the total size of the WDB2 file
