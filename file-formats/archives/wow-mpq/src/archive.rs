@@ -1197,34 +1197,51 @@ impl Archive {
         if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table) {
             // Check if tables have actual entries
             if het.header.max_file_count > 0 && bet.header.file_count > 0 {
-                let (file_index_opt, collision_candidates) =
+                let (_file_index_opt, collision_candidates) =
                     het.find_file_with_collision_info(filename);
 
-                if let Some(file_index) = file_index_opt {
-                    // Note: HET uses 8-bit hashes which naturally have collisions.
-                    // Multiple candidates with same 8-bit hash is expected behavior.
-                    // The first candidate returned by HET linear probing is the correct one.
+                // HET uses 8-bit hashes which naturally have many collisions.
+                // We must verify each candidate against the full BET hash to find the correct file.
+                if !collision_candidates.is_empty() {
                     if collision_candidates.len() > 1 {
                         log::debug!(
-                            "HET: '{}' has {} entries with same 8-bit hash (expected behavior)",
+                            "HET: '{}' has {} collision candidates, verifying against BET hashes",
                             filename,
                             collision_candidates.len()
                         );
                     }
 
-                    // Use the file_index from HET (first candidate from linear probing)
-                    if let Some(bet_info) = bet.get_file_info(file_index) {
-                        return Ok(Some(FileInfo {
-                            filename: filename.to_string(),
-                            hash_index: 0, // Not applicable for HET/BET
-                            block_index: file_index as usize,
-                            file_pos: self.archive_offset + bet_info.file_pos,
-                            compressed_size: bet_info.compressed_size,
-                            file_size: bet_info.file_size,
-                            flags: bet_info.flags,
-                            locale: 0, // HET/BET don't store locale separately
-                        }));
+                    // Check each collision candidate against BET hash
+                    for &candidate_index in &collision_candidates {
+                        // Verify this candidate has the correct BET hash
+                        if bet.verify_file_hash(candidate_index, filename) {
+                            // Found the correct file - return its info
+                            if let Some(bet_info) = bet.get_file_info(candidate_index) {
+                                log::debug!(
+                                    "HET/BET: Found '{}' at file_index={} (verified by BET hash)",
+                                    filename,
+                                    candidate_index
+                                );
+                                return Ok(Some(FileInfo {
+                                    filename: filename.to_string(),
+                                    hash_index: 0, // Not applicable for HET/BET
+                                    block_index: candidate_index as usize,
+                                    file_pos: self.archive_offset + bet_info.file_pos,
+                                    compressed_size: bet_info.compressed_size,
+                                    file_size: bet_info.file_size,
+                                    flags: bet_info.flags,
+                                    locale: 0, // HET/BET don't store locale separately
+                                }));
+                            }
+                        }
                     }
+
+                    // No candidate matched - file not found in HET/BET
+                    log::debug!(
+                        "HET/BET: '{}' not found - {} candidates checked, none matched BET hash",
+                        filename,
+                        collision_candidates.len()
+                    );
                 }
 
                 // For special files, always check hash/block tables as fallback

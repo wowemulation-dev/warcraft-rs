@@ -346,3 +346,67 @@ pub struct BetFileInfo {
     /// File flags
     pub flags: u32,
 }
+
+impl BetTable {
+    /// Get the BET hash for a file at the given index
+    ///
+    /// This hash is used for collision resolution when HET returns multiple candidates.
+    /// The hash is a Jenkins hashlittle2 hash of the filename (same as HET).
+    pub fn get_file_hash(&self, file_index: u32) -> Option<u64> {
+        let index = file_index as usize;
+        if index < self.bet_hashes.len() {
+            Some(self.bet_hashes[index])
+        } else {
+            log::debug!(
+                "BET get_file_hash: index {} out of bounds (bet_hashes.len()={})",
+                index,
+                self.bet_hashes.len()
+            );
+            None
+        }
+    }
+
+    /// Verify if a file index matches the expected hash for a filename
+    ///
+    /// Returns true if the BET hash for the given file_index matches the computed
+    /// Jenkins hashlittle2 hash for the filename.
+    ///
+    /// Note: BET uses the SAME hash algorithm as HET (jenkins_hashlittle2 with uppercase).
+    /// The stored hash may be truncated to bet_hash_size bits.
+    pub fn verify_file_hash(&self, file_index: u32, filename: &str) -> bool {
+        if let Some(stored_hash) = self.get_file_hash(file_index) {
+            // BET uses the same hash as HET: jenkins_hashlittle2 with uppercase normalization
+            // The bet_hash_size field tells us how many bits are stored
+            let bet_hash_size = self.header.bet_hash_size;
+
+            // Compute the hash using hashlittle2 (same as HET)
+            let (full_hash, _name_hash1) = crate::crypto::het_hash(filename, bet_hash_size);
+
+            // Mask to the number of bits stored in BET
+            let mask = if bet_hash_size >= 64 {
+                u64::MAX
+            } else {
+                (1u64 << bet_hash_size) - 1
+            };
+            let computed_hash = full_hash & mask;
+
+            log::debug!(
+                "BET verify_file_hash: file_index={}, stored=0x{:016X}, computed=0x{:016X} (bet_hash_size={}), match={}",
+                file_index,
+                stored_hash,
+                computed_hash,
+                bet_hash_size,
+                stored_hash == computed_hash
+            );
+
+            stored_hash == computed_hash
+        } else {
+            // No hash stored for this index - can't verify
+            log::debug!(
+                "BET verify_file_hash: no hash stored for file_index={}",
+                file_index
+            );
+            false
+        }
+    }
+}
