@@ -28,6 +28,11 @@ pub struct DiscoveredField {
     pub is_array: bool,
     /// Size of the array, if the field is an array
     pub array_size: Option<usize>,
+    /// Whether this field is part of a localized string (locstring)
+    /// Classic WoW locstrings have 8 string refs (one per locale) + 1 flags field
+    pub is_locstring: bool,
+    /// Locale index within a locstring (0-7 for string refs, 8 for flags field)
+    pub locstring_index: Option<u8>,
     /// Sample values (for validation and debugging)
     pub sample_values: Vec<u32>,
 }
@@ -205,6 +210,10 @@ impl<'a> SchemaDiscoverer<'a> {
             discovered_fields.push(discovered_field);
         }
 
+        // Detect localized strings (locstrings) - 8 string refs + 1 flags field
+        // This must run before array detection to properly classify fields
+        self.detect_locstrings(&mut discovered_fields);
+
         // Detect arrays if configured
         if self.detect_arrays {
             self.detect_array_fields(&mut discovered_fields);
@@ -295,8 +304,10 @@ impl<'a> SchemaDiscoverer<'a> {
             field_type,
             confidence,
             is_key_candidate,
-            is_array: false,  // Will be set later if detected
-            array_size: None, // Will be set later if detected
+            is_array: false,       // Will be set later if detected
+            array_size: None,      // Will be set later if detected
+            is_locstring: false,   // Will be set later if detected
+            locstring_index: None, // Will be set later if detected
             sample_values,
         })
     }
@@ -380,6 +391,87 @@ impl<'a> SchemaDiscoverer<'a> {
                 *fields = new_fields;
                 return; // Successfully detected arrays
             }
+        }
+    }
+
+    /// Detect localized string (locstring) patterns in fields
+    ///
+    /// Classic WoW locstrings consist of 9 consecutive fields:
+    /// - 8 string references (one per locale: enUS, koKR, frFR, deDE, zhCN, zhTW, esES, esMX)
+    /// - 1 flags field (u32)
+    ///
+    /// In non-English clients or files, most locale fields are empty (offset 0),
+    /// which causes them to be detected as Bool. This method identifies this pattern
+    /// and reclassifies those fields as String.
+    fn detect_locstrings(&self, fields: &mut [DiscoveredField]) {
+        // Need at least 9 fields for a locstring
+        if fields.len() < 9 {
+            return;
+        }
+
+        let mut i = 0;
+        while i + 8 < fields.len() {
+            // Look for a String field with High confidence as the start
+            if fields[i].field_type != FieldType::String || fields[i].confidence != Confidence::High
+            {
+                i += 1;
+                continue;
+            }
+
+            // Check if the next 7 fields are either String or "faux Bool" (all zeros)
+            let mut is_locstring_pattern = true;
+            for j in 1..8 {
+                let field = &fields[i + j];
+                let is_string = field.field_type == FieldType::String;
+                let is_empty_string_ref = field.field_type == FieldType::Bool
+                    && field.sample_values.iter().all(|&v| v == 0);
+
+                if !is_string && !is_empty_string_ref {
+                    is_locstring_pattern = false;
+                    break;
+                }
+            }
+
+            if !is_locstring_pattern {
+                i += 1;
+                continue;
+            }
+
+            // Check the 9th field - it should be an integer (flags field)
+            // The flags field is typically 0 or a small bitmask
+            let flags_field = &fields[i + 8];
+            let is_valid_flags = matches!(
+                flags_field.field_type,
+                FieldType::Int32 | FieldType::UInt32 | FieldType::Bool
+            );
+
+            if !is_valid_flags {
+                i += 1;
+                continue;
+            }
+
+            // Found a locstring pattern! Mark all 9 fields
+            for j in 0..8 {
+                fields[i + j].is_locstring = true;
+                fields[i + j].locstring_index = Some(j as u8);
+                // Reclassify Bool fields as String (they're empty string refs)
+                if fields[i + j].field_type == FieldType::Bool {
+                    fields[i + j].field_type = FieldType::String;
+                    fields[i + j].confidence = Confidence::Medium;
+                }
+            }
+
+            // Mark the flags field
+            fields[i + 8].is_locstring = true;
+            fields[i + 8].locstring_index = Some(8);
+            // Reclassify Bool as Int32 for the flags field
+            if fields[i + 8].field_type == FieldType::Bool {
+                fields[i + 8].field_type = FieldType::Int32;
+                fields[i + 8].confidence = Confidence::Medium;
+            }
+
+            // Skip past this locstring
+            i += 9;
         }
     }
 

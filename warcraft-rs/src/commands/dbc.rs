@@ -665,6 +665,16 @@ fn discover_command(
             println!("           ⚷ Key candidate");
         }
 
+        if field.is_locstring {
+            let locale_names = [
+                "enUS", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "esMX", "flags",
+            ];
+            if let Some(idx) = field.locstring_index {
+                let name = locale_names.get(idx as usize).unwrap_or(&"?");
+                println!("           🌐 Locstring ({})", name);
+            }
+        }
+
         // Print sample values
         let samples: Vec<String> = field
             .sample_values
