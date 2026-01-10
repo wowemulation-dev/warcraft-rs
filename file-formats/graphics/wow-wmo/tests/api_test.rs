@@ -3,6 +3,7 @@ use std::io::BufReader;
 use wow_wmo::{ParsedWmo, parse_wmo, parse_wmo_with_metadata};
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_root_file_unified_api() {
     // Test unified API with a root file
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind.wmo";
@@ -27,6 +28,7 @@ fn test_parse_root_file_unified_api() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_group_file_unified_api() {
     // Test unified API with a group file
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind_000.wmo";
@@ -51,6 +53,7 @@ fn test_parse_group_file_unified_api() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_multiple_files() {
     // Test API with multiple files
     let test_files = vec![
@@ -178,6 +181,7 @@ fn test_unknown_chunk_detection() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_file_type_property() {
     // Test that file_type property is exposed
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind.wmo";
