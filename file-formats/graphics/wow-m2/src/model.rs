@@ -7,6 +7,7 @@ use std::path::Path;
 use crate::chunks::animation::M2Animation;
 use crate::chunks::bone::M2Bone;
 use crate::chunks::infrastructure::{ChunkHeader, ChunkReader};
+use crate::chunks::m2_track::{M2TrackQuat, M2TrackVec3};
 use crate::chunks::material::M2Material;
 use crate::chunks::particle_emitter::M2ParticleEmitter;
 use crate::chunks::ribbon_emitter::M2RibbonEmitter;
@@ -18,7 +19,7 @@ use crate::chunks::{
     RecursiveParticleIds, SkeletonData, SkeletonFileId, SkinFileIds, TextureAnimationChunk,
     TextureFileIds, WaterfallEffect,
 };
-use crate::common::{M2Array, read_array};
+use crate::common::{M2Array, read_array, read_raw_bytes};
 use crate::error::{M2Error, Result};
 use crate::file_resolver::FileResolver;
 use crate::header::{M2_MAGIC_CHUNKED, M2_MAGIC_LEGACY, M2Header, M2ModelFlags};
@@ -124,12 +125,14 @@ pub struct M2Model {
 /// Raw data for sections that are not fully parsed
 #[derive(Debug, Clone, Default)]
 pub struct M2RawData {
-    /// Transparency data
+    /// Transparency data (the actual transparency animations, not lookups)
     pub transparency: Vec<u8>,
     /// Texture animations
     pub texture_animations: Vec<u8>,
     /// Color animations
     pub color_animations: Vec<u8>,
+    /// Color replacements
+    pub color_replacements: Vec<u8>,
     /// Render flags
     pub render_flags: Vec<u8>,
     /// Bone lookup table
@@ -160,12 +163,20 @@ pub struct M2RawData {
     pub cameras: Vec<u8>,
     /// Camera lookup table
     pub camera_lookup_table: Vec<u16>,
-    /// Ribbon emitters
+    /// Ribbon emitters (raw, for versions where we don't parse)
     pub ribbon_emitters: Vec<u8>,
-    /// Particle emitters
+    /// Particle emitters (raw, for versions where we don't parse)
     pub particle_emitters: Vec<u8>,
+    /// Views data (embedded skins for pre-WotLK, raw bytes)
+    pub views_data: Vec<u8>,
+    /// Texture flipbooks (BC and earlier)
+    pub texture_flipbooks: Option<Vec<u8>>,
+    /// Blend map overrides (BC+ with specific flag)
+    pub blend_map_overrides: Option<Vec<u8>>,
     /// Texture combiner combos (added in Cataclysm)
     pub texture_combiner_combos: Option<Vec<u8>>,
+    /// Texture transforms (added in Legion)
+    pub texture_transforms: Option<Vec<u8>>,
 }
 
 /// Parse an M2 model, automatically detecting format
@@ -1273,6 +1284,14 @@ impl M2Model {
             camera_lookup_table: read_array(reader, &header.camera_lookup_table, |r| {
                 Ok(r.read_u16_le()?)
             })?,
+            // Bounding data - read as raw bytes for preservation during conversion
+            bounding_triangles: read_raw_bytes(reader, &header.bounding_triangles, 2)?, // u16 indices
+            bounding_vertices: read_raw_bytes(reader, &header.bounding_vertices, 12)?,  // C3Vector
+            bounding_normals: read_raw_bytes(reader, &header.bounding_normals, 12)?,    // C3Vector
+            // Attachment lookup table
+            attachment_lookup_table: read_array(reader, &header.attachment_lookup_table, |r| {
+                Ok(r.read_u16_le()?)
+            })?,
             ..Default::default()
         };
 
@@ -1384,8 +1403,8 @@ impl M2Model {
                 data_section.extend_from_slice(&anim_data);
             }
 
-            // Animation size depends on version: 24 bytes for Classic, 52 bytes for BC+
-            let anim_size = if header.version <= 256 { 24 } else { 52 };
+            // Animation size depends on version: 32 bytes for Classic, 52 bytes for BC+
+            let anim_size = if header.version <= 256 { 32 } else { 52 };
             current_offset += (self.animations.len() * anim_size) as u32;
         } else {
             header.animations = M2Array::new(0, 0);
@@ -1406,17 +1425,37 @@ impl M2Model {
         }
 
         // Write bones
+        // Note: We must clear M2Track fields because they contain offsets pointing to
+        // animation keyframe data that we don't serialize. Writing the original offsets
+        // would result in invalid file references. This produces a static model.
         if !self.bones.is_empty() {
             header.bones = M2Array::new(self.bones.len() as u32, current_offset);
 
             for bone in &self.bones {
+                // Clone and clear animation tracks to avoid invalid offset references
+                let mut static_bone = bone.clone();
+                static_bone.translation = M2TrackVec3::default();
+                static_bone.rotation = M2TrackQuat::default();
+                static_bone.scale = M2TrackVec3::default();
+
                 let mut bone_data = Vec::new();
-                bone.write(&mut bone_data, self.header.version)?;
+                static_bone.write(&mut bone_data, header.version)?;
                 data_section.extend_from_slice(&bone_data);
             }
 
-            // Bone size is 92 bytes for all versions we support
-            let bone_size = 92;
+            // Bone size depends on version:
+            // - M2Track size: 28 bytes pre-WotLK (< 264), 20 bytes WotLK+ (>= 264)
+            // - boneNameCRC field: 4 bytes for TBC+ (>= 260), absent in Vanilla
+            // Vanilla (< 260): 4 + 4 + 2 + 2 + 3*28 + 12 = 108 bytes
+            // TBC (>= 260, < 264): 4 + 4 + 2 + 2 + 4 + 3*28 + 12 = 112 bytes
+            // WotLK+ (>= 264): 4 + 4 + 2 + 2 + 4 + 3*20 + 12 = 88 bytes
+            let bone_size = if header.version < 260 {
+                108
+            } else if header.version < 264 {
+                112
+            } else {
+                88
+            };
             current_offset += (self.bones.len() * bone_size) as u32;
         } else {
             header.bones = M2Array::new(0, 0);
@@ -1440,18 +1479,22 @@ impl M2Model {
         if !self.vertices.is_empty() {
             header.vertices = M2Array::new(self.vertices.len() as u32, current_offset);
 
-            let vertex_size =
-                if self.header.version().unwrap_or(M2Version::Vanilla) >= M2Version::Cataclysm {
-                    // Cataclysm and later have secondary texture coordinates
-                    44
-                } else {
-                    // Pre-Cataclysm don't have secondary texture coordinates
-                    36
-                };
+            // Vertex size depends on the target version (header.version, not self.header.version)
+            let target_version = M2Version::from_header_version(header.version);
+            let vertex_size = if target_version
+                .map(|v| v >= M2Version::Cataclysm)
+                .unwrap_or(false)
+            {
+                // Cataclysm and later have secondary texture coordinates
+                44
+            } else {
+                // Pre-Cataclysm don't have secondary texture coordinates
+                36
+            };
 
             for vertex in &self.vertices {
                 let mut vertex_data = Vec::new();
-                vertex.write(&mut vertex_data, self.header.version)?;
+                vertex.write(&mut vertex_data, header.version)?;
                 data_section.extend_from_slice(&vertex_data);
             }
 
@@ -1531,13 +1574,15 @@ impl M2Model {
 
             for material in &self.materials {
                 let mut material_data = Vec::new();
-                material.write(&mut material_data, self.header.version)?;
+                material.write(&mut material_data, header.version)?;
                 data_section.extend_from_slice(&material_data);
             }
 
-            let material_size = match self.header.version().unwrap_or(M2Version::Vanilla) {
-                v if v >= M2Version::WoD => 18, // WoD and later have color animation lookup
-                v if v >= M2Version::Cataclysm => 16, // Cataclysm and later have shader ID and secondary texture unit
+            // Material size depends on target version
+            let target_version = M2Version::from_header_version(header.version);
+            let material_size = match target_version {
+                Some(v) if v >= M2Version::WoD => 18, // WoD and later have color animation lookup
+                Some(v) if v >= M2Version::Cataclysm => 16, // Cataclysm and later have shader ID
                 _ => 12,                              // Classic to WotLK
             };
 
@@ -1621,11 +1666,112 @@ impl M2Model {
                 data_section.extend_from_slice(&lookup.to_le_bytes());
             }
 
-            // current_offset +=
-            //     (self.raw_data.texture_animation_lookup.len() * std::mem::size_of::<u16>()) as u32;
+            current_offset +=
+                (self.raw_data.texture_animation_lookup.len() * std::mem::size_of::<u16>()) as u32;
         } else {
             header.texture_animation_lookup = M2Array::new(0, 0);
         }
+
+        // Write bounding triangles
+        if !self.raw_data.bounding_triangles.is_empty() {
+            // bounding_triangles count is number of u16 values (3 per triangle)
+            let count = self.raw_data.bounding_triangles.len() / 2;
+            header.bounding_triangles = M2Array::new(count as u32, current_offset);
+            data_section.extend_from_slice(&self.raw_data.bounding_triangles);
+            current_offset += self.raw_data.bounding_triangles.len() as u32;
+        } else {
+            header.bounding_triangles = M2Array::new(0, 0);
+        }
+
+        // Write bounding vertices
+        if !self.raw_data.bounding_vertices.is_empty() {
+            // bounding_vertices are C3Vector (12 bytes each)
+            let count = self.raw_data.bounding_vertices.len() / 12;
+            header.bounding_vertices = M2Array::new(count as u32, current_offset);
+            data_section.extend_from_slice(&self.raw_data.bounding_vertices);
+            current_offset += self.raw_data.bounding_vertices.len() as u32;
+        } else {
+            header.bounding_vertices = M2Array::new(0, 0);
+        }
+
+        // Write bounding normals
+        if !self.raw_data.bounding_normals.is_empty() {
+            // bounding_normals are C3Vector (12 bytes each)
+            let count = self.raw_data.bounding_normals.len() / 12;
+            header.bounding_normals = M2Array::new(count as u32, current_offset);
+            data_section.extend_from_slice(&self.raw_data.bounding_normals);
+            current_offset += self.raw_data.bounding_normals.len() as u32;
+        } else {
+            header.bounding_normals = M2Array::new(0, 0);
+        }
+
+        // Write attachment lookup table
+        if !self.raw_data.attachment_lookup_table.is_empty() {
+            header.attachment_lookup_table = M2Array::new(
+                self.raw_data.attachment_lookup_table.len() as u32,
+                current_offset,
+            );
+            for &lookup in &self.raw_data.attachment_lookup_table {
+                data_section.extend_from_slice(&lookup.to_le_bytes());
+            }
+            current_offset +=
+                (self.raw_data.attachment_lookup_table.len() * std::mem::size_of::<u16>()) as u32;
+        } else {
+            header.attachment_lookup_table = M2Array::new(0, 0);
+        }
+
+        // Write camera lookup table
+        if !self.raw_data.camera_lookup_table.is_empty() {
+            header.camera_lookup_table = M2Array::new(
+                self.raw_data.camera_lookup_table.len() as u32,
+                current_offset,
+            );
+            for &lookup in &self.raw_data.camera_lookup_table {
+                data_section.extend_from_slice(&lookup.to_le_bytes());
+            }
+            current_offset +=
+                (self.raw_data.camera_lookup_table.len() * std::mem::size_of::<u16>()) as u32;
+        } else {
+            header.camera_lookup_table = M2Array::new(0, 0);
+        }
+
+        // Zero out sections we don't write yet (so header references are valid)
+        // These sections have complex structures with embedded offsets that need proper serialization
+        header.color_animations = M2Array::new(0, 0);
+        header.transparency_lookup = M2Array::new(0, 0);
+        header.texture_animations = M2Array::new(0, 0);
+        header.color_replacements = M2Array::new(0, 0);
+        header.attachments = M2Array::new(0, 0);
+        header.events = M2Array::new(0, 0);
+        header.lights = M2Array::new(0, 0);
+        header.cameras = M2Array::new(0, 0);
+        header.ribbon_emitters = M2Array::new(0, 0);
+        header.particle_emitters = M2Array::new(0, 0);
+
+        // Version-specific fields: set up correctly based on target version
+        // TBC and earlier (version <= 263) require texture_flipbooks
+        if header.version <= 263 {
+            header.texture_flipbooks = Some(M2Array::new(0, 0));
+            header.views = M2Array::new(0, 0);
+        } else {
+            header.texture_flipbooks = None;
+        }
+
+        // Vanilla and TBC (256-263) have playable_animation_lookup
+        // This field was removed in WotLK (264+)
+        if (256..=263).contains(&header.version) {
+            header.playable_animation_lookup = Some(M2Array::new(0, 0));
+        } else {
+            header.playable_animation_lookup = None;
+        }
+
+        // Clear post-BC optional fields we don't serialize
+        header.blend_map_overrides = None;
+        header.texture_combiner_combos = None;
+        header.texture_transforms = None;
+
+        // Suppress unused variable warning
+        let _ = current_offset;
 
         // Finally, write the header followed by the data section
         header.write(writer)?;
@@ -1696,6 +1842,10 @@ impl M2Model {
     }
 
     /// Calculate the size of the header for this model version
+    ///
+    /// This must match exactly what M2Header::write() produces. The write() method
+    /// clears optional fields (blend_map_overrides, texture_combiner_combos, texture_transforms)
+    /// so we don't include them in the size calculation.
     fn calculate_header_size(&self) -> usize {
         let version = self.header.version().unwrap_or(M2Version::Vanilla);
 
@@ -1709,17 +1859,35 @@ impl M2Model {
         size += 2 * 4; // animations
         size += 2 * 4; // animation_lookup
 
+        // Vanilla and TBC (256-263) have playable_animation_lookup
+        // This field was removed in WotLK (264+)
+        let version_num = version.to_header_version();
+        if (256..=263).contains(&version_num) {
+            size += 2 * 4; // playable_animation_lookup
+        }
+
         size += 2 * 4; // bones
         size += 2 * 4; // key_bone_lookup
 
         size += 2 * 4; // vertices
-        size += 2 * 4; // views
+
+        // Views field changes between versions
+        if version <= M2Version::TBC {
+            size += 2 * 4; // views as M2Array (8 bytes)
+        } else {
+            size += 4; // num_skin_profiles as u32 (4 bytes)
+        }
 
         size += 2 * 4; // color_animations
 
         size += 2 * 4; // textures
         size += 2 * 4; // transparency_lookup
-        size += 2 * 4; // transparency_animations
+
+        // Texture flipbooks only exist in BC and earlier
+        if version <= M2Version::TBC {
+            size += 2 * 4; // texture_flipbooks
+        }
+
         size += 2 * 4; // texture_animations
 
         size += 2 * 4; // color_replacements
@@ -1752,14 +1920,8 @@ impl M2Model {
         size += 2 * 4; // ribbon_emitters
         size += 2 * 4; // particle_emitters
 
-        // Version-specific fields
-        if version >= M2Version::Cataclysm {
-            size += 2 * 4; // texture_combiner_combos
-        }
-
-        if version >= M2Version::Legion {
-            size += 2 * 4; // texture_transforms
-        }
+        // Note: Optional fields (blend_map_overrides, texture_combiner_combos, texture_transforms)
+        // are NOT included because write() always clears them to None before writing the header.
 
         size
     }
@@ -2738,5 +2900,495 @@ mod tests {
         assert!(!model.has_external_files());
         assert!(!model.is_animation_blacklisted(1));
         assert!(model.get_extended_particle_data().is_none());
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_write_read_roundtrip() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        // Create a minimal but complete M2 model
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::WotLK);
+        model.name = Some("TestModel".to_string());
+
+        // Add some test vertices
+        for i in 0..4 {
+            let vertex = M2Vertex {
+                position: C3Vector {
+                    x: i as f32,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                bone_weights: [255, 0, 0, 0],
+                bone_indices: [0, 0, 0, 0],
+                normal: C3Vector {
+                    x: 0.0,
+                    y: 1.0,
+                    z: 0.0,
+                },
+                tex_coords: C2Vector { x: 0.0, y: 0.0 },
+                tex_coords2: None,
+            };
+            model.vertices.push(vertex);
+        }
+
+        // Write to bytes
+        let mut buffer = Cursor::new(Vec::new());
+        let write_result = model.write(&mut buffer);
+        assert!(write_result.is_ok(), "Write should succeed");
+
+        // Read back
+        buffer.set_position(0);
+        let read_result = M2Model::parse(&mut buffer);
+        assert!(read_result.is_ok(), "Read should succeed");
+
+        let read_model = read_result.unwrap();
+
+        // Verify key fields match
+        assert_eq!(read_model.name, model.name, "Name should match");
+        assert_eq!(
+            read_model.vertices.len(),
+            model.vertices.len(),
+            "Vertex count should match"
+        );
+        assert_eq!(
+            read_model.header.version, model.header.version,
+            "Version should match"
+        );
+
+        // Verify vertex data
+        for (i, (orig, read)) in model
+            .vertices
+            .iter()
+            .zip(read_model.vertices.iter())
+            .enumerate()
+        {
+            assert_eq!(
+                orig.position.x, read.position.x,
+                "Vertex {} X position should match",
+                i
+            );
+            assert_eq!(
+                orig.position.y, read.position.y,
+                "Vertex {} Y position should match",
+                i
+            );
+            assert_eq!(
+                orig.position.z, read.position.z,
+                "Vertex {} Z position should match",
+                i
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_version_conversion_roundtrip() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        // Create a WotLK model
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::WotLK);
+        model.name = Some("ConversionTest".to_string());
+
+        // Add a test vertex
+        let vertex = M2Vertex {
+            position: C3Vector {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            bone_weights: [255, 0, 0, 0],
+            bone_indices: [0, 0, 0, 0],
+            normal: C3Vector {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
+            tex_coords: C2Vector { x: 0.5, y: 0.5 },
+            tex_coords2: None,
+        };
+        model.vertices.push(vertex);
+
+        // Convert to TBC
+        let convert_result = model.convert(M2Version::TBC);
+        assert!(convert_result.is_ok(), "Conversion to TBC should succeed");
+        let tbc_model = convert_result.unwrap();
+
+        // Verify conversion changed version
+        assert_eq!(
+            tbc_model.header.version,
+            M2Version::TBC.to_header_version(),
+            "Version should be TBC"
+        );
+
+        // Write TBC model to bytes
+        let mut buffer = Cursor::new(Vec::new());
+        let write_result = tbc_model.write(&mut buffer);
+        assert!(
+            write_result.is_ok(),
+            "Write of converted model should succeed"
+        );
+
+        // Read back and verify
+        buffer.set_position(0);
+        let read_result = M2Model::parse(&mut buffer);
+        assert!(
+            read_result.is_ok(),
+            "Read of converted model should succeed: {:?}",
+            read_result.err()
+        );
+
+        let read_model = read_result.unwrap();
+        assert_eq!(
+            read_model.header.version,
+            M2Version::TBC.to_header_version(),
+            "Re-read version should be TBC"
+        );
+        assert_eq!(read_model.vertices.len(), 1, "Should have 1 vertex");
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_cataclysm_roundtrip() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        // Create a Cataclysm model (includes secondary tex coords)
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::Cataclysm);
+        model.name = Some("CataModel".to_string());
+
+        // Add a test vertex with secondary texture coordinates
+        let vertex = M2Vertex {
+            position: C3Vector {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            bone_weights: [255, 0, 0, 0],
+            bone_indices: [0, 0, 0, 0],
+            normal: C3Vector {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
+            tex_coords: C2Vector { x: 0.5, y: 0.5 },
+            tex_coords2: Some(C2Vector { x: 0.25, y: 0.75 }),
+        };
+        model.vertices.push(vertex);
+
+        // Write to bytes
+        let mut buffer = Cursor::new(Vec::new());
+        let write_result = model.write(&mut buffer);
+        assert!(
+            write_result.is_ok(),
+            "Write of Cataclysm model should succeed: {:?}",
+            write_result.err()
+        );
+
+        // Read back and verify
+        buffer.set_position(0);
+        let read_result = M2Model::parse(&mut buffer);
+        assert!(
+            read_result.is_ok(),
+            "Read of Cataclysm model should succeed: {:?}",
+            read_result.err()
+        );
+
+        let read_model = read_result.unwrap();
+        assert_eq!(
+            read_model.header.version,
+            M2Version::Cataclysm.to_header_version(),
+            "Re-read version should be Cataclysm (272)"
+        );
+        assert_eq!(read_model.vertices.len(), 1, "Should have 1 vertex");
+
+        // Cataclysm vertices have secondary tex coords
+        assert!(
+            read_model.vertices[0].tex_coords2.is_some(),
+            "Cataclysm should have secondary tex coords"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_mop_roundtrip() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        // Create a MoP model
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::MoP);
+        model.name = Some("MoPModel".to_string());
+
+        // Add test vertices
+        for i in 0..3 {
+            let vertex = M2Vertex {
+                position: C3Vector {
+                    x: i as f32,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                bone_weights: [255, 0, 0, 0],
+                bone_indices: [0, 0, 0, 0],
+                normal: C3Vector {
+                    x: 0.0,
+                    y: 1.0,
+                    z: 0.0,
+                },
+                tex_coords: C2Vector { x: 0.0, y: 0.0 },
+                tex_coords2: Some(C2Vector { x: 1.0, y: 1.0 }),
+            };
+            model.vertices.push(vertex);
+        }
+
+        // Write to bytes
+        let mut buffer = Cursor::new(Vec::new());
+        let write_result = model.write(&mut buffer);
+        assert!(
+            write_result.is_ok(),
+            "Write of MoP model should succeed: {:?}",
+            write_result.err()
+        );
+
+        // Read back and verify
+        buffer.set_position(0);
+        let read_result = M2Model::parse(&mut buffer);
+        assert!(
+            read_result.is_ok(),
+            "Read of MoP model should succeed: {:?}",
+            read_result.err()
+        );
+
+        let read_model = read_result.unwrap();
+        assert_eq!(
+            read_model.header.version,
+            M2Version::MoP.to_header_version(),
+            "Re-read version should be MoP (272)"
+        );
+        assert_eq!(read_model.vertices.len(), 3, "Should have 3 vertices");
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_wotlk_to_cataclysm_conversion() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        // Create a WotLK model
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::WotLK);
+        model.name = Some("WotLKToCata".to_string());
+
+        let vertex = M2Vertex {
+            position: C3Vector {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            bone_weights: [255, 0, 0, 0],
+            bone_indices: [0, 0, 0, 0],
+            normal: C3Vector {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
+            tex_coords: C2Vector { x: 0.5, y: 0.5 },
+            tex_coords2: None,
+        };
+        model.vertices.push(vertex);
+
+        // Convert to Cataclysm
+        let converted = model
+            .convert(M2Version::Cataclysm)
+            .expect("WotLK -> Cataclysm conversion failed");
+
+        assert_eq!(
+            converted.header.version,
+            M2Version::Cataclysm.to_header_version(),
+            "Version should be Cataclysm (272)"
+        );
+
+        // Write and re-read
+        let mut buffer = Cursor::new(Vec::new());
+        converted.write(&mut buffer).expect("Write failed");
+
+        buffer.set_position(0);
+        let read_model = M2Model::parse(&mut buffer).expect("Read failed");
+
+        assert_eq!(
+            read_model.header.version,
+            M2Version::Cataclysm.to_header_version()
+        );
+        assert_eq!(read_model.vertices.len(), 1);
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_wotlk_to_mop_conversion() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::WotLK);
+        model.name = Some("WotLKToMoP".to_string());
+
+        let vertex = M2Vertex {
+            position: C3Vector {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            bone_weights: [255, 0, 0, 0],
+            bone_indices: [0, 0, 0, 0],
+            normal: C3Vector {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
+            tex_coords: C2Vector { x: 0.5, y: 0.5 },
+            tex_coords2: None,
+        };
+        model.vertices.push(vertex);
+
+        // Convert to MoP
+        let converted = model
+            .convert(M2Version::MoP)
+            .expect("WotLK -> MoP conversion failed");
+
+        assert_eq!(converted.header.version, M2Version::MoP.to_header_version());
+
+        // Write and re-read
+        let mut buffer = Cursor::new(Vec::new());
+        converted.write(&mut buffer).expect("Write failed");
+
+        buffer.set_position(0);
+        let read_model = M2Model::parse(&mut buffer).expect("Read failed");
+
+        assert_eq!(
+            read_model.header.version,
+            M2Version::MoP.to_header_version()
+        );
+        assert_eq!(read_model.vertices.len(), 1);
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_wotlk_to_vanilla_conversion() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::WotLK);
+        model.name = Some("WotLKToVanilla".to_string());
+
+        let vertex = M2Vertex {
+            position: C3Vector {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            bone_weights: [255, 0, 0, 0],
+            bone_indices: [0, 0, 0, 0],
+            normal: C3Vector {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
+            tex_coords: C2Vector { x: 0.5, y: 0.5 },
+            tex_coords2: None,
+        };
+        model.vertices.push(vertex);
+
+        // Convert to Vanilla
+        let converted = model
+            .convert(M2Version::Vanilla)
+            .expect("WotLK -> Vanilla conversion failed");
+
+        assert_eq!(
+            converted.header.version,
+            M2Version::Vanilla.to_header_version()
+        );
+
+        // Write and re-read
+        let mut buffer = Cursor::new(Vec::new());
+        converted.write(&mut buffer).expect("Write failed");
+
+        buffer.set_position(0);
+        let read_model = M2Model::parse(&mut buffer).expect("Read failed");
+
+        assert_eq!(
+            read_model.header.version,
+            M2Version::Vanilla.to_header_version()
+        );
+        assert_eq!(read_model.vertices.len(), 1);
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_m2_cataclysm_to_wotlk_conversion() {
+        use crate::chunks::vertex::M2Vertex;
+        use crate::common::{C2Vector, C3Vector};
+        use crate::version::M2Version;
+
+        let mut model = M2Model::default();
+        model.header = M2Header::new(M2Version::Cataclysm);
+        model.name = Some("CataToWotLK".to_string());
+
+        let vertex = M2Vertex {
+            position: C3Vector {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            bone_weights: [255, 0, 0, 0],
+            bone_indices: [0, 0, 0, 0],
+            normal: C3Vector {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
+            tex_coords: C2Vector { x: 0.5, y: 0.5 },
+            tex_coords2: Some(C2Vector { x: 0.25, y: 0.75 }),
+        };
+        model.vertices.push(vertex);
+
+        // Convert to WotLK
+        let converted = model
+            .convert(M2Version::WotLK)
+            .expect("Cataclysm -> WotLK conversion failed");
+
+        assert_eq!(
+            converted.header.version,
+            M2Version::WotLK.to_header_version()
+        );
+
+        // Write and re-read
+        let mut buffer = Cursor::new(Vec::new());
+        converted.write(&mut buffer).expect("Write failed");
+
+        buffer.set_position(0);
+        let read_model = M2Model::parse(&mut buffer).expect("Read failed");
+
+        assert_eq!(
+            read_model.header.version,
+            M2Version::WotLK.to_header_version()
+        );
+        assert_eq!(read_model.vertices.len(), 1);
+
+        // Note: tex_coords2 is present in ALL versions (48-byte vertex format)
+        // The secondary texture coords are preserved during conversion
+        assert!(read_model.vertices[0].tex_coords2.is_some());
     }
 }

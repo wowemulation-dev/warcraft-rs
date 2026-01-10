@@ -720,4 +720,35 @@ mod tests {
         // Vanilla M2Bone size: 4 + 4 + 2 + 2 (no unknown fields) + 28*3 (M2Track each with ranges) + 12 (pivot) = 108 bytes
         assert_eq!(vanilla_data.len(), 108);
     }
+
+    #[test]
+    fn test_bone_write_wotlk() {
+        let bone = M2Bone {
+            bone_id: 1,
+            flags: M2BoneFlags::TRANSFORMED,
+            parent_bone: -1,
+            submesh_id: 0,
+            unknown: [0, 0],
+            bone_name_crc: Some(0x12345678),
+            translation: M2TrackVec3::new(),
+            rotation: M2TrackQuat::new(),
+            scale: M2TrackVec3::new(),
+            pivot: C3Vector {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        };
+
+        let mut data = Vec::new();
+        bone.write(&mut data, 264).unwrap(); // WotLK version
+
+        println!("WotLK bone write size: {} bytes (expected 88)", data.len());
+        assert_eq!(
+            data.len(),
+            88,
+            "WotLK bone should be 88 bytes, got {}",
+            data.len()
+        );
+    }
 }

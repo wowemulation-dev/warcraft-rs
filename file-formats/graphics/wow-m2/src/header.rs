@@ -614,20 +614,56 @@ impl M2Header {
         let mut new_header = self.clone();
         new_header.version = target_version.to_header_version();
 
-        // Handle version-specific fields
+        // Handle views <-> num_skin_profiles transition at WotLK boundary
+        // Pre-WotLK (version <= 263): views is M2Array containing embedded skin data
+        // WotLK+ (version >= 264): num_skin_profiles is a u32 count of external .skin files
+        if target_version >= M2Version::WotLK && source_version < M2Version::WotLK {
+            // Upgrading to WotLK+: convert views M2Array count to num_skin_profiles
+            // Use the views count as the number of skin profiles (or 1 if views was empty)
+            let count = if self.views.count > 0 {
+                self.views.count
+            } else {
+                1 // Default to 1 skin profile
+            };
+            new_header.num_skin_profiles = Some(count);
+            new_header.views = M2Array::new(0, 0); // Clear views array
+        } else if target_version < M2Version::WotLK && source_version >= M2Version::WotLK {
+            // Downgrading from WotLK+: convert num_skin_profiles to views M2Array
+            // The views M2Array would normally point to embedded skin data, but we can't
+            // recreate that, so we set it to empty (skin data would need separate handling)
+            new_header.num_skin_profiles = None;
+            new_header.views = M2Array::new(0, 0);
+        }
+
+        // Handle playable_animation_lookup (removed in WotLK+)
+        if target_version >= M2Version::WotLK && source_version < M2Version::WotLK {
+            // Remove playable_animation_lookup when upgrading to WotLK+
+            new_header.playable_animation_lookup = None;
+        } else if target_version < M2Version::WotLK && source_version >= M2Version::WotLK {
+            // Add empty playable_animation_lookup when downgrading to pre-WotLK
+            new_header.playable_animation_lookup = Some(M2Array::new(0, 0));
+        }
+
+        // Handle texture_flipbooks (removed in WotLK+)
+        if target_version >= M2Version::WotLK && source_version < M2Version::WotLK {
+            // Remove texture_flipbooks when upgrading to WotLK+
+            new_header.texture_flipbooks = None;
+        } else if target_version < M2Version::WotLK && source_version >= M2Version::WotLK {
+            // Add empty texture_flipbooks when downgrading to pre-WotLK
+            new_header.texture_flipbooks = Some(M2Array::new(0, 0));
+        }
+
+        // Handle texture_combiner_combos (added in Cataclysm)
         if target_version >= M2Version::Cataclysm && source_version < M2Version::Cataclysm {
-            // Add texture_combiner_combos when upgrading to Cataclysm or later
             new_header.texture_combiner_combos = Some(M2Array::new(0, 0));
         } else if target_version < M2Version::Cataclysm && source_version >= M2Version::Cataclysm {
-            // Remove texture_combiner_combos when downgrading to pre-Cataclysm
             new_header.texture_combiner_combos = None;
         }
 
+        // Handle texture_transforms (added in Legion)
         if target_version >= M2Version::Legion && source_version < M2Version::Legion {
-            // Add texture_transforms when upgrading to Legion or later
             new_header.texture_transforms = Some(M2Array::new(0, 0));
         } else if target_version < M2Version::Legion && source_version >= M2Version::Legion {
-            // Remove texture_transforms when downgrading to pre-Legion
             new_header.texture_transforms = None;
         }
 

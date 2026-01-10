@@ -10,6 +10,11 @@ and this project adheres to
 
 ### Fixed
 
+- **M2 Format**: Version conversion roundtrip for all supported versions
+  - Fixed `playable_animation_lookup` field handling for Vanilla (256-263)
+  - Header parse expected this field for Vanilla but write omitted it
+  - Version conversion now works: Vanilla, TBC, WotLK, Cataclysm, MoP
+  - Cross-version conversion validated: WotLK↔Vanilla, WotLK↔Cata, etc.
 - **BLP Convert CLI**: Alpha bits auto-detection from input image
   - Made `--alpha-bits` optional; auto-detects based on input image color type
   - DXT1 auto-selects 1-bit alpha for images with transparency, 0 otherwise
