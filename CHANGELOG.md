@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **M2 Format**: Skin file bone_indices parsing reads correct byte count
+  - bone_indices is ubyte4 (4 bone indices per vertex), not single bytes
+  - M2Array count represents vertex count; actual data is count × 4 bytes
+  - Previously lost 75% of bone influence data during parsing
+- **M2 Format**: Old skin format includes boneCountMax field
+  - Added missing u32 boneCountMax at end of OldSkinHeader (offset 44)
+  - Header size calculation now includes this field
+  - Cross-format conversion preserves bone count limits
+
 ## [0.5.0] - 2025-01-09
 
 ### Added

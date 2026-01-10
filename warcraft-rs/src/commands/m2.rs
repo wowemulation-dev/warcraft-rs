@@ -6,8 +6,8 @@ use std::path::PathBuf;
 
 use wow_blp::parser::load_blp;
 use wow_m2::{
-    AnimFile, M2Converter, M2Model, M2Version, Skin,
-    skin::{OldSkinHeader, SkinG, SkinHeader, SkinHeaderT},
+    AnimFile, M2Converter, M2Model, M2Version, SkinFile,
+    skin::{OldSkinHeader, SkinG, SkinHeaderT},
 };
 
 use crate::utils::{NodeType, TreeNode, TreeOptions, render_tree};
@@ -146,11 +146,8 @@ pub fn execute(cmd: M2Commands) -> Result<()> {
             detailed,
             old_format,
         } => {
-            if old_format {
-                handle_skin_info::<OldSkinHeader>(file, detailed)
-            } else {
-                handle_skin_info::<SkinHeader>(file, detailed)
-            }
+            // Use auto-detection by default, with old_format as an override
+            handle_skin_info_auto(file, detailed, old_format)
         }
         M2Commands::SkinConvert {
             input,
@@ -685,6 +682,159 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
     Ok(())
 }
 
+fn handle_skin_info_auto(path: PathBuf, detailed: bool, force_old_format: bool) -> Result<()> {
+    println!("Loading Skin file: {}", path.display());
+
+    // Get file size for reference
+    let file_size = std::fs::metadata(&path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+
+    // If force_old_format is specified, use the old parser directly
+    if force_old_format {
+        let skin = SkinG::<OldSkinHeader>::load(&path)
+            .with_context(|| format!("Failed to load Skin file from {}", path.display()))?;
+
+        println!("\n=== Skin Information ===");
+        println!("Format: Old (forced via --old-format)");
+        println!("File size: {} bytes", file_size);
+        println!("Indices: {}", skin.indices.len());
+        println!("Triangles: {}", skin.triangles.len());
+        println!("Bone Indices: {}", skin.bone_indices.len());
+        println!("Submeshes: {}", skin.submeshes.len());
+        println!("Batches: {}", skin.batches.len());
+
+        if detailed {
+            print_skin_details(&skin.submeshes, &skin.batches);
+            print_skin_samples(&skin.indices, &skin.triangles, &skin.bone_indices);
+        }
+
+        return Ok(());
+    }
+
+    // Use auto-detection
+    let skin = SkinFile::load(&path)
+        .with_context(|| format!("Failed to load Skin file from {}", path.display()))?;
+
+    println!("\n=== Skin Information ===");
+
+    let format_name = if skin.is_new_format() {
+        "New (Cataclysm+)"
+    } else {
+        "Old (WotLK and earlier)"
+    };
+    println!("Format: {}", format_name);
+    println!("File size: {} bytes", file_size);
+
+    println!("Indices: {}", skin.indices().len());
+    println!("Triangles: {}", skin.triangles().len());
+    println!("Bone Indices: {}", skin.bone_indices().len());
+    println!("Submeshes: {}", skin.submeshes().len());
+    println!("Batches: {}", skin.batches().len());
+
+    if detailed {
+        print_skin_details(skin.submeshes(), skin.batches());
+        print_skin_samples(skin.indices(), skin.triangles(), skin.bone_indices());
+    }
+
+    Ok(())
+}
+
+fn print_skin_details(
+    submeshes: &[wow_m2::skin::SkinSubmesh],
+    batches: &[wow_m2::skin::SkinBatch],
+) {
+    if !submeshes.is_empty() {
+        println!("\n=== Submeshes ===");
+        for (i, submesh) in submeshes.iter().enumerate() {
+            println!(
+                "  [{}] ID: {}, Vertices: {} (start: {}), Triangles: {} (start: {})",
+                i,
+                submesh.id,
+                submesh.vertex_count,
+                submesh.vertex_start,
+                submesh.triangle_count,
+                submesh.triangle_start
+            );
+            println!(
+                "       Bones: {} (start: {}), Center: [{:.2}, {:.2}, {:.2}]",
+                submesh.bone_count,
+                submesh.bone_start,
+                submesh.center[0],
+                submesh.center[1],
+                submesh.center[2]
+            );
+        }
+    }
+
+    if !batches.is_empty() {
+        println!("\n=== Batches ===");
+        for (i, batch) in batches.iter().enumerate() {
+            println!(
+                "  [{}] Submesh: {}, Shader: {}, Textures: {}, Material: {}",
+                i,
+                batch.skin_section_index,
+                batch.shader_id,
+                batch.texture_count,
+                batch.material_index
+            );
+        }
+    }
+}
+
+fn print_skin_samples(indices: &[u16], triangles: &[u16], bone_indices: &[u8]) {
+    println!("\n=== Data Samples ===");
+
+    // Show first few indices
+    if !indices.is_empty() {
+        let sample: Vec<_> = indices.iter().take(10).collect();
+        println!("Indices (first 10): {:?}", sample);
+        if indices.len() > 10 {
+            println!("  ... and {} more", indices.len() - 10);
+        }
+    }
+
+    // Show first few triangles (as groups of 3)
+    if !triangles.is_empty() {
+        println!("Triangles (first 3 faces):");
+        for i in 0..3.min(triangles.len() / 3) {
+            let base = i * 3;
+            println!(
+                "  Face {}: [{}, {}, {}]",
+                i, triangles[base], triangles[base + 1], triangles[base + 2]
+            );
+        }
+        if triangles.len() > 9 {
+            println!("  ... and {} more faces", triangles.len() / 3 - 3);
+        }
+    }
+
+    // Show first few bone indices (as groups of 4 if possible)
+    if !bone_indices.is_empty() {
+        println!("Bone indices (first 5 vertices):");
+        for i in 0..5.min(bone_indices.len() / 4) {
+            let base = i * 4;
+            if base + 3 < bone_indices.len() {
+                println!(
+                    "  Vertex {}: [{}, {}, {}, {}]",
+                    i,
+                    bone_indices[base],
+                    bone_indices[base + 1],
+                    bone_indices[base + 2],
+                    bone_indices[base + 3]
+                );
+            }
+        }
+        println!(
+            "  Total: {} bytes ({} if 4 bytes/vertex = {} vertices)",
+            bone_indices.len(),
+            bone_indices.len(),
+            bone_indices.len() / 4
+        );
+    }
+}
+
+#[allow(dead_code)]
 fn handle_skin_info<H: SkinHeaderT + Clone>(path: PathBuf, detailed: bool) -> Result<()> {
     println!("Loading Skin file: {}", path.display());
 
@@ -705,16 +855,35 @@ fn handle_skin_info<H: SkinHeaderT + Clone>(path: PathBuf, detailed: bool) -> Re
 fn handle_skin_convert(input: PathBuf, output: PathBuf, version_str: String) -> Result<()> {
     println!("Loading Skin file: {}", input.display());
 
-    let skin = Skin::load(&input)
+    // Use SkinFile::load() for automatic format detection
+    let skin = SkinFile::load(&input)
         .with_context(|| format!("Failed to load Skin file from {}", input.display()))?;
+
+    let source_format = if skin.is_new_format() {
+        "new format"
+    } else {
+        "old format"
+    };
+    println!("Detected source format: {}", source_format);
 
     let target_version = M2Version::from_expansion_name(&version_str)
         .with_context(|| format!("Invalid target version: {version_str}"))?;
 
-    println!("Converting to {target_version:?}");
+    let target_format = if target_version.uses_new_skin_format() {
+        "new format"
+    } else {
+        "old format"
+    };
+    println!("Converting to {:?} ({})...", target_version, target_format);
+
+    // Actually perform the conversion
+    let converted = skin
+        .convert(target_version)
+        .with_context(|| format!("Failed to convert skin to {:?}", target_version))?;
 
     println!("Saving converted Skin file to: {}", output.display());
-    skin.save(&output)
+    converted
+        .save(&output)
         .with_context(|| format!("Failed to save converted Skin file to {}", output.display()))?;
 
     println!("Conversion complete!");

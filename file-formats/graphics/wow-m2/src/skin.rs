@@ -66,10 +66,12 @@ pub fn parse_embedded_skin<R: Read + Seek>(reader: &mut R, m2_version: u32) -> R
     }
 
     // Parse bone indices
-    let mut bone_indices = Vec::with_capacity(header.bone_indices.count as usize);
+    // Note: count is number of vertices, each with 4 bone indices (ubyte4)
+    let total_bone_bytes = (header.bone_indices.count as usize) * 4;
+    let mut bone_indices = Vec::with_capacity(total_bone_bytes);
     if header.bone_indices.count > 0 && header.bone_indices.offset > 0 {
         reader.seek(SeekFrom::Start(header.bone_indices.offset as u64))?;
-        for _ in 0..header.bone_indices.count {
+        for _ in 0..total_bone_bytes {
             bone_indices.push(reader.read_u8()?);
         }
     }
@@ -401,16 +403,19 @@ impl SkinHeader {
 pub struct OldSkinHeader {
     /// Magic signature ("SKIN")
     pub magic: [u8; 4],
-    /// Indices
+    /// Indices (vertex lookup table)
     pub indices: M2Array<u16>,
-    /// Triangles
+    /// Triangles (index buffer, groups of 3)
     pub triangles: M2Array<u16>,
-    /// Bone indices
+    /// Bone indices (4 bytes per vertex - ubyte4)
+    /// Note: The count is number of vertices, actual data is count * 4 bytes
     pub bone_indices: M2Array<u8>,
     /// Submeshes
     pub submeshes: M2Array<SkinSubmesh>,
     /// Batches
     pub batches: M2Array<SkinBatch>,
+    /// Maximum bones per draw call
+    pub bone_count_max: u32,
 }
 
 impl OldSkinHeader {
@@ -431,6 +436,7 @@ impl OldSkinHeader {
             bone_indices,
             submeshes,
             batches,
+            bone_count_max: 0, // Default for embedded skins
         })
     }
 }
@@ -456,6 +462,9 @@ impl SkinHeaderT for OldSkinHeader {
         let submeshes = M2Array::parse(reader)?;
         let batches = M2Array::parse(reader)?;
 
+        // Read bone_count_max (maximum bones per draw call)
+        let bone_count_max = reader.read_u32_le()?;
+
         Ok(Self {
             magic,
             indices,
@@ -463,12 +472,13 @@ impl SkinHeaderT for OldSkinHeader {
             bone_indices,
             submeshes,
             batches,
+            bone_count_max,
         })
     }
 
     /// Write a Skin header to a writer
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Write magic and version
+        // Write magic
         writer.write_all(&self.magic)?;
 
         // Write array references
@@ -477,6 +487,9 @@ impl SkinHeaderT for OldSkinHeader {
         self.bone_indices.write(writer)?;
         self.submeshes.write(writer)?;
         self.batches.write(writer)?;
+
+        // Write bone_count_max
+        writer.write_u32_le(self.bone_count_max)?;
 
         Ok(())
     }
@@ -487,6 +500,9 @@ impl SkinHeaderT for OldSkinHeader {
 
         // Array references
         size += 5 * (2 * 4); // 5 arrays, each with count and offset (8 bytes)
+
+        // bone_count_max field
+        size += 4;
 
         size
     }
@@ -537,6 +553,7 @@ impl OldSkinHeader {
             bone_indices: M2Array::new(0, 0),
             submeshes: M2Array::new(0, 0),
             batches: M2Array::new(0, 0),
+            bone_count_max: 0,
         }
     }
 }
@@ -743,10 +760,13 @@ where
         }
 
         // Parse bone indices
+        // Note: The count in M2Array is the number of vertices, but each vertex has 4 bone indices
+        // (ubyte4 structure), so we read count * 4 bytes
         let header_bone_indices = header.bone_indices();
         reader.seek(SeekFrom::Start(header_bone_indices.offset as u64))?;
-        let mut bone_indices = Vec::with_capacity(header_bone_indices.count as usize);
-        for _ in 0..header_bone_indices.count {
+        let total_bone_bytes = (header_bone_indices.count as usize) * 4;
+        let mut bone_indices = Vec::with_capacity(total_bone_bytes);
+        for _ in 0..total_bone_bytes {
             bone_indices.push(reader.read_u8()?);
         }
 
@@ -828,8 +848,11 @@ where
         };
 
         // Write bone indices
+        // Note: M2Array count is vertex count, but we store 4 bytes per vertex (ubyte4)
         let bone_indices = if !self.bone_indices.is_empty() {
-            let bone_indices = M2Array::new(self.bone_indices.len() as u32, current_offset);
+            // Count is number of vertices (len / 4), not number of bytes
+            let vertex_count = (self.bone_indices.len() / 4) as u32;
+            let bone_indices = M2Array::new(vertex_count, current_offset);
 
             for &bone_index in &self.bone_indices {
                 data_section.push(bone_index);
@@ -947,6 +970,66 @@ impl SkinG<SkinHeader> {
 
         Ok(new_skin)
     }
+
+    /// Convert this new-format skin to old format (for WotLK and earlier)
+    ///
+    /// The old format lacks version field, name, and vertex_count fields.
+    /// This conversion preserves all mesh data (indices, triangles, submeshes, batches).
+    pub fn to_old_format(&self) -> OldSkin {
+        // Calculate bone_count_max from submeshes if available, otherwise use sensible default
+        let bone_count_max = self
+            .submeshes
+            .iter()
+            .map(|s| s.bone_count as u32)
+            .max()
+            .unwrap_or(64);
+
+        OldSkin {
+            header: OldSkinHeader {
+                magic: SKIN_MAGIC,
+                indices: self.header.indices,
+                triangles: self.header.triangles,
+                bone_indices: self.header.bone_indices,
+                submeshes: self.header.submeshes.clone(),
+                batches: self.header.batches.clone(),
+                bone_count_max,
+            },
+            indices: self.indices.clone(),
+            triangles: self.triangles.clone(),
+            bone_indices: self.bone_indices.clone(),
+            submeshes: self.submeshes.clone(),
+            batches: self.batches.clone(),
+        }
+    }
+}
+
+impl SkinG<OldSkinHeader> {
+    /// Convert this old-format skin to new format (for Cataclysm and later)
+    ///
+    /// The new format adds version field, name, and vertex_count fields.
+    /// This conversion preserves all mesh data and initializes new fields with defaults.
+    pub fn to_new_format(&self, target_version: M2Version) -> Skin {
+        let mut header = SkinHeader::new(target_version);
+        header.indices = self.header.indices;
+        header.triangles = self.header.triangles;
+        header.bone_indices = self.header.bone_indices;
+        header.submeshes = self.header.submeshes.clone();
+        header.batches = self.header.batches.clone();
+
+        // Calculate vertex count from indices if available
+        if !self.indices.is_empty() {
+            header.vertex_count = self.indices.iter().copied().max().unwrap_or(0) as u32 + 1;
+        }
+
+        Skin {
+            header,
+            indices: self.indices.clone(),
+            triangles: self.triangles.clone(),
+            bone_indices: self.bone_indices.clone(),
+            submeshes: self.submeshes.clone(),
+            batches: self.batches.clone(),
+        }
+    }
 }
 
 pub type Skin = SkinG<SkinHeader>;
@@ -1038,6 +1121,49 @@ impl SkinFile {
         match self {
             SkinFile::New(skin) => &skin.batches,
             SkinFile::Old(skin) => &skin.batches,
+        }
+    }
+
+    /// Convert this skin file to a target version
+    ///
+    /// This handles cross-format conversion automatically:
+    /// - WotLK and earlier use old format (no version field)
+    /// - Cataclysm and later use new format (with version field)
+    ///
+    /// The conversion preserves all mesh data while adjusting the header structure
+    /// as needed for the target version.
+    pub fn convert(&self, target_version: M2Version) -> Result<Self> {
+        let uses_new_format = target_version.uses_new_skin_format();
+
+        match (self, uses_new_format) {
+            // New format -> New format: use existing conversion
+            (SkinFile::New(skin), true) => {
+                let converted = skin.convert(target_version)?;
+                Ok(SkinFile::New(converted))
+            }
+
+            // New format -> Old format: cross-format conversion
+            (SkinFile::New(skin), false) => {
+                let old_skin = skin.to_old_format();
+                Ok(SkinFile::Old(old_skin))
+            }
+
+            // Old format -> New format: cross-format conversion
+            (SkinFile::Old(skin), true) => {
+                let new_skin = skin.to_new_format(target_version);
+                Ok(SkinFile::New(new_skin))
+            }
+
+            // Old format -> Old format: no conversion needed (format is the same)
+            (SkinFile::Old(skin), false) => Ok(SkinFile::Old(skin.clone())),
+        }
+    }
+
+    /// Get the bone indices regardless of format
+    pub fn bone_indices(&self) -> &Vec<u8> {
+        match self {
+            SkinFile::New(skin) => &skin.bone_indices,
+            SkinFile::Old(skin) => &skin.bone_indices,
         }
     }
 
@@ -1360,5 +1486,162 @@ mod tests {
         assert_eq!(parsed_submesh.center, [1.0, 2.0, 3.0]);
         assert_eq!(parsed_submesh.sort_center, [1.5, 2.5, 3.5]);
         assert_eq!(parsed_submesh.bounding_radius, 5.0);
+    }
+
+    #[test]
+    fn test_skin_format_version_detection() {
+        use crate::M2Version;
+
+        // WotLK and earlier should use old format
+        assert!(!M2Version::Vanilla.uses_new_skin_format());
+        assert!(!M2Version::TBC.uses_new_skin_format());
+        assert!(!M2Version::WotLK.uses_new_skin_format());
+
+        // Cataclysm and later should use new format
+        assert!(M2Version::Cataclysm.uses_new_skin_format());
+        assert!(M2Version::MoP.uses_new_skin_format());
+        assert!(M2Version::WoD.uses_new_skin_format());
+        assert!(M2Version::Legion.uses_new_skin_format());
+    }
+
+    #[test]
+    fn test_cross_format_conversion_new_to_old() {
+        use crate::M2Version;
+
+        // Create a new format skin
+        let new_skin = Skin {
+            header: SkinHeader::new(M2Version::Cataclysm),
+            indices: vec![0, 1, 2, 3, 4],
+            triangles: vec![0, 1, 2, 1, 2, 3],
+            bone_indices: vec![0, 1],
+            submeshes: vec![SkinSubmesh {
+                id: 0,
+                level: 0,
+                vertex_start: 0,
+                vertex_count: 5,
+                triangle_start: 0,
+                triangle_count: 6,
+                bone_count: 2,
+                bone_start: 0,
+                bone_influence: 2,
+                center: [0.0, 0.0, 0.0],
+                sort_center: [0.0, 0.0, 0.0],
+                bounding_radius: 1.0,
+            }],
+            batches: vec![],
+        };
+
+        // Convert to old format
+        let old_skin = new_skin.to_old_format();
+
+        // Verify data is preserved
+        assert_eq!(old_skin.indices, new_skin.indices);
+        assert_eq!(old_skin.triangles, new_skin.triangles);
+        assert_eq!(old_skin.bone_indices, new_skin.bone_indices);
+        assert_eq!(old_skin.submeshes.len(), new_skin.submeshes.len());
+    }
+
+    #[test]
+    fn test_cross_format_conversion_old_to_new() {
+        use crate::M2Version;
+        use crate::common::M2Array;
+
+        // Create an old format skin
+        let old_skin = OldSkin {
+            header: OldSkinHeader {
+                magic: SKIN_MAGIC,
+                indices: M2Array::new(5, 0),
+                triangles: M2Array::new(6, 0),
+                bone_indices: M2Array::new(2, 0),
+                submeshes: M2Array::new(1, 0),
+                batches: M2Array::new(0, 0),
+                bone_count_max: 64,
+            },
+            indices: vec![0, 1, 2, 3, 4],
+            triangles: vec![0, 1, 2, 1, 2, 3],
+            bone_indices: vec![0, 1],
+            submeshes: vec![SkinSubmesh {
+                id: 0,
+                level: 0,
+                vertex_start: 0,
+                vertex_count: 5,
+                triangle_start: 0,
+                triangle_count: 6,
+                bone_count: 2,
+                bone_start: 0,
+                bone_influence: 2,
+                center: [0.0, 0.0, 0.0],
+                sort_center: [0.0, 0.0, 0.0],
+                bounding_radius: 1.0,
+            }],
+            batches: vec![],
+        };
+
+        // Convert to new format for Cataclysm
+        let new_skin = old_skin.to_new_format(M2Version::Cataclysm);
+
+        // Verify data is preserved
+        assert_eq!(new_skin.indices, old_skin.indices);
+        assert_eq!(new_skin.triangles, old_skin.triangles);
+        assert_eq!(new_skin.bone_indices, old_skin.bone_indices);
+        assert_eq!(new_skin.submeshes.len(), old_skin.submeshes.len());
+        assert_eq!(new_skin.header.version, 1); // Cataclysm skin version
+    }
+
+    #[test]
+    fn test_skinfile_convert_cataclysm_to_wotlk() {
+        use crate::M2Version;
+
+        // Create a new format skin (Cataclysm)
+        let cata_skin = Skin {
+            header: SkinHeader::new(M2Version::Cataclysm),
+            indices: vec![0, 1, 2],
+            triangles: vec![0, 1, 2],
+            bone_indices: vec![0],
+            submeshes: vec![],
+            batches: vec![],
+        };
+
+        let skin_file = SkinFile::New(cata_skin);
+
+        // Convert to WotLK
+        let converted = skin_file.convert(M2Version::WotLK).unwrap();
+
+        // Should now be old format
+        assert!(converted.is_old_format());
+        assert!(!converted.is_new_format());
+    }
+
+    #[test]
+    fn test_skinfile_convert_wotlk_to_cataclysm() {
+        use crate::M2Version;
+        use crate::common::M2Array;
+
+        // Create an old format skin (WotLK)
+        let wotlk_skin = OldSkin {
+            header: OldSkinHeader {
+                magic: SKIN_MAGIC,
+                indices: M2Array::new(3, 0),
+                triangles: M2Array::new(3, 0),
+                bone_indices: M2Array::new(1, 0),
+                submeshes: M2Array::new(0, 0),
+                batches: M2Array::new(0, 0),
+                bone_count_max: 64,
+            },
+            indices: vec![0, 1, 2],
+            triangles: vec![0, 1, 2],
+            bone_indices: vec![0],
+            submeshes: vec![],
+            batches: vec![],
+        };
+
+        let skin_file = SkinFile::Old(wotlk_skin);
+
+        // Convert to Cataclysm
+        let converted = skin_file.convert(M2Version::Cataclysm).unwrap();
+
+        // Should now be new format
+        assert!(converted.is_new_format());
+        assert!(!converted.is_old_format());
     }
 }

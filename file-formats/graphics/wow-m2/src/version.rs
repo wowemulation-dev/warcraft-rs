@@ -247,6 +247,27 @@ impl M2Version {
         }
     }
 
+    /// Returns true if this version uses the new skin format (with version field)
+    ///
+    /// WotLK introduced external .skin files but used the old format (no version field).
+    /// Cataclysm introduced the new skin format with a version field.
+    ///
+    /// - Old format: magic + arrays (no version field) - used by WotLK and earlier
+    /// - New format: magic + version + name + vertex_count + arrays - used by Cataclysm+
+    pub fn uses_new_skin_format(&self) -> bool {
+        match self {
+            Self::Vanilla | Self::TBC | Self::WotLK => false,
+            Self::Cataclysm
+            | Self::MoP
+            | Self::WoD
+            | Self::Legion
+            | Self::BfA
+            | Self::Shadowlands
+            | Self::Dragonflight
+            | Self::TheWarWithin => true,
+        }
+    }
+
     /// Get the empirically verified version number for this M2 version
     /// Returns None if the version was not part of the empirical analysis
     pub fn empirical_version_number(&self) -> Option<u32> {
