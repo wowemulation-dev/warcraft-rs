@@ -250,15 +250,6 @@ impl<'a> SchemaDiscoverer<'a> {
         // Check for potential key field
         let is_key_candidate = self.is_potential_key(values);
 
-        // Check if the values fit in different integer ranges
-        let min_value = values.iter().copied().min().unwrap_or(0);
-        let max_value = values.iter().copied().max().unwrap_or(0);
-
-        let fits_uint8 = max_value <= 0xFF;
-        let fits_int8 = min_value >= 0x80 && max_value <= 0x7F;
-        let fits_uint16 = max_value <= 0xFFFF;
-        let fits_int16 = min_value >= 0x8000 && max_value <= 0x7FFF;
-
         // Check if the values could be floating point
         let could_be_float = values.iter().any(|&value| {
             // Check if the bit pattern could represent a reasonable float
@@ -269,20 +260,15 @@ impl<'a> SchemaDiscoverer<'a> {
         });
 
         // Determine the most likely field type
+        // NOTE: DBC files always store 4 bytes per field, so we only detect 4-byte types.
+        // Smaller types (UInt8, Int8, UInt16, Int16) are not used because they would
+        // cause incorrect size calculations during schema validation.
         let (field_type, confidence) = if is_valid_string_ref {
             (FieldType::String, Confidence::High)
         } else if is_string_ref {
             (FieldType::String, Confidence::Medium)
         } else if is_bool {
             (FieldType::Bool, Confidence::High)
-        } else if fits_uint8 {
-            (FieldType::UInt8, Confidence::Medium)
-        } else if fits_int8 {
-            (FieldType::Int8, Confidence::Medium)
-        } else if fits_uint16 {
-            (FieldType::UInt16, Confidence::Medium)
-        } else if fits_int16 {
-            (FieldType::Int16, Confidence::Medium)
         } else if could_be_float {
             (FieldType::Float32, Confidence::Medium)
         } else if values.iter().any(|&v| v > 0x7FFFFFFF) {
