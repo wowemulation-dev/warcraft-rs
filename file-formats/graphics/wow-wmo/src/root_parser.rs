@@ -89,7 +89,7 @@ pub struct WmoRoot {
 }
 
 /// MOHD chunk structure (WMO Header)
-/// Reference: https://wowdev.wiki/WMO#MOHD_chunk
+/// Reference: <https://wowdev.wiki/WMO#MOHD_chunk>
 #[derive(Debug, Clone, BinRead)]
 #[br(little)]
 struct Mohd {
