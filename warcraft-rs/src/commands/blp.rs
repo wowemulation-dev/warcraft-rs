@@ -79,9 +79,9 @@ pub enum BlpCommands {
         #[arg(long, default_value = "jpeg")]
         blp_format: BlpFormat,
 
-        /// Alpha bits (0, 1, 4, or 8)
-        #[arg(long, default_value = "8")]
-        alpha_bits: u8,
+        /// Alpha bits (0, 1, 4, or 8). Auto-detected from input if not specified.
+        #[arg(long)]
+        alpha_bits: Option<u8>,
 
         /// Mipmap level to extract when converting from BLP
         #[arg(long, default_value = "0")]
@@ -394,6 +394,47 @@ fn make_blp_target(
     }
 }
 
+/// Check if an image has an alpha channel based on its color type
+fn image_has_alpha(image: &image::DynamicImage) -> bool {
+    use image::DynamicImage;
+    matches!(
+        image,
+        DynamicImage::ImageLumaA8(_)
+            | DynamicImage::ImageLumaA16(_)
+            | DynamicImage::ImageRgba8(_)
+            | DynamicImage::ImageRgba16(_)
+            | DynamicImage::ImageRgba32F(_)
+    )
+}
+
+/// Determine appropriate alpha bits based on BLP format and input image
+fn determine_alpha_bits(
+    blp_format: BlpFormat,
+    has_alpha: bool,
+    user_specified: Option<u8>,
+) -> Result<u8> {
+    // If user specified, validate and return
+    if let Some(bits) = user_specified {
+        return Ok(bits);
+    }
+
+    // Auto-detect based on format and input alpha
+    Ok(match blp_format {
+        BlpFormat::Dxt1 => {
+            // DXT1 only supports 0 or 1-bit alpha
+            if has_alpha { 1 } else { 0 }
+        }
+        BlpFormat::Dxt3 | BlpFormat::Dxt5 | BlpFormat::Jpeg => {
+            // These formats support 0 or 8-bit alpha
+            if has_alpha { 8 } else { 0 }
+        }
+        BlpFormat::Raw1 | BlpFormat::Raw3 => {
+            // Raw formats support 0, 1, 4, or 8-bit alpha - use 8 for full quality
+            if has_alpha { 8 } else { 0 }
+        }
+    })
+}
+
 fn convert_blp(args: ConvertArgs) -> Result<()> {
     // Determine input format
     let input_format = args
@@ -426,10 +467,29 @@ fn convert_blp(args: ConvertArgs) -> Result<()> {
     // Save output
     match output_format {
         OutputFormat::Blp => {
+            let has_alpha = image_has_alpha(&input_image);
+
+            // Auto-detect or validate alpha bits
+            let alpha_bits = determine_alpha_bits(args.blp_format, has_alpha, args.alpha_bits)?;
+
+            // Provide helpful warning for JPEG format with alpha
+            if args.blp_format == BlpFormat::Jpeg && has_alpha && alpha_bits > 0 {
+                log::info!(
+                    "Input image has alpha channel. JPEG-compressed BLP will store \
+                     alpha separately (not in the JPEG stream)."
+                );
+            }
+
+            log::info!(
+                "Using {} alpha bits (input has alpha: {})",
+                alpha_bits,
+                has_alpha
+            );
+
             let target = make_blp_target(
                 args.blp_version,
                 args.blp_format,
-                args.alpha_bits,
+                alpha_bits,
                 args.dxt_compression,
             )?;
             let blp = image_to_blp(
@@ -678,7 +738,7 @@ struct ConvertArgs {
     output_format: Option<OutputFormat>,
     blp_version: BlpVersionCli,
     blp_format: BlpFormat,
-    alpha_bits: u8,
+    alpha_bits: Option<u8>,
     mipmap_level: usize,
     no_mipmaps: bool,
     mipmap_filter: MipmapFilter,

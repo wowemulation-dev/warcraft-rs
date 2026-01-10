@@ -2,7 +2,9 @@ use super::error::Error;
 use super::mipmap::generate_mipmaps;
 use crate::types::jpeg::MAX_JPEG_HEADER;
 use crate::types::*;
-use ::image::{DynamicImage, ImageFormat, ImageReader, RgbaImage, imageops::FilterType};
+use ::image::{
+    DynamicImage, ImageFormat, ImageReader, Rgb, RgbImage, RgbaImage, imageops::FilterType,
+};
 use log::*;
 use std::io::Cursor;
 
@@ -26,32 +28,57 @@ pub fn image_to_jpeg(
         warn!("Invalid alpha bits value for JPEG encoding {alpha_bits}, defaulting to 0");
         alpha_bits = 0;
     }
-    let mut rgba = image.to_rgba8();
-    switch_red_blue(&mut rgba);
-    if alpha_bits == 0 {
-        fill_opaque_alpha(&mut rgba);
+
+    // Note: BLP JPEG format stores RGB in the JPEG stream. Alpha (if any) would be
+    // stored separately, but this implementation currently only supports RGB JPEG.
+    // The alpha_bits parameter affects the BLP header flags but not the JPEG encoding.
+    if alpha_bits != 0 {
+        warn!(
+            "JPEG BLP with alpha requested. Alpha channel will be discarded in JPEG stream. \
+             For images requiring alpha, consider using DXT5 or Raw1 format instead."
+        );
     }
 
+    // Convert to RGBA, apply color swap, then convert to RGB for JPEG encoding
+    let mut rgba = image.to_rgba8();
+    switch_red_blue(&mut rgba);
+
+    // Convert RGBA to RGB for JPEG encoding (JPEG doesn't support alpha)
+    let rgb = rgba_to_rgb(&rgba);
+
     let mut images: Vec<Vec<u8>> = if make_mipmaps {
-        let images = generate_mipmaps(DynamicImage::ImageRgba8(rgba), mipmap_filter)?;
+        // Generate mipmaps from the RGB image
+        let images = generate_mipmaps(DynamicImage::ImageRgb8(rgb), mipmap_filter)?;
         let jpeg_images: Result<Vec<Vec<u8>>, Error> = images
             .into_iter()
-            .map(|image| {
+            .map(|mipmap| {
+                // Ensure we have RGB for JPEG encoding
+                let rgb_mipmap = mipmap.to_rgb8();
                 let mut image_bytes = vec![];
-                image.write_to(&mut Cursor::new(&mut image_bytes), ImageFormat::Jpeg)?;
+                rgb_mipmap.write_to(&mut Cursor::new(&mut image_bytes), ImageFormat::Jpeg)?;
                 Ok(image_bytes)
             })
             .collect();
         jpeg_images?
     } else {
         let mut root_img = vec![];
-        rgba.write_to(&mut Cursor::new(&mut root_img), ImageFormat::Jpeg)?;
+        rgb.write_to(&mut Cursor::new(&mut root_img), ImageFormat::Jpeg)?;
         vec![root_img]
     };
     let mut header = fetch_common_header(&mut images);
     // Add two padding bytes to the header as it always persists in War3 files
     header.extend(&vec![0; 2]);
     Ok(BlpJpeg { header, images })
+}
+
+/// Convert RGBA image to RGB by dropping the alpha channel
+fn rgba_to_rgb(rgba: &RgbaImage) -> RgbImage {
+    let (width, height) = rgba.dimensions();
+    let mut rgb = RgbImage::new(width, height);
+    for (x, y, pixel) in rgba.enumerate_pixels() {
+        rgb.put_pixel(x, y, Rgb([pixel[0], pixel[1], pixel[2]]));
+    }
+    rgb
 }
 
 fn switch_red_blue(image: &mut RgbaImage) {
@@ -61,17 +88,6 @@ fn switch_red_blue(image: &mut RgbaImage) {
         let red = pixel.0[2];
         let alpha = pixel.0[3];
         pixel.0 = [red, green, blue, alpha];
-    }
-}
-
-// Warcraft III has inconsistent processing for CONTENT_JPEG with 0 bit
-// alpha as UI images are correctly opaque but alpha component values are
-// still used when blending model textures. As such when writing
-// CONTENT_JPEG with 0 bit alpha it is required that the alpha band be
-// assigned opaque component values (0xFF).
-fn fill_opaque_alpha(image: &mut RgbaImage) {
-    for pixel in image.pixels_mut() {
-        pixel.0[3] = 0xFF;
     }
 }
 

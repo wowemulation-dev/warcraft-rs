@@ -10,6 +10,15 @@ and this project adheres to
 
 ### Fixed
 
+- **BLP Convert CLI**: Alpha bits auto-detection from input image
+  - Made `--alpha-bits` optional; auto-detects based on input image color type
+  - DXT1 auto-selects 1-bit alpha for images with transparency, 0 otherwise
+  - DXT3/DXT5/JPEG auto-select 8-bit alpha for images with transparency
+  - Raw1/Raw3 auto-select 8-bit alpha for full quality
+- **BLP Format**: JPEG encoding handles RGBA images
+  - JPEG format stores RGB only; RGBA images now convert to RGB with warning
+  - Previously crashed with "encoder does not support Rgba8 color type"
+  - Alpha channel stripped during JPEG encoding as expected by format
 - **M2 Format**: Skin file bone_indices parsing reads correct byte count
   - bone_indices is ubyte4 (4 bone indices per vertex), not single bytes
   - M2Array count represents vertex count; actual data is count × 4 bytes
