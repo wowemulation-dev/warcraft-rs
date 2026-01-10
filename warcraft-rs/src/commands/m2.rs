@@ -686,9 +686,7 @@ fn handle_skin_info_auto(path: PathBuf, detailed: bool, force_old_format: bool) 
     println!("Loading Skin file: {}", path.display());
 
     // Get file size for reference
-    let file_size = std::fs::metadata(&path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let file_size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
 
     // If force_old_format is specified, use the old parser directly
     if force_old_format {
@@ -801,7 +799,10 @@ fn print_skin_samples(indices: &[u16], triangles: &[u16], bone_indices: &[u8]) {
             let base = i * 3;
             println!(
                 "  Face {}: [{}, {}, {}]",
-                i, triangles[base], triangles[base + 1], triangles[base + 2]
+                i,
+                triangles[base],
+                triangles[base + 1],
+                triangles[base + 2]
             );
         }
         if triangles.len() > 9 {

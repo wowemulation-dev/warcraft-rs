@@ -37,8 +37,8 @@ test-doc = "test --doc --workspace"
 docs = "doc --workspace --all-features --no-deps"
 
 # Full QA suite: format, lint, and test
-# Usage: cargo qa
-qa = ["fmt-check", "lint", "test-all"]
+# Note: Cargo aliases cannot chain commands. Use shell instead:
+#   cargo fmt --all && cargo lint && cargo test-all
 
 # Quick check without full compilation (type checking only)
 check-all = "check --workspace --all-targets --all-features"
@@ -47,7 +47,8 @@ check-all = "check --workspace --all-targets --all-features"
 build-release = "build --workspace --release"
 
 # Clean and rebuild (useful when things get weird)
-rebuild = ["clean", "build --workspace"]
+# Note: Run as two separate commands: cargo clean && cargo build --workspace
+# rebuild = ["clean", "build --workspace"]  # Chained aliases don't work reliably
 
 [env]
 # Enable backtraces for better error messages during development
