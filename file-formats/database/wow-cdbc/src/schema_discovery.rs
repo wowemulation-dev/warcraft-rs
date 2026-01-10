@@ -228,16 +228,24 @@ impl<'a> SchemaDiscoverer<'a> {
 
         // Validate string references if configured
         let is_valid_string_ref = if self.validate_strings && is_string_ref {
-            // Check if the string references point to valid strings
+            // Check if the string references point to the START of valid strings
+            // This eliminates false positives where integer values happen to fall
+            // within the string block range but don't point to actual string starts
             let valid_strings = values
                 .iter()
                 .filter(|&&value| {
                     if value == 0 {
-                        // Empty string is valid
+                        // Empty string (offset 0) is valid
                         return true;
                     }
 
-                    // Check if the value points to a valid string
+                    // Check if the value points to the start of a string
+                    // A string start is at offset 0 or immediately after a NUL byte
+                    if !self.string_block.is_string_start(value) {
+                        return false;
+                    }
+
+                    // Also verify the string at that offset is valid UTF-8
                     self.string_block.get_string(StringRef::new(value)).is_ok()
                 })
                 .count();
@@ -265,7 +273,8 @@ impl<'a> SchemaDiscoverer<'a> {
         // cause incorrect size calculations during schema validation.
         let (field_type, confidence) = if is_valid_string_ref {
             (FieldType::String, Confidence::High)
-        } else if is_string_ref {
+        } else if is_string_ref && !self.validate_strings {
+            // Only use unvalidated string detection when validation is disabled
             (FieldType::String, Confidence::Medium)
         } else if is_bool {
             (FieldType::Bool, Confidence::High)

@@ -54,6 +54,20 @@ impl StringBlock {
     pub fn size(&self) -> usize {
         self.data.len()
     }
+
+    /// Check if an offset is the start of a string in the block
+    ///
+    /// A valid string start is either at offset 0 (beginning of block)
+    /// or immediately after a NUL terminator (byte at offset-1 is 0).
+    pub fn is_string_start(&self, offset: u32) -> bool {
+        let offset = offset as usize;
+        if offset >= self.data.len() {
+            return false;
+        }
+        // Offset 0 is always a valid string start
+        // Otherwise, the previous byte must be a NUL terminator
+        offset == 0 || self.data[offset - 1] == 0
+    }
 }
 
 /// A cached string block for efficient string lookups
