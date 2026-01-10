@@ -4,6 +4,7 @@ use wow_wmo::chunk_discovery::discover_chunks;
 use wow_wmo::group_parser::parse_group_file;
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_classic_group_file() {
     // Test with a real Classic group WMO file
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind_000.wmo";
@@ -30,6 +31,7 @@ fn test_parse_classic_group_file() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_multiple_group_files() {
     // Test multiple group files
     let test_files = vec![

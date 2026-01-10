@@ -46,6 +46,7 @@ fn test_chunk_header_with_larger_size() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_chunk_discovery_in_file() {
     use wow_wmo::chunk_discovery::discover_chunks;
 
@@ -73,6 +74,7 @@ fn test_chunk_discovery_in_file() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_chunk_discovery_in_group_file() {
     use wow_wmo::chunk_discovery::discover_chunks;
 

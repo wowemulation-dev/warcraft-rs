@@ -4,6 +4,7 @@ use wow_wmo::chunk_discovery::discover_chunks;
 use wow_wmo::version_detection::{WmoVersion, detect_version};
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_classic_version_detection() {
     // Test with Classic WMO files
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind.wmo";
@@ -19,6 +20,7 @@ fn test_classic_version_detection() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_wotlk_version_detection() {
     // Test with WotLK WMO files
     let test_file =
@@ -38,6 +40,7 @@ fn test_wotlk_version_detection() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_cataclysm_version_detection() {
     // Test with Cataclysm transport WMO (should have MCVP chunk)
     let test_file = "tests/data/cataclysm/World/wmo/Dungeon/MD_Shipwreck/Transport_Shipwreck.wmo";

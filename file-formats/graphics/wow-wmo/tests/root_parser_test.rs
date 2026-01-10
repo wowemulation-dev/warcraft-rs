@@ -4,6 +4,7 @@ use wow_wmo::chunk_discovery::discover_chunks;
 use wow_wmo::root_parser::parse_root_file;
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_classic_root_file() {
     // Test with a real Classic root WMO file
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind.wmo";
@@ -30,6 +31,7 @@ fn test_parse_classic_root_file() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_wotlk_root_file() {
     // Test with a WotLK root WMO file
     let test_file =

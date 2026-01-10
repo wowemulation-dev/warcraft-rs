@@ -5,18 +5,21 @@ use wow_wmo::{ParsedWmo, parse_wmo_with_metadata};
 
 /// Test all WMO files in our test data directories
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_all_vanilla_wmo_files() {
     let test_dir = Path::new("tests/data/vanilla");
     test_all_wmo_files_in_dir(test_dir, "vanilla");
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_all_wotlk_wmo_files() {
     let test_dir = Path::new("tests/data/wotlk");
     test_all_wmo_files_in_dir(test_dir, "wotlk");
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_parse_all_cataclysm_wmo_files() {
     let test_dir = Path::new("tests/data/cataclysm");
     test_all_wmo_files_in_dir(test_dir, "cataclysm");

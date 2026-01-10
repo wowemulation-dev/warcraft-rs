@@ -18,6 +18,7 @@ const TEST_FILE: &str = "Item/ObjectComponents/Head/Helm_Robe_RaidWarlock_F_01_W
 
 /// Test that we can identify patch files in update MPQs
 #[test]
+#[ignore = "Requires MPQ test files not available in CI"]
 fn test_identify_patch_file() {
     // Open the update MPQ directly (it contains patch files)
     let archive = Archive::open(UPDATE_MPQ1).expect("Failed to open update MPQ");

@@ -4,6 +4,7 @@ use wow_wmo::chunk_discovery::discover_chunks;
 use wow_wmo::file_type::{WmoFileType, detect_file_type};
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_root_file_detection() {
     // Test with a root WMO file
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind.wmo";
@@ -18,6 +19,7 @@ fn test_root_file_detection() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_group_file_detection() {
     // Test with a group WMO file
     let test_file = "tests/data/vanilla/World/wmo/Azeroth/Buildings/Stormwind/Stormwind_000.wmo";
@@ -32,6 +34,7 @@ fn test_group_file_detection() {
 }
 
 #[test]
+#[ignore = "Requires WMO test files not available in CI"]
 fn test_multiple_file_types() {
     // Test multiple files to ensure consistent detection
     let test_files = vec![
