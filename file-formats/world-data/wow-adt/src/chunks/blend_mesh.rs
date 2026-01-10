@@ -192,9 +192,9 @@ pub struct MbbbEntry {
 /// and up to 3 color channels. Different vertex formats use color channels differently:
 ///
 /// - **PN**: Position + Normal (colors unused)
-/// - **PNC**: Position + Normal + Color[0]
-/// - **PNC2**: Position + Normal + Color[0,1]
-/// - **PNC2T**: Position + Normal + Color[0,2] + Tangent
+/// - **PNC**: Position + Normal + Color\[0\]
+/// - **PNC2**: Position + Normal + Color\[0,1\]
+/// - **PNC2T**: Position + Normal + Color\[0,2\] + Tangent
 ///
 /// # Format
 ///
@@ -249,9 +249,9 @@ pub struct MbnvVertex {
     ///
     /// Usage depends on vertex format:
     /// - **PN**: All unused
-    /// - **PNC**: color[0] used
-    /// - **PNC2**: color[0,1] used
-    /// - **PNC2T**: color[0,2] used
+    /// - **PNC**: `color[0]` used
+    /// - **PNC2**: `color[0,1]` used
+    /// - **PNC2T**: `color[0,2]` used
     pub color: [[u8; 4]; 3],
 }
 

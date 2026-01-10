@@ -48,7 +48,7 @@ use binrw::{BinRead, BinWrite};
 ///
 /// **CRITICAL**: WoWFormatLib incorrectly defines MCLV.color as `ushort[]` (u16 array).
 /// The actual format is `CArgb` (u32 ARGB values). This is confirmed by:
-/// - wowdev.wiki: "CArgb values[145]"
+/// - wowdev.wiki: "CArgb `values[145]`"
 /// - Size calculation: 580 bytes = 145 × 4 bytes (not 145 × 2)
 /// - Usage context: "color" field suggests RGB+Alpha, requiring 4 bytes
 ///

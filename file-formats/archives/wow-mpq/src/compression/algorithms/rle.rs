@@ -1,7 +1,7 @@
 //! RLE (Run-Length Encoding) decompression for MPQ patch files
 //!
 //! This implements the RLE decompression used in BSD0 patch files.
-//! Based on the algorithm documented at http://www.zezula.net/en/mpq/patchfiles.html
+//! Based on the algorithm documented at <http://www.zezula.net/en/mpq/patchfiles.html>
 
 use crate::error::{Error, Result};
 

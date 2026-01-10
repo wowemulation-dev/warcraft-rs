@@ -6,7 +6,7 @@ use super::types::{Lerp, ResolvedTrack};
 ///
 /// Returns None if the track has no keyframes.
 /// For interpolation, this returns the index of the earlier keyframe
-/// in the bracketing pair (so we can interpolate between [index] and [index+1]).
+/// in the bracketing pair (so we can interpolate between `[index]` and `[index+1]`).
 pub fn find_timestamp_index(timestamps: &[u32], time: f64) -> Option<usize> {
     if timestamps.is_empty() {
         return None;

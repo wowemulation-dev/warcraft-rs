@@ -82,8 +82,8 @@ pub struct McvtChunk {
     /// - Indices 26-33: Row 3 (inner, 8 vertices)
     /// - ... (pattern continues for 17 rows total)
     ///
-    /// Height values are relative offsets from McnkHeader.position[1] (Y coordinate).
-    /// Final world Y = McnkHeader.position[1] + heights[index]
+    /// Height values are relative offsets from `McnkHeader.position[1]` (Y coordinate).
+    /// Final world Y = `McnkHeader.position[1] + heights[index]`
     #[br(count = 145)]
     pub heights: Vec<f32>,
 }

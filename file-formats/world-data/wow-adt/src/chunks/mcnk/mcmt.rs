@@ -35,10 +35,10 @@ use binrw::{BinRead, BinWrite};
 /// ## Layer Association
 ///
 /// Material IDs correspond one-to-one with MCLY entries:
-/// - material_id[0] → MCLY layer 0
-/// - material_id[1] → MCLY layer 1
-/// - material_id[2] → MCLY layer 2
-/// - material_id[3] → MCLY layer 3
+/// - material_id\[0\] → MCLY layer 0
+/// - material_id\[1\] → MCLY layer 1
+/// - material_id\[2\] → MCLY layer 2
+/// - material_id\[3\] → MCLY layer 3
 ///
 /// Unused slots are typically 0 or 255.
 ///

@@ -57,7 +57,7 @@ impl DbcVersion {
 /// - Basic header (build <= 12880): 28 bytes
 /// - Extended header (build > 12880): 48 bytes + optional index arrays
 ///
-/// Reference: https://wowdev.wiki/DB2
+/// Reference: <https://wowdev.wiki/DB2>
 /// Reference: TrinityCore DB2StorageLoader.cpp
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Wdb2Header {
