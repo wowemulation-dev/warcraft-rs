@@ -3,7 +3,6 @@
 
 [build]
 # Treat all warnings as errors in CI and development
-# This replaces RUSTFLAGS="-D warnings" from qa.sh
 rustflags = ["-D", "warnings"]
 rustdocflags = ["-D", "warnings"]
 
