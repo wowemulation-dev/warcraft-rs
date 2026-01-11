@@ -206,7 +206,7 @@ pub fn read_raw_bytes<R: Read + Seek>(
 }
 
 /// A vector in 3D space
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct C3Vector {
     pub x: f32,
     pub y: f32,

@@ -214,31 +214,37 @@ impl M2Vertex {
     }
 
     /// Write a vertex to a writer based on the M2 version
+    ///
+    /// Vertex size is always 48 bytes for all versions:
+    /// position (12) + bone_weights (4) + bone_indices (4) + normal (12) + tex_coords (8) + tex_coords2 (8)
+    ///
+    /// Note: Secondary texture coordinates exist in ALL M2 versions (verified against vanilla files).
+    /// They may be unused/zero in pre-Cataclysm models but the storage space is still present.
     pub fn write<W: Write>(&self, writer: &mut W, _version: u32) -> Result<()> {
-        // Position
+        // Position (12 bytes)
         self.position.write(writer)?;
 
-        // Bone weights
+        // Bone weights (4 bytes)
         for &weight in &self.bone_weights {
             writer.write_u8(weight)?;
         }
 
-        // Bone indices
+        // Bone indices (4 bytes)
         for &index in &self.bone_indices {
             writer.write_u8(index)?;
         }
 
-        // Normal
+        // Normal (12 bytes)
         self.normal.write(writer)?;
 
-        // Texture coordinates
+        // Primary texture coordinates (8 bytes)
         self.tex_coords.write(writer)?;
 
-        // Secondary texture coordinates (present in ALL versions)
+        // Secondary texture coordinates (8 bytes) - present in all versions
         if let Some(tex_coords2) = self.tex_coords2 {
             tex_coords2.write(writer)?;
         } else {
-            // Write default values if missing (shouldn't happen with new parsing)
+            // Write default values
             C2Vector { x: 0.0, y: 0.0 }.write(writer)?;
         }
 
@@ -419,8 +425,7 @@ mod tests {
             .write(&mut classic_data, M2Version::Vanilla.to_header_version())
             .unwrap();
 
-        // All versions now include secondary texture coordinates
-        // position (12) + bone_weights (4) + bone_indices (4) + normal (12) + tex_coords (8) + tex_coords2 (8) = 48 bytes
+        // All versions have 48-byte vertices (including secondary tex coords)
         assert_eq!(classic_data.len(), 48);
 
         // Test writing in Cataclysm format
@@ -429,7 +434,7 @@ mod tests {
             .write(&mut cata_data, M2Version::Cataclysm.to_header_version())
             .unwrap();
 
-        // Should also be 48 bytes (same structure for all versions)
+        // Same size (48 bytes) for all versions
         assert_eq!(cata_data.len(), 48);
     }
 

@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 
 /// Compressed quaternion using 16-bit integers
 /// Used for rotation animations to save space
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct M2CompQuat {
     pub x: i16,
     pub y: i16,

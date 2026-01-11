@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 
@@ -7,7 +8,7 @@ use std::path::Path;
 use crate::chunks::animation::M2Animation;
 use crate::chunks::bone::M2Bone;
 use crate::chunks::infrastructure::{ChunkHeader, ChunkReader};
-use crate::chunks::m2_track::{M2TrackQuat, M2TrackVec3};
+use crate::chunks::m2_track::{M2Track, M2TrackQuat, M2TrackVec3};
 use crate::chunks::material::M2Material;
 use crate::chunks::particle_emitter::M2ParticleEmitter;
 use crate::chunks::ribbon_emitter::M2RibbonEmitter;
@@ -122,9 +123,83 @@ pub struct M2Model {
     pub physics_file_data: Option<PhysicsFileDataChunk>,
 }
 
+/// Type of animation track within a bone
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TrackType {
+    /// Translation (position) animation
+    #[default]
+    Translation,
+    /// Rotation animation (quaternion)
+    Rotation,
+    /// Scale animation
+    Scale,
+}
+
+/// Raw animation data for a single bone track
+///
+/// This preserves the exact bytes from the original file for animation keyframes,
+/// allowing roundtrip serialization without data loss.
+#[derive(Debug, Clone, Default)]
+pub struct BoneAnimationRaw {
+    /// Index of the bone this track belongs to
+    pub bone_index: usize,
+    /// Type of animation track (translation, rotation, scale)
+    pub track_type: TrackType,
+    /// Raw timestamp bytes (4 bytes per timestamp)
+    pub timestamps: Vec<u8>,
+    /// Raw keyframe value bytes (12 bytes for Vec3, 8 bytes for CompQuat)
+    pub values: Vec<u8>,
+    /// Raw interpolation range bytes (pre-WotLK only, 8 bytes per range)
+    pub ranges: Option<Vec<u8>>,
+    /// Original file offset for timestamps array
+    pub original_timestamps_offset: u32,
+    /// Original file offset for values array
+    pub original_values_offset: u32,
+    /// Original file offset for ranges array (pre-WotLK only)
+    pub original_ranges_offset: Option<u32>,
+}
+
+/// Raw embedded skin data for a single ModelView in pre-WotLK M2 files
+///
+/// Pre-WotLK (versions 256-263) have skin data embedded in the M2 file.
+/// Each ModelView structure (44 bytes) contains M2Arrays pointing to:
+/// - indices (vertex indices into the model's vertex buffer)
+/// - triangles (triangle indices)
+/// - submeshes (mesh subdivision info)
+/// - batches (texture unit assignments)
+#[derive(Debug, Clone, Default)]
+pub struct EmbeddedSkinRaw {
+    /// The raw ModelView structure bytes (44 bytes)
+    pub model_view: Vec<u8>,
+    /// Indices data referenced by the first M2Array
+    pub indices: Vec<u8>,
+    /// Triangles data referenced by the second M2Array
+    pub triangles: Vec<u8>,
+    /// Vertex properties data (usually empty or minimal)
+    pub properties: Vec<u8>,
+    /// Submeshes data
+    pub submeshes: Vec<u8>,
+    /// Batches/texture units data
+    pub batches: Vec<u8>,
+    /// Original offset of the ModelView structure
+    pub original_model_view_offset: u32,
+    /// Original offsets for each M2Array's data
+    pub original_indices_offset: u32,
+    pub original_triangles_offset: u32,
+    pub original_properties_offset: u32,
+    pub original_submeshes_offset: u32,
+    pub original_batches_offset: u32,
+}
+
 /// Raw data for sections that are not fully parsed
 #[derive(Debug, Clone, Default)]
 pub struct M2RawData {
+    /// Raw animation keyframe data for all bone tracks
+    /// Used to preserve animation data during roundtrip serialization
+    pub bone_animation_data: Vec<BoneAnimationRaw>,
+    /// Raw embedded skin data for pre-WotLK models (version <= 263)
+    /// Empty for WotLK+ models which use external .skin files
+    pub embedded_skins: Vec<EmbeddedSkinRaw>,
     /// Transparency data (the actual transparency animations, not lookups)
     pub transparency: Vec<u8>,
     /// Texture animations
@@ -192,6 +267,320 @@ pub fn parse_m2<R: Read + Seek>(reader: &mut R) -> Result<M2Format> {
         }
         _ => Err(M2Error::InvalidMagicBytes(magic)),
     }
+}
+
+/// Collects raw animation keyframe data for a single M2Track
+///
+/// Returns None if the track has no data, otherwise returns BoneAnimationRaw
+/// with timestamps, values, and optionally ranges (for pre-WotLK).
+fn collect_track_data<R: Read + Seek, T>(
+    reader: &mut R,
+    track: &M2Track<T>,
+    version: u32,
+    value_element_size: usize,
+    bone_index: usize,
+    track_type: TrackType,
+) -> Result<Option<BoneAnimationRaw>> {
+    // Skip empty tracks
+    if track.timestamps.is_empty() && track.values.is_empty() {
+        return Ok(None);
+    }
+
+    // Read timestamps (4 bytes per timestamp)
+    let timestamps = if !track.timestamps.is_empty() {
+        read_raw_bytes(reader, &track.timestamps.convert(), 4)?
+    } else {
+        Vec::new()
+    };
+
+    // Read values
+    let values = if !track.values.is_empty() {
+        read_raw_bytes(reader, &track.values.convert(), value_element_size)?
+    } else {
+        Vec::new()
+    };
+
+    // Read ranges for pre-WotLK (8 bytes per range: start u32 + end u32)
+    let (ranges, original_ranges_offset) = if version < 264 {
+        if let Some(ref ranges_array) = track.ranges {
+            if !ranges_array.is_empty() {
+                (
+                    Some(read_raw_bytes(reader, &ranges_array.convert(), 8)?),
+                    Some(ranges_array.offset),
+                )
+            } else {
+                (None, None)
+            }
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    };
+
+    Ok(Some(BoneAnimationRaw {
+        bone_index,
+        track_type,
+        timestamps,
+        values,
+        ranges,
+        original_timestamps_offset: track.timestamps.offset,
+        original_values_offset: track.values.offset,
+        original_ranges_offset,
+    }))
+}
+
+/// Collects raw animation keyframe data for all bones in the model
+///
+/// This reads the actual keyframe bytes (timestamps, values, ranges) from the file,
+/// storing them for later serialization with offset relocation.
+fn collect_bone_animation_data<R: Read + Seek>(
+    reader: &mut R,
+    bones: &[M2Bone],
+    version: u32,
+) -> Result<Vec<BoneAnimationRaw>> {
+    let mut animation_data = Vec::new();
+
+    for (bone_idx, bone) in bones.iter().enumerate() {
+        // Collect translation track (C3Vector = 12 bytes per value)
+        if let Some(data) = collect_track_data(
+            reader,
+            &bone.translation,
+            version,
+            12,
+            bone_idx,
+            TrackType::Translation,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect rotation track (M2CompQuat = 8 bytes per value)
+        if let Some(data) = collect_track_data(
+            reader,
+            &bone.rotation,
+            version,
+            8,
+            bone_idx,
+            TrackType::Rotation,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect scale track (C3Vector = 12 bytes per value)
+        if let Some(data) =
+            collect_track_data(reader, &bone.scale, version, 12, bone_idx, TrackType::Scale)?
+        {
+            animation_data.push(data);
+        }
+    }
+
+    Ok(animation_data)
+}
+
+/// Updates M2Track offsets in a bone using the relocation map
+///
+/// If a track's original offset is not in the map but the track has data,
+/// the track is zeroed out to avoid invalid references.
+fn relocate_bone_track_offsets(bone: &mut M2Bone, offset_map: &HashMap<u32, u32>) {
+    // Helper to relocate or zero a track
+    fn relocate_or_zero_track<T: Default>(track: &mut M2Track<T>, offset_map: &HashMap<u32, u32>) {
+        // Check if timestamps offset needs relocation
+        if !track.timestamps.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.timestamps.offset) {
+                track.timestamps.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *track = M2Track::default();
+                return;
+            }
+        }
+
+        // Check if values offset needs relocation
+        if !track.values.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.values.offset) {
+                track.values.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *track = M2Track::default();
+                return;
+            }
+        }
+
+        // Check if ranges offset needs relocation (pre-WotLK)
+        if let Some(ref mut ranges) = track.ranges {
+            if !ranges.is_empty() {
+                if let Some(&new_offset) = offset_map.get(&ranges.offset) {
+                    ranges.offset = new_offset;
+                } else {
+                    // Ranges data not collected - set to empty
+                    *ranges = M2Array::default();
+                }
+            }
+        }
+    }
+
+    relocate_or_zero_track(&mut bone.translation, offset_map);
+    relocate_or_zero_track(&mut bone.rotation, offset_map);
+    relocate_or_zero_track(&mut bone.scale, offset_map);
+}
+
+/// Collects raw embedded skin data for pre-WotLK M2 files (version <= 263)
+///
+/// Pre-WotLK models have skin profile data embedded directly in the M2 file.
+/// This function reads the ModelView structures and all data they reference.
+fn collect_embedded_skin_data<R: Read + Seek>(
+    reader: &mut R,
+    header: &M2Header,
+) -> Result<Vec<EmbeddedSkinRaw>> {
+    // Only pre-WotLK (version <= 263) has embedded skins
+    // Version 264+ uses external .skin files
+    if header.version > 263 {
+        return Ok(Vec::new());
+    }
+
+    // Check if views array has data
+    if header.views.count == 0 || header.views.offset == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut embedded_skins = Vec::new();
+    const MODEL_VIEW_SIZE: usize = 44; // 5 M2Arrays (8 bytes each) + 1 u32 = 44 bytes
+
+    // Submesh sizes vary by version
+    let submesh_size = if header.version < 260 { 32 } else { 48 };
+
+    // Read each ModelView structure
+    for view_idx in 0..header.views.count {
+        let model_view_offset = header.views.offset + (view_idx * MODEL_VIEW_SIZE as u32);
+
+        // Seek to and read the ModelView structure
+        reader.seek(SeekFrom::Start(model_view_offset as u64))?;
+        let mut model_view = vec![0u8; MODEL_VIEW_SIZE];
+        reader.read_exact(&mut model_view)?;
+
+        // Parse the M2Array offsets from ModelView
+        // Layout: indices(8) + triangles(8) + properties(8) + submeshes(8) + batches(8) + bone_count_max(4)
+        let n_indices =
+            u32::from_le_bytes([model_view[0], model_view[1], model_view[2], model_view[3]]);
+        let ofs_indices =
+            u32::from_le_bytes([model_view[4], model_view[5], model_view[6], model_view[7]]);
+
+        let n_triangles =
+            u32::from_le_bytes([model_view[8], model_view[9], model_view[10], model_view[11]]);
+        let ofs_triangles = u32::from_le_bytes([
+            model_view[12],
+            model_view[13],
+            model_view[14],
+            model_view[15],
+        ]);
+
+        let n_properties = u32::from_le_bytes([
+            model_view[16],
+            model_view[17],
+            model_view[18],
+            model_view[19],
+        ]);
+        let ofs_properties = u32::from_le_bytes([
+            model_view[20],
+            model_view[21],
+            model_view[22],
+            model_view[23],
+        ]);
+
+        let n_submeshes = u32::from_le_bytes([
+            model_view[24],
+            model_view[25],
+            model_view[26],
+            model_view[27],
+        ]);
+        let ofs_submeshes = u32::from_le_bytes([
+            model_view[28],
+            model_view[29],
+            model_view[30],
+            model_view[31],
+        ]);
+
+        let n_batches = u32::from_le_bytes([
+            model_view[32],
+            model_view[33],
+            model_view[34],
+            model_view[35],
+        ]);
+        let ofs_batches = u32::from_le_bytes([
+            model_view[36],
+            model_view[37],
+            model_view[38],
+            model_view[39],
+        ]);
+
+        // Read indices data (u16 per entry)
+        let indices = if n_indices > 0 && ofs_indices > 0 {
+            reader.seek(SeekFrom::Start(ofs_indices as u64))?;
+            let mut data = vec![0u8; n_indices as usize * 2];
+            reader.read_exact(&mut data)?;
+            data
+        } else {
+            Vec::new()
+        };
+
+        // Read triangles data (u16 per entry)
+        let triangles = if n_triangles > 0 && ofs_triangles > 0 {
+            reader.seek(SeekFrom::Start(ofs_triangles as u64))?;
+            let mut data = vec![0u8; n_triangles as usize * 2];
+            reader.read_exact(&mut data)?;
+            data
+        } else {
+            Vec::new()
+        };
+
+        // Read properties data (u8 or u16 per entry depending on version)
+        let properties = if n_properties > 0 && ofs_properties > 0 {
+            reader.seek(SeekFrom::Start(ofs_properties as u64))?;
+            // Properties are typically 4 bytes per entry (bone indices + padding)
+            let mut data = vec![0u8; n_properties as usize * 4];
+            reader.read_exact(&mut data)?;
+            data
+        } else {
+            Vec::new()
+        };
+
+        // Read submeshes data
+        let submeshes = if n_submeshes > 0 && ofs_submeshes > 0 {
+            reader.seek(SeekFrom::Start(ofs_submeshes as u64))?;
+            let mut data = vec![0u8; n_submeshes as usize * submesh_size];
+            reader.read_exact(&mut data)?;
+            data
+        } else {
+            Vec::new()
+        };
+
+        // Read batches/texture units data (96 bytes per entry)
+        let batches = if n_batches > 0 && ofs_batches > 0 {
+            reader.seek(SeekFrom::Start(ofs_batches as u64))?;
+            let mut data = vec![0u8; n_batches as usize * 96];
+            reader.read_exact(&mut data)?;
+            data
+        } else {
+            Vec::new()
+        };
+
+        embedded_skins.push(EmbeddedSkinRaw {
+            model_view,
+            indices,
+            triangles,
+            properties,
+            submeshes,
+            batches,
+            original_model_view_offset: model_view_offset,
+            original_indices_offset: ofs_indices,
+            original_triangles_offset: ofs_triangles,
+            original_properties_offset: ofs_properties,
+            original_submeshes_offset: ofs_submeshes,
+            original_batches_offset: ofs_batches,
+        });
+    }
+
+    Ok(embedded_skins)
 }
 
 impl M2Format {
@@ -1263,9 +1652,17 @@ impl M2Model {
             M2RibbonEmitter::parse(r, header.version)
         })?;
 
+        // Collect raw animation keyframe data for bones before constructing raw_data
+        let bone_animation_data = collect_bone_animation_data(reader, &bones, header.version)?;
+
+        // Collect embedded skin data for pre-WotLK models (version <= 263)
+        let embedded_skins = collect_embedded_skin_data(reader, &header)?;
+
         // Parse raw data for other sections
         // These are sections we won't fully parse yet but want to preserve
         let raw_data = M2RawData {
+            bone_animation_data,
+            embedded_skins,
             transparency_lookup_table: read_array(
                 reader,
                 &header.transparency_lookup_table,
@@ -1424,39 +1821,120 @@ impl M2Model {
             header.animation_lookup = M2Array::new(0, 0);
         }
 
-        // Write bones
-        // Note: We must clear M2Track fields because they contain offsets pointing to
-        // animation keyframe data that we don't serialize. Writing the original offsets
-        // would result in invalid file references. This produces a static model.
+        // Write bones with animation data preservation
+        // If we have collected bone animation data, write it with relocated offsets.
+        // Otherwise, write static bones (zeroed animation tracks).
         if !self.bones.is_empty() {
             header.bones = M2Array::new(self.bones.len() as u32, current_offset);
 
-            for bone in &self.bones {
-                // Clone and clear animation tracks to avoid invalid offset references
-                let mut static_bone = bone.clone();
-                static_bone.translation = M2TrackVec3::default();
-                static_bone.rotation = M2TrackQuat::default();
-                static_bone.scale = M2TrackVec3::default();
-
-                let mut bone_data = Vec::new();
-                static_bone.write(&mut bone_data, header.version)?;
-                data_section.extend_from_slice(&bone_data);
-            }
-
-            // Bone size depends on version:
-            // - M2Track size: 28 bytes pre-WotLK (< 264), 20 bytes WotLK+ (>= 264)
-            // - boneNameCRC field: 4 bytes for TBC+ (>= 260), absent in Vanilla
-            // Vanilla (< 260): 4 + 4 + 2 + 2 + 3*28 + 12 = 108 bytes
-            // TBC (>= 260, < 264): 4 + 4 + 2 + 2 + 4 + 3*28 + 12 = 112 bytes
-            // WotLK+ (>= 264): 4 + 4 + 2 + 2 + 4 + 3*20 + 12 = 88 bytes
+            // Calculate bone structure size based on version
             let bone_size = if header.version < 260 {
-                108
+                108 // Vanilla: no boneNameCRC, 28-byte M2Tracks
             } else if header.version < 264 {
-                112
+                112 // TBC: boneNameCRC, 28-byte M2Tracks
             } else {
-                88
+                88 // WotLK+: boneNameCRC, 20-byte M2Tracks (no ranges)
             };
-            current_offset += (self.bones.len() * bone_size) as u32;
+
+            // Calculate where animation data will be written (after all bone structures)
+            let bones_total_size = self.bones.len() * bone_size;
+            let anim_data_start = current_offset + bones_total_size as u32;
+
+            // Check if we have animation data to preserve
+            if !self.raw_data.bone_animation_data.is_empty() {
+                // Build offset relocation map: old_offset -> new_offset
+                // Multiple bones can share animation data (same original offset).
+                // We only write shared data once and reuse the same new offset.
+                let mut offset_map: HashMap<u32, u32> = HashMap::new();
+                let mut anim_data_offset = anim_data_start;
+
+                use std::collections::hash_map::Entry;
+
+                for anim in &self.raw_data.bone_animation_data {
+                    // Map timestamps offset (skip if already mapped - shared data)
+                    if !anim.timestamps.is_empty() {
+                        if let Entry::Vacant(e) =
+                            offset_map.entry(anim.original_timestamps_offset)
+                        {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.timestamps.len() as u32;
+                        }
+                    }
+
+                    // Map values offset (skip if already mapped - shared data)
+                    if !anim.values.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.values.len() as u32;
+                        }
+                    }
+
+                    // Map ranges offset (pre-WotLK only, skip if already mapped)
+                    if let (Some(ranges), Some(orig_offset)) =
+                        (&anim.ranges, anim.original_ranges_offset)
+                    {
+                        if let Entry::Vacant(e) = offset_map.entry(orig_offset) {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += ranges.len() as u32;
+                        }
+                    }
+                }
+
+                // Write bones with relocated offsets
+                for bone in &self.bones {
+                    let mut relocated_bone = bone.clone();
+                    relocate_bone_track_offsets(&mut relocated_bone, &offset_map);
+
+                    let mut bone_data = Vec::new();
+                    relocated_bone.write(&mut bone_data, header.version)?;
+                    data_section.extend_from_slice(&bone_data);
+                }
+
+                // Write animation keyframe data (only write each unique offset once)
+                let mut written_offsets: std::collections::HashSet<u32> =
+                    std::collections::HashSet::new();
+
+                for anim in &self.raw_data.bone_animation_data {
+                    // Write timestamps only if not already written
+                    if !anim.timestamps.is_empty()
+                        && written_offsets.insert(anim.original_timestamps_offset)
+                    {
+                        data_section.extend_from_slice(&anim.timestamps);
+                    }
+
+                    // Write values only if not already written
+                    if !anim.values.is_empty()
+                        && written_offsets.insert(anim.original_values_offset)
+                    {
+                        data_section.extend_from_slice(&anim.values);
+                    }
+
+                    // Write ranges only if not already written
+                    if let (Some(ranges), Some(orig_offset)) =
+                        (&anim.ranges, anim.original_ranges_offset)
+                    {
+                        if written_offsets.insert(orig_offset) {
+                            data_section.extend_from_slice(ranges);
+                        }
+                    }
+                }
+
+                current_offset = anim_data_offset;
+            } else {
+                // No animation data collected - write static bones (zeroed tracks)
+                for bone in &self.bones {
+                    let mut static_bone = bone.clone();
+                    static_bone.translation = M2TrackVec3::default();
+                    static_bone.rotation = M2TrackQuat::default();
+                    static_bone.scale = M2TrackVec3::default();
+
+                    let mut bone_data = Vec::new();
+                    static_bone.write(&mut bone_data, header.version)?;
+                    data_section.extend_from_slice(&bone_data);
+                }
+
+                current_offset += bones_total_size as u32;
+            }
         } else {
             header.bones = M2Array::new(0, 0);
         }
@@ -1479,18 +1957,10 @@ impl M2Model {
         if !self.vertices.is_empty() {
             header.vertices = M2Array::new(self.vertices.len() as u32, current_offset);
 
-            // Vertex size depends on the target version (header.version, not self.header.version)
-            let target_version = M2Version::from_header_version(header.version);
-            let vertex_size = if target_version
-                .map(|v| v >= M2Version::Cataclysm)
-                .unwrap_or(false)
-            {
-                // Cataclysm and later have secondary texture coordinates
-                44
-            } else {
-                // Pre-Cataclysm don't have secondary texture coordinates
-                36
-            };
+            // Vertex size is always 48 bytes for all versions:
+            // position (12) + bone_weights (4) + bone_indices (4) + normal (12) + tex_coords (8) + tex_coords2 (8)
+            // Note: Secondary texture coordinates exist in ALL M2 versions (verified against vanilla files).
+            let vertex_size = 48;
 
             for vertex in &self.vertices {
                 let mut vertex_data = Vec::new();
@@ -1578,15 +2048,8 @@ impl M2Model {
                 data_section.extend_from_slice(&material_data);
             }
 
-            // Material size depends on target version
-            let target_version = M2Version::from_header_version(header.version);
-            let material_size = match target_version {
-                Some(v) if v >= M2Version::WoD => 18, // WoD and later have color animation lookup
-                Some(v) if v >= M2Version::Cataclysm => 16, // Cataclysm and later have shader ID
-                _ => 12,                              // Classic to WotLK
-            };
-
-            current_offset += (self.materials.len() * material_size) as u32;
+            // Material is always 4 bytes: flags (u16) + blending_mode (u16)
+            current_offset += (self.materials.len() * 4) as u32;
         } else {
             header.render_flags = M2Array::new(0, 0);
         }
@@ -1735,6 +2198,145 @@ impl M2Model {
             header.camera_lookup_table = M2Array::new(0, 0);
         }
 
+        // Write embedded skin data for pre-WotLK versions (version <= 263)
+        if header.version <= 263 && !self.raw_data.embedded_skins.is_empty() {
+            // Calculate total size needed for all embedded skin data:
+            // 1. ModelView structures (44 bytes each)
+            // 2. All referenced data arrays (indices, triangles, properties, submeshes, batches)
+
+            const MODEL_VIEW_SIZE: u32 = 44;
+            let model_view_count = self.raw_data.embedded_skins.len() as u32;
+
+            // Header.views points to the ModelView structures
+            let model_views_offset = current_offset;
+            header.views = M2Array::new(model_view_count, model_views_offset);
+
+            // Phase 1: Calculate all new offsets for all skins before writing anything
+            let mut data_offset = model_views_offset + (model_view_count * MODEL_VIEW_SIZE);
+            let submesh_size = if header.version < 260 { 32 } else { 48 };
+
+            // Store calculated offsets for each skin
+            struct SkinOffsets {
+                indices_offset: u32,
+                triangles_offset: u32,
+                properties_offset: u32,
+                submeshes_offset: u32,
+                batches_offset: u32,
+            }
+
+            let mut all_offsets = Vec::with_capacity(self.raw_data.embedded_skins.len());
+
+            for skin in &self.raw_data.embedded_skins {
+                let indices_offset = if skin.indices.is_empty() {
+                    0
+                } else {
+                    let offset = data_offset;
+                    data_offset += skin.indices.len() as u32;
+                    offset
+                };
+
+                let triangles_offset = if skin.triangles.is_empty() {
+                    0
+                } else {
+                    let offset = data_offset;
+                    data_offset += skin.triangles.len() as u32;
+                    offset
+                };
+
+                let properties_offset = if skin.properties.is_empty() {
+                    0
+                } else {
+                    let offset = data_offset;
+                    data_offset += skin.properties.len() as u32;
+                    offset
+                };
+
+                let submeshes_offset = if skin.submeshes.is_empty() {
+                    0
+                } else {
+                    let offset = data_offset;
+                    data_offset += skin.submeshes.len() as u32;
+                    offset
+                };
+
+                let batches_offset = if skin.batches.is_empty() {
+                    0
+                } else {
+                    let offset = data_offset;
+                    data_offset += skin.batches.len() as u32;
+                    offset
+                };
+
+                all_offsets.push(SkinOffsets {
+                    indices_offset,
+                    triangles_offset,
+                    properties_offset,
+                    submeshes_offset,
+                    batches_offset,
+                });
+            }
+
+            // Phase 2: Write all ModelView structures with calculated offsets
+            for (skin, offsets) in self.raw_data.embedded_skins.iter().zip(all_offsets.iter()) {
+                // Calculate counts from data sizes
+                let n_indices = (skin.indices.len() / 2) as u32;
+                let n_triangles = (skin.triangles.len() / 2) as u32;
+                let n_properties = (skin.properties.len() / 4) as u32;
+                let n_submeshes = if skin.submeshes.is_empty() {
+                    0
+                } else {
+                    (skin.submeshes.len() / submesh_size) as u32
+                };
+                let n_batches = (skin.batches.len() / 96) as u32;
+
+                // Extract bone_count_max from original ModelView (last 4 bytes)
+                let bone_count_max = if skin.model_view.len() >= 44 {
+                    u32::from_le_bytes([
+                        skin.model_view[40],
+                        skin.model_view[41],
+                        skin.model_view[42],
+                        skin.model_view[43],
+                    ])
+                } else {
+                    0
+                };
+
+                // Write ModelView structure (44 bytes: 5 M2Arrays + bone_count_max)
+                data_section.extend_from_slice(&n_indices.to_le_bytes());
+                data_section.extend_from_slice(&offsets.indices_offset.to_le_bytes());
+                data_section.extend_from_slice(&n_triangles.to_le_bytes());
+                data_section.extend_from_slice(&offsets.triangles_offset.to_le_bytes());
+                data_section.extend_from_slice(&n_properties.to_le_bytes());
+                data_section.extend_from_slice(&offsets.properties_offset.to_le_bytes());
+                data_section.extend_from_slice(&n_submeshes.to_le_bytes());
+                data_section.extend_from_slice(&offsets.submeshes_offset.to_le_bytes());
+                data_section.extend_from_slice(&n_batches.to_le_bytes());
+                data_section.extend_from_slice(&offsets.batches_offset.to_le_bytes());
+                data_section.extend_from_slice(&bone_count_max.to_le_bytes());
+            }
+
+            // Phase 3: Write all data arrays in the same order as offsets were calculated
+            for skin in &self.raw_data.embedded_skins {
+                if !skin.indices.is_empty() {
+                    data_section.extend_from_slice(&skin.indices);
+                }
+                if !skin.triangles.is_empty() {
+                    data_section.extend_from_slice(&skin.triangles);
+                }
+                if !skin.properties.is_empty() {
+                    data_section.extend_from_slice(&skin.properties);
+                }
+                if !skin.submeshes.is_empty() {
+                    data_section.extend_from_slice(&skin.submeshes);
+                }
+                if !skin.batches.is_empty() {
+                    data_section.extend_from_slice(&skin.batches);
+                }
+            }
+
+            current_offset = data_offset;
+        }
+
         // Zero out sections we don't write yet (so header references are valid)
         // These sections have complex structures with embedded offsets that need proper serialization
         header.color_animations = M2Array::new(0, 0);
@@ -1752,7 +2354,10 @@ impl M2Model {
         // TBC and earlier (version <= 263) require texture_flipbooks
         if header.version <= 263 {
             header.texture_flipbooks = Some(M2Array::new(0, 0));
-            header.views = M2Array::new(0, 0);
+            // Only zero views if we didn't write embedded skin data
+            if self.raw_data.embedded_skins.is_empty() {
+                header.views = M2Array::new(0, 0);
+            }
         } else {
             header.texture_flipbooks = None;
         }
