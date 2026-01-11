@@ -69,6 +69,30 @@ fn main() {
         "Bone animation data entries: {}",
         model.raw_data.bone_animation_data.len()
     );
+    println!(
+        "Camera animation data entries: {}",
+        model.raw_data.camera_animation_data.len()
+    );
+    println!(
+        "Attachment animation data entries: {}",
+        model.raw_data.attachment_animation_data.len()
+    );
+    println!("Cameras count: {}", model.cameras.len());
+    println!("Attachments count: {}", model.attachments.len());
+    println!("Events count: {}", model.events.len());
+
+    // Show Vanilla-specific header fields
+    if model.header.playable_animation_lookup.is_some() {
+        println!(
+            "Playable animation lookup: {} entries",
+            model
+                .header
+                .playable_animation_lookup
+                .as_ref()
+                .unwrap()
+                .count
+        );
+    }
 
     // Check if this is actually a pre-WotLK model
     if model.header.version >= 264 {
@@ -96,27 +120,6 @@ fn main() {
         std::process::exit(1);
     }
     println!("Wrote to: {}", output_path);
-
-    // Show embedded skin info for pre-WotLK
-    if model.header.version < 264 && output.len() >= 0x54 {
-        let views_offset = 0x4C; // views M2Array offset in pre-WotLK header
-        let count = u32::from_le_bytes([
-            output[views_offset],
-            output[views_offset + 1],
-            output[views_offset + 2],
-            output[views_offset + 3],
-        ]);
-        let offset = u32::from_le_bytes([
-            output[views_offset + 4],
-            output[views_offset + 5],
-            output[views_offset + 6],
-            output[views_offset + 7],
-        ]);
-        println!(
-            "\nOutput header.views: count={}, offset=0x{:X}",
-            count, offset
-        );
-    }
 
     // Try to parse the output
     println!("\n=== Verifying output can be parsed... ===");

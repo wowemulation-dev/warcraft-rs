@@ -50,71 +50,91 @@ impl M2EventType {
 }
 
 /// Represents an event in an M2 model
+///
+/// Event structure (44 bytes):
+/// - identifier[4]: Event name string (e.g., "$CAH", "$CST", "$HIT")
+/// - data: u32: Sound/spell database ID
+/// - bone: i16: Bone index to attach event to
+/// - unknown: u16: Unknown field (possibly padding or submesh ID)
+/// - position: C3Vector (12 bytes): Position relative to bone
+/// - interp_type: u16: Interpolation type for animation
+/// - global_sequence: i16: Global sequence ID or -1
+/// - ranges: M2Array (8 bytes): Animation ranges
+/// - times: M2Array (8 bytes): Timestamp arrays
 #[derive(Debug, Clone)]
 pub struct M2Event {
-    /// Event ID
-    pub id: u32,
-    /// Event data (specific to event type)
+    /// Event identifier (4-char string like "$CAH", "$CST")
+    pub identifier: [u8; 4],
+    /// Event data (sound/spell database ID)
     pub data: u32,
     /// Bone to attach the event to
-    pub bone_index: u32,
+    pub bone_index: i16,
+    /// Unknown field (possibly submesh ID or padding)
+    pub unknown: u16,
     /// Position relative to bone
     pub position: [f32; 3],
-    /// Whether the event is enabled
-    pub enabled: bool,
-    /// Event type
-    pub event_type: M2EventType,
-    /// Event track (for animations)
-    pub event_track: M2Array<u32>,
+    /// Interpolation type
+    pub interp_type: u16,
+    /// Global sequence ID or -1
+    pub global_sequence: i16,
+    /// Animation ranges (for per-animation timing)
+    pub ranges: M2Array<u32>,
+    /// Event timestamps
+    pub times: M2Array<u32>,
 }
 
 impl M2Event {
     /// Parse an event from a reader based on the M2 version
+    ///
+    /// Event structure is 44 bytes for all versions.
     pub fn parse<R: Read>(reader: &mut R, _version: u32) -> Result<Self> {
-        let id = reader.read_u32_le()?;
+        let mut identifier = [0u8; 4];
+        reader.read_exact(&mut identifier)?;
+
         let data = reader.read_u32_le()?;
-        let bone_index = reader.read_u32_le()?;
+        let bone_index = reader.read_i16_le()?;
+        let unknown = reader.read_u16_le()?;
 
         let mut position = [0.0; 3];
         for item in &mut position {
             *item = reader.read_f32_le()?;
         }
 
-        let enabled = reader.read_u16_le()? != 0;
-        reader.read_u16_le()?; // Skip padding
+        let interp_type = reader.read_u16_le()?;
+        let global_sequence = reader.read_i16_le()?;
 
-        let event_type_raw = reader.read_u32_le()?;
-        let event_type = M2EventType::from_u32(event_type_raw).unwrap_or(M2EventType::Sound);
-
-        let event_track = M2Array::parse(reader)?;
+        let ranges = M2Array::parse(reader)?;
+        let times = M2Array::parse(reader)?;
 
         Ok(Self {
-            id,
+            identifier,
             data,
             bone_index,
+            unknown,
             position,
-            enabled,
-            event_type,
-            event_track,
+            interp_type,
+            global_sequence,
+            ranges,
+            times,
         })
     }
 
     /// Write an event to a writer based on the M2 version
     pub fn write<W: Write>(&self, writer: &mut W, _version: u32) -> Result<()> {
-        writer.write_u32_le(self.id)?;
+        writer.write_all(&self.identifier)?;
         writer.write_u32_le(self.data)?;
-        writer.write_u32_le(self.bone_index)?;
+        writer.write_i16_le(self.bone_index)?;
+        writer.write_u16_le(self.unknown)?;
 
         for &pos in &self.position {
             writer.write_f32_le(pos)?;
         }
 
-        writer.write_u16_le(if self.enabled { 1 } else { 0 })?;
-        writer.write_u16_le(0)?; // Write padding
+        writer.write_u16_le(self.interp_type)?;
+        writer.write_i16_le(self.global_sequence)?;
 
-        writer.write_u32_le(self.event_type as u32)?;
-
-        self.event_track.write(writer)?;
+        self.ranges.write(writer)?;
+        self.times.write(writer)?;
 
         Ok(())
     }
@@ -125,16 +145,28 @@ impl M2Event {
     }
 
     /// Create a new event with default values
-    pub fn new(id: u32, bone_index: u32, event_type: M2EventType) -> Self {
+    pub fn new(identifier: [u8; 4], bone_index: i16) -> Self {
         Self {
-            id,
+            identifier,
             data: 0,
             bone_index,
+            unknown: 0,
             position: [0.0, 0.0, 0.0],
-            enabled: true,
-            event_type,
-            event_track: M2Array::new(0, 0),
+            interp_type: 0,
+            global_sequence: -1,
+            ranges: M2Array::new(0, 0),
+            times: M2Array::new(0, 0),
         }
+    }
+
+    /// Get the event identifier as a string
+    pub fn identifier_str(&self) -> String {
+        String::from_utf8_lossy(&self.identifier).to_string()
+    }
+
+    /// Returns the size of an event in bytes (always 44)
+    pub const fn size() -> usize {
+        44
     }
 }
 
@@ -145,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_event_parse_write() {
-        let event = M2Event::new(1, 2, M2EventType::Sound);
+        let event = M2Event::new(*b"$CST", 25);
 
         // Test write
         let mut data = Vec::new();
@@ -153,14 +185,22 @@ mod tests {
             .write(&mut data, M2Version::Vanilla.to_header_version())
             .unwrap();
 
+        // Event should be 44 bytes
+        assert_eq!(data.len(), 44);
+
         // Test parse
         let mut cursor = Cursor::new(data);
         let parsed = M2Event::parse(&mut cursor, M2Version::Vanilla.to_header_version()).unwrap();
 
-        assert_eq!(parsed.id, 1);
-        assert_eq!(parsed.bone_index, 2);
-        assert_eq!(parsed.event_type, M2EventType::Sound);
-        assert!(parsed.enabled);
+        assert_eq!(parsed.identifier, *b"$CST");
+        assert_eq!(parsed.bone_index, 25);
+        assert_eq!(parsed.global_sequence, -1);
+        assert_eq!(parsed.identifier_str(), "$CST");
+    }
+
+    #[test]
+    fn test_event_size() {
+        assert_eq!(M2Event::size(), 44);
     }
 
     #[test]

@@ -458,13 +458,17 @@ pub struct TransparencyAnimationRaw {
 
 /// Raw event track data for a single event
 ///
-/// This preserves the exact bytes from the original file for event timestamps,
-/// allowing roundtrip serialization without data loss. Events have a simple M2Array
-/// pointing to u32 timestamps (when the event triggers).
+/// This preserves the exact bytes from the original file for event data,
+/// allowing roundtrip serialization without data loss. Events have two M2Arrays:
+/// ranges (per-animation timing info) and times (u32 timestamps when event triggers).
 #[derive(Debug, Clone, Default)]
 pub struct EventRaw {
     /// Index of the event this track belongs to
     pub event_index: usize,
+    /// Raw ranges bytes (8 bytes per range: start, end timestamps)
+    pub ranges: Vec<u8>,
+    /// Original file offset for ranges array
+    pub original_ranges_offset: u32,
     /// Raw timestamp bytes (4 bytes per timestamp)
     pub timestamps: Vec<u8>,
     /// Original file offset for timestamps array
@@ -1133,18 +1137,25 @@ fn relocate_transparency_animation_offsets(
     relocate_or_zero_animation_block(&mut animation.alpha, offset_map);
 }
 
-/// Relocates event track offset to new position
+/// Relocates event track offsets to new positions
 ///
-/// Events use a simple M2Array<u32> for timestamps (not M2AnimationBlock),
-/// so we only need to relocate a single offset.
+/// Events have two M2Arrays: ranges and times. Both need relocation.
 fn relocate_event_offset(event: &mut M2Event, offset_map: &HashMap<u32, u32>) {
-    // Only relocate if the event has timestamps
-    if event.event_track.count > 0 {
-        if let Some(&new_offset) = offset_map.get(&event.event_track.offset) {
-            event.event_track.offset = new_offset;
+    // Relocate ranges if present
+    if event.ranges.count > 0 {
+        if let Some(&new_offset) = offset_map.get(&event.ranges.offset) {
+            event.ranges.offset = new_offset;
         } else {
-            // Data not collected - zero out the track
-            event.event_track = M2Array::default();
+            event.ranges = M2Array::default();
+        }
+    }
+
+    // Relocate times if present
+    if event.times.count > 0 {
+        if let Some(&new_offset) = offset_map.get(&event.times.offset) {
+            event.times.offset = new_offset;
+        } else {
+            event.times = M2Array::default();
         }
     }
 }
@@ -1846,24 +1857,37 @@ fn collect_transparency_animation_data<R: Read + Seek>(
 
 /// Collects raw event track data for all events in the model
 ///
-/// Events have a simple M2Array pointing to u32 timestamps (when the event triggers).
-/// This is different from M2AnimationBlock - it's just a list of timestamps.
+/// Events have two M2Arrays: ranges (per-animation timing) and times (timestamps).
+/// This is different from M2AnimationBlock - events are simpler trigger points.
 fn collect_event_data<R: Read + Seek>(reader: &mut R, events: &[M2Event]) -> Result<Vec<EventRaw>> {
     let mut event_data = Vec::new();
 
     for (event_idx, event) in events.iter().enumerate() {
-        // Skip empty event tracks
-        if event.event_track.count == 0 {
+        // Skip events with no data
+        if event.ranges.count == 0 && event.times.count == 0 {
             continue;
         }
 
+        // Read ranges (8 bytes per range: start u32, end u32)
+        let ranges = if event.ranges.count > 0 {
+            read_raw_bytes(reader, &event.ranges.convert(), 8)?
+        } else {
+            Vec::new()
+        };
+
         // Read timestamps (4 bytes per u32 timestamp)
-        let timestamps = read_raw_bytes(reader, &event.event_track.convert(), 4)?;
+        let timestamps = if event.times.count > 0 {
+            read_raw_bytes(reader, &event.times.convert(), 4)?
+        } else {
+            Vec::new()
+        };
 
         event_data.push(EventRaw {
             event_index: event_idx,
+            ranges,
+            original_ranges_offset: event.ranges.offset,
             timestamps,
-            original_timestamps_offset: event.event_track.offset,
+            original_timestamps_offset: event.times.offset,
         });
     }
 
@@ -2288,10 +2312,11 @@ fn collect_embedded_skin_data<R: Read + Seek>(
             Vec::new()
         };
 
-        // Read batches/texture units data (96 bytes per entry)
+        // Read batches/texture units data (24 bytes per entry)
+        // SkinBatch: 2 bytes (flags/priority) + 22 bytes (11 u16 fields) = 24 bytes
         let batches = if n_batches > 0 && ofs_batches > 0 {
             reader.seek(SeekFrom::Start(ofs_batches as u64))?;
-            let mut data = vec![0u8; n_batches as usize * 96];
+            let mut data = vec![0u8; n_batches as usize * 24];
             reader.read_exact(&mut data)?;
             data
         } else {
@@ -4742,7 +4767,9 @@ impl M2Model {
         // ==============================
         // Events are timeline triggers (sounds, effects) using simple M2Array<u32> for timestamps
         if !self.events.is_empty() {
-            header.events = M2Array::new(self.events.len() as u32, current_offset);
+            // Calculate offset from actual data_section length, not tracked current_offset
+            let event_offset = self.calculate_header_size() + data_section.len();
+            header.events = M2Array::new(self.events.len() as u32, event_offset as u32);
 
             // First, write all event structures to a temporary buffer to calculate their total size
             let mut temp_event_data = Vec::new();
@@ -4786,12 +4813,18 @@ impl M2Model {
                     data_section.extend_from_slice(&event_data);
                 }
 
-                // Write event timestamp data (only write each unique offset once)
+                // Write event data (ranges and timestamps, only write each unique offset once)
                 let mut written_offsets: std::collections::HashSet<u32> =
                     std::collections::HashSet::new();
 
                 for event_raw in &self.raw_data.event_data {
-                    // Write timestamps only if not already written
+                    // Write ranges if not already written
+                    if !event_raw.ranges.is_empty()
+                        && written_offsets.insert(event_raw.original_ranges_offset)
+                    {
+                        data_section.extend_from_slice(&event_raw.ranges);
+                    }
+                    // Write timestamps if not already written
                     if !event_raw.timestamps.is_empty()
                         && written_offsets.insert(event_raw.original_timestamps_offset)
                     {
@@ -4801,11 +4834,12 @@ impl M2Model {
 
                 current_offset = event_data_offset;
             } else {
-                // No event data collected - write events with zeroed timestamp tracks
+                // No event data collected - write events with zeroed tracks
                 for event in &self.events {
                     let mut static_event = event.clone();
-                    // Zero out the event track
-                    static_event.event_track = M2Array::default();
+                    // Zero out the event tracks
+                    static_event.ranges = M2Array::default();
+                    static_event.times = M2Array::default();
 
                     let mut event_data = Vec::new();
                     static_event.write(&mut event_data, header.version)?;
@@ -4823,7 +4857,9 @@ impl M2Model {
         // ==============================
         // Attachments are attach points (weapons, effects) with scale animation
         if !self.attachments.is_empty() {
-            header.attachments = M2Array::new(self.attachments.len() as u32, current_offset);
+            // Calculate offset from actual data_section length, not tracked current_offset
+            let attach_offset = self.calculate_header_size() + data_section.len();
+            header.attachments = M2Array::new(self.attachments.len() as u32, attach_offset as u32);
 
             // First, write all attachment structures to a temporary buffer to calculate their total size
             let mut temp_attach_data = Vec::new();
@@ -4933,7 +4969,9 @@ impl M2Model {
         // ==============================
         // Cameras have position, target_position, and roll animation tracks
         if !self.cameras.is_empty() {
-            header.cameras = M2Array::new(self.cameras.len() as u32, current_offset);
+            // Calculate offset from actual data_section length, not tracked current_offset
+            let camera_offset = self.calculate_header_size() + data_section.len();
+            header.cameras = M2Array::new(self.cameras.len() as u32, camera_offset as u32);
 
             // First, write all camera structures to a temporary buffer to calculate their total size
             let mut temp_camera_data = Vec::new();
@@ -5045,7 +5083,9 @@ impl M2Model {
         // ==============================
         // Lights have ambient_color, diffuse_color, attenuation_start, attenuation_end, and visibility animation tracks
         if !self.lights.is_empty() {
-            header.lights = M2Array::new(self.lights.len() as u32, current_offset);
+            // Calculate offset from actual data_section length, not tracked current_offset
+            let light_offset = self.calculate_header_size() + data_section.len();
+            header.lights = M2Array::new(self.lights.len() as u32, light_offset as u32);
 
             // First, write all light structures to a temporary buffer to calculate their total size
             let mut temp_light_data = Vec::new();

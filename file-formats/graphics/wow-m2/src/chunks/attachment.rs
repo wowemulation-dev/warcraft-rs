@@ -66,46 +66,37 @@ impl M2AttachmentType {
 }
 
 /// Represents an attachment in an M2 model
+///
+/// Attachment structure (48 bytes for all versions):
+/// - id: u32 (4 bytes) - attachment ID
+/// - bone: i32 (4 bytes) - bone index to attach to
+/// - position: C3Vector (12 bytes) - position relative to bone
+/// - scale_animation: M2AnimationBlock (28 bytes) - scale animation track
 #[derive(Debug, Clone)]
 pub struct M2Attachment {
-    /// Attachment ID
+    /// Attachment ID (determines attachment point type)
     pub id: u32,
     /// Bone to attach to
-    pub bone_index: u16,
-    /// Parent bone is flying (has a special animation)
-    pub parent_bone_flying: u16,
-    /// Attachment type
-    pub attachment_type: M2AttachmentType,
-    /// Animation data, unused since this is on the attached model
-    pub animation_data: u16,
+    pub bone_index: i32,
     /// Position relative to bone
     pub position: C3Vector,
-    /// Scale animation data
+    /// Scale animation data (visibility/scale of attached object)
     pub scale_animation: M2AnimationBlock<f32>,
 }
 
 impl M2Attachment {
     /// Parse an attachment from a reader based on the M2 version
+    ///
+    /// Attachment structure is 48 bytes for all versions.
     pub fn parse<R: Read + Seek>(reader: &mut R, _version: u32) -> Result<Self> {
         let id = reader.read_u32_le()?;
-        let bone_index = reader.read_u16_le()?;
-        let parent_bone_flying = reader.read_u16_le()?;
-
-        let attachment_type_raw = reader.read_u16_le()?;
-        let attachment_type =
-            M2AttachmentType::from_u16(attachment_type_raw).unwrap_or(M2AttachmentType::Shoulder);
-
-        let animation_data = reader.read_u16_le()?;
+        let bone_index = reader.read_i32_le()?;
         let position = C3Vector::parse(reader)?;
-
         let scale_animation = M2AnimationBlock::parse(reader)?;
 
         Ok(Self {
             id,
             bone_index,
-            parent_bone_flying,
-            attachment_type,
-            animation_data,
             position,
             scale_animation,
         })
@@ -114,14 +105,8 @@ impl M2Attachment {
     /// Write an attachment to a writer based on the M2 version
     pub fn write<W: Write>(&self, writer: &mut W, _version: u32) -> Result<()> {
         writer.write_u32_le(self.id)?;
-        writer.write_u16_le(self.bone_index)?;
-        writer.write_u16_le(self.parent_bone_flying)?;
-
-        writer.write_u16_le(self.attachment_type as u16)?;
-        writer.write_u16_le(self.animation_data)?;
-
+        writer.write_i32_le(self.bone_index)?;
         self.position.write(writer)?;
-
         self.scale_animation.write(writer)?;
 
         Ok(())
@@ -133,20 +118,18 @@ impl M2Attachment {
     }
 
     /// Create a new attachment with default values
-    pub fn new(id: u32, bone_index: u16, attachment_type: M2AttachmentType) -> Self {
+    pub fn new(id: u32, bone_index: i32) -> Self {
         Self {
             id,
             bone_index,
-            parent_bone_flying: 0,
-            attachment_type,
-            animation_data: 0,
-            position: C3Vector {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
+            position: C3Vector::default(),
             scale_animation: M2AnimationBlock::new(M2AnimationTrack::default()),
         }
+    }
+
+    /// Returns the size of an attachment in bytes (always 48)
+    pub const fn size() -> usize {
+        48
     }
 }
 
@@ -157,13 +140,16 @@ mod tests {
 
     #[test]
     fn test_attachment_parse_write() {
-        let attachment = M2Attachment::new(1, 2, M2AttachmentType::WeaponMain);
+        let attachment = M2Attachment::new(1, 2);
 
         // Test write
         let mut data = Vec::new();
         attachment
             .write(&mut data, M2Version::Vanilla.to_header_version())
             .unwrap();
+
+        // Attachment should be 48 bytes
+        assert_eq!(data.len(), 48);
 
         // Test parse
         let mut cursor = Cursor::new(data);
@@ -172,7 +158,11 @@ mod tests {
 
         assert_eq!(parsed.id, 1);
         assert_eq!(parsed.bone_index, 2);
-        assert_eq!(parsed.attachment_type, M2AttachmentType::WeaponMain);
+    }
+
+    #[test]
+    fn test_attachment_size() {
+        assert_eq!(M2Attachment::size(), 48);
     }
 
     #[test]
