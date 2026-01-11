@@ -52,11 +52,25 @@ and this project adheres to
   - Texture animation data collected during parse (translation U/V, rotation, scale U/V)
   - Animation offsets relocated during write
   - Handles UV scrolling, rotation, and scaling effects
+- **M2 Format**: Color animation preservation in roundtrip
+  - Added `ColorTrackType` enum for 2 animation track types (color RGB, alpha)
+  - Added `ColorAnimationRaw` struct for raw keyframe storage
+  - Color animation data collected during parse
+  - Animation offsets relocated during write
+  - Handles material color and alpha animations
+- **M2 Format**: Transparency animation preservation in roundtrip
+  - Added `TransparencyTrackType` enum for alpha animation track
+  - Added `TransparencyAnimationRaw` struct for raw keyframe storage
+  - Transparency animation data collected during parse
+  - Animation offsets relocated during write
+  - Handles texture weight/opacity animations
 - **CLI**: Extended `m2 tree` command to display animation track data
   - Shows bone animation track summary (translation, rotation, scale counts)
   - Shows particle emitter animation track summary
   - Shows ribbon emitter animation track summary
   - Shows texture animation track summary
+  - Shows color animation track summary
+  - Shows transparency animation track summary
   - Displays total keyframe counts for each animation type
 
 ## [0.5.0] - 2025-01-09

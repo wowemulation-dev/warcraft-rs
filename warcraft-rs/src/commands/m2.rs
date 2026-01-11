@@ -772,11 +772,55 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
         anim_data_node = anim_data_node.add_child(texture_node);
     }
 
+    // Color animation data summary
+    let color_anim_count = model.raw_data.color_animation_data.len();
+    if color_anim_count > 0 {
+        let mut color_count = 0;
+        let mut alpha_count = 0;
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.color_animation_data {
+            match anim.track_type {
+                wow_m2::model::ColorTrackType::Color => color_count += 1,
+                wow_m2::model::ColorTrackType::Alpha => alpha_count += 1,
+            }
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let anim_count = model.color_animations.len();
+        let color_node = TreeNode::new("Color Animations".to_string(), NodeType::Data)
+            .with_metadata("animations", &anim_count.to_string())
+            .with_metadata("total_tracks", &color_anim_count.to_string())
+            .with_metadata("color_tracks", &color_count.to_string())
+            .with_metadata("alpha_tracks", &alpha_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(color_node);
+    }
+
+    // Transparency animation data summary
+    let transparency_anim_count = model.raw_data.transparency_animation_data.len();
+    if transparency_anim_count > 0 {
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.transparency_animation_data {
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let anim_count = model.transparency_animations.len();
+        let transparency_node = TreeNode::new("Transparency Animations".to_string(), NodeType::Data)
+            .with_metadata("animations", &anim_count.to_string())
+            .with_metadata("total_tracks", &transparency_anim_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(transparency_node);
+    }
+
     // Only add the animation data section if we have any animation data
     let has_anim_data = bone_anim_count > 0
         || particle_anim_count > 0
         || ribbon_anim_count > 0
-        || texture_anim_count > 0;
+        || texture_anim_count > 0
+        || color_anim_count > 0
+        || transparency_anim_count > 0;
 
     if has_anim_data {
         anim_data_node = anim_data_node.with_metadata(
