@@ -258,7 +258,7 @@ impl C3Vector {
 }
 
 /// A vector in 2D space
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct C2Vector {
     pub x: f32,
     pub y: f32,

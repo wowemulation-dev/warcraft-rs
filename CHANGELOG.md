@@ -33,6 +33,15 @@ and this project adheres to
   - Header size calculation now includes this field
   - Cross-format conversion preserves bone count limits
 
+### Added
+
+- **M2 Format**: Particle emitter animation preservation in roundtrip
+  - Added `ParticleTrackType` enum for 10 animation track types
+  - Added `ParticleAnimationRaw` struct for raw keyframe storage
+  - Particle animation data collected during parse
+  - Animation offsets relocated during write
+  - Handles offset sharing for multiple tracks pointing to same data
+
 ## [0.5.0] - 2025-01-09
 
 ### Added

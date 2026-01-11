@@ -5,7 +5,7 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use crate::io_ext::ReadExt;
 use std::path::Path;
 
-use crate::chunks::animation::M2Animation;
+use crate::chunks::animation::{M2Animation, M2AnimationBlock};
 use crate::chunks::bone::M2Bone;
 use crate::chunks::infrastructure::{ChunkHeader, ChunkReader};
 use crate::chunks::m2_track::{M2Track, M2TrackQuat, M2TrackVec3};
@@ -20,7 +20,7 @@ use crate::chunks::{
     RecursiveParticleIds, SkeletonData, SkeletonFileId, SkinFileIds, TextureAnimationChunk,
     TextureFileIds, WaterfallEffect,
 };
-use crate::common::{M2Array, read_array, read_raw_bytes};
+use crate::common::{M2Array, M2Parse, read_array, read_raw_bytes};
 use crate::error::{M2Error, Result};
 use crate::file_resolver::FileResolver;
 use crate::header::{M2_MAGIC_CHUNKED, M2_MAGIC_LEGACY, M2Header, M2ModelFlags};
@@ -135,6 +135,43 @@ pub enum TrackType {
     Scale,
 }
 
+/// Type of animation track within a particle emitter
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ParticleTrackType {
+    /// Emission speed animation
+    #[default]
+    EmissionSpeed,
+    /// Emission rate animation
+    EmissionRate,
+    /// Emission area animation
+    EmissionArea,
+    /// XY scale animation (C2Vector = 8 bytes)
+    XYScale,
+    /// Z scale animation
+    ZScale,
+    /// Color animation (M2Color = 12 bytes)
+    Color,
+    /// Transparency animation
+    Transparency,
+    /// Size animation
+    Size,
+    /// Intensity animation
+    Intensity,
+    /// Z source animation
+    ZSource,
+}
+
+impl ParticleTrackType {
+    /// Returns the size in bytes of each value for this track type
+    pub fn value_size(&self) -> usize {
+        match self {
+            ParticleTrackType::XYScale => 8, // C2Vector
+            ParticleTrackType::Color => 12,  // M2Color (3 floats)
+            _ => 4,                          // f32
+        }
+    }
+}
+
 /// Raw animation data for a single bone track
 ///
 /// This preserves the exact bytes from the original file for animation keyframes,
@@ -191,6 +228,31 @@ pub struct EmbeddedSkinRaw {
     pub original_batches_offset: u32,
 }
 
+/// Raw animation data for a single particle emitter track
+///
+/// This preserves the exact bytes from the original file for particle animation keyframes,
+/// allowing roundtrip serialization without data loss. Particle emitters have 10 different
+/// animation tracks (emission speed, rate, color, etc.).
+#[derive(Debug, Clone, Default)]
+pub struct ParticleAnimationRaw {
+    /// Index of the particle emitter this track belongs to
+    pub emitter_index: usize,
+    /// Type of animation track
+    pub track_type: ParticleTrackType,
+    /// Raw interpolation range bytes (8 bytes per range: start u32 + end u32)
+    pub interpolation_ranges: Vec<u8>,
+    /// Raw timestamp bytes (4 bytes per timestamp)
+    pub timestamps: Vec<u8>,
+    /// Raw keyframe value bytes (size depends on track type)
+    pub values: Vec<u8>,
+    /// Original file offset for interpolation_ranges array
+    pub original_ranges_offset: u32,
+    /// Original file offset for timestamps array
+    pub original_timestamps_offset: u32,
+    /// Original file offset for values array
+    pub original_values_offset: u32,
+}
+
 /// Raw data for sections that are not fully parsed
 #[derive(Debug, Clone, Default)]
 pub struct M2RawData {
@@ -200,6 +262,9 @@ pub struct M2RawData {
     /// Raw embedded skin data for pre-WotLK models (version <= 263)
     /// Empty for WotLK+ models which use external .skin files
     pub embedded_skins: Vec<EmbeddedSkinRaw>,
+    /// Raw animation keyframe data for all particle emitter tracks
+    /// Used to preserve particle animation data during roundtrip serialization
+    pub particle_animation_data: Vec<ParticleAnimationRaw>,
     /// Transparency data (the actual transparency animations, not lookups)
     pub transparency: Vec<u8>,
     /// Texture animations
@@ -422,6 +487,235 @@ fn relocate_bone_track_offsets(bone: &mut M2Bone, offset_map: &HashMap<u32, u32>
     relocate_or_zero_track(&mut bone.translation, offset_map);
     relocate_or_zero_track(&mut bone.rotation, offset_map);
     relocate_or_zero_track(&mut bone.scale, offset_map);
+}
+
+/// Updates M2AnimationBlock offsets in a particle emitter using the relocation map
+///
+/// If a track's original offset is not in the map but the track has data,
+/// the track is zeroed out to avoid invalid references.
+fn relocate_particle_animation_offsets(
+    emitter: &mut M2ParticleEmitter,
+    offset_map: &HashMap<u32, u32>,
+) {
+    // Helper to relocate or zero an animation block
+    fn relocate_or_zero_animation_block<T: M2Parse + Default + Clone>(
+        block: &mut M2AnimationBlock<T>,
+        offset_map: &HashMap<u32, u32>,
+    ) {
+        let track = &mut block.track;
+
+        // Check if interpolation_ranges offset needs relocation
+        if !track.interpolation_ranges.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.interpolation_ranges.offset) {
+                track.interpolation_ranges.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if timestamps offset needs relocation
+        if !track.timestamps.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.timestamps.offset) {
+                track.timestamps.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if values offset needs relocation
+        if !track.values.array.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.values.array.offset) {
+                track.values.array.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+            }
+        }
+    }
+
+    relocate_or_zero_animation_block(&mut emitter.emission_speed_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.emission_rate_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.emission_area_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.xy_scale_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.z_scale_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.color_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.transparency_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.size_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.intensity_animation, offset_map);
+    relocate_or_zero_animation_block(&mut emitter.z_source_animation, offset_map);
+}
+
+/// Collects raw animation keyframe data for a single M2AnimationBlock
+///
+/// Returns None if the track has no data, otherwise returns ParticleAnimationRaw
+/// with interpolation_ranges, timestamps, and values.
+fn collect_particle_track_data<R: Read + Seek, T: M2Parse>(
+    reader: &mut R,
+    block: &M2AnimationBlock<T>,
+    emitter_index: usize,
+    track_type: ParticleTrackType,
+) -> Result<Option<ParticleAnimationRaw>> {
+    let track = &block.track;
+
+    // Skip empty tracks
+    if track.timestamps.is_empty() && track.values.array.is_empty() {
+        return Ok(None);
+    }
+
+    // Read interpolation ranges (8 bytes per range: start u32 + end u32)
+    let interpolation_ranges = if !track.interpolation_ranges.is_empty() {
+        read_raw_bytes(reader, &track.interpolation_ranges.convert(), 8)?
+    } else {
+        Vec::new()
+    };
+
+    // Read timestamps (4 bytes per timestamp)
+    let timestamps = if !track.timestamps.is_empty() {
+        read_raw_bytes(reader, &track.timestamps.convert(), 4)?
+    } else {
+        Vec::new()
+    };
+
+    // Read values (size depends on track type)
+    let values = if !track.values.array.is_empty() {
+        read_raw_bytes(
+            reader,
+            &track.values.array.convert(),
+            track_type.value_size(),
+        )?
+    } else {
+        Vec::new()
+    };
+
+    Ok(Some(ParticleAnimationRaw {
+        emitter_index,
+        track_type,
+        interpolation_ranges,
+        timestamps,
+        values,
+        original_ranges_offset: track.interpolation_ranges.offset,
+        original_timestamps_offset: track.timestamps.offset,
+        original_values_offset: track.values.array.offset,
+    }))
+}
+
+/// Collects raw animation keyframe data for all particle emitters in the model
+///
+/// This reads the actual keyframe bytes (interpolation_ranges, timestamps, values) from the file,
+/// storing them for later serialization with offset relocation.
+fn collect_particle_animation_data<R: Read + Seek>(
+    reader: &mut R,
+    emitters: &[M2ParticleEmitter],
+) -> Result<Vec<ParticleAnimationRaw>> {
+    let mut animation_data = Vec::new();
+
+    for (emitter_idx, emitter) in emitters.iter().enumerate() {
+        // Collect emission speed track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.emission_speed_animation,
+            emitter_idx,
+            ParticleTrackType::EmissionSpeed,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect emission rate track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.emission_rate_animation,
+            emitter_idx,
+            ParticleTrackType::EmissionRate,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect emission area track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.emission_area_animation,
+            emitter_idx,
+            ParticleTrackType::EmissionArea,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect XY scale track (C2Vector = 8 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.xy_scale_animation,
+            emitter_idx,
+            ParticleTrackType::XYScale,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect Z scale track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.z_scale_animation,
+            emitter_idx,
+            ParticleTrackType::ZScale,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect color track (M2Color = 12 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.color_animation,
+            emitter_idx,
+            ParticleTrackType::Color,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect transparency track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.transparency_animation,
+            emitter_idx,
+            ParticleTrackType::Transparency,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect size track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.size_animation,
+            emitter_idx,
+            ParticleTrackType::Size,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect intensity track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.intensity_animation,
+            emitter_idx,
+            ParticleTrackType::Intensity,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect Z source track (f32 = 4 bytes)
+        if let Some(data) = collect_particle_track_data(
+            reader,
+            &emitter.z_source_animation,
+            emitter_idx,
+            ParticleTrackType::ZSource,
+        )? {
+            animation_data.push(data);
+        }
+    }
+
+    Ok(animation_data)
 }
 
 /// Collects raw embedded skin data for pre-WotLK M2 files (version <= 263)
@@ -1655,6 +1949,9 @@ impl M2Model {
         // Collect raw animation keyframe data for bones before constructing raw_data
         let bone_animation_data = collect_bone_animation_data(reader, &bones, header.version)?;
 
+        // Collect raw animation keyframe data for particle emitters
+        let particle_animation_data = collect_particle_animation_data(reader, &particle_emitters)?;
+
         // Collect embedded skin data for pre-WotLK models (version <= 263)
         let embedded_skins = collect_embedded_skin_data(reader, &header)?;
 
@@ -1663,6 +1960,7 @@ impl M2Model {
         let raw_data = M2RawData {
             bone_animation_data,
             embedded_skins,
+            particle_animation_data,
             transparency_lookup_table: read_array(
                 reader,
                 &header.transparency_lookup_table,
@@ -1853,8 +2151,7 @@ impl M2Model {
                 for anim in &self.raw_data.bone_animation_data {
                     // Map timestamps offset (skip if already mapped - shared data)
                     if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) =
-                            offset_map.entry(anim.original_timestamps_offset)
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
                         {
                             e.insert(anim_data_offset);
                             anim_data_offset += anim.timestamps.len() as u32;
@@ -2337,6 +2634,125 @@ impl M2Model {
             current_offset = data_offset;
         }
 
+        // Write particle emitters with animation data preservation
+        // Similar pattern to bones - write structures with relocated offsets, then animation data
+        if !self.particle_emitters.is_empty() {
+            header.particle_emitters =
+                M2Array::new(self.particle_emitters.len() as u32, current_offset);
+
+            // First, write all emitter structures to a temporary buffer to calculate their total size
+            let mut temp_emitter_data = Vec::new();
+            for emitter in &self.particle_emitters {
+                let mut emitter_data = Vec::new();
+                emitter.write(&mut emitter_data, header.version)?;
+                temp_emitter_data.push(emitter_data);
+            }
+            let emitters_total_size: usize = temp_emitter_data.iter().map(|v| v.len()).sum();
+
+            // Calculate where animation data will be written (after all emitter structures)
+            let anim_data_start = current_offset + emitters_total_size as u32;
+
+            // Check if we have animation data to preserve
+            if !self.raw_data.particle_animation_data.is_empty() {
+                // Build offset relocation map: old_offset -> new_offset
+                let mut offset_map: HashMap<u32, u32> = HashMap::new();
+                let mut anim_data_offset = anim_data_start;
+
+                use std::collections::hash_map::Entry;
+
+                for anim in &self.raw_data.particle_animation_data {
+                    // Map interpolation_ranges offset (skip if already mapped - shared data)
+                    if !anim.interpolation_ranges.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.interpolation_ranges.len() as u32;
+                        }
+                    }
+
+                    // Map timestamps offset (skip if already mapped - shared data)
+                    if !anim.timestamps.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                        {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.timestamps.len() as u32;
+                        }
+                    }
+
+                    // Map values offset (skip if already mapped - shared data)
+                    if !anim.values.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.values.len() as u32;
+                        }
+                    }
+                }
+
+                // Write emitters with relocated offsets
+                for emitter in &self.particle_emitters {
+                    let mut relocated_emitter = emitter.clone();
+                    relocate_particle_animation_offsets(&mut relocated_emitter, &offset_map);
+
+                    let mut emitter_data = Vec::new();
+                    relocated_emitter.write(&mut emitter_data, header.version)?;
+                    data_section.extend_from_slice(&emitter_data);
+                }
+
+                // Write animation keyframe data (only write each unique offset once)
+                let mut written_offsets: std::collections::HashSet<u32> =
+                    std::collections::HashSet::new();
+
+                for anim in &self.raw_data.particle_animation_data {
+                    // Write interpolation_ranges only if not already written
+                    if !anim.interpolation_ranges.is_empty()
+                        && written_offsets.insert(anim.original_ranges_offset)
+                    {
+                        data_section.extend_from_slice(&anim.interpolation_ranges);
+                    }
+
+                    // Write timestamps only if not already written
+                    if !anim.timestamps.is_empty()
+                        && written_offsets.insert(anim.original_timestamps_offset)
+                    {
+                        data_section.extend_from_slice(&anim.timestamps);
+                    }
+
+                    // Write values only if not already written
+                    if !anim.values.is_empty()
+                        && written_offsets.insert(anim.original_values_offset)
+                    {
+                        data_section.extend_from_slice(&anim.values);
+                    }
+                }
+
+                current_offset = anim_data_offset;
+            } else {
+                // No animation data collected - write emitters with zeroed animation tracks
+                // This happens when we're creating new emitters or the source had no animations
+                for emitter in &self.particle_emitters {
+                    let mut static_emitter = emitter.clone();
+                    // Zero out all animation blocks by setting them to default
+                    static_emitter.emission_speed_animation = M2AnimationBlock::default();
+                    static_emitter.emission_rate_animation = M2AnimationBlock::default();
+                    static_emitter.emission_area_animation = M2AnimationBlock::default();
+                    static_emitter.xy_scale_animation = M2AnimationBlock::default();
+                    static_emitter.z_scale_animation = M2AnimationBlock::default();
+                    static_emitter.color_animation = M2AnimationBlock::default();
+                    static_emitter.transparency_animation = M2AnimationBlock::default();
+                    static_emitter.size_animation = M2AnimationBlock::default();
+                    static_emitter.intensity_animation = M2AnimationBlock::default();
+                    static_emitter.z_source_animation = M2AnimationBlock::default();
+
+                    let mut emitter_data = Vec::new();
+                    static_emitter.write(&mut emitter_data, header.version)?;
+                    data_section.extend_from_slice(&emitter_data);
+                }
+
+                current_offset += emitters_total_size as u32;
+            }
+        } else {
+            header.particle_emitters = M2Array::new(0, 0);
+        }
+
         // Zero out sections we don't write yet (so header references are valid)
         // These sections have complex structures with embedded offsets that need proper serialization
         header.color_animations = M2Array::new(0, 0);
@@ -2348,7 +2764,7 @@ impl M2Model {
         header.lights = M2Array::new(0, 0);
         header.cameras = M2Array::new(0, 0);
         header.ribbon_emitters = M2Array::new(0, 0);
-        header.particle_emitters = M2Array::new(0, 0);
+        // Note: particle_emitters is now handled in the serialization section above
 
         // Version-specific fields: set up correctly based on target version
         // TBC and earlier (version <= 263) require texture_flipbooks
