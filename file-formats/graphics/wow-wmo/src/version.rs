@@ -115,6 +115,25 @@ impl WmoVersion {
     pub fn supports_feature(self, feature: WmoFeature) -> bool {
         self >= feature.min_version()
     }
+
+    /// Parse version from expansion short names
+    /// Supports short names like "WotLK", "TBC", "Classic", etc.
+    pub fn from_expansion_name(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "vanilla" | "classic" => Some(Self::Classic),
+            "tbc" | "bc" | "burningcrusade" | "burning_crusade" => Some(Self::Tbc),
+            "wotlk" | "wrath" | "lichking" | "lich_king" | "wlk" => Some(Self::Wotlk),
+            "cata" | "cataclysm" => Some(Self::Cataclysm),
+            "mop" | "pandaria" | "mists" | "mists_of_pandaria" => Some(Self::Mop),
+            "wod" | "draenor" | "warlords" | "warlords_of_draenor" => Some(Self::Wod),
+            "legion" => Some(Self::Legion),
+            "bfa" | "bfazeroth" | "battle_for_azeroth" | "battleforazeroth" => Some(Self::Bfa),
+            "sl" | "shadowlands" => Some(Self::Shadowlands),
+            "df" | "dragonflight" => Some(Self::Dragonflight),
+            "tww" | "warwithin" | "the_war_within" | "thewarwithin" => Some(Self::WarWithin),
+            _ => None,
+        }
+    }
 }
 
 /// Features introduced in different WMO versions

@@ -3,11 +3,12 @@
 use crate::utils::tree::{NodeType, TreeNode, TreeOptions};
 use anyhow::{Context, Result};
 use clap::Subcommand;
-// use prettytable::{Cell, Row, Table, format};
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
 use std::path::Path;
-use wow_wmo::parse_wmo_with_metadata;
+use wow_wmo::{
+    WmoConverter, WmoParser, WmoVersion, WmoWriter, discover_wmo_chunks, parse_wmo_with_metadata,
+};
 
 #[derive(Subcommand)]
 pub enum WmoCommands {
@@ -43,9 +44,9 @@ pub enum WmoCommands {
         /// Output WMO file
         output: String,
 
-        /// Target WoW version number (17-27)
-        #[arg(short, long)]
-        to: u32,
+        /// Target version (e.g., "WotLK", "Cataclysm", "MoP")
+        #[arg(long)]
+        version: String,
     },
 
     /// Export WMO data
@@ -133,7 +134,11 @@ pub fn execute(command: WmoCommands) -> Result<()> {
             warnings,
             detailed,
         } => validate(&file, warnings, detailed),
-        WmoCommands::Convert { input, output, to } => convert(&input, &output, to),
+        WmoCommands::Convert {
+            input,
+            output,
+            version,
+        } => convert(&input, &output, &version),
         WmoCommands::Export { .. } => {
             anyhow::bail!("WMO export functionality not yet implemented");
         }
@@ -440,9 +445,82 @@ fn validate(path: &str, _show_warnings: bool, _detailed: bool) -> Result<()> {
     }
 }
 
-fn convert(_input_path: &str, _output_path: &str, _target_version: u32) -> Result<()> {
-    // TODO: Implement conversion with new parser
-    anyhow::bail!("Convert command needs updating for new parser");
+fn convert(input_path: &str, output_path: &str, version_str: &str) -> Result<()> {
+    println!("Loading WMO file: {}", input_path);
+
+    // Parse target version from expansion name
+    let target_version = WmoVersion::from_expansion_name(version_str)
+        .with_context(|| format!("Invalid target version: {}", version_str))?;
+
+    println!(
+        "Target version: {} ({})",
+        target_version.expansion_name(),
+        target_version.to_raw()
+    );
+
+    // First, discover chunks to determine file type
+    let file = File::open(input_path)
+        .with_context(|| format!("Failed to open input file: {}", input_path))?;
+    let mut reader = BufReader::new(file);
+
+    let discovery = discover_wmo_chunks(&mut reader)
+        .with_context(|| format!("Failed to analyze WMO file: {}", input_path))?;
+
+    // Check if this is a root or group file by looking for MOHD (root header) chunk
+    let is_root = discovery.chunks.iter().any(|c| c.id.as_str() == "MOHD");
+
+    if !is_root {
+        // Group file conversion is not yet supported due to type system mismatch
+        // between parser output and converter/writer input
+        anyhow::bail!(
+            "WMO group file conversion is not yet supported.\n\
+             The group file parser uses different internal types than the converter.\n\
+             Root files (*.wmo without _000 suffix) can be converted."
+        );
+    }
+
+    // Re-open the file for parsing
+    let file = File::open(input_path)
+        .with_context(|| format!("Failed to open input file: {}", input_path))?;
+    let mut reader = BufReader::new(file);
+
+    // Parse as root file using WmoParser which returns the correct type
+    let parser = WmoParser::new();
+    let mut root = parser
+        .parse_root(&mut reader)
+        .with_context(|| format!("Failed to parse WMO root file: {}", input_path))?;
+
+    let source_version = root.version;
+    println!(
+        "Converting root WMO from {} to {}",
+        source_version.expansion_name(),
+        target_version.expansion_name()
+    );
+
+    // Convert the root file
+    let converter = WmoConverter::new();
+    converter
+        .convert_root(&mut root, target_version)
+        .with_context(|| "Failed to convert WMO root")?;
+
+    // Create output file
+    let output_file = File::create(output_path)
+        .with_context(|| format!("Failed to create output file: {}", output_path))?;
+    let mut output_writer = BufWriter::new(output_file);
+
+    // Write the converted root file
+    let writer = WmoWriter::new();
+    writer
+        .write_root(&mut output_writer, &root, target_version)
+        .with_context(|| "Failed to write converted WMO root")?;
+
+    println!("Root WMO converted successfully!");
+    println!("  Groups: {}", root.groups.len());
+    println!("  Materials: {}", root.materials.len());
+    println!("  Doodad sets: {}", root.doodad_sets.len());
+    println!("Output written to: {}", output_path);
+
+    Ok(())
 }
 
 fn list(_path: &str, _component: &str) -> Result<()> {
