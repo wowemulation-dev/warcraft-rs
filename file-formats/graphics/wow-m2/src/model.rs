@@ -12,6 +12,7 @@ use crate::chunks::m2_track::{M2Track, M2TrackQuat, M2TrackVec3};
 use crate::chunks::material::M2Material;
 use crate::chunks::particle_emitter::M2ParticleEmitter;
 use crate::chunks::ribbon_emitter::M2RibbonEmitter;
+use crate::chunks::texture_animation::M2TextureAnimation;
 use crate::chunks::{
     AfraChunk, AnimationFileIds, BoneData, BoneFileIds, CollisionMeshData, DbocChunk, DpivChunk,
     EdgeFadeData, ExtendedParticleData, GeometryParticleIds, LightingDetails, LodData, M2Texture,
@@ -62,6 +63,8 @@ pub struct M2Model {
     pub particle_emitters: Vec<M2ParticleEmitter>,
     /// Ribbon emitters
     pub ribbon_emitters: Vec<M2RibbonEmitter>,
+    /// Texture animations
+    pub texture_animations: Vec<M2TextureAnimation>,
     /// Raw data for other sections
     /// This is used to preserve data that we don't fully parse yet
     pub raw_data: M2RawData,
@@ -196,6 +199,29 @@ impl RibbonTrackType {
     }
 }
 
+/// Type of animation track within a texture animation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TextureTrackType {
+    /// U coordinate translation animation
+    #[default]
+    TranslationU,
+    /// V coordinate translation animation
+    TranslationV,
+    /// Rotation animation
+    Rotation,
+    /// U coordinate scale animation
+    ScaleU,
+    /// V coordinate scale animation
+    ScaleV,
+}
+
+impl TextureTrackType {
+    /// Returns the size in bytes of each value for this track type
+    pub fn value_size(&self) -> usize {
+        4 // All texture animation tracks use f32
+    }
+}
+
 /// Raw animation data for a single bone track
 ///
 /// This preserves the exact bytes from the original file for animation keyframes,
@@ -302,6 +328,31 @@ pub struct RibbonAnimationRaw {
     pub original_values_offset: u32,
 }
 
+/// Raw animation data for a single texture animation track
+///
+/// This preserves the exact bytes from the original file for texture animation keyframes,
+/// allowing roundtrip serialization without data loss. Texture animations have 5 different
+/// animation tracks (translation_u, translation_v, rotation, scale_u, scale_v).
+#[derive(Debug, Clone, Default)]
+pub struct TextureAnimationRaw {
+    /// Index of the texture animation this track belongs to
+    pub animation_index: usize,
+    /// Type of animation track
+    pub track_type: TextureTrackType,
+    /// Raw interpolation range bytes (8 bytes per range: start u32 + end u32)
+    pub interpolation_ranges: Vec<u8>,
+    /// Raw timestamp bytes (4 bytes per timestamp)
+    pub timestamps: Vec<u8>,
+    /// Raw keyframe value bytes (4 bytes per value - all tracks use f32)
+    pub values: Vec<u8>,
+    /// Original file offset for interpolation_ranges array
+    pub original_ranges_offset: u32,
+    /// Original file offset for timestamps array
+    pub original_timestamps_offset: u32,
+    /// Original file offset for values array
+    pub original_values_offset: u32,
+}
+
 /// Raw data for sections that are not fully parsed
 #[derive(Debug, Clone, Default)]
 pub struct M2RawData {
@@ -317,9 +368,12 @@ pub struct M2RawData {
     /// Raw animation keyframe data for all ribbon emitter tracks
     /// Used to preserve ribbon animation data during roundtrip serialization
     pub ribbon_animation_data: Vec<RibbonAnimationRaw>,
+    /// Raw animation keyframe data for all texture animation tracks
+    /// Used to preserve texture animation data during roundtrip serialization
+    pub texture_animation_data: Vec<TextureAnimationRaw>,
     /// Transparency data (the actual transparency animations, not lookups)
     pub transparency: Vec<u8>,
-    /// Texture animations
+    /// Texture animations (legacy raw storage, being replaced by texture_animation_data)
     pub texture_animations: Vec<u8>,
     /// Color animations
     pub color_animations: Vec<u8>,
@@ -655,6 +709,58 @@ fn relocate_ribbon_animation_offsets(
     relocate_or_zero_animation_block(&mut emitter.height_below_animation, offset_map);
 }
 
+/// Relocates texture animation offsets in a texture animation to new positions
+fn relocate_texture_animation_offsets(
+    animation: &mut M2TextureAnimation,
+    offset_map: &HashMap<u32, u32>,
+) {
+    // Helper to relocate or zero an animation block
+    fn relocate_or_zero_animation_block<T: M2Parse + Default + Clone>(
+        block: &mut M2AnimationBlock<T>,
+        offset_map: &HashMap<u32, u32>,
+    ) {
+        let track = &mut block.track;
+
+        // Check if interpolation_ranges offset needs relocation
+        if !track.interpolation_ranges.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.interpolation_ranges.offset) {
+                track.interpolation_ranges.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if timestamps offset needs relocation
+        if !track.timestamps.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.timestamps.offset) {
+                track.timestamps.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if values offset needs relocation
+        if !track.values.array.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.values.array.offset) {
+                track.values.array.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+            }
+        }
+    }
+
+    relocate_or_zero_animation_block(&mut animation.translation_u, offset_map);
+    relocate_or_zero_animation_block(&mut animation.translation_v, offset_map);
+    relocate_or_zero_animation_block(&mut animation.rotation, offset_map);
+    relocate_or_zero_animation_block(&mut animation.scale_u, offset_map);
+    relocate_or_zero_animation_block(&mut animation.scale_v, offset_map);
+}
+
 /// Collects raw animation keyframe data for a single M2AnimationBlock
 ///
 /// Returns None if the track has no data, otherwise returns ParticleAnimationRaw
@@ -933,6 +1039,122 @@ fn collect_ribbon_animation_data<R: Read + Seek>(
     Ok(animation_data)
 }
 
+/// Collects raw keyframe data for a single texture animation track
+fn collect_texture_track_data<R: Read + Seek, T: M2Parse>(
+    reader: &mut R,
+    block: &M2AnimationBlock<T>,
+    animation_index: usize,
+    track_type: TextureTrackType,
+) -> Result<Option<TextureAnimationRaw>> {
+    let track = &block.track;
+
+    // Skip empty tracks
+    if track.timestamps.is_empty() && track.values.array.is_empty() {
+        return Ok(None);
+    }
+
+    // Read interpolation ranges (8 bytes per range: start u32 + end u32)
+    let interpolation_ranges = if !track.interpolation_ranges.is_empty() {
+        read_raw_bytes(reader, &track.interpolation_ranges.convert(), 8)?
+    } else {
+        Vec::new()
+    };
+
+    // Read timestamps (4 bytes per timestamp)
+    let timestamps = if !track.timestamps.is_empty() {
+        read_raw_bytes(reader, &track.timestamps.convert(), 4)?
+    } else {
+        Vec::new()
+    };
+
+    // Read values (4 bytes per f32 value)
+    let values = if !track.values.array.is_empty() {
+        read_raw_bytes(
+            reader,
+            &track.values.array.convert(),
+            track_type.value_size(),
+        )?
+    } else {
+        Vec::new()
+    };
+
+    Ok(Some(TextureAnimationRaw {
+        animation_index,
+        track_type,
+        interpolation_ranges,
+        timestamps,
+        values,
+        original_ranges_offset: track.interpolation_ranges.offset,
+        original_timestamps_offset: track.timestamps.offset,
+        original_values_offset: track.values.array.offset,
+    }))
+}
+
+/// Collects raw animation keyframe data for all texture animations in the model
+///
+/// This reads the actual keyframe bytes (interpolation_ranges, timestamps, values) from the file,
+/// storing them for later serialization with offset relocation.
+fn collect_texture_animation_data<R: Read + Seek>(
+    reader: &mut R,
+    animations: &[M2TextureAnimation],
+) -> Result<Vec<TextureAnimationRaw>> {
+    let mut animation_data = Vec::new();
+
+    for (anim_idx, anim) in animations.iter().enumerate() {
+        // Collect translation_u track (f32 = 4 bytes)
+        if let Some(data) = collect_texture_track_data(
+            reader,
+            &anim.translation_u,
+            anim_idx,
+            TextureTrackType::TranslationU,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect translation_v track (f32 = 4 bytes)
+        if let Some(data) = collect_texture_track_data(
+            reader,
+            &anim.translation_v,
+            anim_idx,
+            TextureTrackType::TranslationV,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect rotation track (f32 = 4 bytes)
+        if let Some(data) = collect_texture_track_data(
+            reader,
+            &anim.rotation,
+            anim_idx,
+            TextureTrackType::Rotation,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect scale_u track (f32 = 4 bytes)
+        if let Some(data) = collect_texture_track_data(
+            reader,
+            &anim.scale_u,
+            anim_idx,
+            TextureTrackType::ScaleU,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect scale_v track (f32 = 4 bytes)
+        if let Some(data) = collect_texture_track_data(
+            reader,
+            &anim.scale_v,
+            anim_idx,
+            TextureTrackType::ScaleV,
+        )? {
+            animation_data.push(data);
+        }
+    }
+
+    Ok(animation_data)
+}
+
 /// Collects raw embedded skin data for pre-WotLK M2 files (version <= 263)
 ///
 /// Pre-WotLK models have skin profile data embedded directly in the M2 file.
@@ -1181,6 +1403,7 @@ impl Default for M2Model {
             materials: Vec::new(),
             particle_emitters: Vec::new(),
             ribbon_emitters: Vec::new(),
+            texture_animations: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -1777,6 +2000,7 @@ impl M2Model {
             materials: Vec::new(),
             particle_emitters: Vec::new(),
             ribbon_emitters: Vec::new(),
+            texture_animations: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -2024,6 +2248,7 @@ impl M2Model {
             materials: Vec::new(),         // TODO: Parse from chunk
             particle_emitters: Vec::new(), // TODO: Parse from chunk
             ribbon_emitters: Vec::new(),   // TODO: Parse from chunk
+            texture_animations: Vec::new(), // TODO: Parse from chunk
             raw_data: M2RawData::default(),
             skin_file_ids: None,              // Will be populated from SFID chunk
             animation_file_ids: None,         // Will be populated from AFID chunk
@@ -2161,6 +2386,11 @@ impl M2Model {
             M2RibbonEmitter::parse(r, header.version)
         })?;
 
+        // Parse texture animations
+        let texture_animations = read_array(reader, &header.texture_animations.convert(), |r| {
+            M2TextureAnimation::parse(r)
+        })?;
+
         // Collect raw animation keyframe data for bones before constructing raw_data
         let bone_animation_data = collect_bone_animation_data(reader, &bones, header.version)?;
 
@@ -2169,6 +2399,9 @@ impl M2Model {
 
         // Collect raw animation keyframe data for ribbon emitters
         let ribbon_animation_data = collect_ribbon_animation_data(reader, &ribbon_emitters)?;
+
+        // Collect raw animation keyframe data for texture animations
+        let texture_animation_data = collect_texture_animation_data(reader, &texture_animations)?;
 
         // Collect embedded skin data for pre-WotLK models (version <= 263)
         let embedded_skins = collect_embedded_skin_data(reader, &header)?;
@@ -2180,6 +2413,7 @@ impl M2Model {
             embedded_skins,
             particle_animation_data,
             ribbon_animation_data,
+            texture_animation_data,
             transparency_lookup_table: read_array(
                 reader,
                 &header.transparency_lookup_table,
@@ -2222,6 +2456,7 @@ impl M2Model {
             materials,
             particle_emitters,
             ribbon_emitters,
+            texture_animations,
             raw_data,
             skin_file_ids: None,
             animation_file_ids: None,
@@ -3085,11 +3320,124 @@ impl M2Model {
             header.ribbon_emitters = M2Array::new(0, 0);
         }
 
+        // Write texture animations with animation data preservation
+        // Similar pattern to particle/ribbon emitters - write structures with relocated offsets, then animation data
+        if !self.texture_animations.is_empty() {
+            header.texture_animations =
+                M2Array::new(self.texture_animations.len() as u32, current_offset);
+
+            // First, write all animation structures to a temporary buffer to calculate their total size
+            let mut temp_anim_data = Vec::new();
+            for anim in &self.texture_animations {
+                let mut anim_data = Vec::new();
+                anim.write(&mut anim_data)?;
+                temp_anim_data.push(anim_data);
+            }
+            let anims_total_size: usize = temp_anim_data.iter().map(|v| v.len()).sum();
+
+            // Calculate where animation data will be written (after all animation structures)
+            let anim_data_start = current_offset + anims_total_size as u32;
+
+            // Check if we have animation data to preserve
+            if !self.raw_data.texture_animation_data.is_empty() {
+                // Build offset relocation map: old_offset -> new_offset
+                let mut offset_map: HashMap<u32, u32> = HashMap::new();
+                let mut anim_data_offset = anim_data_start;
+
+                use std::collections::hash_map::Entry;
+
+                for anim in &self.raw_data.texture_animation_data {
+                    // Map interpolation_ranges offset (skip if already mapped - shared data)
+                    if !anim.interpolation_ranges.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.interpolation_ranges.len() as u32;
+                        }
+                    }
+
+                    // Map timestamps offset (skip if already mapped - shared data)
+                    if !anim.timestamps.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                        {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.timestamps.len() as u32;
+                        }
+                    }
+
+                    // Map values offset (skip if already mapped - shared data)
+                    if !anim.values.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
+                            e.insert(anim_data_offset);
+                            anim_data_offset += anim.values.len() as u32;
+                        }
+                    }
+                }
+
+                // Write animations with relocated offsets
+                for anim in &self.texture_animations {
+                    let mut relocated_anim = anim.clone();
+                    relocate_texture_animation_offsets(&mut relocated_anim, &offset_map);
+
+                    let mut anim_data = Vec::new();
+                    relocated_anim.write(&mut anim_data)?;
+                    data_section.extend_from_slice(&anim_data);
+                }
+
+                // Write animation keyframe data (only write each unique offset once)
+                let mut written_offsets: std::collections::HashSet<u32> =
+                    std::collections::HashSet::new();
+
+                for anim in &self.raw_data.texture_animation_data {
+                    // Write interpolation_ranges only if not already written
+                    if !anim.interpolation_ranges.is_empty()
+                        && written_offsets.insert(anim.original_ranges_offset)
+                    {
+                        data_section.extend_from_slice(&anim.interpolation_ranges);
+                    }
+
+                    // Write timestamps only if not already written
+                    if !anim.timestamps.is_empty()
+                        && written_offsets.insert(anim.original_timestamps_offset)
+                    {
+                        data_section.extend_from_slice(&anim.timestamps);
+                    }
+
+                    // Write values only if not already written
+                    if !anim.values.is_empty()
+                        && written_offsets.insert(anim.original_values_offset)
+                    {
+                        data_section.extend_from_slice(&anim.values);
+                    }
+                }
+
+                current_offset = anim_data_offset;
+            } else {
+                // No animation data collected - write animations with zeroed animation tracks
+                // This happens when we're creating new animations or the source had no keyframes
+                for anim in &self.texture_animations {
+                    let mut static_anim = anim.clone();
+                    // Zero out all animation blocks by setting them to default
+                    static_anim.translation_u = M2AnimationBlock::default();
+                    static_anim.translation_v = M2AnimationBlock::default();
+                    static_anim.rotation = M2AnimationBlock::default();
+                    static_anim.scale_u = M2AnimationBlock::default();
+                    static_anim.scale_v = M2AnimationBlock::default();
+
+                    let mut anim_data = Vec::new();
+                    static_anim.write(&mut anim_data)?;
+                    data_section.extend_from_slice(&anim_data);
+                }
+
+                current_offset += anims_total_size as u32;
+            }
+        } else {
+            header.texture_animations = M2Array::new(0, 0);
+        }
+
         // Zero out sections we don't write yet (so header references are valid)
         // These sections have complex structures with embedded offsets that need proper serialization
         header.color_animations = M2Array::new(0, 0);
         header.transparency_lookup = M2Array::new(0, 0);
-        header.texture_animations = M2Array::new(0, 0);
         header.color_replacements = M2Array::new(0, 0);
         header.attachments = M2Array::new(0, 0);
         header.events = M2Array::new(0, 0);
@@ -3832,6 +4180,7 @@ mod tests {
             materials: Vec::new(),
             particle_emitters: Vec::new(),
             ribbon_emitters: Vec::new(),
+            texture_animations: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -3895,6 +4244,7 @@ mod tests {
             materials: Vec::new(),
             particle_emitters: Vec::new(),
             ribbon_emitters: Vec::new(),
+            texture_animations: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: Some(SkinFileIds {
                 ids: vec![123456, 789012],
@@ -4059,6 +4409,7 @@ mod tests {
             materials: Vec::new(),
             particle_emitters: Vec::new(),
             ribbon_emitters: Vec::new(),
+            texture_animations: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -4125,6 +4476,7 @@ mod tests {
             materials: Vec::new(),
             particle_emitters: Vec::new(),
             ribbon_emitters: Vec::new(),
+            texture_animations: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,

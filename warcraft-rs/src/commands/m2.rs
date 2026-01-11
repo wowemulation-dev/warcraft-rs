@@ -638,6 +638,154 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
 
     root = root.add_child(material_node);
 
+    // Add animation data section showing preserved animation tracks
+    let mut anim_data_node =
+        TreeNode::new("Animation Track Data (Preserved)".to_string(), NodeType::Data);
+
+    // Bone animation data summary
+    let bone_anim_count = model.raw_data.bone_animation_data.len();
+    if bone_anim_count > 0 {
+        // Count tracks by type
+        let mut translation_count = 0;
+        let mut rotation_count = 0;
+        let mut scale_count = 0;
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.bone_animation_data {
+            match anim.track_type {
+                wow_m2::model::TrackType::Translation => translation_count += 1,
+                wow_m2::model::TrackType::Rotation => rotation_count += 1,
+                wow_m2::model::TrackType::Scale => scale_count += 1,
+            }
+            // Each timestamp is 4 bytes
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let bone_node = TreeNode::new("Bone Animations".to_string(), NodeType::Data)
+            .with_metadata("total_tracks", &bone_anim_count.to_string())
+            .with_metadata("translation_tracks", &translation_count.to_string())
+            .with_metadata("rotation_tracks", &rotation_count.to_string())
+            .with_metadata("scale_tracks", &scale_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(bone_node);
+    }
+
+    // Particle emitter animation data summary
+    let particle_anim_count = model.raw_data.particle_animation_data.len();
+    if particle_anim_count > 0 {
+        // Count tracks by type
+        let mut track_counts: std::collections::HashMap<&str, usize> =
+            std::collections::HashMap::new();
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.particle_animation_data {
+            let track_name = match anim.track_type {
+                wow_m2::model::ParticleTrackType::EmissionSpeed => "emission_speed",
+                wow_m2::model::ParticleTrackType::EmissionRate => "emission_rate",
+                wow_m2::model::ParticleTrackType::EmissionArea => "emission_area",
+                wow_m2::model::ParticleTrackType::XYScale => "xy_scale",
+                wow_m2::model::ParticleTrackType::ZScale => "z_scale",
+                wow_m2::model::ParticleTrackType::Color => "color",
+                wow_m2::model::ParticleTrackType::Transparency => "transparency",
+                wow_m2::model::ParticleTrackType::Size => "size",
+                wow_m2::model::ParticleTrackType::Intensity => "intensity",
+                wow_m2::model::ParticleTrackType::ZSource => "z_source",
+            };
+            *track_counts.entry(track_name).or_insert(0) += 1;
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let emitter_count = model.particle_emitters.len();
+        let particle_node = TreeNode::new("Particle Emitter Animations".to_string(), NodeType::Data)
+            .with_metadata("emitters", &emitter_count.to_string())
+            .with_metadata("total_tracks", &particle_anim_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string())
+            .with_metadata(
+                "track_types",
+                &format!("{} unique types", track_counts.len()),
+            );
+        anim_data_node = anim_data_node.add_child(particle_node);
+    }
+
+    // Ribbon emitter animation data summary
+    let ribbon_anim_count = model.raw_data.ribbon_animation_data.len();
+    if ribbon_anim_count > 0 {
+        let mut color_count = 0;
+        let mut alpha_count = 0;
+        let mut height_above_count = 0;
+        let mut height_below_count = 0;
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.ribbon_animation_data {
+            match anim.track_type {
+                wow_m2::model::RibbonTrackType::Color => color_count += 1,
+                wow_m2::model::RibbonTrackType::Alpha => alpha_count += 1,
+                wow_m2::model::RibbonTrackType::HeightAbove => height_above_count += 1,
+                wow_m2::model::RibbonTrackType::HeightBelow => height_below_count += 1,
+            }
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let emitter_count = model.ribbon_emitters.len();
+        let ribbon_node = TreeNode::new("Ribbon Emitter Animations".to_string(), NodeType::Data)
+            .with_metadata("emitters", &emitter_count.to_string())
+            .with_metadata("total_tracks", &ribbon_anim_count.to_string())
+            .with_metadata("color_tracks", &color_count.to_string())
+            .with_metadata("alpha_tracks", &alpha_count.to_string())
+            .with_metadata("height_above_tracks", &height_above_count.to_string())
+            .with_metadata("height_below_tracks", &height_below_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(ribbon_node);
+    }
+
+    // Texture animation data summary
+    let texture_anim_count = model.raw_data.texture_animation_data.len();
+    if texture_anim_count > 0 {
+        let mut translation_u_count = 0;
+        let mut translation_v_count = 0;
+        let mut rotation_count = 0;
+        let mut scale_u_count = 0;
+        let mut scale_v_count = 0;
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.texture_animation_data {
+            match anim.track_type {
+                wow_m2::model::TextureTrackType::TranslationU => translation_u_count += 1,
+                wow_m2::model::TextureTrackType::TranslationV => translation_v_count += 1,
+                wow_m2::model::TextureTrackType::Rotation => rotation_count += 1,
+                wow_m2::model::TextureTrackType::ScaleU => scale_u_count += 1,
+                wow_m2::model::TextureTrackType::ScaleV => scale_v_count += 1,
+            }
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let anim_count = model.texture_animations.len();
+        let texture_node = TreeNode::new("Texture Animations".to_string(), NodeType::Data)
+            .with_metadata("animations", &anim_count.to_string())
+            .with_metadata("total_tracks", &texture_anim_count.to_string())
+            .with_metadata("translation_u_tracks", &translation_u_count.to_string())
+            .with_metadata("translation_v_tracks", &translation_v_count.to_string())
+            .with_metadata("rotation_tracks", &rotation_count.to_string())
+            .with_metadata("scale_u_tracks", &scale_u_count.to_string())
+            .with_metadata("scale_v_tracks", &scale_v_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(texture_node);
+    }
+
+    // Only add the animation data section if we have any animation data
+    let has_anim_data = bone_anim_count > 0
+        || particle_anim_count > 0
+        || ribbon_anim_count > 0
+        || texture_anim_count > 0;
+
+    if has_anim_data {
+        anim_data_node = anim_data_node.with_metadata(
+            "status",
+            "✅ Animation data preserved for roundtrip",
+        );
+        root = root.add_child(anim_data_node);
+    }
+
     // Add version-specific features
     if let Some(version) = model.header.version() {
         if version >= M2Version::Cataclysm {

@@ -46,6 +46,18 @@ and this project adheres to
   - Added `RibbonAnimationRaw` struct for raw keyframe storage
   - Ribbon animation data collected during parse
   - Animation offsets relocated during write
+- **M2 Format**: Texture animation preservation in roundtrip
+  - Added `TextureTrackType` enum for 5 animation track types
+  - Added `TextureAnimationRaw` struct for raw keyframe storage
+  - Texture animation data collected during parse (translation U/V, rotation, scale U/V)
+  - Animation offsets relocated during write
+  - Handles UV scrolling, rotation, and scaling effects
+- **CLI**: Extended `m2 tree` command to display animation track data
+  - Shows bone animation track summary (translation, rotation, scale counts)
+  - Shows particle emitter animation track summary
+  - Shows ribbon emitter animation track summary
+  - Shows texture animation track summary
+  - Displays total keyframe counts for each animation type
 
 ## [0.5.0] - 2025-01-09
 
