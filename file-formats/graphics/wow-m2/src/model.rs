@@ -8,9 +8,11 @@ use std::path::Path;
 use crate::chunks::animation::{M2Animation, M2AnimationBlock};
 use crate::chunks::attachment::M2Attachment;
 use crate::chunks::bone::M2Bone;
+use crate::chunks::camera::M2Camera;
 use crate::chunks::color_animation::M2ColorAnimation;
 use crate::chunks::event::M2Event;
 use crate::chunks::infrastructure::{ChunkHeader, ChunkReader};
+use crate::chunks::light::M2Light;
 use crate::chunks::m2_track::{M2Track, M2TrackQuat, M2TrackVec3};
 use crate::chunks::material::M2Material;
 use crate::chunks::particle_emitter::M2ParticleEmitter;
@@ -77,6 +79,10 @@ pub struct M2Model {
     pub events: Vec<M2Event>,
     /// Attachments
     pub attachments: Vec<M2Attachment>,
+    /// Cameras
+    pub cameras: Vec<M2Camera>,
+    /// Lights
+    pub lights: Vec<M2Light>,
     /// Raw data for other sections
     /// This is used to preserve data that we don't fully parse yet
     pub raw_data: M2RawData,
@@ -504,6 +510,106 @@ pub struct AttachmentAnimationRaw {
     pub original_values_offset: u32,
 }
 
+/// Type of animation track for camera structures
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CameraTrackType {
+    /// Camera position animation (C3Vector = 12 bytes)
+    #[default]
+    Position,
+    /// Target position animation (C3Vector = 12 bytes)
+    TargetPosition,
+    /// Roll animation (f32 = 4 bytes)
+    Roll,
+}
+
+impl CameraTrackType {
+    /// Returns the size in bytes of a single keyframe value for this track type
+    pub fn value_size(&self) -> usize {
+        match self {
+            CameraTrackType::Position | CameraTrackType::TargetPosition => 12, // C3Vector
+            CameraTrackType::Roll => 4,                                        // f32
+        }
+    }
+}
+
+/// Raw animation data for a single camera track
+///
+/// This preserves the exact bytes from the original file for camera animation keyframes,
+/// allowing roundtrip serialization without data loss. Cameras have 3 animation tracks
+/// (position, target_position, roll).
+#[derive(Debug, Clone, Default)]
+pub struct CameraAnimationRaw {
+    /// Index of the camera this track belongs to
+    pub camera_index: usize,
+    /// Type of animation track
+    pub track_type: CameraTrackType,
+    /// Raw interpolation range bytes (8 bytes per range: start u32 + end u32)
+    pub interpolation_ranges: Vec<u8>,
+    /// Raw timestamp bytes (4 bytes per timestamp)
+    pub timestamps: Vec<u8>,
+    /// Raw keyframe value bytes (size depends on track type)
+    pub values: Vec<u8>,
+    /// Original file offset for interpolation_ranges array
+    pub original_ranges_offset: u32,
+    /// Original file offset for timestamps array
+    pub original_timestamps_offset: u32,
+    /// Original file offset for values array
+    pub original_values_offset: u32,
+}
+
+/// Type of animation track for light structures
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LightTrackType {
+    /// Ambient color animation (M2Color = 12 bytes: RGB as f32)
+    #[default]
+    AmbientColor,
+    /// Diffuse color animation (M2Color = 12 bytes: RGB as f32)
+    DiffuseColor,
+    /// Attenuation start animation (f32 = 4 bytes)
+    AttenuationStart,
+    /// Attenuation end animation (f32 = 4 bytes)
+    AttenuationEnd,
+    /// Visibility animation (f32 = 4 bytes)
+    Visibility,
+}
+
+impl LightTrackType {
+    /// Returns the size in bytes of a single keyframe value for this track type
+    pub fn value_size(&self) -> usize {
+        match self {
+            LightTrackType::AmbientColor | LightTrackType::DiffuseColor => 12, // M2Color (3 f32s)
+            LightTrackType::AttenuationStart
+            | LightTrackType::AttenuationEnd
+            | LightTrackType::Visibility => 4, // f32
+        }
+    }
+}
+
+/// Raw animation data for a single light track
+///
+/// This preserves the exact bytes from the original file for light animation keyframes,
+/// allowing roundtrip serialization without data loss. Lights have 5 animation tracks
+/// (ambient_color, diffuse_color, attenuation_start, attenuation_end, visibility).
+#[derive(Debug, Clone, Default)]
+pub struct LightAnimationRaw {
+    /// Index of the light this track belongs to
+    pub light_index: usize,
+    /// Type of animation track
+    pub track_type: LightTrackType,
+    /// Raw interpolation range bytes (8 bytes per range: start u32 + end u32)
+    pub interpolation_ranges: Vec<u8>,
+    /// Raw timestamp bytes (4 bytes per timestamp)
+    pub timestamps: Vec<u8>,
+    /// Raw keyframe value bytes (size depends on track type)
+    pub values: Vec<u8>,
+    /// Original file offset for interpolation_ranges array
+    pub original_ranges_offset: u32,
+    /// Original file offset for timestamps array
+    pub original_timestamps_offset: u32,
+    /// Original file offset for values array
+    pub original_values_offset: u32,
+}
+
 /// Raw data for sections that are not fully parsed
 #[derive(Debug, Clone, Default)]
 pub struct M2RawData {
@@ -534,6 +640,12 @@ pub struct M2RawData {
     /// Raw animation keyframe data for all attachment tracks
     /// Used to preserve attachment animation data during roundtrip serialization
     pub attachment_animation_data: Vec<AttachmentAnimationRaw>,
+    /// Raw animation keyframe data for all camera tracks
+    /// Used to preserve camera animation data during roundtrip serialization
+    pub camera_animation_data: Vec<CameraAnimationRaw>,
+    /// Raw animation keyframe data for all light tracks
+    /// Used to preserve light animation data during roundtrip serialization
+    pub light_animation_data: Vec<LightAnimationRaw>,
     /// Transparency data (the actual transparency animations, not lookups)
     pub transparency: Vec<u8>,
     /// Texture animations (legacy raw storage, being replaced by texture_animation_data)
@@ -1085,6 +1197,107 @@ fn relocate_attachment_animation_offsets(
     }
 
     relocate_or_zero_animation_block(&mut attachment.scale_animation, offset_map);
+}
+
+/// Relocates camera animation offsets to new positions
+///
+/// Cameras have three animation tracks: position, target_position, and roll.
+fn relocate_camera_animation_offsets(camera: &mut M2Camera, offset_map: &HashMap<u32, u32>) {
+    // Helper to relocate or zero an animation block
+    fn relocate_or_zero_animation_block<T: M2Parse + Default + Clone>(
+        block: &mut M2AnimationBlock<T>,
+        offset_map: &HashMap<u32, u32>,
+    ) {
+        let track = &mut block.track;
+
+        // Check if interpolation_ranges offset needs relocation
+        if !track.interpolation_ranges.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.interpolation_ranges.offset) {
+                track.interpolation_ranges.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if timestamps offset needs relocation
+        if !track.timestamps.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.timestamps.offset) {
+                track.timestamps.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if values offset needs relocation
+        if !track.values.array.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.values.array.offset) {
+                track.values.array.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+            }
+        }
+    }
+
+    relocate_or_zero_animation_block(&mut camera.position_animation, offset_map);
+    relocate_or_zero_animation_block(&mut camera.target_position_animation, offset_map);
+    relocate_or_zero_animation_block(&mut camera.roll_animation, offset_map);
+}
+
+/// Relocates light animation offsets to new positions
+///
+/// Lights have five animation tracks: ambient_color, diffuse_color, attenuation_start,
+/// attenuation_end, and visibility.
+fn relocate_light_animation_offsets(light: &mut M2Light, offset_map: &HashMap<u32, u32>) {
+    // Helper to relocate or zero an animation block
+    fn relocate_or_zero_animation_block<T: M2Parse + Default + Clone>(
+        block: &mut M2AnimationBlock<T>,
+        offset_map: &HashMap<u32, u32>,
+    ) {
+        let track = &mut block.track;
+
+        // Check if interpolation_ranges offset needs relocation
+        if !track.interpolation_ranges.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.interpolation_ranges.offset) {
+                track.interpolation_ranges.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if timestamps offset needs relocation
+        if !track.timestamps.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.timestamps.offset) {
+                track.timestamps.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+                return;
+            }
+        }
+
+        // Check if values offset needs relocation
+        if !track.values.array.is_empty() {
+            if let Some(&new_offset) = offset_map.get(&track.values.array.offset) {
+                track.values.array.offset = new_offset;
+            } else {
+                // Data not collected - zero out the track
+                *block = M2AnimationBlock::default();
+            }
+        }
+    }
+
+    relocate_or_zero_animation_block(&mut light.ambient_color_animation, offset_map);
+    relocate_or_zero_animation_block(&mut light.diffuse_color_animation, offset_map);
+    relocate_or_zero_animation_block(&mut light.attenuation_start_animation, offset_map);
+    relocate_or_zero_animation_block(&mut light.attenuation_end_animation, offset_map);
+    relocate_or_zero_animation_block(&mut light.visibility_animation, offset_map);
 }
 
 /// Collects raw animation keyframe data for a single M2AnimationBlock
@@ -1733,6 +1946,218 @@ fn collect_attachment_animation_data<R: Read + Seek>(
     Ok(animation_data)
 }
 
+/// Collects raw keyframe data for a single camera animation track
+fn collect_camera_track_data<R: Read + Seek, T: M2Parse>(
+    reader: &mut R,
+    block: &M2AnimationBlock<T>,
+    camera_index: usize,
+    track_type: CameraTrackType,
+) -> Result<Option<CameraAnimationRaw>> {
+    let track = &block.track;
+
+    // Skip empty tracks
+    if track.timestamps.is_empty() && track.values.array.is_empty() {
+        return Ok(None);
+    }
+
+    // Read interpolation ranges (8 bytes per range: start u32 + end u32)
+    let interpolation_ranges = if !track.interpolation_ranges.is_empty() {
+        read_raw_bytes(reader, &track.interpolation_ranges.convert(), 8)?
+    } else {
+        Vec::new()
+    };
+
+    // Read timestamps (4 bytes per timestamp)
+    let timestamps = if !track.timestamps.is_empty() {
+        read_raw_bytes(reader, &track.timestamps.convert(), 4)?
+    } else {
+        Vec::new()
+    };
+
+    // Read values (size depends on track type)
+    let values = if !track.values.array.is_empty() {
+        read_raw_bytes(
+            reader,
+            &track.values.array.convert(),
+            track_type.value_size(),
+        )?
+    } else {
+        Vec::new()
+    };
+
+    Ok(Some(CameraAnimationRaw {
+        camera_index,
+        track_type,
+        interpolation_ranges,
+        timestamps,
+        values,
+        original_ranges_offset: track.interpolation_ranges.offset,
+        original_timestamps_offset: track.timestamps.offset,
+        original_values_offset: track.values.array.offset,
+    }))
+}
+
+/// Collects raw animation keyframe data for all cameras in the model
+///
+/// This reads the actual keyframe bytes (interpolation_ranges, timestamps, values) from the file,
+/// storing them for later serialization with offset relocation.
+fn collect_camera_animation_data<R: Read + Seek>(
+    reader: &mut R,
+    cameras: &[M2Camera],
+) -> Result<Vec<CameraAnimationRaw>> {
+    let mut animation_data = Vec::new();
+
+    for (camera_idx, camera) in cameras.iter().enumerate() {
+        // Collect position track (C3Vector = 12 bytes)
+        if let Some(data) = collect_camera_track_data(
+            reader,
+            &camera.position_animation,
+            camera_idx,
+            CameraTrackType::Position,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect target position track (C3Vector = 12 bytes)
+        if let Some(data) = collect_camera_track_data(
+            reader,
+            &camera.target_position_animation,
+            camera_idx,
+            CameraTrackType::TargetPosition,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect roll track (f32 = 4 bytes)
+        if let Some(data) = collect_camera_track_data(
+            reader,
+            &camera.roll_animation,
+            camera_idx,
+            CameraTrackType::Roll,
+        )? {
+            animation_data.push(data);
+        }
+    }
+
+    Ok(animation_data)
+}
+
+/// Collects raw keyframe data for a single light animation track
+fn collect_light_track_data<R: Read + Seek, T: M2Parse>(
+    reader: &mut R,
+    block: &M2AnimationBlock<T>,
+    light_index: usize,
+    track_type: LightTrackType,
+) -> Result<Option<LightAnimationRaw>> {
+    let track = &block.track;
+
+    // Skip empty tracks
+    if track.timestamps.is_empty() && track.values.array.is_empty() {
+        return Ok(None);
+    }
+
+    // Read interpolation ranges (8 bytes per range: start u32 + end u32)
+    let interpolation_ranges = if !track.interpolation_ranges.is_empty() {
+        read_raw_bytes(reader, &track.interpolation_ranges.convert(), 8)?
+    } else {
+        Vec::new()
+    };
+
+    // Read timestamps (4 bytes per timestamp)
+    let timestamps = if !track.timestamps.is_empty() {
+        read_raw_bytes(reader, &track.timestamps.convert(), 4)?
+    } else {
+        Vec::new()
+    };
+
+    // Read values (size depends on track type)
+    let values = if !track.values.array.is_empty() {
+        read_raw_bytes(
+            reader,
+            &track.values.array.convert(),
+            track_type.value_size(),
+        )?
+    } else {
+        Vec::new()
+    };
+
+    Ok(Some(LightAnimationRaw {
+        light_index,
+        track_type,
+        interpolation_ranges,
+        timestamps,
+        values,
+        original_ranges_offset: track.interpolation_ranges.offset,
+        original_timestamps_offset: track.timestamps.offset,
+        original_values_offset: track.values.array.offset,
+    }))
+}
+
+/// Collects raw animation keyframe data for all lights in the model
+///
+/// This reads the actual keyframe bytes (interpolation_ranges, timestamps, values) from the file,
+/// storing them for later serialization with offset relocation.
+fn collect_light_animation_data<R: Read + Seek>(
+    reader: &mut R,
+    lights: &[M2Light],
+) -> Result<Vec<LightAnimationRaw>> {
+    let mut animation_data = Vec::new();
+
+    for (light_idx, light) in lights.iter().enumerate() {
+        // Collect ambient color track (M2Color = 12 bytes: 3 × f32)
+        if let Some(data) = collect_light_track_data(
+            reader,
+            &light.ambient_color_animation,
+            light_idx,
+            LightTrackType::AmbientColor,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect diffuse color track (M2Color = 12 bytes: 3 × f32)
+        if let Some(data) = collect_light_track_data(
+            reader,
+            &light.diffuse_color_animation,
+            light_idx,
+            LightTrackType::DiffuseColor,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect attenuation start track (f32 = 4 bytes)
+        if let Some(data) = collect_light_track_data(
+            reader,
+            &light.attenuation_start_animation,
+            light_idx,
+            LightTrackType::AttenuationStart,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect attenuation end track (f32 = 4 bytes)
+        if let Some(data) = collect_light_track_data(
+            reader,
+            &light.attenuation_end_animation,
+            light_idx,
+            LightTrackType::AttenuationEnd,
+        )? {
+            animation_data.push(data);
+        }
+
+        // Collect visibility track (f32 = 4 bytes)
+        if let Some(data) = collect_light_track_data(
+            reader,
+            &light.visibility_animation,
+            light_idx,
+            LightTrackType::Visibility,
+        )? {
+            animation_data.push(data);
+        }
+    }
+
+    Ok(animation_data)
+}
+
 /// Collects raw embedded skin data for pre-WotLK M2 files (version <= 263)
 ///
 /// Pre-WotLK models have skin profile data embedded directly in the M2 file.
@@ -1986,6 +2411,8 @@ impl Default for M2Model {
             transparency_animations: Vec::new(),
             events: Vec::new(),
             attachments: Vec::new(),
+            cameras: Vec::new(),
+            lights: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -2587,6 +3014,8 @@ impl M2Model {
             transparency_animations: Vec::new(),
             events: Vec::new(),
             attachments: Vec::new(),
+            cameras: Vec::new(),
+            lights: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -2838,7 +3267,9 @@ impl M2Model {
             color_animations: Vec::new(),   // TODO: Parse from chunk
             transparency_animations: Vec::new(), // TODO: Parse from chunk
             events: Vec::new(),             // TODO: Parse from chunk
-            attachments: Vec::new(),        // TODO: Parse from chunk
+            attachments: Vec::new(),
+            cameras: Vec::new(),
+            lights: Vec::new(), // TODO: Parse from chunk
             raw_data: M2RawData::default(),
             skin_file_ids: None,              // Will be populated from SFID chunk
             animation_file_ids: None,         // Will be populated from AFID chunk
@@ -3003,6 +3434,16 @@ impl M2Model {
             M2Attachment::parse(r, header.version)
         })?;
 
+        // Parse cameras
+        let cameras = read_array(reader, &header.cameras.convert(), |r| {
+            M2Camera::parse(r, header.version)
+        })?;
+
+        // Parse lights
+        let lights = read_array(reader, &header.lights.convert(), |r| {
+            M2Light::parse(r, header.version)
+        })?;
+
         // Collect raw animation keyframe data for bones before constructing raw_data
         let bone_animation_data = collect_bone_animation_data(reader, &bones, header.version)?;
 
@@ -3028,6 +3469,12 @@ impl M2Model {
         // Collect raw animation keyframe data for attachments
         let attachment_animation_data = collect_attachment_animation_data(reader, &attachments)?;
 
+        // Collect raw animation keyframe data for cameras
+        let camera_animation_data = collect_camera_animation_data(reader, &cameras)?;
+
+        // Collect raw animation keyframe data for lights
+        let light_animation_data = collect_light_animation_data(reader, &lights)?;
+
         // Collect embedded skin data for pre-WotLK models (version <= 263)
         let embedded_skins = collect_embedded_skin_data(reader, &header)?;
 
@@ -3043,6 +3490,8 @@ impl M2Model {
             transparency_animation_data,
             event_data,
             attachment_animation_data,
+            camera_animation_data,
+            light_animation_data,
             transparency_lookup_table: read_array(
                 reader,
                 &header.transparency_lookup_table,
@@ -3090,6 +3539,8 @@ impl M2Model {
             transparency_animations,
             events,
             attachments,
+            cameras,
+            lights,
             raw_data,
             skin_file_ids: None,
             animation_file_ids: None,
@@ -4477,11 +4928,235 @@ impl M2Model {
             header.attachments = M2Array::new(0, 0);
         }
 
+        // ==============================
+        // CAMERAS SECTION
+        // ==============================
+        // Cameras have position, target_position, and roll animation tracks
+        if !self.cameras.is_empty() {
+            header.cameras = M2Array::new(self.cameras.len() as u32, current_offset);
+
+            // First, write all camera structures to a temporary buffer to calculate their total size
+            let mut temp_camera_data = Vec::new();
+            for camera in &self.cameras {
+                let mut camera_data = Vec::new();
+                camera.write(&mut camera_data, header.version)?;
+                temp_camera_data.push(camera_data);
+            }
+            let cameras_total_size: usize = temp_camera_data.iter().map(|v| v.len()).sum();
+
+            // Calculate where camera animation data will be written (after all camera structures)
+            let camera_data_start = current_offset + cameras_total_size as u32;
+
+            // Check if we have camera animation data to preserve
+            if !self.raw_data.camera_animation_data.is_empty() {
+                // Build offset relocation map: old_offset -> new_offset
+                let mut offset_map: HashMap<u32, u32> = HashMap::new();
+                let mut camera_data_offset = camera_data_start;
+
+                use std::collections::hash_map::Entry;
+
+                for anim in &self.raw_data.camera_animation_data {
+                    // Map interpolation_ranges offset (skip if already mapped - shared data)
+                    if !anim.interpolation_ranges.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
+                            e.insert(camera_data_offset);
+                            camera_data_offset += anim.interpolation_ranges.len() as u32;
+                        }
+                    }
+
+                    // Map timestamps offset (skip if already mapped - shared data)
+                    if !anim.timestamps.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                        {
+                            e.insert(camera_data_offset);
+                            camera_data_offset += anim.timestamps.len() as u32;
+                        }
+                    }
+
+                    // Map values offset (skip if already mapped - shared data)
+                    if !anim.values.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
+                            e.insert(camera_data_offset);
+                            camera_data_offset += anim.values.len() as u32;
+                        }
+                    }
+                }
+
+                // Write cameras with relocated offsets
+                for camera in &self.cameras {
+                    let mut relocated_camera = camera.clone();
+                    relocate_camera_animation_offsets(&mut relocated_camera, &offset_map);
+
+                    let mut camera_data = Vec::new();
+                    relocated_camera.write(&mut camera_data, header.version)?;
+                    data_section.extend_from_slice(&camera_data);
+                }
+
+                // Write animation keyframe data (only write each unique offset once)
+                let mut written_offsets: std::collections::HashSet<u32> =
+                    std::collections::HashSet::new();
+
+                for anim in &self.raw_data.camera_animation_data {
+                    // Write interpolation_ranges only if not already written
+                    if !anim.interpolation_ranges.is_empty()
+                        && written_offsets.insert(anim.original_ranges_offset)
+                    {
+                        data_section.extend_from_slice(&anim.interpolation_ranges);
+                    }
+
+                    // Write timestamps only if not already written
+                    if !anim.timestamps.is_empty()
+                        && written_offsets.insert(anim.original_timestamps_offset)
+                    {
+                        data_section.extend_from_slice(&anim.timestamps);
+                    }
+
+                    // Write values only if not already written
+                    if !anim.values.is_empty()
+                        && written_offsets.insert(anim.original_values_offset)
+                    {
+                        data_section.extend_from_slice(&anim.values);
+                    }
+                }
+
+                current_offset = camera_data_offset;
+            } else {
+                // No camera animation data collected - write cameras with zeroed animation tracks
+                for camera in &self.cameras {
+                    let mut static_camera = camera.clone();
+                    // Zero out all animation blocks
+                    static_camera.position_animation = M2AnimationBlock::default();
+                    static_camera.target_position_animation = M2AnimationBlock::default();
+                    static_camera.roll_animation = M2AnimationBlock::default();
+
+                    let mut camera_data = Vec::new();
+                    static_camera.write(&mut camera_data, header.version)?;
+                    data_section.extend_from_slice(&camera_data);
+                }
+
+                current_offset += cameras_total_size as u32;
+            }
+        } else {
+            header.cameras = M2Array::new(0, 0);
+        }
+
+        // ==============================
+        // LIGHTS SECTION
+        // ==============================
+        // Lights have ambient_color, diffuse_color, attenuation_start, attenuation_end, and visibility animation tracks
+        if !self.lights.is_empty() {
+            header.lights = M2Array::new(self.lights.len() as u32, current_offset);
+
+            // First, write all light structures to a temporary buffer to calculate their total size
+            let mut temp_light_data = Vec::new();
+            for light in &self.lights {
+                let mut light_data = Vec::new();
+                light.write(&mut light_data, header.version)?;
+                temp_light_data.push(light_data);
+            }
+            let lights_total_size: usize = temp_light_data.iter().map(|v| v.len()).sum();
+
+            // Calculate where light animation data will be written (after all light structures)
+            let light_data_start = current_offset + lights_total_size as u32;
+
+            // Check if we have light animation data to preserve
+            if !self.raw_data.light_animation_data.is_empty() {
+                // Build offset relocation map: old_offset -> new_offset
+                let mut offset_map: HashMap<u32, u32> = HashMap::new();
+                let mut light_data_offset = light_data_start;
+
+                use std::collections::hash_map::Entry;
+
+                for anim in &self.raw_data.light_animation_data {
+                    // Map interpolation_ranges offset (skip if already mapped - shared data)
+                    if !anim.interpolation_ranges.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
+                            e.insert(light_data_offset);
+                            light_data_offset += anim.interpolation_ranges.len() as u32;
+                        }
+                    }
+
+                    // Map timestamps offset (skip if already mapped - shared data)
+                    if !anim.timestamps.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                        {
+                            e.insert(light_data_offset);
+                            light_data_offset += anim.timestamps.len() as u32;
+                        }
+                    }
+
+                    // Map values offset (skip if already mapped - shared data)
+                    if !anim.values.is_empty() {
+                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
+                            e.insert(light_data_offset);
+                            light_data_offset += anim.values.len() as u32;
+                        }
+                    }
+                }
+
+                // Write lights with relocated offsets
+                for light in &self.lights {
+                    let mut relocated_light = light.clone();
+                    relocate_light_animation_offsets(&mut relocated_light, &offset_map);
+
+                    let mut light_data = Vec::new();
+                    relocated_light.write(&mut light_data, header.version)?;
+                    data_section.extend_from_slice(&light_data);
+                }
+
+                // Write animation keyframe data (only write each unique offset once)
+                let mut written_offsets: std::collections::HashSet<u32> =
+                    std::collections::HashSet::new();
+
+                for anim in &self.raw_data.light_animation_data {
+                    // Write interpolation_ranges only if not already written
+                    if !anim.interpolation_ranges.is_empty()
+                        && written_offsets.insert(anim.original_ranges_offset)
+                    {
+                        data_section.extend_from_slice(&anim.interpolation_ranges);
+                    }
+
+                    // Write timestamps only if not already written
+                    if !anim.timestamps.is_empty()
+                        && written_offsets.insert(anim.original_timestamps_offset)
+                    {
+                        data_section.extend_from_slice(&anim.timestamps);
+                    }
+
+                    // Write values only if not already written
+                    if !anim.values.is_empty()
+                        && written_offsets.insert(anim.original_values_offset)
+                    {
+                        data_section.extend_from_slice(&anim.values);
+                    }
+                }
+
+                current_offset = light_data_offset;
+            } else {
+                // No light animation data collected - write lights with zeroed animation tracks
+                for light in &self.lights {
+                    let mut static_light = light.clone();
+                    // Zero out all animation blocks
+                    static_light.ambient_color_animation = M2AnimationBlock::default();
+                    static_light.diffuse_color_animation = M2AnimationBlock::default();
+                    static_light.attenuation_start_animation = M2AnimationBlock::default();
+                    static_light.attenuation_end_animation = M2AnimationBlock::default();
+                    static_light.visibility_animation = M2AnimationBlock::default();
+
+                    let mut light_data = Vec::new();
+                    static_light.write(&mut light_data, header.version)?;
+                    data_section.extend_from_slice(&light_data);
+                }
+
+                current_offset += lights_total_size as u32;
+            }
+        } else {
+            header.lights = M2Array::new(0, 0);
+        }
+
         // Zero out sections we don't write yet (so header references are valid)
         // These sections have complex structures with embedded offsets that need proper serialization
         header.color_replacements = M2Array::new(0, 0);
-        header.lights = M2Array::new(0, 0);
-        header.cameras = M2Array::new(0, 0);
         // Note: ribbon_emitters is now handled in the serialization section above
         // Note: particle_emitters is now handled in the serialization section above
 
@@ -5224,6 +5899,8 @@ mod tests {
             transparency_animations: Vec::new(),
             events: Vec::new(),
             attachments: Vec::new(),
+            cameras: Vec::new(),
+            lights: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -5292,6 +5969,8 @@ mod tests {
             transparency_animations: Vec::new(),
             events: Vec::new(),
             attachments: Vec::new(),
+            cameras: Vec::new(),
+            lights: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: Some(SkinFileIds {
                 ids: vec![123456, 789012],
@@ -5461,6 +6140,8 @@ mod tests {
             transparency_animations: Vec::new(),
             events: Vec::new(),
             attachments: Vec::new(),
+            cameras: Vec::new(),
+            lights: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,
@@ -5532,6 +6213,8 @@ mod tests {
             transparency_animations: Vec::new(),
             events: Vec::new(),
             attachments: Vec::new(),
+            cameras: Vec::new(),
+            lights: Vec::new(),
             raw_data: M2RawData::default(),
             skin_file_ids: None,
             animation_file_ids: None,

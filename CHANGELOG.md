@@ -76,6 +76,18 @@ and this project adheres to
   - Attachment animation data collected during parse
   - Animation offsets relocated during write
   - Handles attach point scale animations (weapons, effects)
+- **M2 Format**: Camera animation preservation in roundtrip
+  - Added `CameraTrackType` enum for 3 animation track types
+  - Added `CameraAnimationRaw` struct for raw keyframe storage
+  - Camera animation data collected during parse (position, target position, roll)
+  - Animation offsets relocated during write
+  - Handles camera flythrough and cinematic animations
+- **M2 Format**: Light animation preservation in roundtrip
+  - Added `LightTrackType` enum for 5 animation track types
+  - Added `LightAnimationRaw` struct for raw keyframe storage
+  - Light animation data collected during parse
+  - Animation offsets relocated during write
+  - Handles dynamic lighting effects (ambient/diffuse color, attenuation, visibility)
 - **CLI**: Extended `m2 tree` command to display animation track data
   - Shows bone animation track summary (translation, rotation, scale counts)
   - Shows particle emitter animation track summary
@@ -85,6 +97,8 @@ and this project adheres to
   - Shows transparency animation track summary
   - Shows event track summary (timeline triggers)
   - Shows attachment animation track summary
+  - Shows camera animation track summary
+  - Shows light animation track summary
   - Displays total keyframe counts for each animation type
 
 ## [0.5.0] - 2025-01-09

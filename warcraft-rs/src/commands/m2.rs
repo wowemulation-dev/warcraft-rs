@@ -852,6 +852,40 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
         anim_data_node = anim_data_node.add_child(attachment_node);
     }
 
+    // Camera animation data summary
+    let camera_anim_count = model.raw_data.camera_animation_data.len();
+    if camera_anim_count > 0 {
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.camera_animation_data {
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let camera_count = model.cameras.len();
+        let camera_node = TreeNode::new("Cameras".to_string(), NodeType::Data)
+            .with_metadata("cameras", &camera_count.to_string())
+            .with_metadata("total_tracks", &camera_anim_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(camera_node);
+    }
+
+    // Light animation data summary
+    let light_anim_count = model.raw_data.light_animation_data.len();
+    if light_anim_count > 0 {
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.light_animation_data {
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let light_count = model.lights.len();
+        let light_node = TreeNode::new("Lights".to_string(), NodeType::Data)
+            .with_metadata("lights", &light_count.to_string())
+            .with_metadata("total_tracks", &light_anim_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(light_node);
+    }
+
     // Only add the animation data section if we have any animation data
     let has_anim_data = bone_anim_count > 0
         || particle_anim_count > 0
@@ -860,7 +894,9 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
         || color_anim_count > 0
         || transparency_anim_count > 0
         || event_data_count > 0
-        || attachment_anim_count > 0;
+        || attachment_anim_count > 0
+        || camera_anim_count > 0
+        || light_anim_count > 0;
 
     if has_anim_data {
         anim_data_node =
