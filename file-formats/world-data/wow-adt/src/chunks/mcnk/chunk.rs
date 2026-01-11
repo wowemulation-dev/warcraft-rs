@@ -286,8 +286,16 @@ impl McnkChunk {
             None
         };
 
+        // MCAL and MCSH use size from MCNK header, not from subchunk header
+        // Some early Vanilla files have corrupted size values in subchunk headers
         let alpha = if header.has_alpha() {
-            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_alpha, "MCAL")?;
+            let data = read_subchunk_with_size(
+                reader,
+                mcnk_start_offset,
+                header.ofs_alpha,
+                header.size_alpha,
+                "MCAL",
+            )?;
             if !data.is_empty() {
                 Some(McalChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -298,7 +306,13 @@ impl McnkChunk {
         };
 
         let shadow = if header.has_shadow() {
-            let data = read_subchunk(reader, mcnk_start_offset, header.ofs_shadow, "MCSH")?;
+            let data = read_subchunk_with_size(
+                reader,
+                mcnk_start_offset,
+                header.ofs_shadow,
+                header.size_shadow,
+                "MCSH",
+            )?;
             if !data.is_empty() {
                 Some(McshChunk::read_le(&mut std::io::Cursor::new(data))?)
             } else {
@@ -494,6 +508,76 @@ fn read_subchunk<R: Read + Seek>(
 
     // Read subchunk data
     let mut data = vec![0u8; subchunk_header.size as usize];
+    reader.read_exact(&mut data)?;
+
+    Ok(data)
+}
+
+/// Read a subchunk with a known expected size.
+///
+/// Similar to `read_subchunk`, but uses the provided expected_size instead of reading
+/// the size from the subchunk header. This is useful for chunks like MCAL and MCSH
+/// where the MCNK header provides the correct size, but the subchunk header may
+/// contain garbage values (especially in early Vanilla files).
+///
+/// The function still validates that the subchunk magic matches the expected name.
+fn read_subchunk_with_size<R: Read + Seek>(
+    reader: &mut R,
+    mcnk_start_offset: u64,
+    offset: u32,
+    expected_size: u32,
+    name: &str,
+) -> BinResult<Vec<u8>> {
+    if offset == 0 || expected_size == 0 {
+        return Ok(Vec::new());
+    }
+
+    // Seek to subchunk (offset is relative to MCNK chunk start)
+    let subchunk_pos = mcnk_start_offset + u64::from(offset);
+    reader
+        .seek(SeekFrom::Start(subchunk_pos))
+        .map_err(|e| binrw::Error::Custom {
+            pos: subchunk_pos,
+            err: Box::new(format!(
+                "Failed to seek to {} subchunk at offset {}: {}",
+                name, offset, e
+            )),
+        })?;
+
+    // Read subchunk header (magic + size) but only validate magic
+    let subchunk_header = ChunkHeader::read_le(reader).map_err(|e| binrw::Error::Custom {
+        pos: subchunk_pos,
+        err: Box::new(format!(
+            "Failed to read {} subchunk header at file offset {} (MCNK+{}): {:?}",
+            name, subchunk_pos, offset, e
+        )),
+    })?;
+
+    // Validate magic matches expected chunk name
+    // ChunkId::as_str() returns the normalized name (e.g., "MCAL"), not the reversed form
+    if subchunk_header.id.as_str() != name {
+        log::warn!(
+            "{} subchunk at 0x{:x} has unexpected magic '{}' (expected '{}')",
+            name,
+            subchunk_pos,
+            subchunk_header.id.as_str(),
+            name
+        );
+    }
+
+    // Use provided size (from MCNK header) instead of subchunk header size
+    // Log a warning if they differ significantly
+    if subchunk_header.size != expected_size && subchunk_header.size < 0x100000 {
+        log::debug!(
+            "{} subchunk size mismatch: header says 0x{:x}, MCNK header says 0x{:x}",
+            name,
+            subchunk_header.size,
+            expected_size
+        );
+    }
+
+    // Read subchunk data using the expected size
+    let mut data = vec![0u8; expected_size as usize];
     reader.read_exact(&mut data)?;
 
     Ok(data)

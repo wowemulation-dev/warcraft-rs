@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{BufWriter, Cursor, Write};
 use std::path::Path;
 
+use crate::api::RootAdt;
 use crate::chunks::mh2o::Mh2oChunk;
 use crate::chunks::{
     DoodadPlacement, MampChunk, MbbbChunk, MbmhChunk, MbmiChunk, MbnvChunk, McnkChunk, MfboChunk,
@@ -129,6 +130,122 @@ impl BuiltAdt {
             doodad_placements,
             wmo_placements,
             mcnk_chunks,
+            flight_bounds,
+            water_data,
+            texture_flags,
+            texture_amplifier,
+            texture_params,
+            blend_mesh_headers,
+            blend_mesh_bounds,
+            blend_mesh_vertices,
+            blend_mesh_indices,
+        }
+    }
+
+    /// Create a BuiltAdt from a parsed RootAdt with optional version conversion.
+    ///
+    /// This method allows converting an existing ADT to a different version or
+    /// preparing it for re-serialization. The conversion handles version-specific
+    /// chunks appropriately:
+    ///
+    /// - **Upgrading**: Adds empty version-specific chunks as needed
+    /// - **Downgrading**: Removes chunks not supported in target version
+    ///
+    /// # Arguments
+    ///
+    /// * `root` - Parsed RootAdt to convert
+    /// * `target_version` - Target ADT version (or None to keep original)
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use wow_adt::{parse_adt, ParsedAdt, AdtVersion};
+    /// use wow_adt::builder::BuiltAdt;
+    /// use std::fs::File;
+    ///
+    /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut file = File::open("input.adt")?;
+    /// let parsed = parse_adt(&mut file)?;
+    ///
+    /// if let ParsedAdt::Root(root) = parsed {
+    ///     let converted = BuiltAdt::from_root_adt(*root, Some(AdtVersion::WotLK));
+    ///     converted.write_to_file("output.adt")?;
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn from_root_adt(root: RootAdt, target_version: Option<AdtVersion>) -> Self {
+        let version = target_version.unwrap_or(root.version);
+
+        // Handle version-specific chunks based on target version
+        let flight_bounds = if version >= AdtVersion::TBC {
+            // Use existing flight bounds or create defaults for TBC+
+            root.flight_bounds.or(Some(MfboChunk {
+                max_plane: [0; 9],
+                min_plane: [0; 9],
+            }))
+        } else {
+            None // Remove for pre-TBC
+        };
+
+        let water_data = if version >= AdtVersion::WotLK {
+            root.water_data
+        } else {
+            None // Remove for pre-WotLK
+        };
+
+        let texture_flags = if version >= AdtVersion::WotLK {
+            root.texture_flags
+        } else {
+            None // Remove for pre-WotLK
+        };
+
+        let texture_amplifier = if version >= AdtVersion::Cataclysm {
+            root.texture_amplifier
+        } else {
+            None // Remove for pre-Cataclysm
+        };
+
+        let texture_params = if version >= AdtVersion::MoP {
+            root.texture_params
+        } else {
+            None // Remove for pre-MoP
+        };
+
+        // Blend mesh data is MoP+
+        let blend_mesh_headers = if version >= AdtVersion::MoP {
+            root.blend_mesh_headers
+        } else {
+            None
+        };
+
+        let blend_mesh_bounds = if version >= AdtVersion::MoP {
+            root.blend_mesh_bounds
+        } else {
+            None
+        };
+
+        let blend_mesh_vertices = if version >= AdtVersion::MoP {
+            root.blend_mesh_vertices
+        } else {
+            None
+        };
+
+        let blend_mesh_indices = if version >= AdtVersion::MoP {
+            root.blend_mesh_indices
+        } else {
+            None
+        };
+
+        Self {
+            version,
+            textures: root.textures,
+            models: root.models,
+            wmos: root.wmos,
+            doodad_placements: root.doodad_placements,
+            wmo_placements: root.wmo_placements,
+            mcnk_chunks: root.mcnk_chunks,
             flight_bounds,
             water_data,
             texture_flags,

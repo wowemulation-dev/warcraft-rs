@@ -13,8 +13,8 @@ Testing of all `warcraft-rs` convert subcommands using real game data from WoW c
 | `m2 convert` | Working | Bone and particle animations, embedded skins preserved |
 | `m2 skin-convert` | Working | Old <-> New format conversion works |
 | `m2 anim-convert` | Working | Legacy format conversion works |
-| `wmo convert` | Not Implemented | Returns "needs updating for new parser" |
-| `adt convert` | Not Implemented | Returns "not yet implemented for binrw-based API" |
+| `wmo convert` | Partial | Root files work; group files pending |
+| `adt convert` | Partial | Root files work; split files (_tex0/_obj0/_lod) pending |
 | `wdt convert` | Working | Classic/TBC/WotLK/MoP conversion works |
 | `wdl convert` | Working | Version conversion works |
 | `dbc export` | Working | JSON/CSV export works (requires schema) |
@@ -126,21 +126,48 @@ Tested conversion:
 
 ### WMO Convert
 
-**Status: Not Implemented**
+**Status: Partial - Root files work; group files pending**
 
-Returns: `Error: Convert command needs updating for new parser`
+Tested conversions:
+- Classic root -> WotLK: Success
+- Classic root -> Cataclysm: Success
 
-The WMO converter exists in the CLI but the implementation is a stub that returns
-an error. The WMO info and validate commands work correctly.
+The WMO root file converter works using expansion names (WotLK, Cataclysm, MoP)
+instead of raw version numbers. Uses WmoParser -> WmoConverter -> WmoWriter pipeline.
+
+**Working:**
+- Root file conversion between any supported versions
+- Materials, groups, portals, lights, doodads preserved
+- Header flags converted appropriately for target version
+
+**Not yet implemented:**
+- Group file conversion (requires bridging parser types to core types)
+
+Group files (`*_000.wmo`, `*_001.wmo`, etc.) return an informative error explaining
+that conversion is not yet supported due to internal type system differences.
 
 ### ADT Convert
 
-**Status: Not Implemented**
+**Status: Partial - TBC+ source files work; Vanilla source has serialization issues**
 
-Returns: `Error: ADT conversion not yet implemented for binrw-based API`
+Tested conversions:
+- TBC root -> WotLK: Success (roundtrip verified)
+- WotLK root -> MoP: Success (adds MFBO flight bounds for TBC+)
+- Vanilla root -> WotLK: Conversion succeeds but output file has parsing issues
 
-Similar to WMO, the ADT converter is a placeholder. The ADT info and validate
-commands work correctly.
+The ADT root file converter works using expansion names (classic, tbc, wotlk, cataclysm, mop).
+Uses ParsedAdt → BuiltAdt.from_root_adt() → write_to_file() pipeline.
+
+**Working:**
+- Parsing all ADT versions (Vanilla through MoP) - 256/256 MCNK chunks
+- Root ADT file conversion from TBC+ sources
+- Version-specific chunk handling (MFBO for TBC+, MH2O for WotLK+, MAMP for Cataclysm+, MTXP for MoP+)
+- Terrain, textures, models, and placements preserved
+- Fixed: MCAL/MCSH subchunk parsing now uses header size fields instead of corrupted subchunk sizes
+
+**Not yet supported:**
+- Vanilla source file conversion (MCNK header size difference: 0x80 vs 0x88 bytes)
+- Split ADT files (_tex0, _obj0, _lod) from Cataclysm+
 
 ### WDT Convert
 
@@ -243,18 +270,11 @@ Test files extracted to `/tmp/warcraft-rs-test/`:
 
 ## Recommendations
 
-### High Priority
+1. **Implement WMO group file conversion** - Root files work but group files need
+   type bridging between parser and converter/writer types.
 
-1. **Implement WMO convert** - Currently a stub. Either implement or remove from
-   CLI to avoid user confusion.
-
-2. **Implement ADT convert** - Currently a stub. Either implement or remove from
-   CLI.
-
-### Low Priority
-
-3. **Add built-in DBC schemas** - Ship common schemas for known DBC files so
-   users don't need to create them manually.
+2. **Implement ADT split file conversion** - Root ADT files work but Cataclysm+
+   split files (_tex0, _obj0, _lod) require additional support.
 
 ---
 
@@ -279,6 +299,12 @@ cargo run -p warcraft-rs -- m2 skin-convert input.skin output.skin --version MoP
 
 # Anim conversion
 cargo run -p warcraft-rs -- m2 anim-convert input.anim output.anim --version MoP
+
+# WMO conversion (root files only)
+cargo run -p warcraft-rs -- wmo convert input.wmo output.wmo --version WotLK
+
+# ADT conversion (root files only)
+cargo run -p warcraft-rs -- adt convert input.adt output.adt --to WotLK
 
 # WDT conversion
 cargo run -p warcraft-rs -- wdt convert input.wdt output.wdt --from-version Classic --to-version MoP

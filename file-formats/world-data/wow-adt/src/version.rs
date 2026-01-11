@@ -195,6 +195,50 @@ impl AdtVersion {
     }
 }
 
+impl AdtVersion {
+    /// Parse version from expansion short names.
+    ///
+    /// Supports short names like "WotLK", "TBC", "Classic", etc. for CLI consistency
+    /// with other format converters (M2, WMO).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wow_adt::AdtVersion;
+    ///
+    /// assert_eq!(AdtVersion::from_expansion_name("wotlk"), Some(AdtVersion::WotLK));
+    /// assert_eq!(AdtVersion::from_expansion_name("Classic"), Some(AdtVersion::VanillaLate));
+    /// assert_eq!(AdtVersion::from_expansion_name("invalid"), None);
+    /// ```
+    #[must_use]
+    pub fn from_expansion_name(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "vanilla" | "classic" => Some(Self::VanillaLate),
+            "vanilla_early" | "vanillaearly" => Some(Self::VanillaEarly),
+            "tbc" | "bc" | "burningcrusade" | "burning_crusade" => Some(Self::TBC),
+            "wotlk" | "wrath" | "lichking" | "lich_king" | "wlk" => Some(Self::WotLK),
+            "cata" | "cataclysm" => Some(Self::Cataclysm),
+            "mop" | "pandaria" | "mists" | "mists_of_pandaria" => Some(Self::MoP),
+            _ => None,
+        }
+    }
+
+    /// Get the short expansion name for display.
+    ///
+    /// Returns a concise name suitable for CLI output.
+    #[must_use]
+    pub const fn expansion_name(&self) -> &'static str {
+        match self {
+            Self::VanillaEarly => "Vanilla (Early)",
+            Self::VanillaLate => "Classic/Vanilla",
+            Self::TBC => "The Burning Crusade",
+            Self::WotLK => "Wrath of the Lich King",
+            Self::Cataclysm => "Cataclysm",
+            Self::MoP => "Mists of Pandaria",
+        }
+    }
+}
+
 impl std::fmt::Display for AdtVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
