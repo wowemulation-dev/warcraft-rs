@@ -413,6 +413,23 @@ fn write_mcnk_chunk<W: Write + Seek>(writer: &mut W, mcnk: &McnkChunk) -> Result
     // Track offsets for header
     let mut header = mcnk.header.clone();
 
+    // Clear all optional chunk offsets - they'll be set if chunks are actually written
+    // This prevents stale offsets from the original header pointing to invalid locations
+    header.ofs_layer = 0;
+    header.n_layers = 0;
+    header.ofs_refs = 0;
+    header.ofs_alpha = 0;
+    header.size_alpha = 0;
+    header.ofs_shadow = 0;
+    header.size_shadow = 0;
+    header.ofs_liquid = 0;
+    header.size_liquid = 0;
+    header.ofs_mccv = 0;
+    header.ofs_mclv = 0;
+    header.ofs_snd_emitters = 0;
+    header.n_snd_emitters = 0;
+    header.multipurpose_field = [0u8; 8]; // ofs_height and ofs_normal will be set when written
+
     // Write MCVT (heights) if present
     if let Some(mcvt) = &mcnk.heights {
         let offset = (writer.stream_position()? - mcnk_start) as u32;
@@ -445,6 +462,7 @@ fn write_mcnk_chunk<W: Write + Seek>(writer: &mut W, mcnk: &McnkChunk) -> Result
     // Write MCLY (texture layers) if present
     if let Some(mcly) = &mcnk.layers {
         header.ofs_layer = (writer.stream_position()? - mcnk_start) as u32;
+        header.n_layers = mcly.layers.len() as u32;
         write_chunk(writer, ChunkId::MCLY, mcly)?;
     }
 

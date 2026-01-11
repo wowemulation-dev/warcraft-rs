@@ -368,8 +368,11 @@ impl McnkHeader {
     }
 
     /// Check if MCLY (layer) subchunk is present.
+    ///
+    /// Note: In some early Vanilla files, `n_layers` may be 0 even when layers exist.
+    /// We also check `ofs_layer != 0` to handle these cases.
     pub fn has_layer(&self) -> bool {
-        self.ofs_layer != 0 && self.n_layers > 0
+        self.ofs_layer != 0
     }
 
     /// Check if MCAL (alpha) subchunk is present.
@@ -378,8 +381,12 @@ impl McnkHeader {
     }
 
     /// Check if MCSH (shadow) subchunk is present.
+    ///
+    /// Note: In early Vanilla files, the `has_mcsh` flag may not be set even when
+    /// MCSH chunks exist. We check `ofs_shadow` and `size_shadow` instead for
+    /// compatibility with all file versions.
     pub fn has_shadow(&self) -> bool {
-        self.flags.has_mcsh() && self.ofs_shadow != 0
+        self.ofs_shadow != 0 && self.size_shadow > 0
     }
 
     /// Get the world position in correct [X, Y, Z] order.

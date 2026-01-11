@@ -647,8 +647,23 @@ fn build_root_adt_tree(
             );
 
             if !no_metadata {
+                // Show world position for first chunk only to avoid clutter
+                if chunk.header.index_x == 0 && chunk.header.index_y == 0 {
+                    let pos = chunk.header.world_position();
+                    chunk_node = chunk_node.with_metadata(
+                        "position",
+                        &format!("[{:.1}, {:.1}, {:.1}]", pos[0], pos[1], pos[2]),
+                    );
+                }
+
                 chunk_node = chunk_node
                     .with_metadata("flags", &format!("0x{:08X}", chunk.header.flags.value));
+
+                if chunk.header.n_layers > 0 {
+                    chunk_node =
+                        chunk_node.with_metadata("layers", &chunk.header.n_layers.to_string());
+                }
+
                 chunk_node = chunk_node.with_metadata(
                     "holes",
                     if chunk.header.holes_low_res != 0 {
