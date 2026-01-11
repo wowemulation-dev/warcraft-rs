@@ -639,8 +639,10 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
     root = root.add_child(material_node);
 
     // Add animation data section showing preserved animation tracks
-    let mut anim_data_node =
-        TreeNode::new("Animation Track Data (Preserved)".to_string(), NodeType::Data);
+    let mut anim_data_node = TreeNode::new(
+        "Animation Track Data (Preserved)".to_string(),
+        NodeType::Data,
+    );
 
     // Bone animation data summary
     let bone_anim_count = model.raw_data.bone_animation_data.len();
@@ -696,14 +698,15 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
         }
 
         let emitter_count = model.particle_emitters.len();
-        let particle_node = TreeNode::new("Particle Emitter Animations".to_string(), NodeType::Data)
-            .with_metadata("emitters", &emitter_count.to_string())
-            .with_metadata("total_tracks", &particle_anim_count.to_string())
-            .with_metadata("total_keyframes", &total_keyframes.to_string())
-            .with_metadata(
-                "track_types",
-                &format!("{} unique types", track_counts.len()),
-            );
+        let particle_node =
+            TreeNode::new("Particle Emitter Animations".to_string(), NodeType::Data)
+                .with_metadata("emitters", &emitter_count.to_string())
+                .with_metadata("total_tracks", &particle_anim_count.to_string())
+                .with_metadata("total_keyframes", &total_keyframes.to_string())
+                .with_metadata(
+                    "track_types",
+                    &format!("{} unique types", track_counts.len()),
+                );
         anim_data_node = anim_data_node.add_child(particle_node);
     }
 
@@ -807,11 +810,46 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
         }
 
         let anim_count = model.transparency_animations.len();
-        let transparency_node = TreeNode::new("Transparency Animations".to_string(), NodeType::Data)
-            .with_metadata("animations", &anim_count.to_string())
-            .with_metadata("total_tracks", &transparency_anim_count.to_string())
-            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        let transparency_node =
+            TreeNode::new("Transparency Animations".to_string(), NodeType::Data)
+                .with_metadata("animations", &anim_count.to_string())
+                .with_metadata("total_tracks", &transparency_anim_count.to_string())
+                .with_metadata("total_keyframes", &total_keyframes.to_string());
         anim_data_node = anim_data_node.add_child(transparency_node);
+    }
+
+    // Event track data summary
+    let event_data_count = model.raw_data.event_data.len();
+    if event_data_count > 0 {
+        let mut total_timestamps = 0;
+
+        for event in &model.raw_data.event_data {
+            total_timestamps += event.timestamps.len() / 4; // 4 bytes per u32 timestamp
+        }
+
+        let event_count = model.events.len();
+        let event_node = TreeNode::new("Events".to_string(), NodeType::Data)
+            .with_metadata("events", &event_count.to_string())
+            .with_metadata("tracks_with_data", &event_data_count.to_string())
+            .with_metadata("total_timestamps", &total_timestamps.to_string());
+        anim_data_node = anim_data_node.add_child(event_node);
+    }
+
+    // Attachment animation data summary
+    let attachment_anim_count = model.raw_data.attachment_animation_data.len();
+    if attachment_anim_count > 0 {
+        let mut total_keyframes = 0;
+
+        for anim in &model.raw_data.attachment_animation_data {
+            total_keyframes += anim.timestamps.len() / 4;
+        }
+
+        let attachment_count = model.attachments.len();
+        let attachment_node = TreeNode::new("Attachments".to_string(), NodeType::Data)
+            .with_metadata("attachments", &attachment_count.to_string())
+            .with_metadata("total_tracks", &attachment_anim_count.to_string())
+            .with_metadata("total_keyframes", &total_keyframes.to_string());
+        anim_data_node = anim_data_node.add_child(attachment_node);
     }
 
     // Only add the animation data section if we have any animation data
@@ -820,13 +858,13 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
         || ribbon_anim_count > 0
         || texture_anim_count > 0
         || color_anim_count > 0
-        || transparency_anim_count > 0;
+        || transparency_anim_count > 0
+        || event_data_count > 0
+        || attachment_anim_count > 0;
 
     if has_anim_data {
-        anim_data_node = anim_data_node.with_metadata(
-            "status",
-            "✅ Animation data preserved for roundtrip",
-        );
+        anim_data_node =
+            anim_data_node.with_metadata("status", "✅ Animation data preserved for roundtrip");
         root = root.add_child(anim_data_node);
     }
 

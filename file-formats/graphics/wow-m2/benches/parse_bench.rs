@@ -25,6 +25,8 @@ fn create_test_model() -> M2Model {
         texture_animations: vec![],
         color_animations: vec![],
         transparency_animations: vec![],
+        events: vec![],
+        attachments: vec![],
         raw_data: Default::default(),
         // File reference fields
         skin_file_ids: None,

@@ -64,6 +64,18 @@ and this project adheres to
   - Transparency animation data collected during parse
   - Animation offsets relocated during write
   - Handles texture weight/opacity animations
+- **M2 Format**: Event track preservation in roundtrip
+  - Added `EventRaw` struct for raw timestamp storage
+  - Events use simple `M2Array<u32>` for timestamps (not M2AnimationBlock)
+  - Event timestamp data collected during parse
+  - Track offsets relocated during write
+  - Handles animation timeline triggers (sounds, effects)
+- **M2 Format**: Attachment animation preservation in roundtrip
+  - Added `AttachmentTrackType` enum for scale animation track
+  - Added `AttachmentAnimationRaw` struct for raw keyframe storage
+  - Attachment animation data collected during parse
+  - Animation offsets relocated during write
+  - Handles attach point scale animations (weapons, effects)
 - **CLI**: Extended `m2 tree` command to display animation track data
   - Shows bone animation track summary (translation, rotation, scale counts)
   - Shows particle emitter animation track summary
@@ -71,6 +83,8 @@ and this project adheres to
   - Shows texture animation track summary
   - Shows color animation track summary
   - Shows transparency animation track summary
+  - Shows event track summary (timeline triggers)
+  - Shows attachment animation track summary
   - Displays total keyframe counts for each animation type
 
 ## [0.5.0] - 2025-01-09

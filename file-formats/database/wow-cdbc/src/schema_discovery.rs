@@ -294,13 +294,16 @@ impl<'a> SchemaDiscoverer<'a> {
 
         // Count non-zero values and how many look like floats
         let non_zero_values: Vec<u32> = values.iter().copied().filter(|&v| v != 0).collect();
-        let float_like_count = non_zero_values.iter().filter(|&&v| is_float_like(v)).count();
+        let float_like_count = non_zero_values
+            .iter()
+            .filter(|&&v| is_float_like(v))
+            .count();
 
         // Require majority (>= 75%) of non-zero values to look like floats
         // Also require at least one float-like value (handles edge case where
         // integer division of small counts could yield 0)
-        let could_be_float = float_like_count > 0
-            && float_like_count >= (non_zero_values.len() * 3 / 4).max(1);
+        let could_be_float =
+            float_like_count > 0 && float_like_count >= (non_zero_values.len() * 3 / 4).max(1);
 
         // Determine the most likely field type
         // NOTE: DBC files always store 4 bytes per field, so we only detect 4-byte types.
