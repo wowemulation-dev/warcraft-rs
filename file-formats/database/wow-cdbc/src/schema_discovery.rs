@@ -267,14 +267,40 @@ impl<'a> SchemaDiscoverer<'a> {
         // Check for potential key field
         let is_key_candidate = self.is_potential_key(values);
 
-        // Check if the values could be floating point
-        let could_be_float = values.iter().any(|&value| {
-            // Check if the bit pattern could represent a reasonable float
+        // Check if the values could be floating point using better heuristics
+        // Key insight: small integers (0-65535) as u32 reinterpret as tiny denormals
+        // when viewed as f32, while actual floats like 1.0f32 have u32 value 0x3F800000
+        let is_float_like = |value: u32| -> bool {
+            // Small integers (< 65536) are almost never stored as floats
+            // because float 1.0 = 0x3F800000 = 1065353216, not 1
+            // A u32 of 100 reinterpreted as float is ~1.4e-43 (denormal)
+            if value < 65536 {
+                return false;
+            }
+
             let float_val = f32::from_bits(value);
-            float_val.is_finite()
-                && !float_val.is_subnormal()
-                && (float_val.abs() < 0.00001 || float_val.abs() > 0.00001)
-        });
+
+            // Must be finite and not subnormal
+            if !float_val.is_finite() || float_val.is_subnormal() {
+                return false;
+            }
+
+            // Check if float is in reasonable game data range
+            // Most game floats are: normalized (0-1), percentages (0-100),
+            // coordinates (-10000 to 10000), scales (0.001 to 1000)
+            let abs_val = float_val.abs();
+            (1e-6..=1e7).contains(&abs_val)
+        };
+
+        // Count non-zero values and how many look like floats
+        let non_zero_values: Vec<u32> = values.iter().copied().filter(|&v| v != 0).collect();
+        let float_like_count = non_zero_values.iter().filter(|&&v| is_float_like(v)).count();
+
+        // Require majority (>= 75%) of non-zero values to look like floats
+        // Also require at least one float-like value (handles edge case where
+        // integer division of small counts could yield 0)
+        let could_be_float = float_like_count > 0
+            && float_like_count >= (non_zero_values.len() * 3 / 4).max(1);
 
         // Determine the most likely field type
         // NOTE: DBC files always store 4 bytes per field, so we only detect 4-byte types.
