@@ -41,6 +41,11 @@ and this project adheres to
   - Particle animation data collected during parse
   - Animation offsets relocated during write
   - Handles offset sharing for multiple tracks pointing to same data
+- **M2 Format**: Ribbon emitter animation preservation in roundtrip
+  - Added `RibbonTrackType` enum for 4 animation track types
+  - Added `RibbonAnimationRaw` struct for raw keyframe storage
+  - Ribbon animation data collected during parse
+  - Animation offsets relocated during write
 
 ## [0.5.0] - 2025-01-09
 
