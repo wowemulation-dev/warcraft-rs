@@ -50,10 +50,12 @@ images requiring alpha, DXT5 or Raw1 formats are recommended.
 
 ### M2 Convert
 
-**Status: Working - Bone and particle animations, embedded skins preserved**
+**Status: Working - All animation types preserved; embedded skins preserved**
 
-The M2 converter preserves bone animation data, particle emitter animations, and
-embedded skin data through roundtrip and version conversion.
+The M2 converter preserves all animation data including bone animations, particle emitter
+animations, ribbon emitter animations, texture animations, color animations, transparency
+animations, event track data, attachment animations, camera animations, light animations,
+and embedded skin data through roundtrip and version conversion.
 
 **Working:**
 - Basic model roundtrip (Vanilla, TBC, WotLK, Cataclysm, MoP)
@@ -61,6 +63,13 @@ embedded skin data through roundtrip and version conversion.
 - Bone animation keyframes (timestamps, values, ranges) preserved
 - Particle emitter animations (10 track types) preserved with offset relocation
 - Ribbon emitter animations (4 track types) preserved with offset relocation
+- Texture animations (5 track types) preserved with offset relocation
+- Color animations (2 track types: RGB color, alpha) preserved with offset relocation
+- Transparency animations (1 track type: alpha) preserved with offset relocation
+- Event track data (simple M2Array<u32> timestamps) preserved with offset relocation
+- Attachment animations (1 track type: scale) preserved with offset relocation
+- Camera animations (3 track types: position, target position, roll) preserved with offset relocation
+- Light animations (5 track types: ambient color, diffuse color, attenuation start/end, visibility) preserved with offset relocation
 - Pre-WotLK embedded skin data preserved (ModelView, indices, triangles, submeshes, batches)
 - Header fields correctly handle version-specific differences:
   - `playable_animation_lookup` (Vanilla/TBC only, versions 256-263)
@@ -72,7 +81,7 @@ embedded skin data through roundtrip and version conversion.
 **Test results with DwarfMale.m2 (vanilla 1.12.1):**
 ```
 Original:                2,124,656 bytes (version 256, embedded skins)
-Vanilla roundtrip:       1,463,005 bytes (version 256, 4 skins, 138 bone anims)
+Vanilla roundtrip:       1,463,041 bytes (version 256, 4 skins, 138 bone anims, 1 transparency anim)
 Converted to WotLK:      1,259,407 bytes (version 264, external skins)
 
 Previous (before fix):     173,965 bytes (animation data was zeroed)
@@ -85,15 +94,17 @@ The converter preserves:
 - Materials and textures (3 textures)
 - Embedded skins for pre-WotLK (4 skin profiles)
 - All animation sequences (135 animations)
+- Particle emitter animations (emission speed, gravity, lifespan, etc.)
+- Ribbon emitter animations (color, alpha, height)
+- Texture animations (translation U/V, rotation, scale U/V)
+- Color animations (RGB color, alpha)
+- Transparency animations (alpha/texture weight)
+- Event track timestamps (timeline triggers for sounds, effects)
+- Attachment scale animations (weapon/effect attach points)
+- Camera animations (position, target position, roll)
+- Light animations (ambient/diffuse color, attenuation, visibility)
 
-**Remaining data not preserved:**
-- Texture animations (texture_weights, texture_transforms)
-- Color animations and transparency animations
-- Camera animations
-- Light animations
-- Event and attachment animations
-
-These could be added in future work using the same offset relocation pattern.
+All M2 animation data types are now preserved through roundtrip conversion.
 
 ### M2 Skin Convert
 
@@ -240,17 +251,9 @@ Test files extracted to `/tmp/warcraft-rs-test/`:
 2. **Implement ADT convert** - Currently a stub. Either implement or remove from
    CLI.
 
-### Medium Priority
-
-3. **Extend M2 animation serialization** - The bone, particle, and ribbon
-   animation infrastructure is in place. Extend to other animated properties:
-   - Texture animations (weights, transforms)
-   - Color and transparency animations
-   - Camera and light animations
-
 ### Low Priority
 
-4. **Add built-in DBC schemas** - Ship common schemas for known DBC files so
+3. **Add built-in DBC schemas** - Ship common schemas for known DBC files so
    users don't need to create them manually.
 
 ---
@@ -265,7 +268,7 @@ cargo run -p warcraft-rs -- blp convert input.png output.blp --blp-version blp1 
 # Explicit alpha bits (optional)
 cargo run -p warcraft-rs -- blp convert input.png output.blp --blp-version blp2 --blp-format dxt1 --alpha-bits 0
 
-# M2 conversion (bone and particle animations, embedded skins preserved)
+# M2 conversion (all animation types and embedded skins preserved)
 cargo run -p warcraft-rs -- m2 convert input.m2 output.m2 --version WotLK
 
 # Pre-WotLK roundtrip test
