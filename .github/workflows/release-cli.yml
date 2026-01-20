@@ -108,10 +108,6 @@ jobs:
             os: windows-latest
             use_cross: false
             archive: zip
-          - target: aarch64-pc-windows-msvc
-            os: windows-latest
-            use_cross: false
-            archive: zip
 
           # macOS
           - target: x86_64-apple-darwin
@@ -134,7 +130,11 @@ jobs:
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
-      
+
+      # Ensure target is installed (workaround for cross-compilation on macOS)
+      - name: Ensure target is installed
+        run: rustup target add ${{ matrix.target }}
+
       - name: Install cross for cross-compilation
         if: matrix.use_cross
         uses: taiki-e/install-action@v2
