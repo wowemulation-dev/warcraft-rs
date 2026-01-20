@@ -120,7 +120,7 @@ jobs:
       - name: Install Rust toolchain with formatting and linting components
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: 1.86.0
+          toolchain: 1.92.0
           components: rustfmt, clippy
 
       - name: Cache Rust dependencies
@@ -152,7 +152,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            rust: 1.86.0
+            rust: 1.92.0
           - os: ubuntu-latest
             rust: stable
     runs-on: ${{ matrix.os }}
@@ -226,7 +226,7 @@ jobs:
       - name: Install Rust toolchain for documentation
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: 1.86.0
+          toolchain: 1.92.0
 
       - name: Cache documentation dependencies
         uses: Swatinem/rust-cache@v2
