@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-01-20
+
+### Fixed
+
+- **CI**: Release CLI workflow now builds Intel macOS binaries correctly
+  - Added explicit `rustup target add` for cross-compilation on ARM macOS runners
+  - Removed unsupported aarch64-pc-windows-msvc target
+
 ## [0.6.0] - 2026-01-20
 
 ### Fixed

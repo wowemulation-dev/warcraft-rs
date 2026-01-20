@@ -1,6 +1,6 @@
 [package]
 name = "wow-wdl"
-version = "0.6.0"
+version = "0.6.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
