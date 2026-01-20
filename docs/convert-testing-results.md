@@ -10,11 +10,11 @@ Testing of all `warcraft-rs` convert subcommands using real game data from WoW c
 | Command | Status | Notes |
 |---------|--------|-------|
 | `blp convert` | Working | BLP <-> PNG/image formats functional |
-| `m2 convert` | Working | Bone and particle animations, embedded skins preserved |
+| `m2 convert` | Working | All versions parse and roundtrip correctly |
 | `m2 skin-convert` | Working | Old <-> New format conversion works |
 | `m2 anim-convert` | Working | Legacy format conversion works |
 | `wmo convert` | Partial | Root files work; group files pending |
-| `adt convert` | Partial | Root files work; split files (_tex0/_obj0/_lod) pending |
+| `adt convert` | Working | Root files work with roundtrip; split files pending |
 | `wdt convert` | Working | Classic/TBC/WotLK/MoP conversion works |
 | `wdl convert` | Working | Version conversion works |
 | `dbc export` | Working | JSON/CSV export works (requires schema) |
@@ -50,15 +50,15 @@ images requiring alpha, DXT5 or Raw1 formats are recommended.
 
 ### M2 Convert
 
-**Status: Working - All animation types preserved; embedded skins preserved**
+**Status: Working - All versions parse and roundtrip correctly**
 
 The M2 converter preserves all animation data including bone animations, particle emitter
 animations, ribbon emitter animations, texture animations, color animations, transparency
 animations, event track data, attachment animations, camera animations, light animations,
-and embedded skin data through roundtrip and version conversion.
+and embedded skin data through roundtrip and version conversion for all supported versions.
 
 **Working:**
-- Basic model roundtrip (Vanilla, TBC, WotLK, Cataclysm, MoP)
+- Full model roundtrip (Vanilla, TBC, WotLK, Cataclysm, MoP)
 - Version conversion between any supported versions
 - Bone animation keyframes (timestamps, values, ranges) preserved
 - Particle emitter animations (10 track types) preserved with offset relocation
@@ -81,11 +81,14 @@ and embedded skin data through roundtrip and version conversion.
 **Test results with DwarfMale.m2 (vanilla 1.12.1):**
 ```
 Original:                2,124,656 bytes (version 256, embedded skins)
-Vanilla roundtrip:       1,463,041 bytes (version 256, 4 skins, 138 bone anims, 1 transparency anim)
+Vanilla roundtrip:       1,496,389 bytes (version 256, 4 skins, 138 bone anims, 34 attachment anims)
 Converted to WotLK:      1,259,407 bytes (version 264, external skins)
 
 Previous (before fix):     173,965 bytes (animation data was zeroed)
 ```
+
+Note: Roundtrip file is smaller than original because we don't preserve padding/alignment
+from the original file. The output contains all data needed to display and animate the model.
 
 The converter preserves:
 - Magic (MD20) and version
@@ -148,25 +151,29 @@ that conversion is not yet supported due to internal type system differences.
 
 ### ADT Convert
 
-**Status: Partial - TBC+ source files work; Vanilla source has serialization issues**
+**Status: Working - Root ADT files convert and roundtrip correctly**
 
 Tested conversions:
+- Vanilla root -> WotLK: Success (roundtrip verified)
+- Vanilla root -> MoP: Success (roundtrip verified)
 - TBC root -> WotLK: Success (roundtrip verified)
+- TBC root -> Classic: Success (roundtrip verified, strips MFBO)
 - WotLK root -> MoP: Success (adds MFBO flight bounds for TBC+)
-- Vanilla root -> WotLK: Conversion succeeds but output file has parsing issues
 
 The ADT root file converter works using expansion names (classic, tbc, wotlk, cataclysm, mop).
 Uses ParsedAdt → BuiltAdt.from_root_adt() → write_to_file() pipeline.
 
 **Working:**
 - Parsing all ADT versions (Vanilla through MoP) - 256/256 MCNK chunks
-- Root ADT file conversion from TBC+ sources
+- Conversion between any supported versions (up and down)
 - Version-specific chunk handling (MFBO for TBC+, MH2O for WotLK+, MAMP for Cataclysm+, MTXP for MoP+)
-- Terrain, textures, models, and placements preserved
+- Terrain heights, normals, shadow maps, alpha maps, and vertex colors preserved
+- Textures, models, WMOs, and placements preserved
 - Fixed: MCAL/MCSH subchunk parsing now uses header size fields instead of corrupted subchunk sizes
+- Fixed: has_shadow()/has_layer() now check offset/size instead of flags for Vanilla compatibility
+- Fixed: MCNK serializer clears stale offsets to prevent invalid pointer references
 
 **Not yet supported:**
-- Vanilla source file conversion (MCNK header size difference: 0x80 vs 0x88 bytes)
 - Split ADT files (_tex0, _obj0, _lod) from Cataclysm+
 
 ### WDT Convert
