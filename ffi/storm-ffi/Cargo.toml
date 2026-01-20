@@ -1,6 +1,6 @@
 [package]
 name = "storm-ffi"
-version = "0.5.0"
+version = "0.6.0"
 authors.workspace = true
 edition = "2021"
 rust-version.workspace = true
@@ -15,7 +15,7 @@ name = "storm"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-wow-mpq = { path = "../../file-formats/archives/wow-mpq", version = "0.5.0" }
+wow-mpq = { path = "../../file-formats/archives/wow-mpq", version = "0.6.0" }
 libc = { workspace = true }
 log = { workspace = true }
 # For file verification

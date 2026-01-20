@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-01-20
+
 ### Fixed
 
 - **M2 Format**: Version conversion roundtrip for all supported versions
