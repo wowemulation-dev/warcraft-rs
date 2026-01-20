@@ -1162,7 +1162,7 @@ fn relocate_event_offset(event: &mut M2Event, offset_map: &HashMap<u32, u32>) {
 
 /// Relocates attachment animation offsets to new positions
 ///
-/// Attachments have a single scale animation track (M2AnimationBlock<f32>).
+/// Attachments have a single scale animation track (`M2AnimationBlock<f32>`).
 fn relocate_attachment_animation_offsets(
     attachment: &mut M2Attachment,
     offset_map: &HashMap<u32, u32>,
