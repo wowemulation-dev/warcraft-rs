@@ -402,6 +402,278 @@ impl AnimationManager {
     }
 }
 
+/// Builder for creating AnimationManager from M2Model data
+pub struct AnimationManagerBuilder;
+
+impl AnimationManagerBuilder {
+    /// Create an AnimationManager from M2Model data
+    ///
+    /// This resolves all bone animation tracks from the raw M2 data and creates
+    /// a fully functional animation manager ready for playback.
+    ///
+    /// # Arguments
+    /// * `model` - The parsed M2 model
+    /// * `data` - The raw M2 file bytes (needed to resolve animation data offsets)
+    ///
+    /// # Returns
+    /// An AnimationManager ready for animation playback, or an error if resolution fails
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use wow_m2::{M2Model, animation::AnimationManagerBuilder};
+    ///
+    /// let data = std::fs::read("model.m2")?;
+    /// let model = M2Model::parse(&mut std::io::Cursor::new(&data))?;
+    /// let manager = AnimationManagerBuilder::from_model(&model, &data)?;
+    ///
+    /// // Update animation each frame
+    /// manager.update(delta_time_ms);
+    /// let translation = manager.get_bone_translation(0);
+    /// ```
+    pub fn from_model(model: &crate::M2Model, data: &[u8]) -> crate::Result<AnimationManager> {
+        use std::io::Cursor;
+
+        // Extract global sequence durations
+        let global_sequence_durations: Vec<u32> = model.global_sequences.to_vec();
+
+        // Convert M2Animation to AnimSequence
+        let sequences: Vec<AnimSequence> = model
+            .animations
+            .iter()
+            .map(|seq| {
+                // Duration calculation differs by version:
+                // - Classic: end_timestamp - start_timestamp
+                // - BC+: start_timestamp IS the duration
+                let duration = seq
+                    .end_timestamp
+                    .map(|end| end.saturating_sub(seq.start_timestamp))
+                    .unwrap_or(seq.start_timestamp);
+
+                // Replay range (Classic only, defaults for BC+)
+                let (replay_min, replay_max) = seq
+                    .replay
+                    .map(|r| (r.minimum as u32, r.maximum as u32))
+                    .unwrap_or((0, 0));
+
+                AnimSequence {
+                    id: seq.animation_id,
+                    sub_id: seq.sub_animation_id,
+                    duration,
+                    movement_speed: seq.movement_speed,
+                    flags: seq.flags,
+                    frequency: seq.frequency as u16,
+                    replay_min,
+                    replay_max,
+                    blend_time: 150, // Default blend time (milliseconds)
+                    variation_next: seq.next_animation.unwrap_or(-1),
+                    alias_next: seq.aliasing.unwrap_or(0),
+                }
+            })
+            .collect();
+
+        let num_sequences = sequences.len();
+
+        // Resolve bone animation data
+        let mut cursor = Cursor::new(data);
+        let mut bones = Vec::with_capacity(model.bones.len());
+
+        for bone in &model.bones {
+            // Resolve translation track
+            let translation =
+                Self::resolve_vec3_track(&bone.translation, &mut cursor, num_sequences)?;
+
+            // Resolve rotation track (quaternion)
+            let rotation = Self::resolve_quat_track(&bone.rotation, &mut cursor, num_sequences)?;
+
+            // Resolve scale track
+            let scale = Self::resolve_vec3_track(&bone.scale, &mut cursor, num_sequences)?;
+
+            bones.push(ResolvedBone {
+                bone_id: bone.bone_id,
+                flags: bone.flags.bits(),
+                parent_bone: bone.parent_bone,
+                translation,
+                rotation,
+                scale,
+                pivot: Vec3::new(bone.pivot.x, bone.pivot.y, bone.pivot.z),
+            });
+        }
+
+        Ok(AnimationManager::new(
+            global_sequence_durations,
+            sequences,
+            bones,
+        ))
+    }
+
+    /// Resolve a Vec3 animation track from M2 data
+    fn resolve_vec3_track<R: std::io::Read + std::io::Seek>(
+        track: &crate::chunks::m2_track::M2TrackVec3,
+        reader: &mut R,
+        num_sequences: usize,
+    ) -> crate::Result<ResolvedTrack<Vec3>> {
+        use crate::chunks::m2_track_resolver::M2TrackVec3Ext;
+
+        if !track.has_data() {
+            return Ok(ResolvedTrack::empty());
+        }
+
+        let (timestamps_flat, values_flat, ranges) = track.resolve_data(reader)?;
+
+        // Convert C3Vector to Vec3
+        let values_vec3: Vec<Vec3> = values_flat
+            .into_iter()
+            .map(|v| Vec3::new(v.x, v.y, v.z))
+            .collect();
+
+        // Convert global_sequence: 0xFFFF means no global sequence, map to -1
+        let global_sequence = if track.base.global_sequence == 0xFFFF {
+            -1i16
+        } else {
+            track.base.global_sequence as i16
+        };
+
+        // If using global sequence, put all data in one sequence slot
+        if global_sequence >= 0 {
+            return Ok(ResolvedTrack {
+                interpolation_type: track.base.interpolation_type as u16,
+                global_sequence,
+                timestamps: vec![timestamps_flat],
+                values: vec![values_vec3],
+            });
+        }
+
+        // Split by animation sequence using ranges
+        let (timestamps, values) = Self::split_by_ranges(
+            timestamps_flat,
+            values_vec3,
+            ranges.as_deref(),
+            num_sequences,
+        );
+
+        Ok(ResolvedTrack {
+            interpolation_type: track.base.interpolation_type as u16,
+            global_sequence,
+            timestamps,
+            values,
+        })
+    }
+
+    /// Resolve a Quat animation track from M2 data
+    fn resolve_quat_track<R: std::io::Read + std::io::Seek>(
+        track: &crate::chunks::m2_track::M2TrackQuat,
+        reader: &mut R,
+        num_sequences: usize,
+    ) -> crate::Result<ResolvedTrack<Quat>> {
+        use crate::chunks::m2_track_resolver::M2TrackQuatExt;
+
+        if !track.has_data() {
+            return Ok(ResolvedTrack::empty());
+        }
+
+        let (timestamps_flat, values_flat, ranges) = track.resolve_data(reader)?;
+
+        // Convert M2CompQuat to Quat
+        let values_quat: Vec<Quat> = values_flat
+            .into_iter()
+            .map(|q| {
+                let (x, y, z, w) = q.to_float_quaternion();
+                Quat::new(x, y, z, w).normalize()
+            })
+            .collect();
+
+        // Convert global_sequence
+        let global_sequence = if track.base.global_sequence == 0xFFFF {
+            -1i16
+        } else {
+            track.base.global_sequence as i16
+        };
+
+        // If using global sequence, put all data in one sequence slot
+        if global_sequence >= 0 {
+            return Ok(ResolvedTrack {
+                interpolation_type: track.base.interpolation_type as u16,
+                global_sequence,
+                timestamps: vec![timestamps_flat],
+                values: vec![values_quat],
+            });
+        }
+
+        // Split by animation sequence using ranges
+        let (timestamps, values) = Self::split_by_ranges(
+            timestamps_flat,
+            values_quat,
+            ranges.as_deref(),
+            num_sequences,
+        );
+
+        Ok(ResolvedTrack {
+            interpolation_type: track.base.interpolation_type as u16,
+            global_sequence,
+            timestamps,
+            values,
+        })
+    }
+
+    /// Split flat timestamp/value arrays by animation sequence ranges
+    ///
+    /// Pre-WotLK M2s store ranges as pairs of (start, end) indices.
+    /// WotLK+ M2s don't have ranges and store one timestamp/value per sequence.
+    fn split_by_ranges<T: Clone>(
+        timestamps_flat: Vec<u32>,
+        values_flat: Vec<T>,
+        ranges: Option<&[u32]>,
+        num_sequences: usize,
+    ) -> (Vec<Vec<u32>>, Vec<Vec<T>>) {
+        if let Some(ranges) = ranges {
+            // Pre-WotLK: use ranges to split data
+            let mut timestamps = Vec::with_capacity(num_sequences);
+            let mut values = Vec::with_capacity(num_sequences);
+
+            for i in 0..num_sequences {
+                let range_idx = i * 2;
+                if range_idx + 1 < ranges.len() {
+                    let start = ranges[range_idx] as usize;
+                    let end = ranges[range_idx + 1] as usize;
+
+                    if start <= end && end <= timestamps_flat.len() && end <= values_flat.len() {
+                        timestamps.push(timestamps_flat[start..end].to_vec());
+                        values.push(values_flat[start..end].to_vec());
+                    } else {
+                        timestamps.push(Vec::new());
+                        values.push(Vec::new());
+                    }
+                } else {
+                    timestamps.push(Vec::new());
+                    values.push(Vec::new());
+                }
+            }
+
+            (timestamps, values)
+        } else {
+            // WotLK+: timestamps/values are stored per-sequence in order
+            // This is a simplified view - in practice WotLK+ uses external .anim files
+            // For embedded data, we assume it's for all sequences
+            let mut timestamps = Vec::with_capacity(num_sequences);
+            let mut values = Vec::with_capacity(num_sequences);
+
+            // Put all data in first sequence, empty for rest
+            if !timestamps_flat.is_empty() {
+                timestamps.push(timestamps_flat);
+                values.push(values_flat);
+            }
+
+            // Pad with empty vectors for remaining sequences
+            while timestamps.len() < num_sequences {
+                timestamps.push(Vec::new());
+                values.push(Vec::new());
+            }
+
+            (timestamps, values)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -43,6 +43,6 @@ mod types;
 
 pub use bone_transform::{BoneFlags, BoneTransformComputer, ComputedBone, Mat4};
 pub use interpolation::{find_timestamp_index, interpolate_track, interpolate_with_blend};
-pub use manager::{AnimSequence, AnimationManager, ResolvedBone};
+pub use manager::{AnimSequence, AnimationManager, AnimationManagerBuilder, ResolvedBone};
 pub use state::{AnimationState, LcgRng};
 pub use types::{Fixedi16, Lerp, Quat, ResolvedTrack, Vec3};

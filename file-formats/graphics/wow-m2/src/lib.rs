@@ -160,8 +160,9 @@ pub mod version;
 // Re-export common types
 pub use anim::{AnimFile, AnimFormat, AnimMetadata, AnimSection, MemoryUsage};
 pub use animation::{
-    AnimSequence, AnimationManager, AnimationState, BoneFlags, BoneTransformComputer, ComputedBone,
-    Fixedi16, Lerp, Mat4 as AnimMat4, Quat, ResolvedBone, ResolvedTrack, Vec3 as AnimVec3,
+    AnimSequence, AnimationManager, AnimationManagerBuilder, AnimationState, BoneFlags,
+    BoneTransformComputer, ComputedBone, Fixedi16, Lerp, Mat4 as AnimMat4, Quat, ResolvedBone,
+    ResolvedTrack, Vec3 as AnimVec3,
 };
 pub use chunks::particle_emitter::{M2ParticleEmitter, M2ParticleEmitterType, M2ParticleFlags};
 pub use chunks::vertex::ValidationMode;
