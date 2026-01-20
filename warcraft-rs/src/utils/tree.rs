@@ -205,10 +205,10 @@ fn render_node(
     options: &TreeOptions,
 ) {
     // Check depth limit
-    if let Some(max_depth) = options.max_depth {
-        if depth > max_depth {
-            return;
-        }
+    if let Some(max_depth) = options.max_depth
+        && depth > max_depth
+    {
+        return;
     }
 
     // Node icon and name

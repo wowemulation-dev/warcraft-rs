@@ -245,10 +245,10 @@ impl<R: Read + Seek> WdtReader<R> {
                 }
                 Err(e) => {
                     // Check if we hit EOF by matching on the Io variant
-                    if let Error::Io(ref io_err) = e {
-                        if io_err.kind() == std::io::ErrorKind::UnexpectedEof {
-                            break;
-                        }
+                    if let Error::Io(ref io_err) = e
+                        && io_err.kind() == std::io::ErrorKind::UnexpectedEof
+                    {
+                        break;
                     }
                     return Err(e);
                 }

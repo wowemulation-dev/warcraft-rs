@@ -97,11 +97,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Warn about potential data loss when downgrading
-    if let Some(src_ver) = source_version {
-        if target_version < src_ver {
-            println!("\n⚠️  Warning: Downgrading may result in data loss!");
-            println!("Some features from newer versions may not be supported in older formats.");
-        }
+    if let Some(src_ver) = source_version
+        && target_version < src_ver
+    {
+        println!("\n⚠️  Warning: Downgrading may result in data loss!");
+        println!("Some features from newer versions may not be supported in older formats.");
     }
 
     println!("\nConversion completed successfully!");

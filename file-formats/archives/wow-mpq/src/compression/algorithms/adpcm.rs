@@ -51,7 +51,7 @@ fn compress_internal(input: &[u8], compression_level: u8, channel_count: usize) 
     }
 
     // ADPCM works with 16-bit samples
-    if input.len() % 2 != 0 {
+    if !input.len().is_multiple_of(2) {
         return Err(Error::compression("Input must be 16-bit aligned"));
     }
 
@@ -61,7 +61,7 @@ fn compress_internal(input: &[u8], compression_level: u8, channel_count: usize) 
     }
 
     let samples_per_channel = samples_count / channel_count;
-    if samples_per_channel == 0 || samples_count % channel_count != 0 {
+    if samples_per_channel == 0 || !samples_count.is_multiple_of(channel_count) {
         return Err(Error::compression("Invalid sample count for channel count"));
     }
 

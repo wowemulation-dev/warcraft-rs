@@ -983,10 +983,10 @@ impl WmoParser {
 
         for i in 0..buffer.len() {
             if buffer[i] == 0 {
-                if i > start {
-                    if let Ok(s) = std::str::from_utf8(&buffer[start..i]) {
-                        strings.push(s.to_string());
-                    }
+                if i > start
+                    && let Ok(s) = std::str::from_utf8(&buffer[start..i])
+                {
+                    strings.push(s.to_string());
                 }
                 start = i + 1;
             }

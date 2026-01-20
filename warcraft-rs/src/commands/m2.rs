@@ -906,16 +906,16 @@ fn handle_tree(path: PathBuf, max_depth: usize, show_size: bool, show_refs: bool
 
     // Add version-specific features
     if let Some(version) = model.header.version() {
-        if version >= M2Version::Cataclysm {
-            if let Some(ref combos) = model.header.texture_combiner_combos {
-                let combo_node = TreeNode::new(
-                    "Texture Combiner Combos (Cataclysm+)".to_string(),
-                    NodeType::Data,
-                )
-                .with_metadata("count", &combos.count.to_string())
-                .with_metadata("offset", &format!("0x{:x}", combos.offset));
-                root = root.add_child(combo_node);
-            }
+        if version >= M2Version::Cataclysm
+            && let Some(ref combos) = model.header.texture_combiner_combos
+        {
+            let combo_node = TreeNode::new(
+                "Texture Combiner Combos (Cataclysm+)".to_string(),
+                NodeType::Data,
+            )
+            .with_metadata("count", &combos.count.to_string())
+            .with_metadata("offset", &format!("0x{:x}", combos.offset));
+            root = root.add_child(combo_node);
         }
 
         if version >= M2Version::WotLK {

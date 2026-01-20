@@ -339,10 +339,10 @@ fn get_file_list(
 
     for file in files {
         // Apply filter if provided
-        if let Some(pattern) = filter {
-            if !simple_pattern_match(&file.name, pattern) {
-                continue;
-            }
+        if let Some(pattern) = filter
+            && !simple_pattern_match(&file.name, pattern)
+        {
+            continue;
         }
 
         file_map.insert(file.name.clone(), file);

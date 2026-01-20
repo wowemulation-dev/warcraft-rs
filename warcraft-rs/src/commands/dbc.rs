@@ -508,10 +508,10 @@ fn validate_command(file: &Path, schema_path: &Path) -> Result<()> {
                     for i in 0..record_set.len() {
                         if let Some(record) = record_set.get_record(i) {
                             for value in record.values() {
-                                if let Value::StringRef(str_ref) = value {
-                                    if record_set.get_string(*str_ref).is_err() {
-                                        invalid_strings += 1;
-                                    }
+                                if let Value::StringRef(str_ref) = value
+                                    && record_set.get_string(*str_ref).is_err()
+                                {
+                                    invalid_strings += 1;
                                 }
                             }
                         }
@@ -799,10 +799,10 @@ fn discover_command(
         println!("=================");
         println!("Name: {}", schema.name);
 
-        if let Some(key_index) = schema.key_field_index {
-            if key_index < schema.fields.len() {
-                println!("Key Field: {}", schema.fields[key_index].name);
-            }
+        if let Some(key_index) = schema.key_field_index
+            && key_index < schema.fields.len()
+        {
+            println!("Key Field: {}", schema.fields[key_index].name);
         }
 
         println!("Fields:");
@@ -830,10 +830,10 @@ fn discover_command(
         if let Some(output_path) = output_path {
             let mut contents = format!("Schema: {}\n", schema.name);
 
-            if let Some(key_index) = schema.key_field_index {
-                if key_index < schema.fields.len() {
-                    contents.push_str(&format!("Key Field: {}\n", schema.fields[key_index].name));
-                }
+            if let Some(key_index) = schema.key_field_index
+                && key_index < schema.fields.len()
+            {
+                contents.push_str(&format!("Key Field: {}\n", schema.fields[key_index].name));
             }
 
             contents.push_str("Fields:\n");

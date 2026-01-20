@@ -542,12 +542,10 @@ fn list_archive(
     };
 
     // Record filenames to database if requested
-    if record_to_db {
-        if let Some(ref db) = db {
-            let count = archive.record_listfile_to_db(db)?;
-            if count > 0 {
-                println!("Recorded {count} filenames to database");
-            }
+    if record_to_db && let Some(ref db) = db {
+        let count = archive.record_listfile_to_db(db)?;
+        if count > 0 {
+            println!("Recorded {count} filenames to database");
         }
     }
 
@@ -591,18 +589,18 @@ fn list_archive(
 
         for file in filtered_files {
             // Try to get file info from the entries
-            if let Ok(entries) = archive.list() {
-                if let Some(entry) = entries.iter().find(|e| &e.name == file) {
-                    add_table_row(
-                        &mut table,
-                        vec![
-                            truncate_path(file, 50),
-                            format_bytes(entry.size),
-                            format_bytes(entry.compressed_size),
-                            format_compression_ratio(entry.size, entry.compressed_size),
-                        ],
-                    );
-                }
+            if let Ok(entries) = archive.list()
+                && let Some(entry) = entries.iter().find(|e| &e.name == file)
+            {
+                add_table_row(
+                    &mut table,
+                    vec![
+                        truncate_path(file, 50),
+                        format_bytes(entry.size),
+                        format_bytes(entry.compressed_size),
+                        format_compression_ratio(entry.size, entry.compressed_size),
+                    ],
+                );
             }
         }
 
@@ -1181,7 +1179,7 @@ fn rebuild_mpq_archive(params: RebuildParams<'_>) -> Result<()> {
 
     // Set up progress callback
     let progress_callback = Some(Box::new(|current: usize, total: usize, file: &str| {
-        if current % 100 == 0 || current == total {
+        if current.is_multiple_of(100) || current == total {
             println!("  [{current}/{total}] Processing: {file}");
         }
     }) as Box<dyn Fn(usize, usize, &str) + Send + Sync>);
@@ -1486,75 +1484,74 @@ fn display_table_output(
     metadata_table.printstd();
 
     // File differences
-    if let Some(files) = &result.files {
-        if !files.source_only.is_empty()
+    if let Some(files) = &result.files
+        && (!files.source_only.is_empty()
             || !files.target_only.is_empty()
-            || !files.size_differences.is_empty()
-        {
-            println!("\nFile Differences:");
+            || !files.size_differences.is_empty())
+    {
+        println!("\nFile Differences:");
 
-            if !files.source_only.is_empty() {
-                println!("\nFiles only in source ({}):", files.source_only.len());
-                for file in files.source_only.iter().take(10) {
-                    println!("  - {file}");
-                }
-                if files.source_only.len() > 10 {
-                    println!("  ... and {} more", files.source_only.len() - 10);
-                }
+        if !files.source_only.is_empty() {
+            println!("\nFiles only in source ({}):", files.source_only.len());
+            for file in files.source_only.iter().take(10) {
+                println!("  - {file}");
             }
-
-            if !files.target_only.is_empty() {
-                println!("\nFiles only in target ({}):", files.target_only.len());
-                for file in files.target_only.iter().take(10) {
-                    println!("  + {file}");
-                }
-                if files.target_only.len() > 10 {
-                    println!("  ... and {} more", files.target_only.len() - 10);
-                }
+            if files.source_only.len() > 10 {
+                println!("  ... and {} more", files.source_only.len() - 10);
             }
+        }
 
-            if !files.size_differences.is_empty() {
-                println!("\nFiles with size differences:");
-                let mut size_table =
-                    create_table(vec!["File", "Source Size", "Target Size", "Compression"]);
-
-                for diff in files.size_differences.iter().take(10) {
-                    add_table_row(
-                        &mut size_table,
-                        vec![
-                            truncate_path(&diff.name, 40),
-                            format_bytes(diff.source_size),
-                            format_bytes(diff.target_size),
-                            format!(
-                                "{} → {}",
-                                format_compression_ratio(diff.source_size, diff.source_compressed),
-                                format_compression_ratio(diff.target_size, diff.target_compressed)
-                            ),
-                        ],
-                    );
-                }
-
-                size_table.printstd();
-
-                if files.size_differences.len() > 10 {
-                    println!(
-                        "... and {} more files with size differences",
-                        files.size_differences.len() - 10
-                    );
-                }
+        if !files.target_only.is_empty() {
+            println!("\nFiles only in target ({}):", files.target_only.len());
+            for file in files.target_only.iter().take(10) {
+                println!("  + {file}");
             }
+            if files.target_only.len() > 10 {
+                println!("  ... and {} more", files.target_only.len() - 10);
+            }
+        }
 
-            if !files.content_differences.is_empty() {
-                println!(
-                    "\nFiles with content differences ({}):",
-                    files.content_differences.len()
+        if !files.size_differences.is_empty() {
+            println!("\nFiles with size differences:");
+            let mut size_table =
+                create_table(vec!["File", "Source Size", "Target Size", "Compression"]);
+
+            for diff in files.size_differences.iter().take(10) {
+                add_table_row(
+                    &mut size_table,
+                    vec![
+                        truncate_path(&diff.name, 40),
+                        format_bytes(diff.source_size),
+                        format_bytes(diff.target_size),
+                        format!(
+                            "{} → {}",
+                            format_compression_ratio(diff.source_size, diff.source_compressed),
+                            format_compression_ratio(diff.target_size, diff.target_compressed)
+                        ),
+                    ],
                 );
-                for file in files.content_differences.iter().take(10) {
-                    println!("  ≠ {file}");
-                }
-                if files.content_differences.len() > 10 {
-                    println!("  ... and {} more", files.content_differences.len() - 10);
-                }
+            }
+
+            size_table.printstd();
+
+            if files.size_differences.len() > 10 {
+                println!(
+                    "... and {} more files with size differences",
+                    files.size_differences.len() - 10
+                );
+            }
+        }
+
+        if !files.content_differences.is_empty() {
+            println!(
+                "\nFiles with content differences ({}):",
+                files.content_differences.len()
+            );
+            for file in files.content_differences.iter().take(10) {
+                println!("  ≠ {file}");
+            }
+            if files.content_differences.len() > 10 {
+                println!("  ... and {} more", files.content_differences.len() - 10);
             }
         }
     }
@@ -1752,16 +1749,16 @@ fn create_file_node(
     let mut node = TreeNode::new(file_name.to_string(), NodeType::File);
 
     // Add file size if available
-    if let Ok(entries) = archive.list() {
-        if let Some(entry) = entries.iter().find(|e| e.name == file_path) {
-            node = node
-                .with_size(entry.size)
-                .with_metadata("compressed_size", &format_bytes(entry.compressed_size))
-                .with_metadata(
-                    "compression_ratio",
-                    &format_compression_ratio(entry.size, entry.compressed_size),
-                );
-        }
+    if let Ok(entries) = archive.list()
+        && let Some(entry) = entries.iter().find(|e| e.name == file_path)
+    {
+        node = node
+            .with_size(entry.size)
+            .with_metadata("compressed_size", &format_bytes(entry.compressed_size))
+            .with_metadata(
+                "compression_ratio",
+                &format_compression_ratio(entry.size, entry.compressed_size),
+            );
     }
 
     // Add file type metadata
@@ -1986,19 +1983,19 @@ fn find_file_entries(archive: &mut Archive, filename: &str, _raw_dump: bool) -> 
             println!();
 
             // Show hash entry
-            if let Some(hash_table) = archive.hash_table() {
-                if let Some(hash_entry) = hash_table.entries().get(file_info.hash_index) {
-                    println!("Hash Entry:");
-                    println!("{}", dump_hash_entry(hash_entry, file_info.hash_index));
-                }
+            if let Some(hash_table) = archive.hash_table()
+                && let Some(hash_entry) = hash_table.entries().get(file_info.hash_index)
+            {
+                println!("Hash Entry:");
+                println!("{}", dump_hash_entry(hash_entry, file_info.hash_index));
             }
 
             // Show block entry
-            if let Some(block_table) = archive.block_table() {
-                if let Some(block_entry) = block_table.entries().get(file_info.block_index) {
-                    println!("\nBlock Entry:");
-                    println!("{}", dump_block_entry(block_entry, file_info.block_index));
-                }
+            if let Some(block_table) = archive.block_table()
+                && let Some(block_entry) = block_table.entries().get(file_info.block_index)
+            {
+                println!("\nBlock Entry:");
+                println!("{}", dump_block_entry(block_entry, file_info.block_index));
             }
         }
         None => {
@@ -2016,24 +2013,24 @@ fn show_entry_at_index(archive: &mut Archive, index: usize, _raw_dump: bool) -> 
     let mut found = false;
 
     // Check hash table
-    if let Some(hash_table) = archive.hash_table() {
-        if let Some(hash_entry) = hash_table.entries().get(index) {
-            println!("Hash Entry:");
-            println!("{}", dump_hash_entry(hash_entry, index));
-            found = true;
-        }
+    if let Some(hash_table) = archive.hash_table()
+        && let Some(hash_entry) = hash_table.entries().get(index)
+    {
+        println!("Hash Entry:");
+        println!("{}", dump_hash_entry(hash_entry, index));
+        found = true;
     }
 
     // Check block table
-    if let Some(block_table) = archive.block_table() {
-        if let Some(block_entry) = block_table.entries().get(index) {
-            if found {
-                println!();
-            }
-            println!("Block Entry:");
-            println!("{}", dump_block_entry(block_entry, index));
-            found = true;
+    if let Some(block_table) = archive.block_table()
+        && let Some(block_entry) = block_table.entries().get(index)
+    {
+        if found {
+            println!();
         }
+        println!("Block Entry:");
+        println!("{}", dump_block_entry(block_entry, index));
+        found = true;
     }
 
     if !found {

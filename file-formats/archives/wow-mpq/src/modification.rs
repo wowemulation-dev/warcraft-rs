@@ -444,26 +444,26 @@ impl MutableArchive {
         // First check if we have a modified version
         if let Some((_, entry)) = self.find_file_entry(filename)? {
             let block_idx = entry.block_index as usize;
-            if let Some(block_table) = &self.block_table {
-                if let Some(block) = block_table.entries().get(block_idx) {
-                    // Read from our file handle
-                    let file_pos = self.archive.archive_offset() + block.file_pos as u64;
-                    self.file.seek(SeekFrom::Start(file_pos))?;
+            if let Some(block_table) = &self.block_table
+                && let Some(block) = block_table.entries().get(block_idx)
+            {
+                // Read from our file handle
+                let file_pos = self.archive.archive_offset() + block.file_pos as u64;
+                self.file.seek(SeekFrom::Start(file_pos))?;
 
-                    let mut data = vec![0u8; block.compressed_size as usize];
-                    self.file.read_exact(&mut data)?;
+                let mut data = vec![0u8; block.compressed_size as usize];
+                self.file.read_exact(&mut data)?;
 
-                    // Handle decompression/decryption if needed
-                    // For now, assume (listfile) is uncompressed/unencrypted
-                    if block.is_compressed() || block.is_encrypted() {
-                        // This would need proper decompression/decryption
-                        return self.archive.read_file(filename);
-                    }
-
-                    // Truncate to actual file size
-                    data.truncate(block.file_size as usize);
-                    return Ok(data);
+                // Handle decompression/decryption if needed
+                // For now, assume (listfile) is uncompressed/unencrypted
+                if block.is_compressed() || block.is_encrypted() {
+                    // This would need proper decompression/decryption
+                    return self.archive.read_file(filename);
                 }
+
+                // Truncate to actual file size
+                data.truncate(block.file_size as usize);
+                return Ok(data);
             }
         }
 
@@ -591,31 +591,31 @@ impl MutableArchive {
                 }
 
                 let block_idx = entry.block_index as usize;
-                if let Some(block_table) = &self.block_table {
-                    if let Some(block) = block_table.entries().get(block_idx) {
-                        // Find the file name from listfile or generate a placeholder
-                        let filename = if let Some(ref list) = file_list {
-                            list.iter()
-                                .find(|e| {
-                                    // Match by verifying the hash values
-                                    let name_hash1 = hash_string(&e.name, hash_type::NAME_A);
-                                    let name_hash2 = hash_string(&e.name, hash_type::NAME_B);
-                                    entry.name_1 == name_hash1 && entry.name_2 == name_hash2
-                                })
-                                .map(|e| e.name.clone())
-                        } else {
-                            None
-                        };
+                if let Some(block_table) = &self.block_table
+                    && let Some(block) = block_table.entries().get(block_idx)
+                {
+                    // Find the file name from listfile or generate a placeholder
+                    let filename = if let Some(ref list) = file_list {
+                        list.iter()
+                            .find(|e| {
+                                // Match by verifying the hash values
+                                let name_hash1 = hash_string(&e.name, hash_type::NAME_A);
+                                let name_hash2 = hash_string(&e.name, hash_type::NAME_B);
+                                entry.name_1 == name_hash1 && entry.name_2 == name_hash2
+                            })
+                            .map(|e| e.name.clone())
+                    } else {
+                        None
+                    };
 
-                        let filename = filename.unwrap_or_else(|| {
-                            // Generate placeholder name if not found in listfile
-                            generate_anonymous_filename(
-                                ((entry.name_1 as u64) << 32 | entry.name_2 as u64) as u32,
-                            )
-                        });
+                    let filename = filename.unwrap_or_else(|| {
+                        // Generate placeholder name if not found in listfile
+                        generate_anonymous_filename(
+                            ((entry.name_1 as u64) << 32 | entry.name_2 as u64) as u32,
+                        )
+                    });
 
-                        files_to_copy.push((hash_idx, block_idx, filename, *entry, *block));
-                    }
+                    files_to_copy.push((hash_idx, block_idx, filename, *entry, *block));
                 }
             }
         }
@@ -815,22 +815,22 @@ impl MutableArchive {
         }
 
         // Also update timestamps for all other valid files (not modified)
-        if attrs.flags.has_filetime() {
-            if let Some(hash_table) = &self.hash_table {
-                for entry in hash_table.entries() {
-                    if !entry.is_valid() {
-                        continue;
-                    }
+        if attrs.flags.has_filetime()
+            && let Some(hash_table) = &self.hash_table
+        {
+            for entry in hash_table.entries() {
+                if !entry.is_valid() {
+                    continue;
+                }
 
-                    let block_idx = entry.block_index as usize;
-                    if block_idx >= block_count {
-                        continue;
-                    }
+                let block_idx = entry.block_index as usize;
+                if block_idx >= block_count {
+                    continue;
+                }
 
-                    // Only update if not already updated above
-                    if !self.modified_blocks.contains_key(&entry.block_index) {
-                        attrs.file_attributes[block_idx].filetime = Some(filetime);
-                    }
+                // Only update if not already updated above
+                if !self.modified_blocks.contains_key(&entry.block_index) {
+                    attrs.file_attributes[block_idx].filetime = Some(filetime);
                 }
             }
         }
@@ -1029,7 +1029,7 @@ impl MutableArchive {
             let _original_len = output_data.len();
 
             // Pad to 4-byte boundary for encryption
-            while output_data.len() % 4 != 0 {
+            while !output_data.len().is_multiple_of(4) {
                 output_data.push(0);
             }
 

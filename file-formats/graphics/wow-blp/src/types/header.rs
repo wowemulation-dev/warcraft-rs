@@ -109,12 +109,12 @@ impl BlpHeader {
 
     /// Validate the BLP header for compatibility with a specific WoW version
     pub fn validate_for_wow_version(&self, wow_version: WowVersion) -> Result<(), String> {
-        if let Some(alpha_type) = self.alpha_type() {
-            if !alpha_type.is_supported_in_version(wow_version) {
-                return Err(format!(
-                    "Alpha type {alpha_type:?} not supported in WoW version {wow_version:?}"
-                ));
-            }
+        if let Some(alpha_type) = self.alpha_type()
+            && !alpha_type.is_supported_in_version(wow_version)
+        {
+            return Err(format!(
+                "Alpha type {alpha_type:?} not supported in WoW version {wow_version:?}"
+            ));
         }
         Ok(())
     }

@@ -1435,82 +1435,80 @@ mod integration_tests {
     fn test_all_cataclysm_anim_samples() {
         let samples_dir = "/home/danielsreichenbach/analysis/anim_samples/cataclysm/";
 
-        if Path::new(samples_dir).exists() {
-            if let Ok(entries) = std::fs::read_dir(samples_dir) {
-                let mut success_count = 0;
-                let mut total_count = 0;
-                let mut memory_stats = Vec::new();
+        if Path::new(samples_dir).exists()
+            && let Ok(entries) = std::fs::read_dir(samples_dir)
+        {
+            let mut success_count = 0;
+            let mut total_count = 0;
+            let mut memory_stats = Vec::new();
 
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.extension().map(|s| s == "anim").unwrap_or(false) {
-                        total_count += 1;
-                        println!("Testing ANIM file: {:?}", path.file_name());
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().map(|s| s == "anim").unwrap_or(false) {
+                    total_count += 1;
+                    println!("Testing ANIM file: {:?}", path.file_name());
 
-                        match AnimFile::load(&path) {
-                            Ok(mut anim_file) => {
-                                success_count += 1;
+                    match AnimFile::load(&path) {
+                        Ok(mut anim_file) => {
+                            success_count += 1;
 
-                                // Test validation
-                                match anim_file.validate() {
-                                    Ok(()) => println!("  ✓ Validation: Pass"),
-                                    Err(e) => println!("  ⚠ Validation: {:?}", e),
-                                }
+                            // Test validation
+                            match anim_file.validate() {
+                                Ok(()) => println!("  ✓ Validation: Pass"),
+                                Err(e) => println!("  ⚠ Validation: {:?}", e),
+                            }
 
-                                // Test memory usage analysis
-                                let usage = anim_file.memory_usage();
-                                memory_stats.push(usage.clone());
+                            // Test memory usage analysis
+                            let usage = anim_file.memory_usage();
+                            memory_stats.push(usage.clone());
+                            println!(
+                                "  ✓ Success: {} sections, format: {:?}, memory: ~{} bytes",
+                                anim_file.sections.len(),
+                                anim_file.format,
+                                usage.approximate_bytes
+                            );
+
+                            // Test memory optimization
+                            let before_opt = anim_file.memory_usage();
+                            anim_file.optimize_memory();
+                            let after_opt = anim_file.memory_usage();
+                            if after_opt.approximate_bytes < before_opt.approximate_bytes {
                                 println!(
-                                    "  ✓ Success: {} sections, format: {:?}, memory: ~{} bytes",
-                                    anim_file.sections.len(),
-                                    anim_file.format,
-                                    usage.approximate_bytes
+                                    "  ✓ Optimization: {} -> {} bytes",
+                                    before_opt.approximate_bytes, after_opt.approximate_bytes
                                 );
-
-                                // Test memory optimization
-                                let before_opt = anim_file.memory_usage();
-                                anim_file.optimize_memory();
-                                let after_opt = anim_file.memory_usage();
-                                if after_opt.approximate_bytes < before_opt.approximate_bytes {
-                                    println!(
-                                        "  ✓ Optimization: {} -> {} bytes",
-                                        before_opt.approximate_bytes, after_opt.approximate_bytes
-                                    );
-                                }
-
-                                // Test format conversion (if applicable)
-                                if anim_file.is_legacy_format() {
-                                    let converted =
-                                        anim_file.convert(crate::version::M2Version::Legion);
-                                    assert!(
-                                        converted.is_modern_format(),
-                                        "Conversion to modern format failed"
-                                    );
-                                }
                             }
-                            Err(e) => {
-                                println!("  ✗ Failed: {:?}", e);
+
+                            // Test format conversion (if applicable)
+                            if anim_file.is_legacy_format() {
+                                let converted =
+                                    anim_file.convert(crate::version::M2Version::Legion);
+                                assert!(
+                                    converted.is_modern_format(),
+                                    "Conversion to modern format failed"
+                                );
                             }
+                        }
+                        Err(e) => {
+                            println!("  ✗ Failed: {:?}", e);
                         }
                     }
                 }
+            }
 
+            println!(
+                "Summary: {}/{} ANIM files parsed successfully",
+                success_count, total_count
+            );
+
+            if !memory_stats.is_empty() {
+                let total_memory: usize = memory_stats.iter().map(|s| s.approximate_bytes).sum();
+                let avg_memory = total_memory / memory_stats.len();
+                let total_keyframes: usize = memory_stats.iter().map(|s| s.total_keyframes()).sum();
                 println!(
-                    "Summary: {}/{} ANIM files parsed successfully",
-                    success_count, total_count
+                    "Memory stats: total ~{} bytes, avg ~{} bytes per file, {} total keyframes",
+                    total_memory, avg_memory, total_keyframes
                 );
-
-                if !memory_stats.is_empty() {
-                    let total_memory: usize =
-                        memory_stats.iter().map(|s| s.approximate_bytes).sum();
-                    let avg_memory = total_memory / memory_stats.len();
-                    let total_keyframes: usize =
-                        memory_stats.iter().map(|s| s.total_keyframes()).sum();
-                    println!(
-                        "Memory stats: total ~{} bytes, avg ~{} bytes per file, {} total keyframes",
-                        total_memory, avg_memory, total_keyframes
-                    );
-                }
             }
         }
     }

@@ -68,31 +68,31 @@ fn parse_with_code_schema() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Parsed {} records", record_set.len());
 
     // Access records by index
-    if let Some(record) = record_set.get_record(0) {
-        if let Some(Value::Int32(id)) = record.get_value_by_name("ClassID") {
-            println!("   First record ClassID: {id}");
-        }
+    if let Some(record) = record_set.get_record(0)
+        && let Some(Value::Int32(id)) = record.get_value_by_name("ClassID")
+    {
+        println!("   First record ClassID: {id}");
     }
 
     // Access records by key
-    if let Some(record) = record_set.get_record_by_key(2) {
-        if let Some(Value::StringRef(name_ref)) = record.get_value_by_name("ClassName") {
-            let name = record_set.get_string(*name_ref)?;
-            println!("   Class 2 name: {name}");
-        }
+    if let Some(record) = record_set.get_record_by_key(2)
+        && let Some(Value::StringRef(name_ref)) = record.get_value_by_name("ClassName")
+    {
+        let name = record_set.get_string(*name_ref)?;
+        println!("   Class 2 name: {name}");
     }
 
     // Display all records
     println!("   All item classes:");
     for i in 0..record_set.len() {
-        if let Some(record) = record_set.get_record(i) {
-            if let (Some(Value::Int32(id)), Some(Value::StringRef(name_ref))) = (
+        if let Some(record) = record_set.get_record(i)
+            && let (Some(Value::Int32(id)), Some(Value::StringRef(name_ref))) = (
                 record.get_value_by_name("ClassID"),
                 record.get_value_by_name("ClassName"),
-            ) {
-                let name = record_set.get_string(*name_ref)?;
-                println!("     - Class {id}: {name}");
-            }
+            )
+        {
+            let name = record_set.get_string(*name_ref)?;
+            println!("     - Class {id}: {name}");
         }
     }
 
@@ -154,10 +154,10 @@ fn parse_with_lazy_loading() -> Result<(), Box<dyn std::error::Error>> {
         count += 1;
 
         // Only process first few records for demo
-        if count <= 3 {
-            if let Some(Value::UInt32(id)) = record.get_value_by_name("ID") {
-                println!("   - Record {count}: ID = {id}");
-            }
+        if count <= 3
+            && let Some(Value::UInt32(id)) = record.get_value_by_name("ID")
+        {
+            println!("   - Record {count}: ID = {id}");
         }
     }
 

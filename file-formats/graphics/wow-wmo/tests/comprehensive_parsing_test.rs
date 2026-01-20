@@ -79,15 +79,14 @@ fn test_all_wmo_files_in_dir(dir: &Path, expansion: &str) {
                             }
 
                             // Check for malformed chunks
-                            if let Some(metadata) = result.metadata() {
-                                if metadata.has_malformed_chunks() {
+                            if let Some(metadata) = result.metadata()
+                                && metadata.has_malformed_chunks() {
                                     println!(
                                         "  WARNING: {} has {} malformed chunks",
                                         file_name,
                                         metadata.malformed_count()
                                     );
                                 }
-                            }
                         }
                         Err(e) => {
                             failures.push(format!("{}: {}", path.display(), e));

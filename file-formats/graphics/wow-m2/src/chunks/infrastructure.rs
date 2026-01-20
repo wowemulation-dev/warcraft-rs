@@ -129,10 +129,7 @@ impl<R: Read + Seek> Read for ChunkReader<R> {
         let remaining = match self.remaining() {
             Ok(r) => r as usize,
             Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Failed to get remaining chunk bytes",
-                ));
+                return Err(std::io::Error::other("Failed to get remaining chunk bytes"));
             }
         };
 

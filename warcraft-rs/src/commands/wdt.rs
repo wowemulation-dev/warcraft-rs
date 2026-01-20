@@ -179,14 +179,14 @@ fn execute_info(path: PathBuf, version_str: String, detailed: bool) -> Result<()
     let tile_count = wdt.count_existing_tiles();
     println!("{}: {} / 4096 tiles", style("ADT Tiles").bold(), tile_count);
 
-    if let Some(ref wmo) = wdt.mwmo {
-        if !wmo.is_empty() {
-            println!(
-                "{}: {}",
-                style("Global WMO").bold(),
-                wmo.filenames.first().unwrap_or(&"<empty>".to_string())
-            );
-        }
+    if let Some(ref wmo) = wdt.mwmo
+        && !wmo.is_empty()
+    {
+        println!(
+            "{}: {}",
+            style("Global WMO").bold(),
+            wmo.filenames.first().unwrap_or(&"<empty>".to_string())
+        );
     }
 
     if wdt.maid.is_some() {
@@ -395,10 +395,10 @@ fn execute_tiles(path: PathBuf, version_str: String, format: String) -> Result<(
 
     for y in 0..64 {
         for x in 0..64 {
-            if let Some(tile_info) = wdt.get_tile(x, y) {
-                if tile_info.has_adt {
-                    tiles.push((x, y, tile_info.area_id));
-                }
+            if let Some(tile_info) = wdt.get_tile(x, y)
+                && tile_info.has_adt
+            {
+                tiles.push((x, y, tile_info.area_id));
             }
         }
     }
@@ -573,26 +573,25 @@ fn execute_tree(
     let mut tile_count = 0;
     for y in 0..64 {
         for x in 0..64 {
-            if let Some(tile_info) = wdt.get_tile(x, y) {
-                if tile_info.has_adt {
-                    tile_count += 1;
+            if let Some(tile_info) = wdt.get_tile(x, y)
+                && tile_info.has_adt
+            {
+                tile_count += 1;
 
-                    // Show first few tiles as examples
-                    if tile_count <= 5 || !compact {
-                        let mut tile_node =
-                            TreeNode::new(format!("[{x:02},{y:02}]"), NodeType::Data)
-                                .with_metadata("area_id", &tile_info.area_id.to_string())
-                                .with_metadata("has_adt", "true");
+                // Show first few tiles as examples
+                if tile_count <= 5 || !compact {
+                    let mut tile_node = TreeNode::new(format!("[{x:02},{y:02}]"), NodeType::Data)
+                        .with_metadata("area_id", &tile_info.area_id.to_string())
+                        .with_metadata("has_adt", "true");
 
-                        if show_external_refs {
-                            tile_node = tile_node.with_external_ref(
-                                &format!("{base_name}_{x:02}_{y:02}.adt"),
-                                detect_ref_type("file.adt"),
-                            );
-                        }
-
-                        main_node = main_node.add_child(tile_node);
+                    if show_external_refs {
+                        tile_node = tile_node.with_external_ref(
+                            &format!("{base_name}_{x:02}_{y:02}.adt"),
+                            detect_ref_type("file.adt"),
+                        );
                     }
+
+                    main_node = main_node.add_child(tile_node);
                 }
             }
         }

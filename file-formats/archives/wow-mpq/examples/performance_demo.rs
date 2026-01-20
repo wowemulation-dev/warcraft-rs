@@ -29,10 +29,10 @@ fn main() {
     let mut results = Vec::new();
 
     for (archive_path, description) in test_archives {
-        if Path::new(archive_path).exists() {
-            if let Some(result) = measure_archive_performance(archive_path, description) {
-                results.push(result);
-            }
+        if Path::new(archive_path).exists()
+            && let Some(result) = measure_archive_performance(archive_path, description)
+        {
+            results.push(result);
         }
     }
 

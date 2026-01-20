@@ -271,7 +271,7 @@ impl<'a> BitReader<'a> {
             self.bit_count = 0;
             self.position += (remaining / 8) as usize;
             // Handle remaining bits if any
-            if remaining % 8 > 0 && self.peek_7_bits().is_ok() {
+            if !remaining.is_multiple_of(8) && self.peek_7_bits().is_ok() {
                 self.skip_bits(remaining % 8);
             }
         }

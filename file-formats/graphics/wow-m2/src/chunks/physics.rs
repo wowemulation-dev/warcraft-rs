@@ -220,14 +220,14 @@ impl M2PhysicsData {
     /// Parse physics data from a reader based on the M2 version
     pub fn parse<R: Read + std::io::Seek>(reader: &mut R, version: u32) -> Result<Self> {
         // Physics data was introduced in MoP (5.x)
-        if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version < M2Version::MoP {
-                return Ok(Self {
-                    shapes: Vec::new(),
-                    bodies: Vec::new(),
-                    joints: Vec::new(),
-                });
-            }
+        if let Some(m2_version) = M2Version::from_header_version(version)
+            && m2_version < M2Version::MoP
+        {
+            return Ok(Self {
+                shapes: Vec::new(),
+                bodies: Vec::new(),
+                joints: Vec::new(),
+            });
         }
 
         let shapes_count = reader.read_u32_le()?;
@@ -276,10 +276,10 @@ impl M2PhysicsData {
     /// Write physics data to a writer based on the M2 version
     pub fn write<W: Write + std::io::Seek>(&self, writer: &mut W, version: u32) -> Result<()> {
         // Physics data was introduced in MoP (5.x)
-        if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version < M2Version::MoP {
-                return Ok(());
-            }
+        if let Some(m2_version) = M2Version::from_header_version(version)
+            && m2_version < M2Version::MoP
+        {
+            return Ok(());
         }
 
         let header_pos = writer.stream_position()?;

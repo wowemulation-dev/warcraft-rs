@@ -64,14 +64,12 @@ pub fn convert_wdt(
 
 /// Convert pre-Cataclysm format to Cataclysm+ format
 fn convert_pre_cata_to_cata(wdt: &mut WdtFile) -> Result<()> {
-    // Remove MWMO chunk from terrain maps
-    if !wdt.is_wmo_only() && wdt.mwmo.is_some() {
-        // Check if MWMO is empty (as it should be for terrain maps)
-        if let Some(ref mwmo) = wdt.mwmo {
-            if mwmo.is_empty() {
-                wdt.mwmo = None;
-            }
-        }
+    // Remove MWMO chunk from terrain maps if empty
+    if !wdt.is_wmo_only()
+        && let Some(ref mwmo) = wdt.mwmo
+        && mwmo.is_empty()
+    {
+        wdt.mwmo = None;
     }
 
     // Add universal flag 0x0040

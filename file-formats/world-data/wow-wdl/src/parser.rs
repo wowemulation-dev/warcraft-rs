@@ -481,16 +481,16 @@ impl WdlParser {
                 current_offset += 8 + (HeightMapTile::TOTAL_COUNT * 2) as u32; // 8 bytes for magic and size, 2 bytes per height value
 
                 // Create MAHO chunk if needed
-                if file.version.has_maho_chunk() {
-                    if let Some(holes) = file.holes_data.get(&key) {
-                        let mut maho_data = Vec::new();
-                        holes.write(&mut maho_data).map_err(WdlError::Io)?;
-                        maho_chunks.insert(key, Chunk::new(MAHO_MAGIC, maho_data));
+                if file.version.has_maho_chunk()
+                    && let Some(holes) = file.holes_data.get(&key)
+                {
+                    let mut maho_data = Vec::new();
+                    holes.write(&mut maho_data).map_err(WdlError::Io)?;
+                    maho_chunks.insert(key, Chunk::new(MAHO_MAGIC, maho_data));
 
-                        // Update offset for next chunk
-                        current_offset += 8 + (HolesData::MASK_COUNT * 2) as u32;
-                        // 8 bytes for magic and size, 2 bytes per mask
-                    }
+                    // Update offset for next chunk
+                    current_offset += 8 + (HolesData::MASK_COUNT * 2) as u32;
+                    // 8 bytes for magic and size, 2 bytes per mask
                 }
             }
         }

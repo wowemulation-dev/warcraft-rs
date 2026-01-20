@@ -193,10 +193,10 @@ fn parse_with_yaml_schema() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Parsed {} records successfully", record_set.len());
 
     // Show a sample spell
-    if let Some(record) = record_set.get_record(0) {
-        if let Some(wow_cdbc::Value::UInt32(id)) = record.get_value_by_name("ID") {
-            println!("   First spell ID: {id}");
-        }
+    if let Some(record) = record_set.get_record(0)
+        && let Some(wow_cdbc::Value::UInt32(id)) = record.get_value_by_name("ID")
+    {
+        println!("   First spell ID: {id}");
     }
 
     println!();

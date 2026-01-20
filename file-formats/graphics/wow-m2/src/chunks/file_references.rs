@@ -342,7 +342,7 @@ impl LodData {
         // 4 bytes: triangle_count (u32)
         const LOD_LEVEL_SIZE: u32 = 14;
 
-        if reader.chunk_size() % LOD_LEVEL_SIZE != 0 {
+        if !reader.chunk_size().is_multiple_of(LOD_LEVEL_SIZE) {
             return Err(crate::error::M2Error::ParseError(format!(
                 "LDV1 chunk size {} is not a multiple of LOD level size {}",
                 reader.chunk_size(),

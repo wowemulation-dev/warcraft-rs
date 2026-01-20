@@ -170,10 +170,10 @@ impl WmoWriter {
         }
 
         // Write vertex colors if available
-        if let Some(colors) = &group.vertex_colors {
-            if !colors.is_empty() {
-                self.write_vertex_colors(writer, colors)?;
-            }
+        if let Some(colors) = &group.vertex_colors
+            && !colors.is_empty()
+        {
+            self.write_vertex_colors(writer, colors)?;
         }
 
         // Write batches
@@ -182,10 +182,10 @@ impl WmoWriter {
         }
 
         // Write BSP nodes if available
-        if let Some(nodes) = &group.bsp_nodes {
-            if !nodes.is_empty() {
-                self.write_bsp_nodes(writer, nodes)?;
-            }
+        if let Some(nodes) = &group.bsp_nodes
+            && !nodes.is_empty()
+        {
+            self.write_bsp_nodes(writer, nodes)?;
         }
 
         // Write liquid data if available
@@ -194,10 +194,10 @@ impl WmoWriter {
         }
 
         // Write doodad references if available
-        if let Some(refs) = &group.doodad_refs {
-            if !refs.is_empty() {
-                self.write_doodad_refs(writer, refs)?;
-            }
+        if let Some(refs) = &group.doodad_refs
+            && !refs.is_empty()
+        {
+            self.write_doodad_refs(writer, refs)?;
         }
 
         // Update MOGP chunk size

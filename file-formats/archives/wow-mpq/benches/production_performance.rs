@@ -335,55 +335,55 @@ fn bench_realistic_wow_archive(c: &mut Criterion) {
         // Find the first MPQ archive
         if let Ok(entries) = std::fs::read_dir(wow_dir) {
             for entry in entries.flatten() {
-                if let Some(ext) = entry.path().extension() {
-                    if ext.to_string_lossy().to_lowercase() == "mpq" {
-                        let mpq_path = entry.path();
+                if let Some(ext) = entry.path().extension()
+                    && ext.to_string_lossy().to_lowercase() == "mpq"
+                {
+                    let mpq_path = entry.path();
 
-                        // Try to open and get file count
-                        if let Ok(mut archive) = Archive::open(&mpq_path) {
-                            if let Ok(file_list) = archive.list() {
-                                let file_count = file_list.len();
+                    // Try to open and get file count
+                    if let Ok(mut archive) = Archive::open(&mpq_path)
+                        && let Ok(file_list) = archive.list()
+                    {
+                        let file_count = file_list.len();
 
-                                // Only test with reasonably sized archives
-                                if file_count > 100 && file_count < 30000 {
-                                    // Extract a sample of files
-                                    let sample_size = (file_count / 20).clamp(50, 500);
-                                    let sample_files: Vec<String> = file_list
-                                        .into_iter()
-                                        .step_by(file_count / sample_size)
-                                        .map(|e| e.name)
-                                        .collect();
-                                    let file_refs: Vec<&str> =
-                                        sample_files.iter().map(|s| s.as_str()).collect();
+                        // Only test with reasonably sized archives
+                        if file_count > 100 && file_count < 30000 {
+                            // Extract a sample of files
+                            let sample_size = (file_count / 20).clamp(50, 500);
+                            let sample_files: Vec<String> = file_list
+                                .into_iter()
+                                .step_by(file_count / sample_size)
+                                .map(|e| e.name)
+                                .collect();
+                            let file_refs: Vec<&str> =
+                                sample_files.iter().map(|s| s.as_str()).collect();
 
-                                    let archive_name =
-                                        mpq_path.file_stem().unwrap_or_default().to_string_lossy();
+                            let archive_name =
+                                mpq_path.file_stem().unwrap_or_default().to_string_lossy();
 
-                                    group.bench_with_input(
-                                        BenchmarkId::new("wow_archive", &*archive_name),
-                                        &(&mpq_path, &file_refs),
-                                        |b, (path, files)| {
-                                            let config = ParallelConfig::new()
-                                                .threads(8)
-                                                .batch_size(40)
-                                                .skip_errors(true);
+                            group.bench_with_input(
+                                BenchmarkId::new("wow_archive", &*archive_name),
+                                &(&mpq_path, &file_refs),
+                                |b, (path, files)| {
+                                    let config = ParallelConfig::new()
+                                        .threads(8)
+                                        .batch_size(40)
+                                        .skip_errors(true);
 
-                                            b.iter(|| {
-                                                let results = extract_with_config(
-                                                    black_box(path),
-                                                    files,
-                                                    config.clone(),
-                                                )
-                                                .unwrap();
-                                                black_box(results)
-                                            });
-                                        },
-                                    );
+                                    b.iter(|| {
+                                        let results = extract_with_config(
+                                            black_box(path),
+                                            files,
+                                            config.clone(),
+                                        )
+                                        .unwrap();
+                                        black_box(results)
+                                    });
+                                },
+                            );
 
-                                    // Only test first valid archive per directory
-                                    break;
-                                }
-                            }
+                            // Only test first valid archive per directory
+                            break;
                         }
                     }
                 }

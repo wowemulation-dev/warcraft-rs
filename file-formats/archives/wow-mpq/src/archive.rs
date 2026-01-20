@@ -325,127 +325,119 @@ impl Archive {
         // For v3+ archives, check for HET/BET tables first
         if self.header.format_version >= header::FormatVersion::V3 {
             // Try to load HET table
-            if let Some(het_pos) = self.header.het_table_pos {
-                if het_pos != 0 {
-                    let mut het_size = self
-                        .header
-                        .v4_data
-                        .as_ref()
-                        .map(|v4| v4.het_table_size_64)
-                        .unwrap_or(0);
+            if let Some(het_pos) = self.header.het_table_pos
+                && het_pos != 0
+            {
+                let mut het_size = self
+                    .header
+                    .v4_data
+                    .as_ref()
+                    .map(|v4| v4.het_table_size_64)
+                    .unwrap_or(0);
 
-                    // For V3 without V4 data, we need to determine the size
-                    if het_size == 0 && self.header.format_version == header::FormatVersion::V3 {
-                        log::debug!(
-                            "V3 archive without V4 data, reading HET table size from header"
-                        );
-                        // Try to read the table size from the HET header
-                        match self.read_het_table_size(het_pos) {
-                            Ok(size) => {
-                                log::debug!("Determined HET table size: 0x{size:X}");
-                                het_size = size;
-                            }
-                            Err(e) => {
-                                log::warn!("Failed to determine HET table size: {e}");
-                            }
+                // For V3 without V4 data, we need to determine the size
+                if het_size == 0 && self.header.format_version == header::FormatVersion::V3 {
+                    log::debug!("V3 archive without V4 data, reading HET table size from header");
+                    // Try to read the table size from the HET header
+                    match self.read_het_table_size(het_pos) {
+                        Ok(size) => {
+                            log::debug!("Determined HET table size: 0x{size:X}");
+                            het_size = size;
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to determine HET table size: {e}");
                         }
                     }
+                }
 
-                    if het_size > 0 {
-                        log::debug!(
-                            "Loading HET table from offset 0x{het_pos:X}, size 0x{het_size:X}"
-                        );
+                if het_size > 0 {
+                    log::debug!("Loading HET table from offset 0x{het_pos:X}, size 0x{het_size:X}");
 
-                        // HET table key is based on table name
-                        let key = hash_string("(hash table)", hash_type::FILE_KEY);
+                    // HET table key is based on table name
+                    let key = hash_string("(hash table)", hash_type::FILE_KEY);
 
-                        match HetTable::read(
-                            &mut self.reader,
-                            self.archive_offset + het_pos,
-                            het_size,
-                            key,
-                        ) {
-                            Ok(het) => {
-                                let file_count = het.header.max_file_count;
-                                log::info!("Loaded HET table with {file_count} max files");
-                                self.het_table = Some(het);
-                            }
-                            Err(e) => {
-                                log::warn!("Failed to load HET table: {e}");
-                            }
+                    match HetTable::read(
+                        &mut self.reader,
+                        self.archive_offset + het_pos,
+                        het_size,
+                        key,
+                    ) {
+                        Ok(het) => {
+                            let file_count = het.header.max_file_count;
+                            log::info!("Loaded HET table with {file_count} max files");
+                            self.het_table = Some(het);
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to load HET table: {e}");
                         }
                     }
                 }
             }
 
             // Try to load BET table
-            if let Some(bet_pos) = self.header.bet_table_pos {
-                if bet_pos != 0 {
-                    let mut bet_size = self
-                        .header
-                        .v4_data
-                        .as_ref()
-                        .map(|v4| v4.bet_table_size_64)
-                        .unwrap_or(0);
+            if let Some(bet_pos) = self.header.bet_table_pos
+                && bet_pos != 0
+            {
+                let mut bet_size = self
+                    .header
+                    .v4_data
+                    .as_ref()
+                    .map(|v4| v4.bet_table_size_64)
+                    .unwrap_or(0);
 
-                    // For V3 without V4 data, we need to determine the size
-                    if bet_size == 0 && self.header.format_version == header::FormatVersion::V3 {
-                        log::debug!(
-                            "V3 archive without V4 data, reading BET table size from header"
-                        );
-                        // Try to read the table size from the BET header
-                        match self.read_bet_table_size(bet_pos) {
-                            Ok(size) => {
-                                log::debug!("Determined BET table size: 0x{size:X}");
-                                bet_size = size;
-                            }
-                            Err(e) => {
-                                log::warn!("Failed to determine BET table size: {e}");
-                            }
+                // For V3 without V4 data, we need to determine the size
+                if bet_size == 0 && self.header.format_version == header::FormatVersion::V3 {
+                    log::debug!("V3 archive without V4 data, reading BET table size from header");
+                    // Try to read the table size from the BET header
+                    match self.read_bet_table_size(bet_pos) {
+                        Ok(size) => {
+                            log::debug!("Determined BET table size: 0x{size:X}");
+                            bet_size = size;
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to determine BET table size: {e}");
                         }
                     }
+                }
 
-                    if bet_size > 0 {
-                        log::debug!(
-                            "Loading BET table from offset 0x{bet_pos:X}, size 0x{bet_size:X}"
+                if bet_size > 0 {
+                    log::debug!("Loading BET table from offset 0x{bet_pos:X}, size 0x{bet_size:X}");
+
+                    // First, check if the BET offset actually points to a HET table
+                    // This is a known issue in some MoP update archives
+                    self.reader
+                        .seek(SeekFrom::Start(self.archive_offset + bet_pos))?;
+                    let mut sig_buf = [0u8; 4];
+                    self.reader.read_exact(&mut sig_buf)?;
+
+                    if &sig_buf == b"HET\x1A" {
+                        log::error!(
+                            "BET offset points to HET table! This archive has swapped table offsets."
                         );
-
-                        // First, check if the BET offset actually points to a HET table
-                        // This is a known issue in some MoP update archives
+                        log::warn!(
+                            "Skipping BET table loading for this archive due to invalid offset."
+                        );
+                    } else {
+                        // Reset position and proceed with normal BET loading
                         self.reader
                             .seek(SeekFrom::Start(self.archive_offset + bet_pos))?;
-                        let mut sig_buf = [0u8; 4];
-                        self.reader.read_exact(&mut sig_buf)?;
 
-                        if &sig_buf == b"HET\x1A" {
-                            log::error!(
-                                "BET offset points to HET table! This archive has swapped table offsets."
-                            );
-                            log::warn!(
-                                "Skipping BET table loading for this archive due to invalid offset."
-                            );
-                        } else {
-                            // Reset position and proceed with normal BET loading
-                            self.reader
-                                .seek(SeekFrom::Start(self.archive_offset + bet_pos))?;
+                        // BET table key is based on table name
+                        let key = hash_string("(block table)", hash_type::FILE_KEY);
 
-                            // BET table key is based on table name
-                            let key = hash_string("(block table)", hash_type::FILE_KEY);
-
-                            match BetTable::read(
-                                &mut self.reader,
-                                self.archive_offset + bet_pos,
-                                bet_size,
-                                key,
-                            ) {
-                                Ok(bet) => {
-                                    let file_count = bet.header.file_count;
-                                    log::info!("Loaded BET table with {file_count} files");
-                                    self.bet_table = Some(bet);
-                                }
-                                Err(e) => {
-                                    log::warn!("Failed to load BET table: {e}");
-                                }
+                        match BetTable::read(
+                            &mut self.reader,
+                            self.archive_offset + bet_pos,
+                            bet_size,
+                            key,
+                        ) {
+                            Ok(bet) => {
+                                let file_count = bet.header.file_count;
+                                log::info!("Loaded BET table with {file_count} files");
+                                self.bet_table = Some(bet);
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to load BET table: {e}");
                             }
                         }
                     }
@@ -757,23 +749,23 @@ impl Archive {
         }
 
         // Load hi-block table if present (v2+)
-        if let Some(hi_block_pos) = self.header.hi_block_table_pos {
-            if hi_block_pos != 0 {
-                let hi_block_offset = self.archive_offset + hi_block_pos;
-                let hi_block_end = hi_block_offset + (self.header.block_table_size as u64 * 8);
+        if let Some(hi_block_pos) = self.header.hi_block_table_pos
+            && hi_block_pos != 0
+        {
+            let hi_block_offset = self.archive_offset + hi_block_pos;
+            let hi_block_end = hi_block_offset + (self.header.block_table_size as u64 * 8);
 
-                let file_size = self.reader.get_ref().metadata()?.len();
-                if hi_block_end > file_size {
-                    log::warn!(
-                        "Hi-block table extends beyond file (ends at 0x{hi_block_end:X}, file size 0x{file_size:X}). Skipping."
-                    );
-                } else {
-                    self.hi_block_table = Some(HiBlockTable::read(
-                        &mut self.reader,
-                        hi_block_offset,
-                        self.header.block_table_size,
-                    )?);
-                }
+            let file_size = self.reader.get_ref().metadata()?.len();
+            if hi_block_end > file_size {
+                log::warn!(
+                    "Hi-block table extends beyond file (ends at 0x{hi_block_end:X}, file size 0x{file_size:X}). Skipping."
+                );
+            } else {
+                self.hi_block_table = Some(HiBlockTable::read(
+                    &mut self.reader,
+                    hi_block_offset,
+                    self.header.block_table_size,
+                )?);
             }
         }
 
@@ -1359,31 +1351,32 @@ impl Archive {
         let mut entries = Vec::new();
 
         // For v3+ archives, prioritize HET/BET tables if they exist and are valid
-        if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table) {
-            if het.header.max_file_count > 0 && bet.header.file_count > 0 {
-                log::info!("Enumerating files using HET/BET tables");
+        if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table)
+            && het.header.max_file_count > 0
+            && bet.header.file_count > 0
+        {
+            log::info!("Enumerating files using HET/BET tables");
 
-                // Enumerate using BET table
-                for i in 0..bet.header.file_count {
-                    if let Some(bet_info) = bet.get_file_info(i) {
-                        // Only include files that actually exist
-                        if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
-                            entries.push(FileEntry {
-                                name: format!("file_{i:08}.dat"), // Unknown name with file index
-                                size: bet_info.file_size,
-                                compressed_size: bet_info.compressed_size,
-                                flags: bet_info.flags,
-                                hashes: None,
-                                table_indices: Some((i as usize, None)), // file_index for HET/BET tables
-                            });
-                        }
+            // Enumerate using BET table
+            for i in 0..bet.header.file_count {
+                if let Some(bet_info) = bet.get_file_info(i) {
+                    // Only include files that actually exist
+                    if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
+                        entries.push(FileEntry {
+                            name: format!("file_{i:08}.dat"), // Unknown name with file index
+                            size: bet_info.file_size,
+                            compressed_size: bet_info.compressed_size,
+                            flags: bet_info.flags,
+                            hashes: None,
+                            table_indices: Some((i as usize, None)), // file_index for HET/BET tables
+                        });
                     }
                 }
+            }
 
-                // If we enumerated from HET/BET successfully, return early
-                if !entries.is_empty() {
-                    return Ok(entries);
-                }
+            // If we enumerated from HET/BET successfully, return early
+            if !entries.is_empty() {
+                return Ok(entries);
             }
         }
 
@@ -1401,19 +1394,18 @@ impl Archive {
 
         // Scan hash table for valid entries
         for (i, hash_entry) in hash_table.entries().iter().enumerate() {
-            if hash_entry.is_valid() {
-                if let Some(block_entry) = block_table.get(hash_entry.block_index as usize) {
-                    if block_entry.exists() {
-                        entries.push(FileEntry {
-                            name: format!("file_{i:08}.dat"), // Unknown name with hash index
-                            size: block_entry.file_size as u64,
-                            compressed_size: block_entry.compressed_size as u64,
-                            flags: block_entry.flags,
-                            hashes: None,
-                            table_indices: Some((i, Some(hash_entry.block_index as usize))), // hash_index, block_index
-                        });
-                    }
-                }
+            if hash_entry.is_valid()
+                && let Some(block_entry) = block_table.get(hash_entry.block_index as usize)
+                && block_entry.exists()
+            {
+                entries.push(FileEntry {
+                    name: format!("file_{i:08}.dat"), // Unknown name with hash index
+                    size: block_entry.file_size as u64,
+                    compressed_size: block_entry.compressed_size as u64,
+                    flags: block_entry.flags,
+                    hashes: None,
+                    table_indices: Some((i, Some(hash_entry.block_index as usize))), // hash_index, block_index
+                });
             }
         }
 
@@ -1426,31 +1418,32 @@ impl Archive {
         let mut entries = Vec::new();
 
         // For v3+ archives, prioritize HET/BET tables if they exist and are valid
-        if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table) {
-            if het.header.max_file_count > 0 && bet.header.file_count > 0 {
-                log::info!("Enumerating all files using HET/BET tables");
+        if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table)
+            && het.header.max_file_count > 0
+            && bet.header.file_count > 0
+        {
+            log::info!("Enumerating all files using HET/BET tables");
 
-                // Enumerate using BET table
-                for i in 0..bet.header.file_count {
-                    if let Some(bet_info) = bet.get_file_info(i) {
-                        // Only include files that actually exist
-                        if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
-                            entries.push(FileEntry {
-                                name: format!("file_{i:08}.dat"), // Unknown name with file index
-                                size: bet_info.file_size,
-                                compressed_size: bet_info.compressed_size,
-                                flags: bet_info.flags,
-                                hashes: None,
-                                table_indices: Some((i as usize, None)), // file_index for HET/BET tables
-                            });
-                        }
+            // Enumerate using BET table
+            for i in 0..bet.header.file_count {
+                if let Some(bet_info) = bet.get_file_info(i) {
+                    // Only include files that actually exist
+                    if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
+                        entries.push(FileEntry {
+                            name: format!("file_{i:08}.dat"), // Unknown name with file index
+                            size: bet_info.file_size,
+                            compressed_size: bet_info.compressed_size,
+                            flags: bet_info.flags,
+                            hashes: None,
+                            table_indices: Some((i as usize, None)), // file_index for HET/BET tables
+                        });
                     }
                 }
+            }
 
-                // If we enumerated from HET/BET successfully, return early
-                if !entries.is_empty() {
-                    return Ok(entries);
-                }
+            // If we enumerated from HET/BET successfully, return early
+            if !entries.is_empty() {
+                return Ok(entries);
             }
         }
 
@@ -1478,17 +1471,17 @@ impl Archive {
                     continue;
                 }
 
-                if let Some(block_entry) = block_table.get(block_index) {
-                    if block_entry.exists() {
-                        entries.push(FileEntry {
-                            name: format!("file_{block_index:08}.dat"),
-                            size: block_entry.file_size as u64,
-                            compressed_size: block_entry.compressed_size as u64,
-                            flags: block_entry.flags,
-                            hashes: None,
-                            table_indices: Some((0, Some(block_index))), // Use 0 for hash_index since we don't track it here
-                        });
-                    }
+                if let Some(block_entry) = block_table.get(block_index)
+                    && block_entry.exists()
+                {
+                    entries.push(FileEntry {
+                        name: format!("file_{block_index:08}.dat"),
+                        size: block_entry.file_size as u64,
+                        compressed_size: block_entry.compressed_size as u64,
+                        flags: block_entry.flags,
+                        hashes: None,
+                        table_indices: Some((0, Some(block_index))), // Use 0 for hash_index since we don't track it here
+                    });
                 }
             }
         }
@@ -1522,10 +1515,10 @@ impl Archive {
 
         // Look up names in database
         for entry in &mut entries {
-            if let Some((hash_a, hash_b)) = entry.hashes {
-                if let Ok(Some(filename)) = db.lookup_filename(hash_a, hash_b) {
-                    entry.name = filename;
-                }
+            if let Some((hash_a, hash_b)) = entry.hashes
+                && let Ok(Some(filename)) = db.lookup_filename(hash_a, hash_b)
+            {
+                entry.name = filename;
             }
         }
 
@@ -1537,28 +1530,27 @@ impl Archive {
         use crate::database::HashLookup;
 
         // Try to find and read (listfile)
-        if let Some(_listfile_info) = self.find_file("(listfile)")? {
-            if let Ok(listfile_data) = self.read_file("(listfile)") {
-                if let Ok(filenames) = special_files::parse_listfile(&listfile_data) {
-                    // Record all filenames from listfile to database
-                    let source = format!("archive:{}", self.path.display());
-                    let filenames_with_source: Vec<(&str, Option<&str>)> = filenames
-                        .iter()
-                        .map(|f| (f.as_str(), Some(source.as_str())))
-                        .collect();
+        if let Some(_listfile_info) = self.find_file("(listfile)")?
+            && let Ok(listfile_data) = self.read_file("(listfile)")
+            && let Ok(filenames) = special_files::parse_listfile(&listfile_data)
+        {
+            // Record all filenames from listfile to database
+            let source = format!("archive:{}", self.path.display());
+            let filenames_with_source: Vec<(&str, Option<&str>)> = filenames
+                .iter()
+                .map(|f| (f.as_str(), Some(source.as_str())))
+                .collect();
 
-                    match db.store_filenames(&filenames_with_source) {
-                        Ok((new_count, updated_count)) => {
-                            log::info!(
-                                "Recorded {new_count} new and {updated_count} updated filenames from listfile to database"
-                            );
-                            return Ok(new_count + updated_count);
-                        }
-                        Err(e) => {
-                            log::error!("Failed to store filenames in database: {e}");
-                            return Err(Error::Crypto(format!("Database error: {e}")));
-                        }
-                    }
+            match db.store_filenames(&filenames_with_source) {
+                Ok((new_count, updated_count)) => {
+                    log::info!(
+                        "Recorded {new_count} new and {updated_count} updated filenames from listfile to database"
+                    );
+                    return Ok(new_count + updated_count);
+                }
+                Err(e) => {
+                    log::error!("Failed to store filenames in database: {e}");
+                    return Err(Error::Crypto(format!("Database error: {e}")));
                 }
             }
         }
@@ -1571,29 +1563,30 @@ impl Archive {
         let mut entries = Vec::new();
 
         // For v3+ archives, use HET/BET tables
-        if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table) {
-            if het.header.max_file_count > 0 && bet.header.file_count > 0 {
-                log::info!("Enumerating all files using HET/BET tables with hashes");
+        if let (Some(het), Some(bet)) = (&self.het_table, &self.bet_table)
+            && het.header.max_file_count > 0
+            && bet.header.file_count > 0
+        {
+            log::info!("Enumerating all files using HET/BET tables with hashes");
 
-                // Enumerate using BET table
-                for i in 0..bet.header.file_count {
-                    if let Some(bet_info) = bet.get_file_info(i) {
-                        if bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0 {
-                            entries.push(FileEntry {
-                                name: format!("file_{i:08}.dat"),
-                                size: bet_info.file_size,
-                                compressed_size: bet_info.compressed_size,
-                                flags: bet_info.flags,
-                                hashes: None, // HET/BET doesn't expose name hashes directly
-                                table_indices: Some((i as usize, None)), // file_index for HET/BET tables
-                            });
-                        }
-                    }
+            // Enumerate using BET table
+            for i in 0..bet.header.file_count {
+                if let Some(bet_info) = bet.get_file_info(i)
+                    && bet_info.flags & crate::tables::BlockEntry::FLAG_EXISTS != 0
+                {
+                    entries.push(FileEntry {
+                        name: format!("file_{i:08}.dat"),
+                        size: bet_info.file_size,
+                        compressed_size: bet_info.compressed_size,
+                        flags: bet_info.flags,
+                        hashes: None, // HET/BET doesn't expose name hashes directly
+                        table_indices: Some((i as usize, None)), // file_index for HET/BET tables
+                    });
                 }
+            }
 
-                if !entries.is_empty() {
-                    return Ok(entries);
-                }
+            if !entries.is_empty() {
+                return Ok(entries);
             }
         }
 
@@ -1620,17 +1613,17 @@ impl Archive {
                     continue;
                 }
 
-                if let Some(block_entry) = block_table.get(block_index) {
-                    if block_entry.exists() {
-                        entries.push(FileEntry {
-                            name: format!("file_{block_index:08}.dat"),
-                            size: block_entry.file_size as u64,
-                            compressed_size: block_entry.compressed_size as u64,
-                            flags: block_entry.flags,
-                            hashes: Some((hash_entry.name_1, hash_entry.name_2)),
-                            table_indices: Some((0, Some(block_index))), // Use 0 for hash_index since we don't track it here
-                        });
-                    }
+                if let Some(block_entry) = block_table.get(block_index)
+                    && block_entry.exists()
+                {
+                    entries.push(FileEntry {
+                        name: format!("file_{block_index:08}.dat"),
+                        size: block_entry.file_size as u64,
+                        compressed_size: block_entry.compressed_size as u64,
+                        flags: block_entry.flags,
+                        hashes: Some((hash_entry.name_1, hash_entry.name_2)),
+                        table_indices: Some((0, Some(block_index))), // Use 0 for hash_index since we don't track it here
+                    });
                 }
             }
         }
@@ -2630,10 +2623,10 @@ impl Archive {
     /// Verify the digital signature of the archive
     pub fn verify_signature(&mut self) -> Result<SignatureStatus> {
         // First check for strong signature (external to archive)
-        if let Ok(strong_status) = self.verify_strong_signature() {
-            if strong_status != SignatureStatus::None {
-                return Ok(strong_status);
-            }
+        if let Ok(strong_status) = self.verify_strong_signature()
+            && strong_status != SignatureStatus::None
+        {
+            return Ok(strong_status);
         }
 
         // Then check for weak signature (inside archive)

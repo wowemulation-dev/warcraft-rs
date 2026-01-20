@@ -684,39 +684,39 @@ pub fn visualize_archive_structure(info: &crate::ArchiveInfo) -> String {
     }
 
     // HET Table (v3+)
-    if let Some(het_info) = &info.het_table_info {
-        if let Some(size) = het_info.size {
-            viz.add_section(
-                het_info.offset,
-                het_info.compressed_size.unwrap_or(size as u64),
-                "HET Table",
-                "Extended hash table (v3+)",
-            );
-        }
+    if let Some(het_info) = &info.het_table_info
+        && let Some(size) = het_info.size
+    {
+        viz.add_section(
+            het_info.offset,
+            het_info.compressed_size.unwrap_or(size as u64),
+            "HET Table",
+            "Extended hash table (v3+)",
+        );
     }
 
     // BET Table (v3+)
-    if let Some(bet_info) = &info.bet_table_info {
-        if let Some(size) = bet_info.size {
-            viz.add_section(
-                bet_info.offset,
-                bet_info.compressed_size.unwrap_or(size as u64),
-                "BET Table",
-                "Extended block table (v3+)",
-            );
-        }
+    if let Some(bet_info) = &info.bet_table_info
+        && let Some(size) = bet_info.size
+    {
+        viz.add_section(
+            bet_info.offset,
+            bet_info.compressed_size.unwrap_or(size as u64),
+            "BET Table",
+            "Extended block table (v3+)",
+        );
     }
 
     // Hi-block table (v2+)
-    if let Some(hi_info) = &info.hi_block_table_info {
-        if let Some(size) = hi_info.size {
-            viz.add_section(
-                hi_info.offset,
-                hi_info.compressed_size.unwrap_or(size as u64 * 8),
-                "Hi-Block Table",
-                "High 32-bits of block offsets (v2+)",
-            );
-        }
+    if let Some(hi_info) = &info.hi_block_table_info
+        && let Some(size) = hi_info.size
+    {
+        viz.add_section(
+            hi_info.offset,
+            hi_info.compressed_size.unwrap_or(size as u64 * 8),
+            "Hi-Block Table",
+            "High 32-bits of block offsets (v2+)",
+        );
     }
 
     viz.visualize()

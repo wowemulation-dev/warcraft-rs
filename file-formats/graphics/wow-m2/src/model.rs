@@ -857,14 +857,14 @@ fn relocate_bone_track_offsets(bone: &mut M2Bone, offset_map: &HashMap<u32, u32>
         }
 
         // Check if ranges offset needs relocation (pre-WotLK)
-        if let Some(ref mut ranges) = track.ranges {
-            if !ranges.is_empty() {
-                if let Some(&new_offset) = offset_map.get(&ranges.offset) {
-                    ranges.offset = new_offset;
-                } else {
-                    // Ranges data not collected - set to empty
-                    *ranges = M2Array::default();
-                }
+        if let Some(ref mut ranges) = track.ranges
+            && !ranges.is_empty()
+        {
+            if let Some(&new_offset) = offset_map.get(&ranges.offset) {
+                ranges.offset = new_offset;
+            } else {
+                // Ranges data not collected - set to empty
+                *ranges = M2Array::default();
             }
         }
     }
@@ -3713,30 +3713,28 @@ impl M2Model {
 
                 for anim in &self.raw_data.bone_animation_data {
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.values.len() as u32;
                     }
 
                     // Map ranges offset (pre-WotLK only, skip if already mapped)
                     if let (Some(ranges), Some(orig_offset)) =
                         (&anim.ranges, anim.original_ranges_offset)
+                        && let Entry::Vacant(e) = offset_map.entry(orig_offset)
                     {
-                        if let Entry::Vacant(e) = offset_map.entry(orig_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += ranges.len() as u32;
-                        }
+                        e.insert(anim_data_offset);
+                        anim_data_offset += ranges.len() as u32;
                     }
                 }
 
@@ -3772,10 +3770,9 @@ impl M2Model {
                     // Write ranges only if not already written
                     if let (Some(ranges), Some(orig_offset)) =
                         (&anim.ranges, anim.original_ranges_offset)
+                        && written_offsets.insert(orig_offset)
                     {
-                        if written_offsets.insert(orig_offset) {
-                            data_section.extend_from_slice(ranges);
-                        }
+                        data_section.extend_from_slice(ranges);
                     }
                 }
 
@@ -4225,28 +4222,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.particle_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -4344,28 +4340,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.ribbon_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -4457,28 +4452,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.texture_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -4571,28 +4565,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.color_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -4681,28 +4674,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.transparency_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(anim_data_offset);
-                            anim_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(anim_data_offset);
+                        anim_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -4793,13 +4785,12 @@ impl M2Model {
 
                 for event_raw in &self.raw_data.event_data {
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !event_raw.timestamps.is_empty() {
-                        if let Entry::Vacant(e) =
+                    if !event_raw.timestamps.is_empty()
+                        && let Entry::Vacant(e) =
                             offset_map.entry(event_raw.original_timestamps_offset)
-                        {
-                            e.insert(event_data_offset);
-                            event_data_offset += event_raw.timestamps.len() as u32;
-                        }
+                    {
+                        e.insert(event_data_offset);
+                        event_data_offset += event_raw.timestamps.len() as u32;
                     }
                 }
 
@@ -4883,28 +4874,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.attachment_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(attach_data_offset);
-                            attach_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(attach_data_offset);
+                        attach_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(attach_data_offset);
-                            attach_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(attach_data_offset);
+                        attach_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(attach_data_offset);
-                            attach_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(attach_data_offset);
+                        attach_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -4995,28 +4985,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.camera_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(camera_data_offset);
-                            camera_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(camera_data_offset);
+                        camera_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(camera_data_offset);
-                            camera_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(camera_data_offset);
+                        camera_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(camera_data_offset);
-                            camera_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(camera_data_offset);
+                        camera_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -5109,28 +5098,27 @@ impl M2Model {
 
                 for anim in &self.raw_data.light_animation_data {
                     // Map interpolation_ranges offset (skip if already mapped - shared data)
-                    if !anim.interpolation_ranges.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset) {
-                            e.insert(light_data_offset);
-                            light_data_offset += anim.interpolation_ranges.len() as u32;
-                        }
+                    if !anim.interpolation_ranges.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_ranges_offset)
+                    {
+                        e.insert(light_data_offset);
+                        light_data_offset += anim.interpolation_ranges.len() as u32;
                     }
 
                     // Map timestamps offset (skip if already mapped - shared data)
-                    if !anim.timestamps.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
-                        {
-                            e.insert(light_data_offset);
-                            light_data_offset += anim.timestamps.len() as u32;
-                        }
+                    if !anim.timestamps.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_timestamps_offset)
+                    {
+                        e.insert(light_data_offset);
+                        light_data_offset += anim.timestamps.len() as u32;
                     }
 
                     // Map values offset (skip if already mapped - shared data)
-                    if !anim.values.is_empty() {
-                        if let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset) {
-                            e.insert(light_data_offset);
-                            light_data_offset += anim.values.len() as u32;
-                        }
+                    if !anim.values.is_empty()
+                        && let Entry::Vacant(e) = offset_map.entry(anim.original_values_offset)
+                    {
+                        e.insert(light_data_offset);
+                        light_data_offset += anim.values.len() as u32;
                     }
                 }
 
@@ -5521,18 +5509,18 @@ impl M2Model {
         resolver: &dyn FileResolver,
     ) -> Result<String> {
         // Legion+ models use TXID chunk
-        if let Some(texture_ids) = &self.texture_file_ids {
-            if let Some(id) = texture_ids.get(index) {
-                return resolver.resolve_file_data_id(id);
-            }
+        if let Some(texture_ids) = &self.texture_file_ids
+            && let Some(id) = texture_ids.get(index)
+        {
+            return resolver.resolve_file_data_id(id);
         }
 
         // Pre-Legion models use embedded texture names
-        if let Some(texture) = self.textures.get(index) {
-            if !texture.filename.string.data.is_empty() {
-                let filename = String::from_utf8_lossy(&texture.filename.string.data).to_string();
-                return Ok(filename.trim_end_matches('\0').to_string());
-            }
+        if let Some(texture) = self.textures.get(index)
+            && !texture.filename.string.data.is_empty()
+        {
+            let filename = String::from_utf8_lossy(&texture.filename.string.data).to_string();
+            return Ok(filename.trim_end_matches('\0').to_string());
         }
 
         Err(M2Error::ExternalFileError(format!(
@@ -5545,23 +5533,23 @@ impl M2Model {
     /// Falls back to embedded texture names for pre-Legion models
     pub fn load_texture_file(&self, index: usize, resolver: &dyn FileResolver) -> Result<Vec<u8>> {
         // Legion+ models use TXID chunk
-        if let Some(texture_ids) = &self.texture_file_ids {
-            if let Some(id) = texture_ids.get(index) {
-                return resolver.load_texture_by_id(id);
-            }
+        if let Some(texture_ids) = &self.texture_file_ids
+            && let Some(id) = texture_ids.get(index)
+        {
+            return resolver.load_texture_by_id(id);
         }
 
         // Pre-Legion models use embedded texture names - we can't load them directly
         // since we don't have FileDataIDs, just return an error with the filename
-        if let Some(texture) = self.textures.get(index) {
-            if !texture.filename.string.data.is_empty() {
-                let filename = String::from_utf8_lossy(&texture.filename.string.data).to_string();
-                let clean_filename = filename.trim_end_matches('\0').to_string();
-                return Err(M2Error::ExternalFileError(format!(
-                    "Cannot load pre-Legion texture '{}' without FileDataID",
-                    clean_filename
-                )));
-            }
+        if let Some(texture) = self.textures.get(index)
+            && !texture.filename.string.data.is_empty()
+        {
+            let filename = String::from_utf8_lossy(&texture.filename.string.data).to_string();
+            let clean_filename = filename.trim_end_matches('\0').to_string();
+            return Err(M2Error::ExternalFileError(format!(
+                "Cannot load pre-Legion texture '{}' without FileDataID",
+                clean_filename
+            )));
         }
 
         Err(M2Error::ExternalFileError(format!(

@@ -305,14 +305,14 @@ impl WmoValidator {
         }
 
         // Check vertex colors count matches vertices if present
-        if let Some(colors) = &group.vertex_colors {
-            if colors.len() != group.vertices.len() {
-                report.add_error(ValidationError::CountMismatch {
-                    field: "vertex_colors".to_string(),
-                    expected: group.vertices.len() as u32,
-                    actual: colors.len() as u32,
-                });
-            }
+        if let Some(colors) = &group.vertex_colors
+            && colors.len() != group.vertices.len()
+        {
+            report.add_error(ValidationError::CountMismatch {
+                field: "vertex_colors".to_string(),
+                expected: group.vertices.len() as u32,
+                actual: colors.len() as u32,
+            });
         }
 
         // Check flags consistency for normals

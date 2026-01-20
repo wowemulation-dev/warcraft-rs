@@ -184,7 +184,7 @@ impl super::Chunk for MaidChunk {
         const ENTRIES_PER_SECTION: usize = WDT_MAP_SIZE * WDT_MAP_SIZE;
         const BYTES_PER_SECTION: usize = ENTRIES_PER_SECTION * 4;
 
-        if size % BYTES_PER_SECTION != 0 {
+        if !size.is_multiple_of(BYTES_PER_SECTION) {
             return Err(Error::InvalidChunkData {
                 chunk: "MAID".to_string(),
                 message: format!(

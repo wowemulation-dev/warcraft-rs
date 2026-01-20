@@ -52,13 +52,13 @@ fn main() -> anyhow::Result<()> {
     let mut count = 0;
     for y in 0..64 {
         for x in 0..64 {
-            if let Some(tile) = wdt.get_tile(x, y) {
-                if tile.has_adt {
-                    println!("  [{:2},{:2}] - Area ID: {}", x, y, tile.area_id);
-                    count += 1;
-                    if count >= 10 {
-                        break;
-                    }
+            if let Some(tile) = wdt.get_tile(x, y)
+                && tile.has_adt
+            {
+                println!("  [{:2},{:2}] - Area ID: {}", x, y, tile.area_id);
+                count += 1;
+                if count >= 10 {
+                    break;
                 }
             }
         }
@@ -68,23 +68,23 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Display WMO information if present
-    if let Some(ref wmo) = wdt.mwmo {
-        if !wmo.is_empty() {
-            println!("\nGlobal WMO: {}", wmo.filenames[0]);
+    if let Some(ref wmo) = wdt.mwmo
+        && !wmo.is_empty()
+    {
+        println!("\nGlobal WMO: {}", wmo.filenames[0]);
 
-            if let Some(ref modf) = wdt.modf {
-                let entry = &modf.entries[0];
-                println!(
-                    "  Position: [{:.2}, {:.2}, {:.2}]",
-                    entry.position[0], entry.position[1], entry.position[2]
-                );
-                println!(
-                    "  Rotation: [{:.2}°, {:.2}°, {:.2}°]",
-                    entry.rotation[0].to_degrees(),
-                    entry.rotation[1].to_degrees(),
-                    entry.rotation[2].to_degrees()
-                );
-            }
+        if let Some(ref modf) = wdt.modf {
+            let entry = &modf.entries[0];
+            println!(
+                "  Position: [{:.2}, {:.2}, {:.2}]",
+                entry.position[0], entry.position[1], entry.position[2]
+            );
+            println!(
+                "  Rotation: [{:.2}°, {:.2}°, {:.2}°]",
+                entry.rotation[0].to_degrees(),
+                entry.rotation[1].to_degrees(),
+                entry.rotation[2].to_degrees()
+            );
         }
     }
 

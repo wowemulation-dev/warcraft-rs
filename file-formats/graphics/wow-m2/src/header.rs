@@ -419,10 +419,10 @@ impl M2Header {
         self.animation_lookup.write(writer)?;
 
         // Vanilla/TBC versions have playable animation lookup
-        if self.version <= 263 {
-            if let Some(ref pal) = self.playable_animation_lookup {
-                pal.write(writer)?;
-            }
+        if self.version <= 263
+            && let Some(ref pal) = self.playable_animation_lookup
+        {
+            pal.write(writer)?;
         }
 
         self.bones.write(writer)?;
@@ -446,10 +446,10 @@ impl M2Header {
         self.transparency_lookup.write(writer)?;
 
         // Texture flipbooks only exist in BC and earlier
-        if self.version <= 263 {
-            if let Some(ref flipbooks) = self.texture_flipbooks {
-                flipbooks.write(writer)?;
-            }
+        if self.version <= 263
+            && let Some(ref flipbooks) = self.texture_flipbooks
+        {
+            flipbooks.write(writer)?;
         }
 
         self.texture_animations.write(writer)?;

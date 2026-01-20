@@ -599,10 +599,10 @@ impl WmoEditor {
         }
 
         // Remove corresponding vertex color if present
-        if let Some(colors) = &mut group.vertex_colors {
-            if vertex_index < colors.len() {
-                colors.remove(vertex_index);
-            }
+        if let Some(colors) = &mut group.vertex_colors
+            && vertex_index < colors.len()
+        {
+            colors.remove(vertex_index);
         }
 
         // Update indices

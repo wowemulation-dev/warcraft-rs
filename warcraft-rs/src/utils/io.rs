@@ -93,10 +93,11 @@ pub fn matches_pattern(text: &str, pattern: &str) -> bool {
             }
         }
 
-        if let Some(last) = parts.last() {
-            if !last.is_empty() && !text_lower.ends_with(last) {
-                return false;
-            }
+        if let Some(last) = parts.last()
+            && !last.is_empty()
+            && !text_lower.ends_with(last)
+        {
+            return false;
         }
 
         true

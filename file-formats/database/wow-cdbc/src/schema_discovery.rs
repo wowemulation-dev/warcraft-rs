@@ -383,7 +383,7 @@ impl<'a> SchemaDiscoverer<'a> {
         // Look for repeating patterns of field types
         for array_size in 2..=10 {
             // Try different array sizes
-            if fields.len() % array_size != 0 {
+            if !fields.len().is_multiple_of(array_size) {
                 continue; // Fields must divide evenly by array size
             }
 

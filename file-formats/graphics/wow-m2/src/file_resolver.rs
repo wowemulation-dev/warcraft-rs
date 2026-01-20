@@ -88,11 +88,11 @@ impl ListfileResolver {
 
             // Parse CSV format: FileDataID;filepath
             let parts: Vec<&str> = line.split(';').collect();
-            if parts.len() >= 2 {
-                if let Ok(id) = parts[0].parse::<u32>() {
-                    let path = parts[1].to_string();
-                    self.id_to_path.insert(id, path);
-                }
+            if parts.len() >= 2
+                && let Ok(id) = parts[0].parse::<u32>()
+            {
+                let path = parts[1].to_string();
+                self.id_to_path.insert(id, path);
             }
         }
 
@@ -112,11 +112,11 @@ impl ListfileResolver {
 
             // Parse text format: ID filepath
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 {
-                if let Ok(id) = parts[0].parse::<u32>() {
-                    let path = parts[1..].join(" "); // Handle paths with spaces
-                    self.id_to_path.insert(id, path);
-                }
+            if parts.len() >= 2
+                && let Ok(id) = parts[0].parse::<u32>()
+            {
+                let path = parts[1..].join(" "); // Handle paths with spaces
+                self.id_to_path.insert(id, path);
             }
         }
 

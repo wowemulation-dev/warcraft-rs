@@ -722,26 +722,27 @@ impl M2ParticleEmitter {
         self.z_source_animation.write(writer)?;
 
         // Additional fields for Legion and later
-        if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version >= M2Version::Legion {
-                writer.write_u32_le(self.particle_initial_state.unwrap_or(0))?;
-                writer.write_f32_le(self.particle_initial_state_variation.unwrap_or(0.0))?;
-                writer.write_f32_le(self.particle_convergence_time.unwrap_or(0.0))?;
-            }
+        if let Some(m2_version) = M2Version::from_header_version(version)
+            && m2_version >= M2Version::Legion
+        {
+            writer.write_u32_le(self.particle_initial_state.unwrap_or(0))?;
+            writer.write_f32_le(self.particle_initial_state_variation.unwrap_or(0.0))?;
+            writer.write_f32_le(self.particle_convergence_time.unwrap_or(0.0))?;
         }
 
         // Additional physics parameters for MoP+ with PHYSICS flag
-        if let Some(m2_version) = M2Version::from_header_version(version) {
-            if m2_version >= M2Version::MoP && self.flags.contains(M2ParticleFlags::PHYSICS) {
-                if let Some(params) = self.physics_parameters {
-                    for &val in &params {
-                        writer.write_f32_le(val)?;
-                    }
-                } else {
-                    // Write default values if no physics parameters are provided
-                    for _ in 0..5 {
-                        writer.write_f32_le(0.0)?;
-                    }
+        if let Some(m2_version) = M2Version::from_header_version(version)
+            && m2_version >= M2Version::MoP
+            && self.flags.contains(M2ParticleFlags::PHYSICS)
+        {
+            if let Some(params) = self.physics_parameters {
+                for &val in &params {
+                    writer.write_f32_le(val)?;
+                }
+            } else {
+                // Write default values if no physics parameters are provided
+                for _ in 0..5 {
+                    writer.write_f32_le(0.0)?;
                 }
             }
         }

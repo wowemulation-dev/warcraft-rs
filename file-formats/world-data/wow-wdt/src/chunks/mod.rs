@@ -401,7 +401,7 @@ impl Chunk for ModfChunk {
     }
 
     fn read(reader: &mut impl Read, size: usize) -> Result<Self> {
-        if size % 64 != 0 {
+        if !size.is_multiple_of(64) {
             return Err(Error::InvalidChunkData {
                 chunk: "MODF".to_string(),
                 message: format!("Size {size} is not a multiple of 64"),
