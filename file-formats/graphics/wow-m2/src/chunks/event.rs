@@ -52,7 +52,7 @@ impl M2EventType {
 /// Represents an event in an M2 model
 ///
 /// Event structure (44 bytes):
-/// - identifier[4]: Event name string (e.g., "$CAH", "$CST", "$HIT")
+/// - identifier\[4\]: Event name string (e.g., "$CAH", "$CST", "$HIT")
 /// - data: u32: Sound/spell database ID
 /// - bone: i16: Bone index to attach event to
 /// - unknown: u16: Unknown field (possibly padding or submesh ID)
