@@ -100,6 +100,22 @@ and this project adheres to
   - Shows camera animation track summary
   - Shows light animation track summary
   - Displays total keyframe counts for each animation type
+- **M2 Format**: `AnimationManagerBuilder` for direct M2Model integration
+  - Creates `AnimationManager` from parsed `M2Model` data
+  - Resolves bone animation tracks (translation, rotation, scale)
+  - Converts M2Animation sequences to runtime format
+  - Handles both pre-WotLK (ranged) and WotLK+ (per-sequence) data layouts
+
+### Changed
+
+- **Build**: MSRV upgraded from 1.86 to 1.92.0
+  - Updated `rust-version` in workspace `Cargo.toml`
+  - Updated CI workflow toolchain versions
+  - Added `rust-toolchain.toml` for consistent local development
+- **Build**: Code updated for Rust 1.92.0 clippy lints
+  - `collapsible_if`: Use `if let ... && condition` syntax (let_chains)
+  - `manual_is_multiple_of`: Use `is_multiple_of()` method
+  - Affects 38 files across all workspace crates
 
 ## [0.5.0] - 2025-01-09
 
