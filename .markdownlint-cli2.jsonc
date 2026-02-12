@@ -1,0 +1,5 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/main/schema/markdownlint-cli2-config-schema.json",
+  // Common directories to ignore (generated/third-party content)
+  "ignores": [".venv/**", "node_modules/**", "vendor/**", "target/**"]
+}

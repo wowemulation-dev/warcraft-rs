@@ -1,0 +1,86 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint/main/schema/markdownlint-config-schema.json",
+  "default": true,
+  "MD003": {
+    "style": "atx",
+  },
+  "MD004": {
+    "style": "dash",
+  },
+  "MD007": {
+    "indent": 2,
+  },
+  "MD013": {
+    "line_length": 100,
+    "code_blocks": false,
+    "tables": false,
+    "headings": false,
+    "strict": false,
+  },
+  // MD024: Disabled to allow Keep a Changelog format in CHANGELOG.md
+  // which uses repeated section headings (Added, Changed, Fixed, Removed)
+  "MD024": false,
+  "MD029": {
+    "style": "ordered",
+  },
+  "MD033": {
+    "allowed_elements": [
+      "a",
+      "br",
+      "details",
+      "div",
+      "figcaption",
+      "figure",
+      "hostname",
+      "img",
+      "picture",
+      "source",
+      "strong",
+      "sub",
+      "summary",
+      "sup",
+    ],
+  },
+  "MD035": {
+    "style": "---",
+  },
+  "MD040": {
+    "allowed_languages": [
+      "bash",
+      "c",
+      "cmake",
+      "cpp",
+      "csharp",
+      "diff",
+      "dockerfile",
+      "ebnf",
+      "ini",
+      "glsl",
+      "hcl",
+      "json",
+      "ldif",
+      "lua",
+      "markdown",
+      "mermaid",
+      "pgsql",
+      "powershell",
+      "python",
+      "rust",
+      "shell",
+      "sql",
+      "text",
+      "toml",
+      "typescript",
+      "wgsl",
+      "xml",
+      "yaml",
+    ],
+    "language_only": false,
+  },
+  "MD046": {
+    "style": "fenced",
+  },
+  // MD060: Table column style - disabled because existing tables use mixed
+  // styles (some compact, some expanded). Tables are readable as-is.
+  "MD060": false,
+}
