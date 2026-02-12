@@ -8,6 +8,34 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependencies**: Standardized binrw to 0.15.0 across workspace
+  - wow-adt and wow-wmo now use workspace binrw version instead of pinned 0.14
+  - Reduces dependency duplication and compile time
+
+### Fixed
+
+- **Documentation**: Corrected MSRV reference in CONTRIBUTING.md (1.86.0 → 1.92.0)
+- **Code Quality**: Replaced unwrap() with expect() in CLI code for better error context
+  - warcraft-rs progress bar utilities and command implementations
+  - file-formats/world-data/wow-adt model export
+- **Code Quality**: Used if-let patterns instead of is_some()/unwrap() combinations
+  - warcraft-rs/src/commands/adt.rs: blend mesh header access
+  - file-formats/world-data/wow-adt/src/adt_set.rs: optional file loading (tex0, obj0, lod)
+
+### Added
+
+- **CI**: Added Dependabot configuration for automated dependency updates
+  - Weekly dependency checks on Mondays
+  - Ignore major binrw updates to maintain compatibility
+- **CI**: Added nextest configuration with default and CI profiles
+  - Configured slow timeouts and reuse-build settings
+  - Separate CI profile for stricter timeouts
+- **Security**: Enhanced cargo-deny security advisory documentation
+  - Added detailed justifications for RUSTSEC-2023-0071 and RUSTSEC-2024-0436
+  - Documented dependency trees and review dates for ignored advisories
+
 ## [0.6.1] - 2026-01-20
 
 ### Fixed

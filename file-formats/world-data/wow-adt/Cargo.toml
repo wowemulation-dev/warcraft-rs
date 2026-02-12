@@ -14,16 +14,16 @@ keywords = ["wow", "warcraft", "adt", "terrain", "gamedev"]
 categories = ["game-development", "parser-implementations"]
 
 [dependencies]
-binrw = "0.14"
+binrw = { workspace = true }
 thiserror = { workspace = true }
 log = "0.4"
 image = { version = "0.25", optional = true }
-rayon = { version = "1.10", optional = true }
+rayon = { version = "1.11", optional = true }
 memmap2 = { version = "0.9", optional = true }
 
 [dev-dependencies]
-criterion = "0.6"
-tempfile = "3.20"
+criterion = "0.8"
+tempfile = "3.24"
 pretty_assertions = "1.4"
 wow-mpq = { path = "../../archives/wow-mpq" }
 

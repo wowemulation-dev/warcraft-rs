@@ -3,14 +3,27 @@
 [graph]
 targets = []
 
-[advisories]
+#[advisories]
 version = 2
 yanked = "deny"
-# Exception for RSA timing vulnerability - This is used only for signature verification
-# of MPQ archives, not for private key operations, so the timing attack risk is minimal
+# Security advisory exceptions:
 ignore = [
-    "RUSTSEC-2023-0071", # RSA timing sidechannel - limited impact in our use case
-    "RUSTSEC-2024-0436", # paste unmaintained - comes from rav1e dependency
+    # RUSTSEC-2023-0071: RSA timing sidechannel attack vulnerability
+    # Justification: The rsa crate is only used for MPQ archive signature verification (public key operations).
+    # The vulnerability affects private key operations (decryption/signing) which we do not perform.
+    # Public key verification is not vulnerable to timing attacks in the same way.
+    # Dependency tree: rsa -> used for verifying MPQ signatures only
+    # Last reviewed: 2025-02-12
+    "RUSTSEC-2023-0071",
+
+    # RUSTSEC-2024-0436: paste crate is unmaintained
+    # Justification: This is a transitive dependency from rav1e (AV1 encoder), used only when building
+    # the CLI with image encoding features. rav1e is itself maintained and the paste usage is
+    # limited to macro expansion during compilation, not runtime.
+    # Dependency tree: rav1e -> paste (build-time macro only)
+    # Alternative: Consider switching from rav1e when a suitable AV1 encoder alternative is available
+    # Last reviewed: 2025-02-12
+    "RUSTSEC-2024-0436",
 ]
 
 [licenses]

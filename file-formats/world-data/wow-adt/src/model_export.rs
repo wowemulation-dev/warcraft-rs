@@ -85,7 +85,10 @@ fn export_to_obj<P: AsRef<Path>>(
     // If including materials, create MTL file
     if options.include_materials {
         let mtl_path = path.with_extension("mtl");
-        let mtl_filename = mtl_path.file_name().unwrap().to_string_lossy();
+        let mtl_filename = mtl_path
+            .file_name()
+            .expect("path should have a file name component")
+            .to_string_lossy();
 
         writeln!(writer, "mtllib {mtl_filename}")?;
         writeln!(writer)?;

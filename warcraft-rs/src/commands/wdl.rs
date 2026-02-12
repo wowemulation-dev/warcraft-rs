@@ -365,7 +365,10 @@ fn execute_tree(
         .context("Failed to parse WDL file")?;
 
     // Create root node
-    let file_name = path.file_name().unwrap().to_string_lossy();
+    let file_name = path
+        .file_name()
+        .expect("path should have a file name component")
+        .to_string_lossy();
     let mut root = TreeNode::new(file_name.to_string(), NodeType::Root)
         .with_metadata("version", &wdl.version.to_string())
         .with_metadata("chunks", &wdl.chunks.len().to_string());

@@ -1,0 +1,20 @@
+[profile.default]
+# Time to wait for a test to complete before timing out
+slow-timeout = { period = "60s", terminate-after = 2 }
+
+# Reuse test binaries across runs for faster execution
+# Useful during development
+reuse-build = true
+
+# Show output of all tests, not just failures
+failure-output = "immediate-final"
+
+[profile.ci]
+# More aggressive timeouts for CI
+slow-timeout = { period = "30s", terminate-after = 3 }
+
+# Always run tests from scratch in CI
+reuse-build = false
+
+# Use all available cores
+test-threads = "num-cpus"

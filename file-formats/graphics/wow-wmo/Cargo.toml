@@ -18,7 +18,7 @@ path = "src/bin/debug_chunks.rs"
 
 [dependencies]
 # Binary parsing
-binrw = "0.14"
+binrw = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
@@ -27,14 +27,13 @@ thiserror = { workspace = true }
 bitflags = { workspace = true }
 
 # Logging
-tracing = "0.1.41"
-tracing-subscriber = "0.3.20"
+tracing = "0.1"
+tracing-subscriber = "0.3"
 
 [dev-dependencies]
 criterion = { workspace = true }
 tempfile = { workspace = true }
-rstest = "0.25.0"
-test-case = "3.3.1"
+test-case = "3.3"
 
 [[bench]]
 name = "parser_benchmarks"

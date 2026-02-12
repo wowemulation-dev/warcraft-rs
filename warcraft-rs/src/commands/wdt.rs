@@ -497,7 +497,10 @@ fn execute_tree(
     let wdt = reader.read().context("Failed to parse WDT file")?;
 
     // Create root node
-    let file_name = path.file_name().unwrap().to_string_lossy();
+    let file_name = path
+        .file_name()
+        .expect("path should have a file name component")
+        .to_string_lossy();
     let map_type = if wdt.is_wmo_only() {
         "WMO-only map"
     } else {

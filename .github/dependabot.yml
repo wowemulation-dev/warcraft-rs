@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "wowemulation-dev"
+    assignees:
+      - "wowemulation-dev"
+    labels:
+      - "dependencies"
+      - "dependabot"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    ignore:
+      # Ignore major version updates for these crates
+      - dependency-name: "binrw"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "binrw_derive"
+        update-types: ["version-update:semver-major"]

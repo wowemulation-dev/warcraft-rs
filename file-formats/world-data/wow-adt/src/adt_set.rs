@@ -126,7 +126,6 @@ impl AdtSet {
 
         // Discover split file paths
         let file_set = SplitFileSet::discover(root_path);
-        let presence = file_set.verify_existence();
 
         // Load root (required)
         let root_data = fs::read(&file_set.root)?;
@@ -143,8 +142,8 @@ impl AdtSet {
         };
 
         // Load texture (optional but expected for Cataclysm+)
-        let texture = if presence.has_tex0 {
-            let tex_data = fs::read(file_set.tex0.as_ref().unwrap())?;
+        let texture = if let Some(tex_path) = &file_set.tex0 {
+            let tex_data = fs::read(tex_path)?;
             let mut cursor = Cursor::new(tex_data);
             match parse_adt(&mut cursor)? {
                 ParsedAdt::Tex0(t) => Some(t),
@@ -155,8 +154,8 @@ impl AdtSet {
         };
 
         // Load object (optional but expected for Cataclysm+)
-        let object = if presence.has_obj0 {
-            let obj_data = fs::read(file_set.obj0.as_ref().unwrap())?;
+        let object = if let Some(obj_path) = &file_set.obj0 {
+            let obj_data = fs::read(obj_path)?;
             let mut cursor = Cursor::new(obj_data);
             match parse_adt(&mut cursor)? {
                 ParsedAdt::Obj0(o) => Some(o),
@@ -167,8 +166,8 @@ impl AdtSet {
         };
 
         // Load LOD (optional, Legion+)
-        let lod = if presence.has_lod {
-            let lod_data = fs::read(file_set.lod.as_ref().unwrap())?;
+        let lod = if let Some(lod_path) = &file_set.lod {
+            let lod_data = fs::read(lod_path)?;
             let mut cursor = Cursor::new(lod_data);
             match parse_adt(&mut cursor)? {
                 ParsedAdt::Lod(l) => Some(l),

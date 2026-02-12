@@ -276,8 +276,8 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
             }
 
             // Blend mesh system (MoP+)
-            if root.blend_mesh_headers.is_some() {
-                let header_count = root.blend_mesh_headers.as_ref().unwrap().entries.len();
+            if let Some(headers) = &root.blend_mesh_headers {
+                let header_count = headers.entries.len();
                 println!("\nBlend Mesh System (MoP+):");
                 println!("  Headers: {}", header_count);
                 if let Some(vertices) = &root.blend_mesh_vertices {

@@ -114,7 +114,7 @@ Our CI/CD pipeline automatically runs the following checks on all pull requests:
 
 2. **Test Matrix**:
    - Runs on Linux, Windows, and macOS
-   - Tests with Rust stable, beta, and MSRV (1.86.0)
+   - Tests with Rust stable, beta, and MSRV (1.92.0)
    - Tests with all features and no default features
 
 3. **Documentation**:
