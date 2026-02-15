@@ -3,7 +3,7 @@
 [graph]
 targets = []
 
-#[advisories]
+[advisories]
 version = 2
 yanked = "deny"
 # Security advisory exceptions:
