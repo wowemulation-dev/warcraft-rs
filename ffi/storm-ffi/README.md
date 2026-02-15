@@ -148,7 +148,7 @@ See the [examples](examples/) directory for C examples:
 
 ### Prerequisites
 
-- Rust 1.86 or later
+- Rust 1.92 or later
 - C compiler (for examples)
 - cbindgen (automatically installed as build dependency)
 

@@ -90,6 +90,7 @@ warcraft-rs/
 │       ├── mod.rs
 │       ├── progress.rs    # Progress bars
 │       ├── table.rs       # Table formatting
+│       ├── tree.rs        # Tree visualization
 │       ├── format.rs      # Byte/time formatting
 │       └── io.rs          # File I/O helpers
 ```
@@ -189,7 +190,7 @@ wow-wdl = { path = "../file-formats/world-data/wow-wdl", optional = true }
 anyhow = "1.0"
 log = "0.4"
 env_logger = "0.11"
-indicatif = "0.17"
+indicatif = "0.18"
 prettytable-rs = "0.10"
 ```
 

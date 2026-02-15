@@ -90,9 +90,9 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.4.0"
-wow-blp = "0.4.0"
-wow-adt = "0.4.0"
+wow-mpq = "0.6"
+wow-blp = "0.6"
+wow-adt = "0.6"
 # ... other formats as needed
 ```
 

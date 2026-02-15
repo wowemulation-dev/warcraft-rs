@@ -41,7 +41,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-wdt = "0.3.0"
+wow-wdt = "0.6"
 ```
 
 Or use cargo add:

@@ -35,7 +35,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-m2 = "0.3.0"
+wow-m2 = "0.6"
 ```
 
 Or use cargo add:

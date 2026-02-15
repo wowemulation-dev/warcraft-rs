@@ -4,7 +4,7 @@ Get started with `warcraft-rs` in just a few minutes!
 
 ## Prerequisites
 
-- Rust 1.86 or later
+- Rust 1.92 or later
 - Basic familiarity with Rust
 - WoW game files to parse
 
@@ -14,11 +14,11 @@ Add the specific crates you need to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.4.0"    # For MPQ archive support
-wow-wdt = "0.4.0"    # For WDT world table files
-wow-wdl = "0.4.0"    # For WDL low-resolution heightmaps
-wow-cdbc = "0.4.0"   # For DBC database files
-wow-blp = "0.4.0"    # For BLP textures
+wow-mpq = "0.6"    # For MPQ archive support
+wow-wdt = "0.6"    # For WDT world table files
+wow-wdl = "0.6"    # For WDL low-resolution heightmaps
+wow-cdbc = "0.6"   # For DBC database files
+wow-blp = "0.6"    # For BLP textures
 # Add other crates as needed
 ```
 

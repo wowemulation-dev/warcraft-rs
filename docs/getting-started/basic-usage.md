@@ -17,46 +17,46 @@ Learn the fundamental patterns for using `warcraft-rs` with World of Warcraft fi
 
 ### File Loading Pattern
 
-Most warcraft-rs types follow a consistent API:
+Each crate has its own parsing approach. There is no shared loading trait:
 
 ```rust
-// Each format has its own crate
+// wow-mpq: static open method
 use wow_mpq::Archive;
+let mut archive = Archive::open("archive.mpq")?;
+
+// wow-blp: load function
 use wow_blp::parser::load_blp;
-use wow_adt::reader::AdtReader;
-// etc.
+let blp = load_blp("texture.blp")?;
 
-// Standard loading pattern
-let file = Format::open("path/to/file.ext")?;
+// wow-wdt: reader struct
+use wow_wdt::{WdtReader, version::WowVersion};
+let reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
+let wdt = reader.read()?;
 
-// From bytes
-let data = std::fs::read("file.ext")?;
-let file = Format::from_bytes(&data)?;
+// wow-m2: parse from cursor
+use wow_m2::M2Model;
+let model = M2Model::parse(&mut cursor)?;
 
-// With options
-let file = Format::open_with_options("file.ext", FormatOptions {
-    validate: true,
-    strict_mode: false,
-})?;
+// wow-adt: standalone function
+use wow_adt::api::parse_adt;
+let adt = parse_adt(&mut reader)?;
 ```
 
 ### Error Handling
 
-warcraft-rs uses a unified error type:
+Each crate defines its own error type using `thiserror`:
 
 ```rust
-// Each crate has its own error type
-use wow_mpq::error::Error as MpqError;
-use wow_blp::parser::error::Error as BlpError;
+use wow_mpq::Archive;
 
-fn handle_mpq_error(e: MpqError) {
-    match e {
-        MpqError::FileNotFound(name) => eprintln!("File not found: {}", name),
-        MpqError::InvalidArchive => eprintln!("Invalid MPQ archive"),
-        _ => eprintln!("MPQ error: {}", e),
-    }
+// Errors propagate with the ? operator
+fn extract_file(path: &str) -> Result<Vec<u8>, wow_mpq::error::Error> {
+    let mut archive = Archive::open(path)?;
+    archive.read_file("Interface/FrameXML/UIParent.lua")
 }
 ```
+
+See [Error Handling](../api/error-handling.md) for the full list of error types.
 
 ## Working with Archives (MPQ)
 
@@ -169,28 +169,17 @@ image.save("minimap_mask.png")?;
 ### Basic WDL Operations
 
 ```rust
-use wow_wdl::Wdl;
+use wow_wdl::parser::WdlParser;
+use wow_wdl::version::WdlVersion;
+use std::io::Cursor;
 
-// Load a WDL file
-let wdl = Wdl::from_file("World/Maps/Azeroth/Azeroth.wdl")?;
+// Parse a WDL file
+let data = std::fs::read("World/Maps/Azeroth/Azeroth.wdl")?;
+let parser = WdlParser::new(WdlVersion::WotLK);
+let wdl = parser.parse(&mut Cursor::new(data))?;
 
-// Get basic information
-println!("WDL version: {}", wdl.version());
-println!("Map size: {}x{} tiles", wdl.map_width(), wdl.map_height());
-
-// Access heightmap data
-for y in 0..64 {
-    for x in 0..64 {
-        if let Some(height_data) = wdl.get_tile(x, y) {
-            println!("Tile [{}, {}] has {} height values",
-                x, y, height_data.len());
-        }
-    }
-}
-
-// Export to heightmap image
-let heightmap = wdl.to_heightmap()?;
-heightmap.save("azeroth_heightmap.png")?;
+// The WdlFile struct contains the parsed chunk data
+println!("WDL version: {:?}", wdl.version);
 ```
 
 ## Loading Models (M2)
@@ -199,25 +188,21 @@ heightmap.save("azeroth_heightmap.png")?;
 ### Basic Model Loading
 
 ```rust
-use wow_m2::{Model, version::M2Version};
+use wow_m2::M2Model;
 
 // Load M2 model
 let data = std::fs::read("Creature/Murloc/Murloc.m2")?;
 let mut cursor = std::io::Cursor::new(data);
-let model = Model::parse(&mut cursor)?;
+let model = M2Model::parse(&mut cursor)?;
 
-println!("Model info:");
-println!("  Name: {}", model.header.name());
-println!("  Version: {:?}", model.header.version());
-println!("  Sequences: {}", model.sequences.len());
-println!("  Bones: {}", model.bones.len());
-println!("  Textures: {}", model.textures.len());
+// Access model data through the header and parsed fields
+println!("Model version: {:?}", model.header.version);
 
 // Load associated skin file
+use wow_m2::skin::SkinFile;
 let skin_data = std::fs::read("Creature/Murloc/Murloc00.skin")?;
 let mut skin_cursor = std::io::Cursor::new(skin_data);
-let skin = wow_m2::skin::SkinFile::parse(&mut skin_cursor)?;
-println!("Skin vertices: {}", skin.submeshes.len());
+let skin = SkinFile::parse(&mut skin_cursor)?;
 ```
 
 ## Loading World Data
@@ -278,69 +263,29 @@ println!("World coords ({}, {}) is tile [{}, {}]", world_x, world_y, tile_x, til
 ### Working with Terrain (ADT)
 
 ```rust
-use wow_adt::{reader::AdtReader, version::WowVersion};
+use wow_adt::api::parse_adt;
 use std::io::Cursor;
 
-// Load terrain tile
+// Load and parse terrain tile
 let data = std::fs::read("World/Maps/Azeroth/Azeroth_32_48.adt")?;
-let mut reader = AdtReader::new(Cursor::new(data), WowVersion::WotLK);
-let adt = reader.read()?;
+let adt = parse_adt(&mut Cursor::new(data))?;
 
-// Access chunk information
-for y in 0..16 {
-    for x in 0..16 {
-        let chunk_index = y * 16 + x;
-        if let Some(mcnk) = adt.get_chunk(chunk_index) {
-            println!("Chunk [{}, {}] - Area ID: {}", x, y, mcnk.area_id);
-            println!("  Height range: {:.2} to {:.2}",
-                mcnk.get_min_height(), mcnk.get_max_height());
-            println!("  Has water: {}", mcnk.has_water());
-        }
-    }
-}
-
-// Find doodads (M2 models) on terrain
-if let Some(mddf) = &adt.mddf {
-    for doodad in &mddf.entries {
-        println!("M2 Model ID {} at position {:?}",
-            doodad.name_id, doodad.position);
-    }
-}
-
-// Find WMOs on terrain
-if let Some(modf) = &adt.modf {
-    for wmo in &modf.entries {
-        println!("WMO ID {} at position {:?}",
-            wmo.name_id, wmo.position);
-    }
-}
+// The ParsedAdt struct contains all parsed chunk data
+// Access MCNK terrain chunks, MDDF doodad placements, MODF WMO placements, etc.
 ```
 
 ### Working with World Objects (WMO)
 
 ```rust
-use wow_wmo::{reader::WmoReader, version::WmoVersion};
-use std::io::BufReader;
-use std::fs::File;
+use wow_wmo::api::parse_wmo;
+use std::io::Cursor;
 
-// Load WMO root file
-let file = File::open("World/wmo/Dungeon/KL_Orgrimmar/Orgrimmar.wmo")?;
-let mut reader = WmoReader::new(BufReader::new(file), WmoVersion::WotLK);
-let wmo = reader.read_root()?;
+// Load and parse WMO root file
+let data = std::fs::read("World/wmo/Dungeon/KL_Orgrimmar/Orgrimmar.wmo")?;
+let wmo = parse_wmo(&mut Cursor::new(data))?;
 
-// Get WMO information
-println!("WMO: {}", wmo.mohd.name());
-println!("Groups: {}", wmo.mohd.group_count);
-println!("Materials: {}", wmo.momt.materials.len());
-println!("Doodad sets: {}", wmo.mods.sets.len());
-
-// Load WMO group
-let group_file = File::open("World/wmo/Dungeon/KL_Orgrimmar/Orgrimmar_000.wmo")?;
-let mut group_reader = WmoReader::new(BufReader::new(group_file), WmoVersion::WotLK);
-let group = group_reader.read_group()?;
-
-println!("Group vertices: {}", group.movt.vertices.len());
-println!("Group triangles: {}", group.movi.indices.len() / 3);
+// The ParsedWmo struct contains all parsed WMO data:
+// header, materials, group info, doodad sets, etc.
 ```
 
 ## Reading Databases (DBC)
@@ -349,21 +294,18 @@ println!("Group triangles: {}", group.movi.indices.len() / 3);
 ### Basic DBC Reading
 
 ```rust
-use wow_cdbc::parser::parse_dbc_file;
-use wow_cdbc::schema::Schema;
+use wow_cdbc::parser::DbcParser;
+use std::io::Cursor;
 
 // Parse DBC file
-let dbc = parse_dbc_file("DBFilesClient/Item.dbc")?;
+let data = std::fs::read("DBFilesClient/Item.dbc")?;
+let dbc = DbcParser::parse(&mut Cursor::new(data))?;
 
-println!("Item database:");
-println!("  Records: {}", dbc.record_count());
-println!("  Fields per record: {}", dbc.field_count());
+// Access header information
+println!("Records: {}", dbc.record_count());
+println!("Fields per record: {}", dbc.field_count());
 
-// Export to JSON
-let json = dbc.to_json()?;
-std::fs::write("items.json", json)?;
-
-// The CLI provides extensive functionality:
+// The CLI provides additional functionality:
 // - Schema discovery and validation
 // - Export to JSON/CSV formats
 // - Performance analysis
@@ -401,10 +343,10 @@ for chunk in data.chunks(4096) {
 ### Error Recovery
 
 ```rust
-use wow_blp::{parser::load_blp, error::Error};
-use wow_blp::types::image::BlpImage;
+use wow_blp::parser::{load_blp, error::LoadError};
+use wow_blp::BlpImage;
 
-fn load_texture_with_fallback(path: &str, fallback: &str) -> Result<BlpImage, Error> {
+fn load_texture_with_fallback(path: &str, fallback: &str) -> Result<BlpImage, LoadError> {
     match load_blp(path) {
         Ok(texture) => Ok(texture),
         Err(_) => {
@@ -443,4 +385,4 @@ let textures: Vec<_> = texture_paths
 - Explore [File Format Reference](../formats/README.md)
 - Read format-specific guides in [Guides](../guides/)
 - Check [API Documentation](../api/)
-- See [Example Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/examples)
+- See [Example Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/warcraft-rs/examples)

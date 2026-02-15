@@ -6,7 +6,7 @@ This guide will walk you through installing `warcraft-rs` and its dependencies.
 
 ### Required
 
-- **Rust**: Version 1.86 or later
+- **Rust**: Version 1.92 or later
   - Install from [rustup.rs](https://rustup.rs/)
   - Verify: `rustc --version`
 - **Git**: For cloning the repository
@@ -40,14 +40,14 @@ cargo install warcraft-rs
 
 ```toml
 [dependencies]
-wow-mpq = "0.4.0"    # MPQ archive support
-wow-blp = "0.4.0"    # BLP texture support
-wow-adt = "0.4.0"    # ADT terrain support
-wow-wdl = "0.4.0"    # WDL low-resolution terrain support
-wow-wdt = "0.4.0"    # WDT map definition support
-wow-wmo = "0.4.0"    # WMO world map object support
-wow-m2 = "0.4.0"     # M2 model support
-wow-cdbc = "0.4.0"   # DBC database support
+wow-mpq = "0.6"    # MPQ archive support
+wow-blp = "0.6"    # BLP texture support
+wow-adt = "0.6"    # ADT terrain support
+wow-wdl = "0.6"    # WDL low-resolution terrain support
+wow-wdt = "0.6"    # WDT map definition support
+wow-wmo = "0.6"    # WMO world map object support
+wow-m2 = "0.6"     # M2 model support
+wow-cdbc = "0.6"   # DBC database support
 ```
 
 Or use cargo add:
@@ -173,7 +173,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.4.0"
+wow-mpq = "0.6"
 ```
 
 Create `src/main.rs`:
@@ -206,7 +206,7 @@ cargo run
 #### Rust Version Error
 
 ```text
-error: package `warcraft-rs v0.3.0` cannot be built because it requires rustc 1.86 or newer
+error: package `warcraft-rs v0.6.1` cannot be built because it requires rustc 1.92 or newer
 ```
 
 **Solution**: Update Rust with `rustup update`
@@ -229,12 +229,11 @@ error: could not compile `warcraft-rs` (bin "warcraft-rs") due to previous error
 
 ### Getting Help
 
-- Check [Troubleshooting Guide](troubleshooting.md)
 - Open an [issue on GitHub](https://github.com/wowemulation-dev/warcraft-rs/issues)
-- Join our [Discord community](https://discord.gg/warcraft-rs)
+- Join our [Discord community](https://discord.gg/Q44pPMvGEd)
 
 ## Next Steps
 
 - Read the [Quick Start Guide](quick-start.md)
 - Explore [Basic Usage](basic-usage.md)
-- Browse [Example Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/examples)
+- Browse [Example Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/warcraft-rs/examples)

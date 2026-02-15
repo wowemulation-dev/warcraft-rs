@@ -42,7 +42,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-wmo = "0.3.0"
+wow-wmo = "0.6"
 ```
 
 Or use cargo add:

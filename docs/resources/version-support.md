@@ -1,4 +1,4 @@
-# 🔢 Version Support
+# Version Support
 
 World of Warcraft client version compatibility and file format changes.
 
@@ -353,5 +353,3 @@ mod tests {
 ## See Also
 
 - [File Format Reference](../formats/README.md)
-- [Migration Guide](../guides/migration.md)
-- [Testing Guide](../guides/testing.md)

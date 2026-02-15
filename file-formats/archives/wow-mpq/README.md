@@ -54,7 +54,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wow-mpq = "0.3.0"
+wow-mpq = "0.6"
 ```
 
 Or use cargo add:
@@ -217,7 +217,7 @@ The crate includes debug utilities for analyzing MPQ archives (requires
 use wow_mpq::{Archive, debug};
 
 // Enable the feature in Cargo.toml:
-// wow-mpq = { version = "0.3.0", features = ["debug-utils"] }
+// wow-mpq = { version = "0.6", features = ["debug-utils"] }
 
 let mut archive = Archive::open("example.mpq")?;
 
