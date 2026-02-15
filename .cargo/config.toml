@@ -24,6 +24,9 @@ fmt-check = "fmt --all -- --check"
 # This is the primary quality gate
 lint = "clippy --workspace --all-targets --all-features"
 
+# Run cargo-deny security and license checks
+deny = "deny check"
+
 # Run all tests with all features enabled
 test-all = "test --workspace --all-features"
 
