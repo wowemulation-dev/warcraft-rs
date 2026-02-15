@@ -1,0 +1,63 @@
+---
+# extend default yamllint configuration
+# https://yamllint.readthedocs.io/en/stable/configuration.html
+extends: default
+
+# custom rules
+# https://yamllint.readthedocs.io/en/stable/rules.html
+rules:
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+    min-spaces-inside-empty: 0
+    level: error
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 2
+    min-spaces-inside-empty: 0
+    level: error
+  colons:
+    max-spaces-after: -1
+    level: error
+  commas:
+    max-spaces-after: -1
+    level: error
+  comments:
+    min-spaces-from-content: 1
+    require-starting-space: true
+  comments-indentation: false
+  document-start:
+    ignore: |
+      **/**/vault.yaml
+      **/**/vault-*.yaml
+  empty-lines:
+    max: 3
+    level: error
+  hyphens:
+    level: error
+  indentation:
+    spaces: consistent
+    indent-sequences: true
+    check-multi-line-strings: false
+  line-length:
+    max: 120
+    level: warning
+  new-lines:
+    type: unix
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+  quoted-strings:
+    quote-type: any
+    required: only-when-needed
+  truthy:
+    allowed-values:
+      - 'true'
+      - 'false'
+
+ignore: |
+  .ansible/**/**
+  .cache/**/**
+  .github/**/**
+  .venv/**/**
+  docs/**/**

@@ -40,7 +40,7 @@ jobs:
           }
           EOF
           )
-          echo "matrix=$(echo $matrix | jq -c .)" >> $GITHUB_OUTPUT
+          echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
 
   cross-build:
     name: Build ${{ matrix.target }}
@@ -59,7 +59,6 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
-      # Ensure target is installed (workaround for cross-compilation on macOS)
       - name: Ensure target is installed
         run: rustup target add ${{ matrix.target }}
 
@@ -71,39 +70,43 @@ jobs:
           cache-all-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      # Use cross for Linux cross-compilation
       - name: Install cross for cross-compilation
         if: matrix.cross && matrix.os == 'ubuntu-latest'
-        run: |
-          cargo install cross --git https://github.com/cross-rs/cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
 
-      # Build with cross
       - name: Build with cross for ${{ matrix.target }}
         if: matrix.cross
+        env:
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         run: |
-          cross build --target ${{ matrix.target }} --release --bin warcraft-rs
+          cross build --target "${{ matrix.target }}" --release --bin "${BINARY_DEFAULT}"
 
-      # Build natively
       - name: Build natively for ${{ matrix.target }}
         if: '!matrix.cross'
+        env:
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         run: |
-          cargo build --target ${{ matrix.target }} --release --bin warcraft-rs
+          cargo build --target "${{ matrix.target }}" --release --bin "${BINARY_DEFAULT}"
 
-      # Test build artifacts exist
       - name: Verify build artifacts exist
         shell: bash
+        env:
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             ls -la target/${{ matrix.target }}/release/*.exe || true
           else
-            ls -la target/${{ matrix.target }}/release/warcraft-rs || true
+            ls -la target/${{ matrix.target }}/release/${BINARY_DEFAULT} || true
           fi
 
-      # Upload artifacts
       - name: Upload cross-compilation artifacts for ${{ matrix.target }}
+        env:
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.target }}
           path: |
-            target/${{ matrix.target }}/release/warcraft-rs*
+            target/${{ matrix.target }}/release/${BINARY_DEFAULT}*
           if-no-files-found: error

@@ -1,12 +1,36 @@
 #!/usr/bin/env bash
-# Install script for warcraft-rs
+# Generic install script for WoW Emulation CLI tools
 # Based on cargo-binstall's installation approach
 
 set -euo pipefail
 
-# Configuration
-BINARY_NAME="warcraft-rs"
-REPO="wowemulation-dev/warcraft-rs"
+# ============================================================================
+# PROJECT CONFIGURATION - Customize these for each project
+# ============================================================================
+BINARY_NAMES="${BINARY_NAMES:-}"         # Required: Space-separated list, e.g., "ribbit-server cli bnet-agent"
+BINARY_DEFAULT="${BINARY_DEFAULT:-}"     # Required: Default binary to install, must be in BINARY_NAMES
+REPO="${REPO:-}"                         # Required: e.g., "wowemulation-dev/cascette-rs"
+TAG_PREFIX="${TAG_PREFIX:-${BINARY_DEFAULT}-}" # e.g., "cascette-ribbit-v", "warcraft-rs-v", "v"
+# ============================================================================
+
+# Verify required configuration
+if [[ -z "$BINARY_NAMES" ]] || [[ -z "$BINARY_DEFAULT" ]] || [[ -z "$REPO" ]]; then
+    echo "Error: BINARY_NAMES, BINARY_DEFAULT, and REPO must be configured"
+    echo "Usage: BINARY_NAMES=\"binary1 binary2\" BINARY_DEFAULT=binary1 REPO=org/repo $0 [OPTIONS] [VERSION]"
+    exit 1
+fi
+
+# Validate that default is in the list
+if [[ ! " $BINARY_NAMES " =~ $BINARY_DEFAULT ]]; then
+    echo "Error: BINARY_DEFAULT must be in BINARY_NAMES"
+    echo "BINARY_NAMES: $BINARY_NAMES"
+    echo "BINARY_DEFAULT: $BINARY_DEFAULT"
+    exit 1
+fi
+
+# Set BINARY_NAME to default (can be overridden by --binary flag)
+BINARY_NAME="$BINARY_DEFAULT"
+
 BASE_URL="https://github.com/${REPO}/releases"
 
 # Colors for output
@@ -92,7 +116,7 @@ download_file() {
 # Get latest release version
 get_latest_version() {
     local version
-    version=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"warcraft-rs-v([^"]+)".*/\1/')
+    version=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E "s/.*\"${TAG_PREFIX}([^\"]+)\".*/\1/")
 
     if [[ -z "$version" ]]; then
         error "Failed to get latest version"
@@ -142,7 +166,7 @@ install() {
         version=$(get_latest_version)
     fi
 
-    info "Installing warcraft-rs v${version}"
+    info "Installing ${BINARY_NAME} v${version}"
 
     # Detect platform
     local platform
@@ -161,14 +185,14 @@ install() {
 
     # Download URL
     local filename="${BINARY_NAME}-${version}-${platform}${archive_ext}"
-    local download_url="${BASE_URL}/download/warcraft-rs-v${version}/${filename}"
+    local download_url="${BASE_URL}/download/${TAG_PREFIX}${version}/${filename}"
 
     info "Downloading from: ${download_url}"
     download_file "$download_url" "${temp_dir}/${filename}"
 
     # Download signature and public key (ephemeral signing uses .sig extension)
     download_file "${download_url}.sig" "${temp_dir}/${filename}.sig" || warn "Signature file not found"
-    download_file "${BASE_URL}/download/warcraft-rs-v${version}/minisign.pub" "${temp_dir}/minisign.pub" || warn "Public key not found"
+    download_file "${BASE_URL}/download/${TAG_PREFIX}${version}/minisign.pub" "${temp_dir}/minisign.pub" || warn "Public key not found"
 
     # Verify if signature and public key were downloaded
     if [[ -f "${temp_dir}/${filename}.sig" ]] && [[ -f "${temp_dir}/minisign.pub" ]]; then
@@ -201,7 +225,7 @@ install() {
     if "${install_dir}/${binary_name}" --version >/dev/null 2>&1; then
         info "Installation successful!"
         info "Binary installed to: ${install_dir}/${binary_name}"
-        
+
         # Check if install_dir is in PATH
         if ! echo "$PATH" | grep -q "$install_dir"; then
             warn "${install_dir} is not in your PATH"
@@ -216,7 +240,7 @@ install() {
 # Show help
 show_help() {
     cat << EOF
-Install script for warcraft-rs
+Generic install script for ${REPO}
 
 USAGE:
     $0 [OPTIONS] [VERSION]
@@ -225,22 +249,40 @@ OPTIONS:
     -h, --help          Show this help message
     -d, --dir DIR       Install directory (default: \$HOME/.local/bin)
     -t, --tag TAG       Install specific release tag
+    -b, --binary BINARY Binary to install (default: ${BINARY_DEFAULT})
 
 ENVIRONMENT VARIABLES:
-    INSTALL_DIR         Override default install directory
+    BINARY_NAMES        Space-separated list of available binaries (required)
+    BINARY_DEFAULT      Default binary to install (required)
+    REPO                 GitHub repo (required)
+    TAG_PREFIX           Release tag prefix (default: \${BINARY_DEFAULT}-)
+    INSTALL_DIR          Override default install directory
+
+AVAILABLE BINARIES:
+$(for bin in $BINARY_NAMES; do echo "    - $bin"; done)
 
 EXAMPLES:
-    # Install latest version
-    $0
+    # Install latest version (uses default binary: ${BINARY_DEFAULT})
+    BINARY_NAMES=\"${BINARY_NAMES}\" BINARY_DEFAULT=${BINARY_DEFAULT} REPO=org/repo $0
+
+    # Install specific binary
+    BINARY_NAMES=\"${BINARY_NAMES}\" BINARY_DEFAULT=${BINARY_DEFAULT} REPO=org/repo $0 --binary cli
 
     # Install specific version
-    $0 0.1.0
+    BINARY_NAMES=\"${BINARY_NAMES}\" BINARY_DEFAULT=${BINARY_DEFAULT} REPO=org/repo $0 0.1.0
 
     # Install to custom directory
-    INSTALL_DIR=/usr/local/bin $0
+    BINARY_NAMES=\"${BINARY_NAMES}\" BINARY_DEFAULT=${BINARY_DEFAULT} REPO=org/repo INSTALL_DIR=/usr/local/bin $0
 
     # Install specific tag
-    $0 --tag warcraft-rs-v0.1.0
+    BINARY_NAMES=\"${BINARY_NAMES}\" BINARY_DEFAULT=${BINARY_DEFAULT} REPO=org/repo $0 --tag ${BINARY_DEFAULT}-v0.1.0
+
+SUPPORTED PROJECTS:
+    - warcraft-rs   BINARY_NAMES=\"warcraft-rs\" BINARY_DEFAULT=warcraft-rs REPO=wowemulation-dev/warcraft-rs
+    - cascette-rs   BINARY_NAMES=\"ribbit-server cli\" BINARY_DEFAULT=ribbit-server REPO=wowemulation-dev/cascette-rs
+    - rilua        BINARY_NAMES=\"rilua\" BINARY_DEFAULT=rilua REPO=wowemulation-dev/rilua
+    - wow-patcher   BINARY_NAMES=\"wow-patcher\" BINARY_DEFAULT=wow-patcher REPO=wowemulation-dev/wow-patcher
+    - recast-rs    BINARY_NAMES=\"recast-cli\" BINARY_DEFAULT=recast-cli REPO=wowemulation-dev/recast-rs
 EOF
 }
 
@@ -248,6 +290,7 @@ EOF
 main() {
     local version=""
     local tag=""
+    local binary=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -263,6 +306,10 @@ main() {
                 tag="$2"
                 shift 2
                 ;;
+            -b|--binary)
+                binary="$2"
+                shift 2
+                ;;
             -*)
                 error "Unknown option: $1"
                 ;;
@@ -273,9 +320,19 @@ main() {
         esac
     done
 
+    # Validate binary selection if provided
+    if [[ -n "$binary" ]]; then
+        if [[ ! " $BINARY_NAMES " =~ $binary ]]; then
+            echo "Error: Unknown binary '$binary'"
+            echo "Available binaries: $BINARY_NAMES"
+            exit 1
+        fi
+        BINARY_NAME="$binary"
+    fi
+
     # Extract version from tag if provided
     if [[ -n "$tag" ]]; then
-        version="${tag#warcraft-rs-v}"
+        version="${tag#"${TAG_PREFIX}"}"
     fi
 
     install "$version"

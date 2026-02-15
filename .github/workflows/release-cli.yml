@@ -32,7 +32,6 @@ env:
   RUSTFLAGS: -D warnings
   CARGO_INCREMENTAL: 0
 
-# Prevent concurrent CLI releases
 concurrency:
   group: release-cli-${{ github.repository }}
   cancel-in-progress: false
@@ -50,21 +49,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-      
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
       - name: Generate ephemeral keypair
         id: generate
         env:
           AGE_KEY_PUBLIC: ${{ vars.AGE_KEY_PUBLIC }}
         run: |
           ./ephemeral-gen.sh
-          
-          # Extract key ID for output
+
           KEY_ID=$(head -1 minisign.pub | sed 's/.*: //')
-          echo "key-id=${KEY_ID}" >> $GITHUB_OUTPUT
-      
+          echo "key-id=${KEY_ID}" >> "$GITHUB_OUTPUT"
+
       - name: Upload ephemeral keys
         uses: actions/upload-artifact@v4
         with:
@@ -81,7 +81,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             use_cross: true
@@ -102,14 +101,10 @@ jobs:
             os: ubuntu-latest
             use_cross: true
             archive: tar.gz
-
-          # Windows
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             use_cross: false
             archive: zip
-
-          # macOS
           - target: x86_64-apple-darwin
             os: macos-latest
             use_cross: false
@@ -120,18 +115,17 @@ jobs:
             archive: tar.gz
 
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
 
-      # Ensure target is installed (workaround for cross-compilation on macOS)
       - name: Ensure target is installed
         run: rustup target add ${{ matrix.target }}
 
@@ -140,63 +134,83 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cross
-      
+
       - name: Download ephemeral keys
         uses: actions/download-artifact@v4
         with:
           name: ephemeral-keys
-      
+
       - name: Setup signing tools
         run: |
           cargo install rsign2
           cargo install rage
-      
+
       - name: Build binary
         shell: bash
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
+          PACKAGE_NAME: ${{ vars.PACKAGE_NAME }}
         run: |
+          # Use BINARY_DEFAULT for releases (primary binary)
+          BINARY_NAME="${BINARY_DEFAULT}"
+
           if [ "${{ matrix.use_cross }}" = "true" ]; then
-            cross build --release --package warcraft-rs --bin warcraft-rs --target ${{ matrix.target }}
+            cross build --release --package "$PACKAGE_NAME" --bin "$BINARY_NAME" --target "${{ matrix.target }}"
           else
-            cargo build --release --package warcraft-rs --bin warcraft-rs --target ${{ matrix.target }}
+            cargo build --release --package "$PACKAGE_NAME" --bin "$BINARY_NAME" --target "${{ matrix.target }}"
           fi
-      
+
       - name: Package binary (Unix)
         if: runner.os != 'Windows'
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ../../../warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.tar.gz warcraft-rs
+          BINARY_NAME="${BINARY_DEFAULT}"
+          cd "target/${{ matrix.target }}/release"
+          tar czf "../../../${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.tar.gz" "$BINARY_NAME"
           cd ../../../
-      
+
       - name: Package binary (Windows)
         if: runner.os == 'Windows'
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         shell: pwsh
         run: |
-          cd target/${{ matrix.target }}/release
-          Compress-Archive -Path warcraft-rs.exe -DestinationPath ../../../warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.zip
+          $BINARY_NAME = "${env:BINARY_DEFAULT}"
+          cd "target/${{ matrix.target }}/release"
+          Compress-Archive -Path "${BINARY_NAME}.exe" -DestinationPath "../../../${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.zip"
           cd ../../../
-      
+
       - name: Sign packages
         env:
           AGE_KEY_SECRET: ${{ secrets.AGE_KEY_SECRET }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         shell: bash
         run: |
+          BINARY_NAME="${BINARY_DEFAULT}"
+
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            bash ./ephemeral-sign.sh warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.zip
+            bash ./ephemeral-sign.sh "${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.zip"
           else
-            ./ephemeral-sign.sh warcraft-rs-${{ inputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
+            bash ./ephemeral-sign.sh "${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.${{ matrix.archive }}"
           fi
-      
+
       - name: Upload artifacts
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.target }}
           path: |
-            warcraft-rs-*.tar.gz
-            warcraft-rs-*.tar.gz.sig
-            warcraft-rs-*.zip
-            warcraft-rs-*.zip.sig
+            "${BINARY_NAME}"-*.tar.gz
+            "${BINARY_NAME}"-*.tar.gz.sig
+            "${BINARY_NAME}"-*.zip
+            "${BINARY_NAME}"-*.zip.sig
             minisign.pub
 
   create-release:
@@ -206,97 +220,127 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      
+
       - name: Prepare release files
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
+          TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         run: |
+          BINARY_NAME="${BINARY_DEFAULT}"
           mkdir -p release
-          
-          # Move all binaries and signatures
-          find artifacts -name "warcraft-rs-*" -type f -exec mv {} release/ \;
-          
-          # Copy public key from any artifact (they're all the same)
+
+          find artifacts -name "${BINARY_NAME}-*" -type f -exec mv {} release/ \;
+
           cp artifacts/binaries-*/minisign.pub release/ 2>/dev/null || cp artifacts/ephemeral-keys/minisign.pub release/
-          
-          # Create checksums
+
           cd release
-          sha256sum warcraft-rs-*.{tar.gz,zip} > SHA256SUMS 2>/dev/null || true
+          sha256sum "${BINARY_NAME}"-*.{tar.gz,zip} > SHA256SUMS 2>/dev/null || true
           cd ..
-          
-          # List release contents
+
           ls -la release/
-      
+
       - name: Create release notes
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
+          REPO: ${{ github.repository }}
+          TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         run: |
+          BINARY_NAME="${BINARY_DEFAULT}"
           cat > release/RELEASE_NOTES.md << 'EOF'
-          ## warcraft-rs v${{ inputs.version }}
-          
+          ## ${BINARY_NAME} v${{ inputs.version }}
+
           ### Verification
-          
+
           This release uses ephemeral signing keys. To verify:
-          
+
           1. Download the binary, signature (`.sig`), and public key (`minisign.pub`)
           2. Verify using minisign or rsign:
-          
+
           ```bash
           # Using minisign
-          minisign -V -p minisign.pub -m warcraft-rs-${{ inputs.version }}-<target>.tar.gz
-          
+          minisign -V -p minisign.pub -m ${BINARY_NAME}-${{ inputs.version }}-<target>.tar.gz
+
           # Using rsign
-          rsign verify -p minisign.pub warcraft-rs-${{ inputs.version }}-<target>.tar.gz
+          rsign verify -p minisign.pub ${BINARY_NAME}-${{ inputs.version }}-<target>.tar.gz
           ```
-          
+
           ### Ephemeral Key ID
-          
+
           This release was signed with ephemeral key: `${{ needs.generate-ephemeral-keys.outputs.key-id }}`
-          
+
           ### Installation
-          
+
           #### Unix-like systems
           ```bash
-          curl -fsSL https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.sh | bash
+          curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | bash
           ```
-          
+
           #### Windows PowerShell
           ```powershell
-          irm https://raw.githubusercontent.com/wowemulation-dev/warcraft-rs/main/install.ps1 | iex
+          irm https://raw.githubusercontent.com/${REPO}/main/install.ps1 | iex
           ```
-          
+
           ### Supported Platforms
-          
+
           - Linux: x86_64, aarch64, armv7 (GNU and musl)
-          - Windows: x86_64, aarch64 (MSVC)
+          - Windows: x86_64 (MSVC)
           - macOS: x86_64, aarch64
-          
+
           ### Checksums
-          
+
           SHA256 checksums are available in the `SHA256SUMS` file.
           EOF
-      
+
       - name: Create GitHub Release
         if: ${{ !inputs.dry-run }}
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
+          TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: warcraft-rs-v${{ inputs.version }}
-          name: warcraft-rs v${{ inputs.version }}
+          tag_name: ${TAG_PREFIX}${{ inputs.version }}
+          name: ${BINARY_DEFAULT} v${{ inputs.version }}
           body_path: release/RELEASE_NOTES.md
           files: |
-            release/warcraft-rs-*.tar.gz
-            release/warcraft-rs-*.tar.gz.sig
-            release/warcraft-rs-*.zip
-            release/warcraft-rs-*.zip.sig
+            release/${BINARY_DEFAULT}-*.tar.gz
+            release/${BINARY_DEFAULT}-*.tar.gz.sig
+            release/${BINARY_DEFAULT}-*.zip
+            release/${BINARY_DEFAULT}-*.zip.sig
             release/minisign.pub
             release/SHA256SUMS
-      
+
       - name: Dry run summary
         if: ${{ inputs.dry-run }}
+        env:
+          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         run: |
           echo "=== DRY RUN SUMMARY ==="
-          echo "Would have created release: warcraft-rs v${{ inputs.version }}"
+          echo "Would have created release: ${BINARY_DEFAULT} v${{ inputs.version }}"
+          body_path: release/RELEASE_NOTES.md
+          files: |
+            release/${BINARY_NAME}-*.tar.gz
+            release/${BINARY_NAME}-*.tar.gz.sig
+            release/${BINARY_NAME}-*.zip
+            release/${BINARY_NAME}-*.zip.sig
+            release/minisign.pub
+            release/SHA256SUMS
+
+      - name: Dry run summary
+        if: ${{ inputs.dry-run }}
+        env:
+          BINARY_NAME: ${{ vars.BINARY_NAME }}
+        run: |
+          echo "=== DRY RUN SUMMARY ==="
+          echo "Would have created release: ${BINARY_NAME} v${{ inputs.version }}"
           echo ""
           echo "Files that would be uploaded:"
           ls -la release/

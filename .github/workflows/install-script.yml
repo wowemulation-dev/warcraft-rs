@@ -2,18 +2,16 @@
 name: Install Script Test
 
 on:
-  # Test when install script changes
   pull_request:
     branches: [main]
     paths:
       - 'install.sh'
+      - 'install.ps1'
       - '.github/workflows/install-script.yml'
 
-  # Test after releases are created
   release:
     types: [published]
 
-  # Allow manual testing
   workflow_dispatch:
 
 jobs:
@@ -47,32 +45,26 @@ jobs:
         if: github.event_name != 'release'
         shell: bash
         run: |
-          # Make script executable
           chmod +x install.sh
 
-          # Test help
           ./install.sh --help
 
-          # Test platform detection function
           bash -c 'source ./install.sh && detect_platform'
 
-          # Test script syntax
           bash -n install.sh
 
       - name: Test actual installation (release)
         if: github.event_name == 'release'
+        env:
+          BINARY_NAME: ${{ vars.BINARY_NAME }}
         shell: bash
         run: |
-          # Make script executable
           chmod +x install.sh
 
-          # Test actual installation of the released version
-          ./install.sh --tag ${{ github.event.release.tag_name }}
+          ./install.sh --tag "${{ github.event.release.tag_name }}"
 
-          # Verify installation
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            ~/.warcraft-rs/bin/warcraft-rs.exe --version
+            "$HOME/.local/bin/${BINARY_NAME}.exe" --version
           else
-            ~/.warcraft-rs/bin/warcraft-rs --version
+            "$HOME/.local/bin/${BINARY_NAME}" --version
           fi
-

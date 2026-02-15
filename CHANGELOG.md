@@ -10,9 +10,36 @@ and this project adheres to
 
 ### Changed
 
-- **Dependencies**: Standardized binrw to 0.15.0 across workspace
-  - wow-adt and wow-wmo now use workspace binrw version instead of pinned 0.14
-  - Reduces dependency duplication and compile time
+- **CI**: Refactored GitHub Actions workflows for improved CI infrastructure
+  - Added cargo-deny job for dependency security checks
+  - Added WASM compilation job for web-compatible crates
+  - Improved test scope detection with smarter crate change detection
+  - Enhanced caching strategy with better key management
+  - Updated toolchain versions to use Rust 1.92 (dropped .0 suffix)
+  - Separated quick-checks into distinct fmt, check, and clippy jobs
+  - Added comprehensive CI success validation
+  - Improved cache cleanup workflow with better error handling
+- **CI**: Enhanced cross-build and release workflows
+  - Better matrix configuration for target builds
+  - Updated cross-compilation target handling
+  - Improved CLI release workflow with cross-platform builds
+- **Tooling**: Simplified mise configuration to tool definitions only
+  - Removed task definitions from mise.toml (use cargo aliases instead)
+  - Reduced configuration from 212 lines to tool pinning only
+  - Added markdownlint, actionlint, and cross tools
+- **Tooling**: Refactored install scripts for reusability across projects
+  - install.sh and install.ps1 now support generic binary installation
+  - Configurable via environment variables (BINARY_NAMES, BINARY_DEFAULT, REPO, TAG_PREFIX)
+  - Support for multi-binary repositories
+  - Consistent ephemeral signature verification
+  - Better error handling and user feedback
+
+### Added
+
+- **Tooling**: yamllint configuration for YAML file validation
+  - Extends default yamllint rules with project-specific adjustments
+  - Ignores .github, docs, and other generated directories
+  - Configured for 120-character line length limit (warning)
 
 ### Fixed
 

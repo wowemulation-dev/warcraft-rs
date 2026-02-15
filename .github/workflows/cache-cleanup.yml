@@ -1,34 +1,46 @@
 ---
-name: Cleanup caches for closed PRs
+name: Cache Cleanup
 
 on:
-  # Run twice every day to remove the cache so that the caches from the closed prs
-  # are removed.
   schedule:
     - cron: '0 17 * * *'
     - cron: '30 18 * * *'
+
   workflow_dispatch:
+
+permissions: write-all
 
 jobs:
   cleanup:
-    name: Clear all GitHub action caches
+    name: Cleanup Caches
     runs-on: ubuntu-latest
-    permissions: write-all
-
     steps:
-      - name: Clear all caches
+      - name: Get all cache keys
+        id: caches
         run: |
-          echo "Fetching list of cache key"
-          cacheKeysForPR=$(gh cache list --limit 1000 --json id --jq '.[].id')
-
-          ## Setting this to not fail the workflow while deleting cache keys.
-          set +e
-          echo "Deleting caches..."
-          for cacheKey in $cacheKeysForPR
-          do
-              gh cache delete $cacheKey
-          done
-          echo "Done"
+          gh cache list --limit 100 --json id,key --jq '.[].id' > cache_ids.txt
+          CACHE_COUNT=$(wc -l < cache_ids.txt)
+          echo "Found $CACHE_COUNT caches to delete"
+          echo "cache_count=$CACHE_COUNT" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+
+      - name: Delete all caches
+        if: steps.caches.outputs.cache_count != '0'
+        run: |
+          set +e  # Don't fail if some caches can't be deleted
+          while read -r cache_id; do
+            echo "Deleting cache: $cache_id"
+            gh cache delete "$cache_id"
+          done < cache_ids.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Summary
+        run: |
+          echo "Cache cleanup completed"
+          if [ "${{ steps.caches.outputs.cache_count }}" = "0" ]; then
+            echo "No caches to delete"
+          else
+            echo "Deleted ${{ steps.caches.outputs.cache_count }} caches"
+          fi

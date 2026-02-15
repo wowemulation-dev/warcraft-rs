@@ -5,7 +5,8 @@ on:
   push:
     tags:
       - 'v[0-9]+.*'
-      - 'warcraft-rs-v[0-9]+.*'
+      - '*-cli-v[0-9]+.*'
+      - '*-libs-v[0-9]+.*'
 
   workflow_dispatch:
     inputs:
@@ -21,7 +22,7 @@ on:
           - all
           - libraries
           - cli
-        default: cli
+        default: all
       dry-run:
         description: 'Dry run (no actual publishing)'
         required: false
@@ -39,7 +40,6 @@ env:
   RUSTFLAGS: -D warnings
   CARGO_INCREMENTAL: 0
 
-# Prevent concurrent releases
 concurrency:
   group: release-${{ github.repository }}
   cancel-in-progress: false
@@ -61,57 +61,68 @@ jobs:
     steps:
       - name: Determine what to release
         id: determine
+        env:
+          TAG_PREFIX: ${{ vars.TAG_PREFIX }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_RELEASE_TYPE: ${{ inputs.release-type }}
+          INPUT_DRY_RUN: ${{ inputs.dry-run }}
+          INPUT_SKIP_TESTS: ${{ inputs.skip-tests }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ inputs.version }}"
-            RELEASE_TYPE="${{ inputs.release-type }}"
-            DRY_RUN="${{ inputs.dry-run }}"
-            SKIP_TESTS="${{ inputs.skip-tests }}"
+          set +u  # Allow unset variables (GitHub vars may be empty)
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION="$INPUT_VERSION"
+            RELEASE_TYPE="$INPUT_RELEASE_TYPE"
+            DRY_RUN="$INPUT_DRY_RUN"
+            SKIP_TESTS="$INPUT_SKIP_TESTS"
           else
-            # Parse tag to determine release type
             TAG="${GITHUB_REF#refs/tags/}"
-            if [[ "$TAG" == warcraft-rs-v* ]]; then
-              VERSION="${TAG#warcraft-rs-v}"
+            CLI_TAG_PREFIX="${BINARY_DEFAULT}-v"
+
+            if [[ "$TAG" == "${CLI_TAG_PREFIX}"* ]]; then
+              VERSION="${TAG#"${CLI_TAG_PREFIX}"}"
               RELEASE_TYPE="cli"
-            elif [[ "$TAG" == libs-v* ]]; then
-              VERSION="${TAG#libs-v}"
+            elif [[ "$TAG" == "*-libs-v"* ]]; then
+              VERSION="${TAG#*-libs-v}"
               RELEASE_TYPE="libraries"
             else
-              VERSION="${TAG#v}"
+              VERSION="${TAG#"${TAG_PREFIX}"}"
               RELEASE_TYPE="all"
             fi
             DRY_RUN="false"
             SKIP_TESTS="false"
           fi
 
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "dry-run=$DRY_RUN" >> $GITHUB_OUTPUT
-          echo "skip-tests=$SKIP_TESTS" >> $GITHUB_OUTPUT
+          {
+            echo "version=$VERSION"
+            echo "dry-run=$DRY_RUN"
+            echo "skip-tests=$SKIP_TESTS"
+          } >> "$GITHUB_OUTPUT"
 
-          # Determine what to release
           case "$RELEASE_TYPE" in
             all)
-              echo "release-libraries=true" >> $GITHUB_OUTPUT
-              echo "release-cli=true" >> $GITHUB_OUTPUT
+              echo "release-libraries=true" >> "$GITHUB_OUTPUT"
+              echo "release-cli=true" >> "$GITHUB_OUTPUT"
               echo "::notice::Releasing both libraries and CLI for v$VERSION"
               ;;
             libraries)
-              echo "release-libraries=true" >> $GITHUB_OUTPUT
-              echo "release-cli=false" >> $GITHUB_OUTPUT
+              echo "release-libraries=true" >> "$GITHUB_OUTPUT"
+              echo "release-cli=false" >> "$GITHUB_OUTPUT"
               echo "::notice::Releasing libraries only for v$VERSION"
               ;;
             cli)
-              echo "release-libraries=false" >> $GITHUB_OUTPUT
-              echo "release-cli=true" >> $GITHUB_OUTPUT
+              echo "release-libraries=false" >> "$GITHUB_OUTPUT"
+              echo "release-cli=true" >> "$GITHUB_OUTPUT"
               echo "::notice::Releasing CLI only for v$VERSION"
               ;;
           esac
-          
+
           if [[ "$DRY_RUN" == "true" ]]; then
             echo "::warning::DRY RUN MODE - No actual publishing will occur"
           fi
 
-  # Release libraries to crates.io
   release-libraries:
     name: Release Libraries
     needs: determine-release-type
@@ -130,15 +141,21 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Verify versions match
+        env:
+          PACKAGE_NAMES: ${{ vars.PACKAGE_NAMES || '' }}
         run: |
           VERSION="${{ needs.determine-release-type.outputs.version }}"
-          for crate in wow-mpq wow-adt wow-wdl wow-wdt wow-blp wow-m2 wow-wmo wow-cdbc warcraft-rs; do
-            CRATE_VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r ".packages[] | select(.name == \"$crate\") | .version")
-            if [[ "$CRATE_VERSION" != "$VERSION" ]]; then
-              echo "Version mismatch for $crate: expected $VERSION, found $CRATE_VERSION"
-              exit 1
-            fi
-          done
+          if [ -n "$PACKAGE_NAMES" ]; then
+            for crate in $(echo "$PACKAGE_NAMES" | jq -r '.[]'); do
+              CRATE_VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r ".packages[] | select(.name == \"$crate\") | .version")
+              if [[ "$CRATE_VERSION" != "$VERSION" ]]; then
+                echo "Version mismatch for $crate: expected $VERSION, found $CRATE_VERSION"
+                exit 1
+              fi
+            done
+          else
+            echo "No PACKAGE_NAMES configured, skipping version check"
+          fi
 
       - name: Run tests
         if: needs.determine-release-type.outputs.skip-tests != 'true'
@@ -146,83 +163,59 @@ jobs:
 
       - name: Publish to crates.io (Dry Run)
         if: needs.determine-release-type.outputs.dry-run == 'true'
+        env:
+          INDEPENDENT: ${{ vars.CRATE_PUBLISH_ORDER_INDEPENDENT || '[]' }}
+          DEPENDENT: ${{ vars.CRATE_PUBLISH_ORDER_DEPENDENT || '[]' }}
         run: |
           echo "::warning::DRY RUN MODE - Would publish these packages in dependency order:"
-          echo "1. First batch (no workspace deps): wow-mpq, wow-blp, wow-cdbc, wow-wdl, wow-wdt, wow-adt, wow-wmo"
-          echo "2. Second batch (depends on wow-blp): wow-m2"
-          echo "3. CLI (depends on all others): warcraft-rs"
+          INDEPENDENT_COUNT=$(echo "$INDEPENDENT" | jq 'length')
+          DEPENDENT_COUNT=$(echo "$DEPENDENT" | jq 'length')
+
+          if [ "$INDEPENDENT_COUNT" -gt 0 ]; then
+            echo "First batch (independent): $(echo "$INDEPENDENT" | jq -r 'join(", ")')"
+          fi
+          if [ "$DEPENDENT_COUNT" -gt 0 ]; then
+            echo "Second batch (dependent): $(echo "$DEPENDENT" | jq -r 'join(", ")')"
+          fi
           echo "::notice::No actual publishing performed"
-          
+
       - name: Publish to crates.io (Production)
         if: needs.determine-release-type.outputs.dry-run != 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+          INDEPENDENT: ${{ vars.CRATE_PUBLISH_ORDER_INDEPENDENT || '[]' }}
+          DEPENDENT: ${{ vars.CRATE_PUBLISH_ORDER_DEPENDENT || '[]' }}
         run: |
           echo "::notice::Publishing packages to crates.io in dependency order..."
-          
-          # First batch: Independent crates (can be published in parallel)
-          echo "::group::Publishing independent crates"
-          cargo publish -p wow-mpq &
-          cargo publish -p wow-blp &
-          cargo publish -p wow-cdbc &
-          cargo publish -p wow-wdl &
-          cargo publish -p wow-wdt &
-          cargo publish -p wow-adt &
-          cargo publish -p wow-wmo &
-          wait  # Wait for all parallel publishes to complete
-          echo "::endgroup::"
-          
-          # Wait for crates.io to index the first batch
-          echo "::notice::Waiting for crates.io to index first batch..."
-          sleep 60
-          
-          # Second batch: Crates that depend on first batch
-          echo "::group::Publishing dependent crates"
-          cargo publish -p wow-m2  # Depends on wow-blp
-          echo "::endgroup::"
-          
-          # Wait for crates.io to index second batch
-          echo "::notice::Waiting for crates.io to index second batch..."
-          sleep 60
-          
-          # Third batch: CLI crate (depends on all others)
-          echo "::group::Publishing CLI crate"
-          cargo publish -p warcraft-rs  # Depends on all other workspace crates
-          echo "::endgroup::"
-          
+
+          INDEPENDENT_COUNT=$(echo "$INDEPENDENT" | jq 'length')
+          DEPENDENT_COUNT=$(echo "$DEPENDENT" | jq 'length')
+
+          if [ "$INDEPENDENT_COUNT" -gt 0 ]; then
+            echo "::group::Publishing independent crates"
+            for crate in $(echo "$INDEPENDENT" | jq -r '.[]'); do
+              cargo publish -p "$crate" &
+            done
+            wait
+            echo "::endgroup::"
+
+            echo "::notice::Waiting for crates.io to index first batch..."
+            sleep 60
+          fi
+
+          if [ "$DEPENDENT_COUNT" -gt 0 ]; then
+            echo "::group::Publishing dependent crates"
+            for crate in $(echo "$DEPENDENT" | jq -r '.[]'); do
+              cargo publish -p "$crate"
+            done
+            echo "::endgroup::"
+
+            echo "::notice::Waiting for crates.io to index second batch..."
+            sleep 60
+          fi
+
           echo "::notice::All packages published successfully!"
 
-      - name: Create library release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.determine-release-type.outputs.version }}
-          name: warcraft-rs libraries v${{ needs.determine-release-type.outputs.version }}
-          body: |
-            ## Library Release v${{ needs.determine-release-type.outputs.version }}
-
-            This release includes updates to all warcraft-rs libraries:
-            - wow-mpq - MPQ archive support
-            - wow-blp - BLP texture support
-            - wow-m2 - M2 model support
-            - wow-wmo - WMO world map object support
-            - wow-adt - ADT terrain support
-            - wow-wdl - WDL low-resolution terrain support
-            - wow-wdt - WDT map support
-            - wow-cdbc - cDBC database support
-
-            ### Installation
-
-            Add to your `Cargo.toml`:
-            ```toml
-            [dependencies]
-            wow-mpq = "${{ needs.determine-release-type.outputs.version }}"
-            wow-blp = "${{ needs.determine-release-type.outputs.version }}"
-            # ... other crates as needed
-            ```
-
-            See the [CHANGELOG](https://github.com/wowemulation-dev/warcraft-rs/blob/main/CHANGELOG.md) for details.
-
-  # Release CLI binaries
   release-cli:
     name: Release CLI
     needs: determine-release-type
@@ -233,7 +226,6 @@ jobs:
       dry-run: ${{ needs.determine-release-type.outputs.dry-run == 'true' }}
     secrets: inherit
 
-  # Final success check
   release-success:
     name: Release Success
     if: always()
@@ -245,17 +237,15 @@ jobs:
           echo "Release type determination: ${{ needs.determine-release-type.result }}"
           echo "Library release: ${{ needs.release-libraries.result }}"
           echo "CLI release: ${{ needs.release-cli.result }}"
-          
-          # Check if any required job failed
+
           if [[ "${{ needs.determine-release-type.outputs.release-libraries }}" == "true" ]] && [[ "${{ needs.release-libraries.result }}" != "success" ]]; then
             echo "Library release failed"
             exit 1
           fi
-          
+
           if [[ "${{ needs.determine-release-type.outputs.release-cli }}" == "true" ]] && [[ "${{ needs.release-cli.result }}" != "success" ]]; then
             echo "CLI release failed"
             exit 1
           fi
-          
-          echo "All releases completed successfully!"
 
+          echo "All releases completed successfully!"
