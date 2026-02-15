@@ -207,10 +207,10 @@ jobs:
         with:
           name: binaries-${{ matrix.target }}
           path: |
-            "${BINARY_NAME}"-*.tar.gz
-            "${BINARY_NAME}"-*.tar.gz.sig
-            "${BINARY_NAME}"-*.zip
-            "${BINARY_NAME}"-*.zip.sig
+            "${{ vars.BINARY_DEFAULT }}"-*.tar.gz
+            "${{ vars.BINARY_DEFAULT }}"-*.tar.gz.sig
+            "${{ vars.BINARY_DEFAULT }}"-*.zip
+            "${{ vars.BINARY_DEFAULT }}"-*.zip.sig
             minisign.pub
 
   create-release:
