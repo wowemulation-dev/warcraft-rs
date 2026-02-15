@@ -24,6 +24,17 @@ ignore = [
     # Alternative: Consider switching from rav1e when a suitable AV1 encoder alternative is available
     # Last reviewed: 2025-02-12
     "RUSTSEC-2024-0436",
+
+    # RUSTSEC-2025-0119: number_prefix crate is unmaintained
+    # Justification: This is a transitive dependency from indicatif (via pklib -> wow-mpq).
+    # The crate provides formatting for numbers with SI unit prefixes. It is used in progress bar
+    # rendering for formatting large byte counts. The functionality is stable and the unmaintained
+    # status does not pose security risks (no vulnerabilities reported).
+    # Dependency tree: number_prefix -> indicatif -> pklib -> wow-mpq
+    # Alternative: Could migrate to indicatif 0.18.x which uses unit-prefix, but this would require
+    # updating pklib which is out of our control.
+    # Last reviewed: 2025-02-16
+    "RUSTSEC-2025-0119",
 ]
 
 [licenses]
