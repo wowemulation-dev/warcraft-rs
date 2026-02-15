@@ -1694,9 +1694,9 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "pklib"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a7ff566c5cb263cf6a9f3b8b8ccbeaf236c0b3516c184134c062863258b3789"
+checksum = "e88b72c1327d25f7c73e2ac5a565ae1f7703a310aea1edfb4ea57ac2243e28f2"
 dependencies = [
  "clap",
  "indicatif 0.17.11",
@@ -2149,7 +2149,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2399,7 +2399,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
