@@ -46,7 +46,7 @@ rayon = "1.10"
 
 # Thread-safe data structures and caching
 parking_lot = "0.12"
-lru = "0.12"
+lru = "0.16"
 
 # Database support
 rusqlite = { version = "0.32", features = ["bundled"] }
