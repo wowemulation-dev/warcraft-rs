@@ -240,7 +240,7 @@ jobs:
           cp artifacts/binaries-*/minisign.pub release/ 2>/dev/null || cp artifacts/ephemeral-keys/minisign.pub release/
 
           cd release
-          sha256sum "${BINARY_NAME}"-*.{tar.gz,zip} > SHA256SUMS 2>/dev/null || true
+          sha256sum "${BINARY_NAME}"-*.tar.gz "${BINARY_NAME}"-*.zip > SHA256SUMS 2>/dev/null || true
           cd ..
 
           ls -la release/
