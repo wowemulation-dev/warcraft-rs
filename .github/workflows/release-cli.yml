@@ -300,44 +300,23 @@ jobs:
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry-run }}
-        env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
-          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
-          TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${TAG_PREFIX}${{ inputs.version }}
-          name: ${BINARY_DEFAULT} v${{ inputs.version }}
+          tag_name: ${{ vars.TAG_PREFIX }}${{ inputs.version }}
+          name: ${{ vars.BINARY_DEFAULT }} v${{ inputs.version }}
           body_path: release/RELEASE_NOTES.md
           files: |
-            release/${BINARY_DEFAULT}-*.tar.gz
-            release/${BINARY_DEFAULT}-*.tar.gz.sig
-            release/${BINARY_DEFAULT}-*.zip
-            release/${BINARY_DEFAULT}-*.zip.sig
+            release/${{ vars.BINARY_DEFAULT }}-*.tar.gz
+            release/${{ vars.BINARY_DEFAULT }}-*.tar.gz.sig
+            release/${{ vars.BINARY_DEFAULT }}-*.zip
+            release/${{ vars.BINARY_DEFAULT }}-*.zip.sig
             release/minisign.pub
             release/SHA256SUMS
 
       - name: Dry run summary
         if: ${{ inputs.dry-run }}
         env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
-          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
-        run: |
-          echo "=== DRY RUN SUMMARY ==="
-          echo "Would have created release: ${BINARY_DEFAULT} v${{ inputs.version }}"
-          body_path: release/RELEASE_NOTES.md
-          files: |
-            release/${BINARY_NAME}-*.tar.gz
-            release/${BINARY_NAME}-*.tar.gz.sig
-            release/${BINARY_NAME}-*.zip
-            release/${BINARY_NAME}-*.zip.sig
-            release/minisign.pub
-            release/SHA256SUMS
-
-      - name: Dry run summary
-        if: ${{ inputs.dry-run }}
-        env:
-          BINARY_NAME: ${{ vars.BINARY_NAME }}
+          BINARY_NAME: ${{ vars.BINARY_DEFAULT }}
         run: |
           echo "=== DRY RUN SUMMARY ==="
           echo "Would have created release: ${BINARY_NAME} v${{ inputs.version }}"
