@@ -1,2 +1,212 @@
+# mise.toml - Development environment configuration for warcraft-rs
+# https://mise.jdx.dev/configuration.html
+
 [tools]
-rust = { version = "1.92.0", profile = "default" }
+rust = "1.92.0"
+
+[env]
+# Enable backtraces for better error messages during development
+RUST_BACKTRACE = "1"
+
+# Always show colors in terminal output
+CARGO_TERM_COLOR = "always"
+
+# Enable RUST_LOG for debugging (override as needed)
+RUST_LOG = "info"
+
+# Set Rust testing configuration
+RUST_TEST_THREADS = "num-cpus"
+
+[tasks]
+# Development workflow tasks
+
+[tasks.check]
+description = "Quick type check without full compilation"
+run = "cargo check-all"
+
+[tasks.check-ci]
+description = "Full type check for CI (all targets, all features)"
+run = "cargo check --workspace --all-targets --all-features"
+
+[tasks.fmt]
+description = "Format all Rust code"
+run = "cargo fmt --all"
+
+[tasks.fmt-check]
+description = "Check code formatting without making changes"
+run = "cargo fmt-check"
+
+[tasks.lint]
+description = "Run clippy linter on workspace"
+run = "cargo lint"
+
+[tasks.lint-all]
+description = "Run clippy with all lints enabled"
+run = "cargo clippy --workspace --all-targets --all-features -- -W clippy::all -W clippy::pedantic -W clippy::nursery -W clippy::cargo"
+
+[tasks.lint-fix]
+description = "Run clippy and auto-fix lint issues"
+run = "cargo clippy --workspace --all-targets --all-features --fix --allow-dirty --allow-staged"
+
+# Testing tasks
+
+[tasks.test]
+description = "Run all tests with all features"
+run = "cargo test-all"
+
+[tasks.test-lib]
+description = "Run only library unit tests (faster iteration)"
+run = "cargo test-lib"
+
+[tasks.test-doc]
+description = "Run only doc tests"
+run = "cargo test-doc"
+
+[tasks.test-nextest]
+description = "Run tests with cargo-nextest (development profile)"
+run = "cargo nextest run --profile default"
+
+[tasks.test-nextest-ci]
+description = "Run tests with cargo-nextest (CI profile)"
+run = "cargo nextest run --profile ci"
+
+[tasks.test-integration]
+description = "Run integration tests only"
+run = "cargo test --workspace --all-features --test '*'"
+
+# Documentation tasks
+
+[tasks.docs]
+description = "Build documentation for all crates"
+run = "cargo docs"
+
+[tasks.docs-open]
+description = "Build and open documentation in browser"
+run = "cargo docs --open"
+
+[tasks.docs-check]
+description = "Check documentation for warnings and broken links"
+run = "cargo doc --workspace --all-features --no-deps -D warnings"
+
+# Build tasks
+
+[tasks.build]
+description = "Build debug version of workspace"
+run = "cargo build --workspace"
+
+[tasks.build-release]
+description = "Build release version of workspace"
+run = "cargo build-release"
+
+[tasks.build-cli]
+description = "Build only the warcraft-rs CLI"
+run = "cargo build -p warcraft-rs"
+
+[tasks.build-cli-release]
+description = "Build release version of CLI only"
+run = "cargo build -p warcraft-rs --release"
+
+# Benchmarking tasks
+
+[tasks.bench]
+description = "Run benchmarks (requires nightly Rust)"
+run = "cargo bench --workspace"
+
+[tasks.bench-save]
+description = "Run and save baseline benchmarks"
+run = "cargo bench --workspace -- --save-baseline main"
+
+[tasks.bench-compare]
+description = "Compare against saved baseline"
+run = "cargo bench --workspace -- --baseline main"
+
+# Security tasks
+
+[tasks.audit]
+description = "Run security audit with cargo-deny"
+run = "cargo deny check"
+
+[tasks.audit-advisories]
+description = "Check for security advisories"
+run = "cargo deny check advisories"
+
+[tasks.audit-licenses]
+description = "Check license compliance"
+run = "cargo deny check licenses"
+
+[tasks.audit-bans]
+description = "Check for dependency bans"
+run = "cargo deny check bans"
+
+# Quality assurance tasks
+
+[tasks.qa]
+description = "Full QA: format, lint, and test"
+depends = ["fmt", "lint", "test"]
+
+[tasks.qa-ci]
+description = "Full CI QA: fmt-check, lint, and test"
+depends = ["fmt-check", "lint", "test-nextest-ci"]
+
+[tasks.qa-docs]
+description = "Check documentation quality"
+depends = ["docs-check"]
+
+[tasks.qa-security]
+description = "Run all security checks"
+depends = ["audit"]
+
+# Cleanup tasks
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "cargo clean"
+
+[tasks.clean-deps]
+description = "Clean dependencies (keeps target dir)"
+run = "rm -rf target/debug/deps target/release/deps"
+
+[tasks.clean-benches]
+description = "Clean benchmark results"
+run = "rm -rf target/criterion"
+
+# Utility tasks
+
+[tasks.update]
+description = "Update all dependencies"
+run = "cargo update --workspace"
+
+[tasks.update-lockfile]
+description = "Update Cargo.lock and update dependencies"
+run = "cargo update --workspace && cargo update"
+
+[tasks.tree]
+description = "Show dependency tree"
+run = "cargo tree --workspace"
+
+[tasks.outdated]
+description = "Check for outdated dependencies"
+run = "cargo outdated --workspace"
+
+# CI simulation tasks
+
+[tasks.ci-local]
+description = "Simulate full CI pipeline locally"
+depends = ["fmt-check", "lint", "test-nextest-ci", "docs-check", "audit"]
+
+[tasks.ci-check]
+description = "Run CI checks (no tests)"
+depends = ["fmt-check", "lint", "docs-check", "audit"]
+
+[shell_alias]
+# Quick aliases for common development commands
+cb = "cargo build"
+cbr = "cargo build --release"
+ct = "cargo test"
+cta = "cargo test-all"
+cn = "cargo nextest run"
+cc = "cargo check-all"
+cl = "cargo lint"
+cf = "cargo fmt"
+qa = "mise run qa"
+qa-ci = "mise run ci-local"
