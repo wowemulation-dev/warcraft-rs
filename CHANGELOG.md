@@ -8,6 +8,26 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-02-16
+
+### Fixed
+
+- **CI**: Fixed shell variable expansion in GitHub Actions YAML action inputs
+  - `actions/upload-artifact` `path:` field requires `${{ vars.* }}` expressions, not `${SHELL_VAR}`
+  - Added `shell: bash` to native build steps to prevent PowerShell default on Windows runners
+  - Fixed release notes heredoc: removed escaped backticks, use `${{ }}` expressions in single-quoted heredoc
+  - Fixed sed delimiter collision when REPO variable contains `/`
+- **CI**: Fixed cross-build workflow artifact upload for all targets
+- **CI**: Fixed release-cli workflow packaging and signing for cross-compiled Windows binaries
+- **CI**: Reduced cache-cleanup workflow permissions from `write-all` to `actions: write`
+- **CI**: Fixed install-script workflow environment variable name (`BINARY_NAME` -> `BINARY_DEFAULT`)
+
+### Changed
+
+- **Tooling**: Moved Dependabot configuration, FUNDING.yml, and issue templates to org level
+- **Tooling**: Fixed regex word boundary in install.sh binary name validation
+- **Tooling**: Removed orphaned code fragment in install.ps1
+
 ## [0.6.2] - 2026-02-16
 
 ### Changed
