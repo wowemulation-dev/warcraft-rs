@@ -84,7 +84,7 @@ jobs:
             if [[ "$TAG" == "${CLI_TAG_PREFIX}"* ]]; then
               VERSION="${TAG#"${CLI_TAG_PREFIX}"}"
               RELEASE_TYPE="cli"
-            elif [[ "$TAG" == "*-libs-v"* ]]; then
+            elif [[ "$TAG" == *-libs-v* ]]; then
               VERSION="${TAG#*-libs-v}"
               RELEASE_TYPE="libraries"
             else

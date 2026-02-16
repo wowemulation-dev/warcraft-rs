@@ -273,13 +273,4 @@ EXAMPLES:
     exit 0
 }
 
-    To install minisign:
-    - Download from: https://github.com/jedisct1/minisign/releases
-
-    To install rsign:
-    - Run: cargo install rsign2
-"@
-    exit 0
-}
-
 Install-Binary -Version $Version -InstallDir $InstallDir

@@ -85,6 +85,7 @@ jobs:
 
       - name: Build natively for ${{ matrix.target }}
         if: '!matrix.cross'
+        shell: bash
         env:
           BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         run: |
@@ -102,11 +103,9 @@ jobs:
           fi
 
       - name: Upload cross-compilation artifacts for ${{ matrix.target }}
-        env:
-          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.target }}
           path: |
-            target/${{ matrix.target }}/release/${BINARY_DEFAULT}*
+            target/${{ matrix.target }}/release/${{ vars.BINARY_DEFAULT }}*
           if-no-files-found: error

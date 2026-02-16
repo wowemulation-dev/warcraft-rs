@@ -97,10 +97,18 @@ jobs:
             os: ubuntu-latest
             use_cross: true
             archive: tar.gz
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            use_cross: true
+            archive: tar.gz
           - target: armv7-unknown-linux-musleabihf
             os: ubuntu-latest
             use_cross: true
             archive: tar.gz
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            use_cross: true
+            archive: zip
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             use_cross: false
@@ -141,78 +149,68 @@ jobs:
           name: ephemeral-keys
 
       - name: Setup signing tools
+        shell: bash
         run: |
-          cargo install rsign2
-          cargo install rage
+          cargo install rsign2 --locked
+          cargo install rage --locked
 
       - name: Build binary
         shell: bash
         env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
           BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
           PACKAGE_NAME: ${{ vars.PACKAGE_NAME }}
         run: |
-          # Use BINARY_DEFAULT for releases (primary binary)
-          BINARY_NAME="${BINARY_DEFAULT}"
-
           if [ "${{ matrix.use_cross }}" = "true" ]; then
-            cross build --release --package "$PACKAGE_NAME" --bin "$BINARY_NAME" --target "${{ matrix.target }}"
+            cross build --release --package "$PACKAGE_NAME" --bin "$BINARY_DEFAULT" --target "${{ matrix.target }}"
           else
-            cargo build --release --package "$PACKAGE_NAME" --bin "$BINARY_NAME" --target "${{ matrix.target }}"
+            cargo build --release --package "$PACKAGE_NAME" --bin "$BINARY_DEFAULT" --target "${{ matrix.target }}"
           fi
 
-      - name: Package binary (Unix)
-        if: runner.os != 'Windows'
+      - name: Package binary (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
         env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
           BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         run: |
-          BINARY_NAME="${BINARY_DEFAULT}"
           cd "target/${{ matrix.target }}/release"
-          tar czf "../../../${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.tar.gz" "$BINARY_NAME"
-          cd ../../../
+          tar czf "../../../${BINARY_DEFAULT}-${{ inputs.version }}-${{ matrix.target }}.tar.gz" "$BINARY_DEFAULT"
 
-      - name: Package binary (Windows)
-        if: runner.os == 'Windows'
+      - name: Package binary (zip, native Windows)
+        if: matrix.archive == 'zip' && runner.os == 'Windows'
         env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
           BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         shell: pwsh
         run: |
-          $BINARY_NAME = "${env:BINARY_DEFAULT}"
           cd "target/${{ matrix.target }}/release"
-          Compress-Archive -Path "${BINARY_NAME}.exe" -DestinationPath "../../../${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.zip"
-          cd ../../../
+          Compress-Archive -Path "${env:BINARY_DEFAULT}.exe" -DestinationPath "../../../${env:BINARY_DEFAULT}-${{ inputs.version }}-${{ matrix.target }}.zip"
+
+      - name: Package binary (zip, cross-compiled)
+        if: matrix.archive == 'zip' && runner.os != 'Windows'
+        shell: bash
+        env:
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
+        run: |
+          cd "target/${{ matrix.target }}/release"
+          zip "../../../${BINARY_DEFAULT}-${{ inputs.version }}-${{ matrix.target }}.zip" "${BINARY_DEFAULT}.exe"
 
       - name: Sign packages
         env:
           AGE_KEY_SECRET: ${{ secrets.AGE_KEY_SECRET }}
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
           BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         shell: bash
         run: |
-          BINARY_NAME="${BINARY_DEFAULT}"
-
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            bash ./ephemeral-sign.sh "${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.zip"
-          else
-            bash ./ephemeral-sign.sh "${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.${{ matrix.archive }}"
-          fi
+          bash ./ephemeral-sign.sh "${BINARY_DEFAULT}-${{ inputs.version }}-${{ matrix.target }}.${{ matrix.archive }}"
 
       - name: Upload artifacts
-        env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
-          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.target }}
           path: |
-            *.tar.gz
-            *.tar.gz.sig
-            *.zip
-            *.zip.sig
+            ${{ vars.BINARY_DEFAULT }}-*.tar.gz
+            ${{ vars.BINARY_DEFAULT }}-*.tar.gz.sig
+            ${{ vars.BINARY_DEFAULT }}-*.zip
+            ${{ vars.BINARY_DEFAULT }}-*.zip.sig
             minisign.pub
-          if-no-files-found: error
 
   create-release:
     name: Create Release
@@ -229,33 +227,24 @@ jobs:
 
       - name: Prepare release files
         env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
           BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
-          TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         run: |
-          BINARY_NAME="${BINARY_DEFAULT}"
           mkdir -p release
 
-          find artifacts -name "${BINARY_NAME}-*" -type f -exec mv {} release/ \;
+          find artifacts -name "${BINARY_DEFAULT}-*" -type f -exec mv {} release/ \;
 
           cp artifacts/binaries-*/minisign.pub release/ 2>/dev/null || cp artifacts/ephemeral-keys/minisign.pub release/
 
           cd release
-          sha256sum "${BINARY_NAME}"-*.tar.gz "${BINARY_NAME}"-*.zip > SHA256SUMS 2>/dev/null || true
+          sha256sum "${BINARY_DEFAULT}"-*.{tar.gz,zip} > SHA256SUMS 2>/dev/null || true
           cd ..
 
           ls -la release/
 
       - name: Create release notes
-        env:
-          BINARY_NAMES: ${{ vars.BINARY_NAMES }}
-          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
-          REPO: ${{ github.repository }}
-          TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         run: |
-          BINARY_NAME="${BINARY_DEFAULT}"
           cat > release/RELEASE_NOTES.md << 'EOF'
-          ## ${BINARY_NAME} v${{ inputs.version }}
+          ## ${{ vars.BINARY_DEFAULT }} v${{ inputs.version }}
 
           ### Verification
 
@@ -264,41 +253,40 @@ jobs:
           1. Download the binary, signature (`.sig`), and public key (`minisign.pub`)
           2. Verify using minisign or rsign:
 
-          \`\`\`bash
+          ```bash
           # Using minisign
-          minisign -V -p minisign.pub -m ${BINARY_NAME}-${{ inputs.version }}-<target>.tar.gz
+          minisign -V -p minisign.pub -m ${{ vars.BINARY_DEFAULT }}-${{ inputs.version }}-<target>.tar.gz
 
           # Using rsign
-          rsign verify -p minisign.pub ${BINARY_NAME}-${{ inputs.version }}-<target>.tar.gz
-          \`\`\`
+          rsign verify -p minisign.pub ${{ vars.BINARY_DEFAULT }}-${{ inputs.version }}-<target>.tar.gz
+          ```
 
           ### Ephemeral Key ID
 
-          This release was signed with ephemeral key: \`${{ needs.generate-ephemeral-keys.outputs.key-id }}\`
+          This release was signed with ephemeral key: `${{ needs.generate-ephemeral-keys.outputs.key-id }}`
 
           ### Installation
 
           #### Unix-like systems
-          \`\`\`bash
-          curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | bash
-          \`\`\`
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash
+          ```
 
           #### Windows PowerShell
-          \`\`\`powershell
-          irm https://raw.githubusercontent.com/${REPO}/main/install.ps1 | iex
-          \`\`\`
+          ```powershell
+          irm https://raw.githubusercontent.com/${{ github.repository }}/main/install.ps1 | iex
+          ```
 
           ### Supported Platforms
 
           - Linux: x86_64, aarch64, armv7 (GNU and musl)
-          - Windows: x86_64 (MSVC)
+          - Windows: x86_64 (MSVC, GNU)
           - macOS: x86_64, aarch64
 
           ### Checksums
 
-          SHA256 checksums are available in the \`SHA256SUMS\` file.
+          SHA256 checksums are available in the `SHA256SUMS` file.
           EOF
-          sed -i "s/\${BINARY_NAME}/${BINARY_NAME}/g; s/\${REPO}/${REPO}/g" release/RELEASE_NOTES.md
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry-run }}
@@ -317,11 +305,9 @@ jobs:
 
       - name: Dry run summary
         if: ${{ inputs.dry-run }}
-        env:
-          BINARY_NAME: ${{ vars.BINARY_DEFAULT }}
         run: |
           echo "=== DRY RUN SUMMARY ==="
-          echo "Would have created release: ${BINARY_NAME} v${{ inputs.version }}"
+          echo "Would have created release: ${{ vars.BINARY_DEFAULT }} v${{ inputs.version }}"
           echo ""
           echo "Files that would be uploaded:"
           ls -la release/

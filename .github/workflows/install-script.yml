@@ -56,7 +56,7 @@ jobs:
       - name: Test actual installation (release)
         if: github.event_name == 'release'
         env:
-          BINARY_NAME: ${{ vars.BINARY_NAME }}
+          BINARY_DEFAULT: ${{ vars.BINARY_DEFAULT }}
         shell: bash
         run: |
           chmod +x install.sh
@@ -64,7 +64,7 @@ jobs:
           ./install.sh --tag "${{ github.event.release.tag_name }}"
 
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            "$HOME/.local/bin/${BINARY_NAME}.exe" --version
+            "$HOME/.local/bin/${BINARY_DEFAULT}.exe" --version
           else
-            "$HOME/.local/bin/${BINARY_NAME}" --version
+            "$HOME/.local/bin/${BINARY_DEFAULT}" --version
           fi

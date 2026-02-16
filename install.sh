@@ -21,7 +21,7 @@ if [[ -z "$BINARY_NAMES" ]] || [[ -z "$BINARY_DEFAULT" ]] || [[ -z "$REPO" ]]; t
 fi
 
 # Validate that default is in the list
-if [[ ! " $BINARY_NAMES " =~ $BINARY_DEFAULT ]]; then
+if [[ ! " $BINARY_NAMES " =~ " $BINARY_DEFAULT " ]]; then
     echo "Error: BINARY_DEFAULT must be in BINARY_NAMES"
     echo "BINARY_NAMES: $BINARY_NAMES"
     echo "BINARY_DEFAULT: $BINARY_DEFAULT"
@@ -322,7 +322,7 @@ main() {
 
     # Validate binary selection if provided
     if [[ -n "$binary" ]]; then
-        if [[ ! " $BINARY_NAMES " =~ $binary ]]; then
+        if [[ ! " $BINARY_NAMES " =~ " $binary " ]]; then
             echo "Error: Unknown binary '$binary'"
             echo "Available binaries: $BINARY_NAMES"
             exit 1

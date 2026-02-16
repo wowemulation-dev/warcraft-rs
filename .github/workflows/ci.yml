@@ -47,6 +47,7 @@ jobs:
             Cargo.toml
             Cargo.lock
             crates/**
+            src/**
           files_ignore: |
             **/*.md
             **/*.txt
@@ -69,6 +70,13 @@ jobs:
 
           if echo "$ALL_CHANGED_FILES" | grep -E "^Cargo\.(toml|lock)$"; then
             echo "Root Cargo files changed, will test all crates"
+            echo "any_crate_changed=true" >> "$GITHUB_OUTPUT"
+            echo "crates_changed=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if echo "$ALL_CHANGED_FILES" | grep -E "^src/"; then
+            echo "Source files changed, will test all crates"
             echo "any_crate_changed=true" >> "$GITHUB_OUTPUT"
             echo "crates_changed=" >> "$GITHUB_OUTPUT"
             exit 0
@@ -247,12 +255,9 @@ jobs:
           cache-all-crates: true
 
       - name: Build documentation
-        run: cargo doc --workspace --no-deps
+        run: cargo doc --workspace --no-deps --document-private-items
         env:
           RUSTDOCFLAGS: -D warnings
-
-      - name: Check for broken links
-        run: cargo doc --workspace --no-deps --document-private-items
 
   coverage:
     name: Code Coverage
