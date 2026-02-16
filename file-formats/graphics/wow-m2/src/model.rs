@@ -3207,7 +3207,7 @@ impl M2Model {
             None
         };
 
-        let texture_combiner_combos = if m2_version >= M2Version::Cataclysm {
+        let texture_combiner_combos = if flags.contains(M2ModelFlags::USE_TEXTURE_COMBINERS) {
             Some(M2Array::parse(chunk_inner)?)
         } else {
             None
