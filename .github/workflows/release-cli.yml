@@ -254,7 +254,7 @@ jobs:
           TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         run: |
           BINARY_NAME="${BINARY_DEFAULT}"
-          cat > release/RELEASE_NOTES.md << EOF
+          cat > release/RELEASE_NOTES.md << 'EOF'
           ## ${BINARY_NAME} v${{ inputs.version }}
 
           ### Verification
@@ -264,29 +264,29 @@ jobs:
           1. Download the binary, signature (`.sig`), and public key (`minisign.pub`)
           2. Verify using minisign or rsign:
 
-          ```bash
+          \`\`\`bash
           # Using minisign
           minisign -V -p minisign.pub -m ${BINARY_NAME}-${{ inputs.version }}-<target>.tar.gz
 
           # Using rsign
           rsign verify -p minisign.pub ${BINARY_NAME}-${{ inputs.version }}-<target>.tar.gz
-          ```
+          \`\`\`
 
           ### Ephemeral Key ID
 
-          This release was signed with ephemeral key: `${{ needs.generate-ephemeral-keys.outputs.key-id }}`
+          This release was signed with ephemeral key: \`${{ needs.generate-ephemeral-keys.outputs.key-id }}\`
 
           ### Installation
 
           #### Unix-like systems
-          ```bash
+          \`\`\`bash
           curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | bash
-          ```
+          \`\`\`
 
           #### Windows PowerShell
-          ```powershell
+          \`\`\`powershell
           irm https://raw.githubusercontent.com/${REPO}/main/install.ps1 | iex
-          ```
+          \`\`\`
 
           ### Supported Platforms
 
@@ -296,8 +296,9 @@ jobs:
 
           ### Checksums
 
-          SHA256 checksums are available in the `SHA256SUMS` file.
+          SHA256 checksums are available in the \`SHA256SUMS\` file.
           EOF
+          sed -i "s/\${BINARY_NAME}/${BINARY_NAME}/g; s/\${REPO}/${REPO}/g" release/RELEASE_NOTES.md
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry-run }}
