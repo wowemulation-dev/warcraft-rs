@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-02-16
+
+### Changed
+
+- **CI**: Reduced build matrix from 10 to 6 targets
+  - Dropped armv7-unknown-linux-gnueabihf and armv7-unknown-linux-musleabihf
+  - Dropped x86_64-pc-windows-gnu (MSVC is the standard Windows target)
+  - Dropped x86_64-apple-darwin (Apple transitioned to ARM in 2022)
+- **CI**: Cached rsign2 and rage signing tools to avoid recompilation on each release
+
 ## [0.6.3] - 2026-02-16
 
 ### Fixed
