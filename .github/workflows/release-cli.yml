@@ -148,7 +148,17 @@ jobs:
         with:
           name: ephemeral-keys
 
-      - name: Setup signing tools
+      - name: Cache signing tools
+        id: cache-signing
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/rsign
+            ~/.cargo/bin/rage
+          key: signing-tools-${{ runner.os }}-rsign2-0.6.5-rage-0.11.1
+
+      - name: Install signing tools
+        if: steps.cache-signing.outputs.cache-hit != 'true'
         shell: bash
         run: |
           cargo install rsign2 --locked
