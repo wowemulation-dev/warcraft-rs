@@ -55,7 +55,8 @@ pub fn raw1_to_image(
             pixel.0[0] = (color & 0xFF) as u8;
             pixel.0[1] = ((color >> 8) & 0xFF) as u8;
             pixel.0[2] = ((color >> 16) & 0xFF) as u8;
-            pixel.0[3] = (raw_image.indexed_alpha[i / 8] >> (i % 8)) & 0x01;
+            let bit = (raw_image.indexed_alpha[i / 8] >> (i % 8)) & 0x01;
+            pixel.0[3] = if bit == 1 { 255 } else { 0 };
         }
         Ok(DynamicImage::ImageRgba8(res_image))
     } else if alpha_bits == 4 {
@@ -79,11 +80,12 @@ pub fn raw1_to_image(
             pixel.0[1] = ((color >> 8) & 0xFF) as u8;
             pixel.0[2] = ((color >> 16) & 0xFF) as u8;
             let alpha_block = raw_image.indexed_alpha[i / 2];
-            pixel.0[3] = if i % 2 == 0 {
-                alpha_block
+            let nibble = if i % 2 == 0 {
+                alpha_block & 0x0F
             } else {
                 alpha_block >> 4
             };
+            pixel.0[3] = (nibble << 4) | nibble;
         }
         Ok(DynamicImage::ImageRgba8(res_image))
     } else if alpha_bits == 8 {
