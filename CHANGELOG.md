@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **wow-blp**: Fixed BLP1 1-bit and 4-bit alpha channel scaling to 8-bit range (PR #46, #32)
+  - 1-bit alpha now correctly maps 0→0, 1→255 (was 0→0, 1→1)
+  - 4-bit alpha now correctly maps 0-15→0-255 via multiplication by 17 (was 0-15)
+  - Matches blp-rs reference implementation behavior
+- **wow-m2**: Fixed `texture_combiner_combos` field to be flag-based instead of version-based (PR #47, #35)
+  - Field now controlled by `USE_TEXTURE_COMBINERS` flag (0x0008), not version
+  - Pre-Cataclysm M2 files WITH flag set now correctly parse combos
+  - Cataclysm+ M2 files WITHOUT flag set no longer read garbage data
+  - Flag is properly preserved during version conversion
+
 ## [0.6.4] - 2026-02-16
 
 ### Changed
