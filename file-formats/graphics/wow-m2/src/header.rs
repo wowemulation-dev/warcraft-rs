@@ -651,7 +651,8 @@ impl M2Header {
         }
 
         // Handle texture_combiner_combos (controlled by USE_TEXTURE_COMBINERS flag)
-        let source_has_combos = source_version >= M2Version::Cataclysm && self.flags.contains(M2ModelFlags::USE_TEXTURE_COMBINERS);
+        // The flag determines presence of this field, not version
+        let source_has_combos = self.flags.contains(M2ModelFlags::USE_TEXTURE_COMBINERS);
         if target_version >= M2Version::Cataclysm && source_has_combos {
             new_header.texture_combiner_combos = Some(M2Array::new(0, 0));
         } else {
@@ -675,7 +676,7 @@ mod tests {
     use std::io::Cursor;
 
     // Helper function to create a basic test header
-    fn create_test_header(version: M2Version) -> Vec<u8> {
+    fn create_test_header(version: M2Version, flags: M2ModelFlags) -> Vec<u8> {
         let mut data = Vec::new();
 
         // Magic "MD20"
@@ -689,7 +690,7 @@ mod tests {
         data.extend_from_slice(&0u32.to_le_bytes()); // offset = 0
 
         // Flags
-        data.extend_from_slice(&flags_param.bits().to_le_bytes());
+        data.extend_from_slice(&flags.bits().to_le_bytes());
 
         // Global sequences
         data.extend_from_slice(&0u32.to_le_bytes()); // count = 0
@@ -708,7 +709,7 @@ mod tests {
 
     #[test]
     fn test_header_parse_classic() {
-        let data = create_test_header(M2Version::Vanilla);
+        let data = create_test_header(M2Version::Vanilla, M2ModelFlags::empty());
         let mut cursor = Cursor::new(data);
 
         let header = M2Header::parse(&mut cursor).unwrap();
@@ -747,7 +748,7 @@ mod tests {
 
     #[test]
     fn test_header_conversion() {
-        let classic_header = M2Header::new(M2Version::Vanilla);
+        let mut classic_header = M2Header::new(M2Version::Vanilla);
         // Set USE_TEXTURE_COMBINERS flag for test
         classic_header.flags = M2ModelFlags::USE_TEXTURE_COMBINERS;
 
