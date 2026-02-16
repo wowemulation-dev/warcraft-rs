@@ -200,6 +200,7 @@ jobs:
           fi
 
       - name: Debug list files before upload
+        shell: bash
         env:
           BINARY_NAME: ${{ vars.BINARY_DEFAULT }}
         run: |
