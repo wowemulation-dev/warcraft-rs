@@ -69,7 +69,6 @@ detect_platform() {
     case "$(uname -m)" in
         x86_64|amd64)   arch="x86_64";;
         aarch64|arm64)  arch="aarch64";;
-        armv7l)         arch="armv7";;
         *)              error "Unsupported architecture: $(uname -m)";;
     esac
 
@@ -79,15 +78,6 @@ detect_platform() {
             os="${os}-musl"
         else
             os="${os}-gnu"
-        fi
-
-        # Special case for armv7
-        if [[ "$arch" == "armv7" ]]; then
-            if [[ "$os" == "unknown-linux-musl" ]]; then
-                os="unknown-linux-musleabihf"
-            else
-                os="unknown-linux-gnueabihf"
-            fi
         fi
     fi
 

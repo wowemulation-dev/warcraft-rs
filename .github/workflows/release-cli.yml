@@ -97,26 +97,10 @@ jobs:
             os: ubuntu-latest
             use_cross: true
             archive: tar.gz
-          - target: armv7-unknown-linux-gnueabihf
-            os: ubuntu-latest
-            use_cross: true
-            archive: tar.gz
-          - target: armv7-unknown-linux-musleabihf
-            os: ubuntu-latest
-            use_cross: true
-            archive: tar.gz
-          - target: x86_64-pc-windows-gnu
-            os: ubuntu-latest
-            use_cross: true
-            archive: zip
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             use_cross: false
             archive: zip
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            use_cross: false
-            archive: tar.gz
           - target: aarch64-apple-darwin
             os: macos-latest
             use_cross: false
@@ -289,9 +273,9 @@ jobs:
 
           ### Supported Platforms
 
-          - Linux: x86_64, aarch64, armv7 (GNU and musl)
-          - Windows: x86_64 (MSVC, GNU)
-          - macOS: x86_64, aarch64
+          - Linux: x86_64, aarch64 (GNU and musl)
+          - Windows: x86_64 (MSVC)
+          - macOS: aarch64 (Apple Silicon)
 
           ### Checksums
 
