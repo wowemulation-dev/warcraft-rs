@@ -15,7 +15,7 @@ categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 thiserror = { workspace = true }
-memchr = "2.7"
+memchr = "2.8"
 
 [dev-dependencies]
 criterion = { workspace = true }
