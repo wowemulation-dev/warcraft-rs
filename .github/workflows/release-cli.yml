@@ -254,7 +254,7 @@ jobs:
           TAG_PREFIX: ${{ vars.TAG_PREFIX }}
         run: |
           BINARY_NAME="${BINARY_DEFAULT}"
-          cat > release/RELEASE_NOTES.md << 'EOF'
+          cat > release/RELEASE_NOTES.md << EOF
           ## ${BINARY_NAME} v${{ inputs.version }}
 
           ### Verification
