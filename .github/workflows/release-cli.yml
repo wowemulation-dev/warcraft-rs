@@ -199,22 +199,6 @@ jobs:
             bash ./ephemeral-sign.sh "${BINARY_NAME}-${{ inputs.version }}-${{ matrix.target }}.${{ matrix.archive }}"
           fi
 
-      - name: Debug list files before upload
-        shell: bash
-        env:
-          BINARY_NAME: ${{ vars.BINARY_DEFAULT }}
-        run: |
-          echo "=== Files in root directory ==="
-          ls -la "${BINARY_NAME}"-* 2>/dev/null || echo "No files matching ${BINARY_NAME}-*"
-          echo "=== All .tar.gz files ==="
-          ls -la *.tar.gz 2>/dev/null || echo "No .tar.gz files"
-          echo "=== All .sig files ==="
-          ls -la *.sig 2>/dev/null || echo "No .sig files"
-          echo "=== All .zip files ==="
-          ls -la *.zip 2>/dev/null || echo "No .zip files"
-          echo "=== Current directory ==="
-          pwd
-
       - name: Upload artifacts
         env:
           BINARY_NAMES: ${{ vars.BINARY_NAMES }}
