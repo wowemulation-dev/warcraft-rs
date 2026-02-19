@@ -175,7 +175,7 @@ impl Adt {
                 writer.write_u32_le(entry.offset)?;
                 writer.write_u32_le(entry.size)?;
                 writer.write_u32_le(entry.flags)?;
-                writer.write_u32_le(entry.layer_count)?;
+                writer.write_u32_le(entry.async_id)?;
             }
         }
 
@@ -508,7 +508,7 @@ impl Adt {
                     writer.write_u32_le(*pos)?;
                     writer.write_u32_le(*size)?;
                     writer.write_u32_le(0)?; // flags
-                    writer.write_u32_le(0)?; // layer_count
+                    writer.write_u32_le(0)?; // async_id
                 }
             }
 

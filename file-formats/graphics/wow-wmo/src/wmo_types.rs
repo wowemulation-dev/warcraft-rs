@@ -245,10 +245,14 @@ pub struct WmoLight {
     /// Light intensity
     pub intensity: f32,
 
-    /// Attenuation start
+    /// Rotation quaternion (x, y, z, w) from on-disk C4Quaternion at +0x18.
+    /// Used by spot and directional lights for orientation.
+    pub rotation: [f32; 4],
+
+    /// Attenuation start distance (at +0x28 on disk)
     pub attenuation_start: f32,
 
-    /// Attenuation end
+    /// Attenuation end distance (at +0x2C on disk)
     pub attenuation_end: f32,
 
     /// Use attenuation

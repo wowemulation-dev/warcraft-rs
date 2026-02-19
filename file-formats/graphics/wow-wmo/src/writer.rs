@@ -7,7 +7,7 @@ use crate::types::{Color, Vec3};
 use crate::version::{WmoFeature, WmoVersion};
 use crate::wmo_group_types::{TexCoord, WmoBatch, WmoBspNode, WmoGroup, WmoLiquid};
 use crate::wmo_types::{
-    WmoDoodadDef, WmoDoodadSet, WmoFlags, WmoGroupInfo, WmoLight, WmoLightProperties, WmoMaterial,
+    WmoDoodadDef, WmoDoodadSet, WmoFlags, WmoGroupInfo, WmoLight, WmoMaterial,
     WmoPortal, WmoPortalReference, WmoRoot,
 };
 
@@ -612,63 +612,38 @@ impl WmoWriter {
         header.write(writer)?;
 
         for light in lights {
+            // +0x00: type (u8)
             writer.write_u8(light.light_type as u8)?;
-
-            // Padding
+            // +0x01: use_attenuation (u8)
+            writer.write_u8(if light.use_attenuation { 1 } else { 0 })?;
+            // +0x02: padding (u8[2])
             writer.write_u8(0)?;
             writer.write_u8(0)?;
-            writer.write_u8(0)?;
 
-            writer.write_u32_le(if light.use_attenuation { 1 } else { 0 })?;
+            // +0x04: color (CImVector, BGRA)
+            let color_bytes = (light.color.b as u32)
+                | (light.color.g as u32) << 8
+                | (light.color.r as u32) << 16
+                | (light.color.a as u32) << 24;
+            writer.write_u32_le(color_bytes)?;
 
+            // +0x08: position (C3Vector)
             writer.write_f32_le(light.position.x)?;
             writer.write_f32_le(light.position.y)?;
             writer.write_f32_le(light.position.z)?;
 
+            // +0x14: intensity
             writer.write_f32_le(light.intensity)?;
 
-            // Color
-            let color_bytes = (light.color.r as u32) << 16
-                | (light.color.g as u32) << 8
-                | (light.color.b as u32)
-                | (light.color.a as u32) << 24;
-
-            writer.write_u32_le(color_bytes)?;
-
-            writer.write_f32_le(light.attenuation_start)?;
-            writer.write_f32_le(light.attenuation_end)?;
-
-            // Write light type specific properties
-            match &light.properties {
-                WmoLightProperties::Spot {
-                    direction,
-                    hotspot,
-                    falloff,
-                } => {
-                    writer.write_f32_le(direction.x)?;
-                    writer.write_f32_le(direction.y)?;
-                    writer.write_f32_le(direction.z)?;
-
-                    writer.write_f32_le(*hotspot)?;
-                    writer.write_f32_le(*falloff)?;
-                }
-                WmoLightProperties::Directional { direction } => {
-                    writer.write_f32_le(direction.x)?;
-                    writer.write_f32_le(direction.y)?;
-                    writer.write_f32_le(direction.z)?;
-
-                    // Padding
-                    writer.write_f32_le(0.0)?;
-                    writer.write_f32_le(0.0)?;
-                }
-                _ => {
-                    // Omni and Ambient lights don't have extra properties
-                    // Just write padding
-                    for _ in 0..5 {
-                        writer.write_f32_le(0.0)?;
-                    }
-                }
+            // +0x18: rotation (C4Quaternion)
+            for &r in &light.rotation {
+                writer.write_f32_le(r)?;
             }
+
+            // +0x28: attenuation start
+            writer.write_f32_le(light.attenuation_start)?;
+            // +0x2C: attenuation end
+            writer.write_f32_le(light.attenuation_end)?;
         }
 
         Ok(())

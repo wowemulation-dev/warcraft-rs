@@ -213,8 +213,8 @@ pub struct McnkEntry {
     pub size: u32,
     /// Flags
     pub flags: u32,
-    /// Layer count
-    pub layer_count: u32,
+    /// Async object ID (used by the client for loading, usually 0)
+    pub async_id: u32,
 }
 
 impl McinChunk {
@@ -242,13 +242,13 @@ impl McinChunk {
             let offset = context.reader.read_u32_le()?;
             let size = context.reader.read_u32_le()?;
             let flags = context.reader.read_u32_le()?;
-            let layer_count = context.reader.read_u32_le()?;
+            let async_id = context.reader.read_u32_le()?;
 
             entries.push(McnkEntry {
                 offset,
                 size,
                 flags,
-                layer_count,
+                async_id,
             });
         }
 

@@ -710,21 +710,24 @@ impl WmoParser {
 
             let intensity = reader.read_f32_le()?;
 
+            // Rotation quaternion (C4Quaternion at +0x18, 16 bytes)
+            let rot_x = reader.read_f32_le()?;
+            let rot_y = reader.read_f32_le()?;
+            let rot_z = reader.read_f32_le()?;
+            let rot_w = reader.read_f32_le()?;
+            let rotation = [rot_x, rot_y, rot_z, rot_w];
+
+            // Attenuation values at +0x28 and +0x2C
             let attenuation_start = reader.read_f32_le()?;
             let attenuation_end = reader.read_f32_le()?;
 
-            // Skip the remaining 16 bytes (unknown radius values)
-            // These might be used for spot/directional lights but we'll keep it simple for now
-            reader.seek(SeekFrom::Current(16))?;
-
-            // For now, use simple properties without directional info
             let properties = match light_type {
                 WmoLightType::Spot => WmoLightProperties::Spot {
                     direction: Vec3 {
                         x: 0.0,
                         y: 0.0,
                         z: -1.0,
-                    }, // Default down
+                    }, // Default; derive from rotation quaternion if needed
                     hotspot: 0.0,
                     falloff: 0.0,
                 },
@@ -733,7 +736,7 @@ impl WmoParser {
                         x: 0.0,
                         y: 0.0,
                         z: -1.0,
-                    }, // Default down
+                    }, // Default; derive from rotation quaternion if needed
                 },
                 WmoLightType::Omni => WmoLightProperties::Omni,
                 WmoLightType::Ambient => WmoLightProperties::Ambient,
@@ -744,6 +747,7 @@ impl WmoParser {
                 position,
                 color,
                 intensity,
+                rotation,
                 attenuation_start,
                 attenuation_end,
                 use_attenuation,

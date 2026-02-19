@@ -242,6 +242,7 @@ fn test_wmo_light_structure() {
             a: 255,
         },
         intensity: 1.5,
+        rotation: [0.0, 0.0, 0.0, 1.0],
         attenuation_start: 5.0,
         attenuation_end: 20.0,
         use_attenuation: true,

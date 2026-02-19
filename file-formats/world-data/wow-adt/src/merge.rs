@@ -404,7 +404,7 @@ pub fn merge_adts(adts: &[Adt], options: &MergeOptions) -> Result<Adt> {
                     offset: 0, // Will be set during writing
                     size: 0,   // Will be set during writing
                     flags: 0,
-                    layer_count: 0,
+                    async_id: 0,
                 };
                 256
             ],
