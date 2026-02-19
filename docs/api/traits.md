@@ -30,8 +30,12 @@ Defines a `Chunk` trait that format-specific chunk types implement:
 
 ```rust
 pub trait Chunk: Sized {
-    fn id() -> &'static [u8; 4];
-    fn read<R: Read + Seek>(reader: &mut R, size: u32) -> Result<Self>;
+    fn magic() -> &'static [u8; 4];
+    fn expected_size() -> Option<usize> { None }
+    fn read(reader: &mut impl Read, size: usize) -> Result<Self>;
+    fn write(&self, writer: &mut impl Write) -> Result<()>;
+    fn size(&self) -> usize;
+    fn write_chunk(&self, writer: &mut impl Write) -> Result<()> { /* default impl */ }
 }
 ```
 
@@ -62,8 +66,9 @@ let archive = Archive::open("archive.mpq")?;
 let reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
 let wdt = reader.read()?;
 
-// wow-m2: parse from reader
-let model = M2Model::parse(&mut cursor)?;
+// wow-m2: load returns M2Format (Legacy or Chunked variant)
+let format = M2Model::load("model.m2")?;
+let model = format.model();
 
 // wow-adt: standalone function
 let parsed = parse_adt(&mut reader)?;
@@ -77,12 +82,12 @@ Crates with write support provide builder or writer types:
 // wow-mpq: Archive with create/add methods
 let mut archive = Archive::create("new.mpq")?;
 
-// wow-wdt: WdtWriter
-let writer = WdtWriter::new(WowVersion::WotLK);
-writer.write(&wdt, &mut output)?;
+// wow-wdt: WdtWriter wraps a writer
+let writer = WdtWriter::new(&mut output);
+writer.write(&wdt)?;
 
-// wow-cdbc: DbcWriter
-let writer = DbcWriter::new();
+// wow-cdbc: DbcWriter wraps a writer
+let writer = DbcWriter::new(&mut output);
 ```
 
 ## See Also

@@ -160,20 +160,24 @@ mpq extract World.MPQ --output terrain/ \
 
 ### Archive Rebuilding
 
-Optimize and upgrade archives with comprehensive rebuild options:
+Optimize and upgrade archives:
 
 ```rust
-use wow_mpq::{RebuildOptions, rebuild_archive};
+use wow_mpq::{RebuildOptions, FormatVersion, rebuild_archive};
 
-let options = RebuildOptions::new()
-    .target_version(FormatVersion::V4)           // Upgrade to v4
-    .compression(CompressionType::Zlib)          // Change compression
-    .remove_signatures(true)                     // Strip signatures
-    .progress_callback(|current, total| {        // Track progress
-        println!("Progress: {}/{}", current, total);
-    });
+let options = RebuildOptions {
+    target_format: Some(FormatVersion::V4),
+    skip_signatures: true,
+    verify: true,
+    ..Default::default()
+};
 
-rebuild_archive("old.mpq", "optimized.mpq", &options)?;
+let progress = Box::new(|current, total, file: &str| {
+    println!("Progress: {}/{} ({})", current, total, file);
+});
+
+let summary = rebuild_archive("old.mpq", "optimized.mpq", options, Some(progress))?;
+println!("Rebuilt {} files", summary.extracted_files);
 ```
 
 ### Digital Signatures
@@ -187,9 +191,11 @@ use wow_mpq::crypto::{generate_weak_signature, SignatureInfo, WEAK_SIGNATURE_FIL
 let archive = Archive::open("signed.mpq")?;
 match archive.verify_signature()? {
     SignatureStatus::None => println!("No signature"),
-    SignatureStatus::Weak => println!("Weak signature (512-bit RSA)"),
-    SignatureStatus::Strong => println!("Strong signature (2048-bit RSA)"),
-    SignatureStatus::Invalid => println!("Invalid signature!"),
+    SignatureStatus::WeakValid => println!("Weak signature valid"),
+    SignatureStatus::WeakInvalid => println!("Weak signature invalid!"),
+    SignatureStatus::StrongValid => println!("Strong signature valid"),
+    SignatureStatus::StrongInvalid => println!("Strong signature invalid!"),
+    SignatureStatus::StrongNoKey => println!("Strong signature (no key available)"),
 }
 
 // Generate new weak signature
@@ -210,37 +216,22 @@ let signature = generate_weak_signature(
 
 ### Debug Utilities
 
-The crate includes debug utilities for analyzing MPQ archives (requires
-`debug-utils` feature):
+The crate includes debug utilities for analyzing MPQ archives:
 
 ```rust
 use wow_mpq::{Archive, debug};
 
-// Enable the feature in Cargo.toml:
-// wow-mpq = { version = "0.6", features = ["debug-utils"] }
-
 let mut archive = Archive::open("example.mpq")?;
 
-// Dump archive structure and metadata
-debug::dump_archive_structure(&mut archive)?;
+// Format hash and block table contents
+let hash_table = debug::format_hash_table(archive.hash_table());
+let block_table = debug::format_block_table(archive.block_table());
+println!("{}", hash_table);
+println!("{}", block_table);
 
-// Analyze compression methods used
-debug::analyze_compression_methods(&mut archive)?;
-
-// Dump table contents (hash table, block table)
-debug::dump_hash_table(&archive)?;
-debug::dump_block_table(&archive)?;
-
-// Trace file extraction with detailed debugging
-let config = debug::ExtractionTraceConfig {
-    show_raw_data: true,
-    show_decryption: true,
-    show_decompression: true,
-    max_raw_bytes: 256,
-};
-debug::trace_file_extraction(
-    &mut archive, "example.txt", &config
-)?
+// Visualize archive structure
+let info = archive.info()?;
+println!("{}", debug::visualize_archive_structure(&info));
 
 // Create hex dumps of binary data
 let data = archive.read_file("binary.dat")?;
@@ -251,14 +242,7 @@ println!("{}", debug::hex_dump(&data, &hex_config));
 Run the debug example to analyze any MPQ archive:
 
 ```bash
-# Basic analysis
-cargo run --example debug_archive --features debug-utils -- archive.mpq
-
-# Trace specific file extraction
-cargo run --example debug_archive --features debug-utils -- archive.mpq "(listfile)"
-
-# Show detailed table dumps
-SHOW_TABLES=1 cargo run --example debug_archive --features debug-utils -- archive.mpq
+cargo run --example debug_archive -- archive.mpq
 ```
 
 ## Performance

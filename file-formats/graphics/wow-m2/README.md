@@ -51,10 +51,9 @@ cargo add wow-m2
 ```rust
 use wow_m2::{M2Model, M2Version, M2Converter};
 
-// Load a model
-let data = std::fs::read("path/to/model.m2")?;
-let mut cursor = std::io::Cursor::new(data);
-let model = M2Model::parse(&mut cursor)?;
+// Load a model (returns M2Format enum with Legacy or Chunked variant)
+let format = M2Model::load("path/to/model.m2")?;
+let model = format.model(); // get the inner M2Model
 
 // Print basic information
 println!("Model version: {:?}", model.header.version());
@@ -63,24 +62,21 @@ println!("Bones: {}", model.bones.len());
 
 // Convert to a different version
 let converter = M2Converter::new();
-let converted = converter.convert(&model, M2Version::WotLK)?;
+let converted = converter.convert(model, M2Version::WotLK)?;
 // Save the converted model
-let output_data = converted.write_to_bytes()?;
-std::fs::write("path/to/converted.m2", output_data)?;
+converted.save("path/to/converted.m2")?;
 ```
 
 ### Working with Skin Files
 
 ```rust
-use wow_m2::Skin;
+use wow_m2::{SkinFile, load_skin};
 
 // Load a skin file
-let data = std::fs::read("path/to/model00.skin")?;
-let mut cursor = std::io::Cursor::new(data);
-let skin = Skin::parse(&mut cursor)?;
+let skin_file = SkinFile::load("path/to/model00.skin")?;
 
 // Access submesh information
-for submesh in &skin.submeshes {
+for submesh in &skin_file.skin.submeshes {
     println!("Submesh {}: {} vertices, {} triangles",
         submesh.id, submesh.vertex_count, submesh.triangle_count);
 }
@@ -94,7 +90,8 @@ Transform WoW models for use in common 3D applications:
 use wow_m2::{M2Model, CoordinateSystem, CoordinateTransformer, transform_position};
 
 // Load a model
-let model = M2Model::load("character.m2")?;
+let format = M2Model::load("character.m2")?;
+let model = format.model();
 
 // Transform for Blender (right-handed: X=right, Y=forward, Z=up)
 let transformer = CoordinateTransformer::new(CoordinateSystem::Blender);

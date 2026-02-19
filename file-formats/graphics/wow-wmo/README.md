@@ -70,13 +70,8 @@ println!("Groups: {}", wmo.groups.len());
 println!("Materials: {}", wmo.materials.len());
 println!("Textures: {:?}", wmo.textures);
 
-// Parse group file
-let group_file = File::open("building_000.wmo")?;
-let mut group_reader = BufReader::new(group_file);
-let group = WmoGroupParser::new().parse_group(&mut group_reader, 0)?;
-
-println!("Vertices: {}", group.vertices.len());
-println!("Triangles: {}", group.indices.len() / 3);
+// Note: Group file parsing uses the chunk discovery pipeline.
+// See the parse_wmo example for group file handling.
 ```
 
 ### Validating a WMO file
@@ -161,6 +156,7 @@ let wmo = WmoRoot {
         max: Vec3 { x: 50.0, y: 50.0, z: 30.0 },
     },
     textures: vec!["world/generic/stone_floor.blp".to_string()],
+    texture_offset_index_map: std::collections::HashMap::new(),
     header: WmoHeader {
         n_materials: 1,
         n_groups: 0,
@@ -173,6 +169,7 @@ let wmo = WmoRoot {
         ambient_color: Color { r: 128, g: 128, b: 128, a: 255 },
     },
     skybox: None,
+    convex_volume_planes: None,
 };
 
 // Write to file
@@ -195,16 +192,10 @@ warcraft-rs wmo info building.wmo --detailed
 warcraft-rs wmo validate building.wmo --warnings
 
 # Convert between versions
-warcraft-rs wmo convert classic.wmo modern.wmo --to 21
+warcraft-rs wmo convert classic.wmo modern.wmo --version Cataclysm
 
 # Visualize WMO structure
 warcraft-rs wmo tree building.wmo --show-refs
-
-# Edit WMO properties
-warcraft-rs wmo edit building.wmo --set-flag has-fog
-
-# Build from configuration
-warcraft-rs wmo build output.wmo --from config.yaml
 ```
 
 ## Supported Versions

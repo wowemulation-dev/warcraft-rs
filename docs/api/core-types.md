@@ -15,12 +15,12 @@ Each crate that handles versioned formats defines its own version enum:
 
 | Crate | Version Type | Variants |
 |-------|-------------|----------|
-| wow-mpq | Format version field in header | v1, v2, v3, v4 |
-| wow-m2 | `M2Version` | Vanilla, TBC, WotLK, Cataclysm, MoP |
-| wow-wmo | `WmoVersion` | Classic, Tbc, WotLK, Cataclysm, MoP |
-| wow-wdt | `WowVersion` | Classic, TBC, WotLK, Cataclysm, MoP, BfA |
-| wow-adt | `AdtVersion` | Version-specific enum |
-| wow-wdl | `WdlVersion` | Version-specific enum |
+| wow-mpq | `FormatVersion` | V1, V2, V3, V4 |
+| wow-m2 | `M2Version` | Vanilla, TBC, WotLK, Cataclysm, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TheWarWithin |
+| wow-wmo | `WmoVersion` | Classic, Tbc, Wotlk, Cataclysm, Mop, Wod, Legion, Bfa, Shadowlands, Dragonflight, WarWithin |
+| wow-wdt | `WowVersion` | Classic, TBC, WotLK, Cataclysm, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight |
+| wow-adt | `AdtVersion` | VanillaEarly, VanillaLate, TBC, WotLK, Cataclysm, MoP |
+| wow-wdl | `WdlVersion` | Vanilla, Wotlk, Cataclysm, Mop, Wod, Legion, Bfa, Shadowlands, Dragonflight, Latest |
 
 ## Chunk-based Parsing
 

@@ -8,13 +8,13 @@ no shared error type across crates.
 | Crate | Error Type | Module |
 |-------|-----------|--------|
 | wow-mpq | `Error` | `wow_mpq::error` |
-| wow-blp | `Error`, `LoadError` | `wow_blp::parser::error`, `wow_blp::encode::error`, `wow_blp::convert::error` |
+| wow-blp | `LoadError`, `EncodeError`, `ConvertError` | `wow_blp::parser`, `wow_blp::encode`, `wow_blp::convert` |
 | wow-m2 | `M2Error` | `wow_m2::error` |
 | wow-wmo | `WmoError` | `wow_wmo::error` |
 | wow-adt | `AdtError` | `wow_adt::error` |
 | wow-wdl | `WdlError` | `wow_wdl::error` |
 | wow-wdt | `Error` | `wow_wdt::error` |
-| wow-cdbc | `Error` | `wow_cdbc::error` |
+| wow-cdbc | `Error` | `wow_cdbc` (re-exported at crate root) |
 
 ## Pattern
 

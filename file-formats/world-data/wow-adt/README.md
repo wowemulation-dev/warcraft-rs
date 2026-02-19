@@ -59,59 +59,52 @@ cargo add wow-adt
 ### Basic Parsing
 
 ```rust
-use wow_adt::{Adt, AdtVersion};
+use wow_adt::{parse_adt, ParsedAdt};
+use std::fs::File;
+use std::io::BufReader;
 
 // Parse an ADT file
-let adt = Adt::from_path("path/to/terrain.adt")?;
+let file = File::open("path/to/terrain.adt")?;
+let mut reader = BufReader::new(file);
+let parsed = parse_adt(&mut reader)?;
 
-// Get version information
-println!("ADT Version: {:?}", adt.version());
+// ParsedAdt is an enum - check what type was parsed
+match &parsed {
+    ParsedAdt::Root(root) => {
+        println!("ADT Version: {}", root.version);
+        println!("Terrain chunks: {}", root.mcnk_chunks.len());
+        println!("Textures: {}", root.textures.len());
 
-// Access terrain chunks
-println!("Terrain chunks: {}", adt.mcnk_chunks().len());
-
-// Check for water data
-if let Some(water) = adt.mh2o() {
-    println!("Contains water data");
-}
-```
-
-### Validation
-
-```rust
-use wow_adt::{Adt, ValidationLevel};
-
-let adt = Adt::from_path("terrain.adt")?;
-
-// Basic validation
-adt.validate()?;
-
-// Detailed validation with report
-let report = adt.validate_with_report(ValidationLevel::Strict)?;
-if !report.errors.is_empty() {
-    for error in &report.errors {
-        eprintln!("Error: {}", error);
+        if root.water_data.is_some() {
+            println!("Contains water data");
+        }
+        if root.flight_bounds.is_some() {
+            println!("Contains flight bounds (TBC+)");
+        }
     }
+    ParsedAdt::Tex0(_) => println!("Split texture file (_tex0.adt)"),
+    ParsedAdt::Obj0(_) => println!("Split object file (_obj0.adt)"),
+    _ => println!("File type: {:?}", parsed.file_type()),
 }
 ```
 
 ### Version Conversion
 
 ```rust
-use wow_adt::{Adt, AdtVersion};
-
-let adt = Adt::from_path("vanilla_terrain.adt")?;
-
-// Convert to Cataclysm format
-let cata_adt = adt.to_version(AdtVersion::Cataclysm)?;
-
-// Write to file
+use wow_adt::{parse_adt, ParsedAdt, AdtVersion};
+use wow_adt::builder::BuiltAdt;
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::BufReader;
 
-let file = File::create("cata_terrain.adt")?;
-let mut writer = BufWriter::new(file);
-cata_adt.write(&mut writer)?;
+let file = File::open("vanilla_terrain.adt")?;
+let mut reader = BufReader::new(file);
+let parsed = parse_adt(&mut reader)?;
+
+if let ParsedAdt::Root(root) = parsed {
+    // Convert to Cataclysm format
+    let built = BuiltAdt::from_root_adt(*root, Some(AdtVersion::Cataclysm));
+    built.write_to_file("cata_terrain.adt")?;
+}
 ```
 
 ### CLI Usage

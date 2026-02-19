@@ -62,7 +62,7 @@ warcraft-rs mpq validate archive.mpq --check-checksums
 
 # Convert between formats and versions
 warcraft-rs blp convert texture.blp texture.png
-warcraft-rs wmo convert classic.wmo modern.wmo --to cataclysm
+warcraft-rs wmo convert classic.wmo modern.wmo --version cataclysm
 ```
 
 ### Library Usage

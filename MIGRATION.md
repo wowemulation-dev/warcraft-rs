@@ -1,38 +1,11 @@
-# Migration Guide: warcraft-rs v0.3.0
+# Migration Guide
 
-This guide helps you migrate from previous versions to warcraft-rs v0.3.0,
-which includes significant improvements to ADT, WDT, and WDL parsing with
-comprehensive World of Warcraft version support.
+This guide documents breaking API changes across warcraft-rs releases.
 
-## Summary of Changes
-
-### Version 0.3.0 - Breaking Changes Release
-
-This is a **MINOR VERSION BUMP** (0.2.1 → 0.3.0) due to breaking API
-changes. In pre-1.0 releases, minor version bumps indicate breaking changes.
-
-### Major Improvements ✅
-
-- **Complete WoW version support** - Vanilla through Mists of Pandaria
-- **Automatic version detection** - No manual version specification needed
-- **Split ADT file support** - Cataclysm+ `_tex0`, `_obj0`, `_obj1`, `_lod`
-  files
-- **TrinityCore compliance** - Validated against server implementation
-- **Enhanced chunk parsing** - MFBO, MAMP, MTXP, MH2O improvements
-
-### Breaking Changes 🔄 (Requires Code Updates)
-
-- **MFBO chunk structure** - Changed from 8 bytes to 36 bytes (correct format)
-- **Version detection API** - Enhanced methods for chunk-based detection
-- **WDT conditional chunks** - MWMO handling for Cataclysm+ compatibility
-- **API reorganization** - Some internal structures moved/renamed
-
-### Semantic Versioning Note
-
-Since warcraft-rs is pre-1.0, we follow the convention that:
-- **PATCH** (0.2.X) = Bug fixes, no breaking changes
-- **MINOR** (0.X.0) = New features, **may include breaking changes**
-- **MAJOR** (X.0.0) = Reserved for 1.0+ stable API
+Since warcraft-rs is pre-1.0, minor version bumps may include breaking changes:
+- **PATCH** (0.x.Y) = Bug fixes, no breaking changes
+- **MINOR** (0.Y.0) = New features, may include breaking changes
+- **MAJOR** (Y.0.0) = Reserved for 1.0+ stable API
 
 ## ADT (Terrain) Changes
 
@@ -61,18 +34,15 @@ pub struct MfboChunk {
 
 **Migration:**
 ```rust
-// OLD CODE - will not compile
-let mfbo = adt.mfbo().unwrap();
-println!("Min: {}, Max: {}", mfbo.min, mfbo.max);
+use wow_adt::{parse_adt, ParsedAdt};
 
-// NEW CODE - access coordinate arrays
-let mfbo = adt.mfbo().unwrap();
-println!("Min plane: {:?}", mfbo.min);
-println!("Max plane: {:?}", mfbo.max);
-
-// Access specific coordinates
-println!("First min coord: {}", mfbo.min[0]);
-println!("First max coord: {}", mfbo.max[0]);
+let parsed = parse_adt(&mut reader)?;
+if let ParsedAdt::Root(root) = parsed {
+    if let Some(mfbo) = &root.flight_bounds {
+        println!("Min plane: {:?}", mfbo.min);
+        println!("Max plane: {:?}", mfbo.max);
+    }
+}
 ```
 
 ### Version Detection Enhancements
@@ -80,67 +50,51 @@ println!("First max coord: {}", mfbo.max[0]);
 **What Changed:**
 Version detection now uses comprehensive chunk analysis instead of relying solely on MVER values (which are always 18 for all ADT versions).
 
-**Before:**
+**Current API:**
 ```rust
-// Limited version detection
-let version = AdtVersion::from_mver(18)?; // Always returns Vanilla
+use wow_adt::{parse_adt, ParsedAdt, AdtVersion};
+
+// Automatic version detection from chunk presence
+let parsed = parse_adt(&mut reader)?;
+let version = parsed.version(); // Detects VanillaEarly through MoP
+
+// Or detect from chunk discovery
+use wow_adt::{discover_chunks, AdtVersion};
+let discovery = discover_chunks(&mut reader)?;
+let version = AdtVersion::from_discovery(&discovery);
 ```
 
-**After:**
-```rust  
-// Automatic version detection from file
-let adt = Adt::from_path("terrain.adt")?;
-let version = adt.version(); // Automatically detects TBC, WotLK, Cataclysm, MoP
+### Split File Support
 
-// Manual version detection from chunk presence  
-let version = AdtVersion::detect_from_chunks_extended(
-    true,  // has MFBO (TBC+)
-    true,  // has MH2O (WotLK+) 
-    false, // no MTFX
-    false, // no MCCV
-    true,  // has MTXP (MoP+)
-    true,  // has MAMP (Cataclysm+)
-);
-assert_eq!(version, AdtVersion::MoP);
-```
+Cataclysm+ split file parsing. The `parse_adt` function auto-detects file type:
 
-### New Split File Support
-
-**What's New:**
-Cataclysm+ split file parsing for memory-optimized terrain loading.
-
-**Usage:**
 ```rust
-use wow_adt::split_adt::{SplitAdtParser, SplitAdtType};
+use wow_adt::{parse_adt, ParsedAdt};
 
-// Parse texture data from split file
-let tex_data = SplitAdtParser::parse_tex0(&mut reader)?;
-
-// Parse object placement from split file
-let obj_data = SplitAdtParser::parse_obj0(&mut reader)?;
-
-// Detect file type from filename
-let file_type = SplitAdtType::from_filename("Map_32_48_tex0.adt");
-assert_eq!(file_type, SplitAdtType::Tex0);
-```
-
-### New Chunk Support
-
-**MAMP Chunk (Cataclysm+):**
-```rust
-// Access texture amplifier values
-if let Some(mamp) = adt.mamp() {
-    println!("Texture amplifier: {}", mamp.value);
+let parsed = parse_adt(&mut reader)?;
+match parsed {
+    ParsedAdt::Root(root) => { /* main terrain file */ }
+    ParsedAdt::Tex0(tex) => { /* texture data */ }
+    ParsedAdt::Obj0(obj) => { /* object placements */ }
+    ParsedAdt::Lod(lod) => { /* level-of-detail data */ }
+    _ => {}
 }
 ```
 
-**MTXP Chunk (Mists of Pandaria+):**
+### Version-Specific Chunks
+
+Access version-specific optional chunks on `RootAdt`:
+
 ```rust
-// Access texture parameters
-if let Some(mtxp) = adt.mtxp() {
-    for param in &mtxp.entries {
-        println!("Texture params: {:?}", param.params);
-    }
+if let ParsedAdt::Root(root) = parsed {
+    // TBC+: flight bounds
+    if let Some(mfbo) = &root.flight_bounds { /* ... */ }
+    // WotLK+: water data
+    if let Some(mh2o) = &root.water_data { /* ... */ }
+    // Cataclysm+: texture amplifier
+    if let Some(mamp) = &root.texture_amplifier { /* ... */ }
+    // MoP+: texture params
+    if let Some(mtxp) = &root.texture_params { /* ... */ }
 }
 ```
 
@@ -155,42 +109,17 @@ WDT files now correctly handle MWMO chunk presence based on WoW version and map 
 - **Pre-Cataclysm**: All maps have MWMO chunks (even if empty)
 - **Cataclysm+**: Only WMO-only maps have MWMO chunks, terrain maps don't
 
-**Migration:**
+**Current API:**
 ```rust
-// OLD CODE - assumed all maps have MWMO
-let wmo_names = wdt.mwmo.unwrap().filenames;
+use wow_wdt::{WdtReader, version::WowVersion};
 
-// NEW CODE - check version and map type
-if let Some(mwmo) = wdt.mwmo {
-    // MWMO present - either pre-Cataclysm or WMO-only map
-    let wmo_names = mwmo.filenames;
-} else {
-    // No MWMO - likely Cataclysm+ terrain map
-    println!("Terrain map without global WMO");
-}
+let reader = WdtReader::new(BufReader::new(file), WowVersion::Cataclysm);
+let wdt = reader.read()?;
 
 // Check if map is WMO-only
 if wdt.is_wmo_only() {
-    // WMO-only maps should always have MWMO and MODF
-    assert!(wdt.mwmo.is_some());
-    assert!(wdt.modf.is_some());
+    println!("WMO-only map");
 }
-```
-
-### Enhanced Version Detection
-
-**Before:**
-```rust
-// Manual version specification
-let reader = WdtReader::new(file, WowVersion::Cataclysm);
-```
-
-**After:**
-```rust
-// Automatic version detection
-let reader = WdtReader::new(file, WowVersion::Classic); // Initial hint
-let wdt = reader.read()?; // Automatically detects actual version
-println!("Detected version: {}", wdt.version());
 ```
 
 ## WDL (World Distance Lookup) Changes
@@ -248,68 +177,34 @@ cargo test --package wow-adt --test lib
 
 ## Common Migration Patterns
 
-### Pattern 1: MFBO Structure Access
+### Pattern 1: Version-Aware ADT Code
 ```rust
-// OLD
-if let Some(mfbo) = adt.mfbo() {
-    let range = mfbo.max - mfbo.min; // Won't compile
-}
+use wow_adt::{parse_adt, ParsedAdt, AdtVersion};
 
-// NEW  
-if let Some(mfbo) = adt.mfbo() {
-    for i in 0..9 {
-        let range = mfbo.max[i] - mfbo.min[i];
-        println!("Coordinate {}: range {}", i, range);
+let parsed = parse_adt(&mut reader)?;
+if let ParsedAdt::Root(root) = &parsed {
+    match root.version {
+        AdtVersion::Cataclysm | AdtVersion::MoP => {
+            if root.texture_amplifier.is_some() {
+                println!("Has texture amplifiers");
+            }
+        }
+        AdtVersion::WotLK => {
+            if root.water_data.is_some() {
+                println!("Has enhanced water");
+            }
+        }
+        _ => {}
     }
 }
 ```
 
-### Pattern 2: Version-Aware Code
+### Pattern 2: Error Handling
 ```rust
-// OLD - manual version tracking
-let version = WowVersion::Cataclysm;
-match version {
-    WowVersion::Cataclysm => { /* handle split files */ }
-    _ => { /* handle monolithic files */ }
-}
+use wow_adt::{parse_adt, AdtError};
 
-// NEW - automatic detection
-let adt = Adt::from_path("terrain.adt")?;
-match adt.version() {
-    AdtVersion::Cataclysm | AdtVersion::MoP => {
-        // Handle modern format with potential split files
-        if let Some(mamp) = adt.mamp() {
-            println!("Has texture amplifiers");
-        }
-    }
-    AdtVersion::WotLK => {
-        // Handle WotLK water features
-        if let Some(mh2o) = adt.mh2o() {
-            println!("Has enhanced water");
-        }
-    }
-    _ => {
-        // Handle earlier versions
-    }
-}
-```
-
-### Pattern 3: Error Handling
-```rust
-// OLD - basic error handling
-let adt = Adt::from_path(path).expect("Failed to parse");
-
-// NEW - comprehensive error handling
-let adt = match Adt::from_path(path) {
-    Ok(adt) => adt,
-    Err(AdtError::UnsupportedVersion(v)) => {
-        eprintln!("Unsupported ADT version: {}", v);
-        return;
-    }
-    Err(AdtError::InvalidChunkSize { chunk, size, expected }) => {
-        eprintln!("Invalid {} chunk: got {} bytes, expected {}", chunk, size, expected);
-        return;  
-    }
+match parse_adt(&mut reader) {
+    Ok(parsed) => { /* use parsed */ }
     Err(e) => {
         eprintln!("Parse error: {}", e);
         return;
@@ -328,38 +223,17 @@ let adt = match Adt::from_path(path) {
 
 ### Compatibility Testing
 
-```rust
-#[cfg(test)]
-mod migration_tests {
-    use super::*;
+Run the test suite to verify parsing:
 
-    #[test]
-    fn test_mfbo_migration() {
-        // Test that MFBO parsing works with new structure
-        let adt = Adt::from_path("test_tbc.adt").unwrap();
-        if let Some(mfbo) = adt.mfbo() {
-            assert_eq!(mfbo.max.len(), 9);
-            assert_eq!(mfbo.min.len(), 9);
-            // Verify coordinate values are reasonable
-            for coord in &mfbo.max {
-                assert!(*coord > -10000 && *coord < 10000);
-            }
-        }
-    }
+```bash
+# Run all ADT tests
+cargo test --package wow-adt
 
-    #[test]
-    fn test_version_detection_migration() {
-        // Test automatic version detection
-        let adt = Adt::from_path("test_mop.adt").unwrap();
-        assert_eq!(adt.version(), AdtVersion::MoP);
-        
-        // Verify version-specific features are detected
-        assert!(adt.mfbo().is_some()); // TBC+
-        assert!(adt.mh2o().is_some()); // WotLK+ 
-        assert!(adt.mamp().is_some()); // Cataclysm+
-        assert!(adt.mtxp().is_some()); // MoP+
-    }
-}
+# Run all WDT tests
+cargo test --package wow-wdt
+
+# Run all WDL tests
+cargo test --package wow-wdl
 ```
 
 ## Getting Help

@@ -84,10 +84,11 @@ if let Some(record) = records.get_record_by_key(0) {  // Eastern Kingdoms
 This crate supports [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) Database Definition files for automatic schema generation. DBD files provide community-maintained schema definitions for various WoW versions.
 
 ```rust
-use wow_cdbc::dbd::parse_dbd_file;
+use wow_cdbc::dbd::{parse_dbd_file, convert_to_yaml_schemas};
+use std::path::Path;
 
 // Parse a DBD file
-let dbd = parse_dbd_file("definitions/Map.dbd")?;
+let dbd = parse_dbd_file(Path::new("definitions/Map.dbd"))?;
 
 // Convert to schemas for different versions
 let schemas = convert_to_yaml_schemas(&dbd, "Map", Some("3.3.5"), false);

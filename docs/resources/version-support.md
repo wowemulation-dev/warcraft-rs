@@ -65,290 +65,32 @@ World of Warcraft client version compatibility and file format changes.
 
 ## Version Detection
 
+Each crate handles version detection differently:
+
+- **MPQ**: Format version is read from the archive header (v1-v4)
+- **M2**: Header version field distinguishes expansions; MD20 vs MD21 magic separates legacy from chunked format
+- **ADT**: MVER chunk is always 18; actual version is detected from chunk presence (MFBO, MH2O, MAMP, MTXP)
+- **BLP**: File magic is `BLP1` or `BLP2`
+- **WMO**: MVER chunk version number increases with expansions (17-27)
+- **WDT/WDL**: Version detection via chunk analysis
+
 ### File Magic Numbers
 
-```rust
-// MPQ detection
-const MPQ_MAGIC: &[u8; 4] = b"MPQ\x1A";
-
-// M2 version detection
-fn detect_m2_version(data: &[u8]) -> Result<u32, Error> {
-    if data.len() < 8 {
-        return Err(Error::InvalidFormat("File too small"));
-    }
-
-    let magic = &data[0..4];
-    if magic != b"MD20" && magic != b"MD21" {
-        return Err(Error::InvalidMagic {
-            expected: *b"MD20",
-            found: magic.try_into().unwrap(),
-        });
-    }
-
-    let version = u32::from_le_bytes(data[4..8].try_into().unwrap());
-    Ok(version)
-}
-
-// BLP version detection
-fn detect_blp_version(data: &[u8]) -> BlpVersion {
-    match &data[0..4] {
-        b"BLP1" => BlpVersion::Blp1,
-        b"BLP2" => BlpVersion::Blp2,
-        _ => BlpVersion::Unknown,
-    }
-}
-```
-
-### Client Version Detection
-
-```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClientVersion {
-    Classic,
-    TBC,
-    WotLK,
-    Cataclysm,
-    MoP,
-}
-
-impl ClientVersion {
-    /// Detect from file characteristics
-    pub fn detect_from_m2(version: u32) -> Option<Self> {
-        match version {
-            256..=257 => Some(ClientVersion::Classic),
-            260..=263 => Some(ClientVersion::TBC),
-            264..=272 => Some(ClientVersion::WotLK),
-            273..=275 => Some(ClientVersion::Cataclysm),
-            276..=278 => Some(ClientVersion::MoP),
-            _ => None,
-        }
-    }
-
-    /// Get build number range
-    pub fn build_range(&self) -> (u32, u32) {
-        match self {
-            ClientVersion::Classic => (0, 6005),
-            ClientVersion::TBC => (6006, 8606),
-            ClientVersion::WotLK => (8607, 12340),
-            ClientVersion::Cataclysm => (12341, 15595),
-            ClientVersion::MoP => (15596, 18414),
-        }
-    }
-}
-```
-
-## Format Compatibility
-
-### Reading Older Formats
-
-```rust
-/// Version-aware model loader
-pub struct ModelLoader {
-    version: ClientVersion,
-}
-
-impl ModelLoader {
-    pub fn load(&self, path: &str) -> Result<Model, Error> {
-        let data = std::fs::read(path)?;
-        let version = detect_m2_version(&data)?;
-
-        match version {
-            256..=263 => self.load_legacy_m2(&data),
-            264..=278 => self.load_modern_m2(&data),
-            _ => Err(Error::UnsupportedVersion {
-                format: "M2".to_string(),
-                version,
-                supported: vec![256, 257, 260, 263, 264, 272, 273, 276],
-            }),
-        }
-    }
-
-    fn load_legacy_m2(&self, data: &[u8]) -> Result<Model, Error> {
-        // Handle embedded skins and animations
-        let header = LegacyM2Header::parse(data)?;
-        // Convert to modern format
-        Ok(header.to_modern_model())
-    }
-
-    fn load_modern_m2(&self, data: &[u8]) -> Result<Model, Error> {
-        // Handle external .skin/.anim files
-        let header = ModernM2Header::parse(data)?;
-        Ok(Model::from_header(header))
-    }
-}
-```
-
-### Feature Availability
-
-```rust
-/// Check feature support by version
-pub trait VersionedFeature {
-    fn is_supported(&self, version: ClientVersion) -> bool;
-}
-
-pub enum ModelFeature {
-    ExternalAnimations,
-    PhysicsData,
-    ExtendedTextures,
-    SharedSkeletons,
-}
-
-impl VersionedFeature for ModelFeature {
-    fn is_supported(&self, version: ClientVersion) -> bool {
-        match self {
-            ModelFeature::ExternalAnimations => version >= ClientVersion::WotLK,
-            ModelFeature::PhysicsData => version >= ClientVersion::Cataclysm,
-            ModelFeature::ExtendedTextures => version >= ClientVersion::Cataclysm,
-            ModelFeature::SharedSkeletons => false, // Not in supported versions
-        }
-    }
-}
-```
-
-## Migration Guide
-
-### Upgrading File Formats
-
-```rust
-/// Convert between format versions
-pub trait FormatConverter {
-    type Input;
-    type Output;
-
-    fn convert(&self, input: Self::Input) -> Result<Self::Output, Error>;
-}
-
-/// Convert BLP1 to BLP2
-pub struct Blp1ToBlp2Converter;
-
-impl FormatConverter for Blp1ToBlp2Converter {
-    type Input = Blp1Texture;
-    type Output = Blp2Texture;
-
-    fn convert(&self, input: Self::Input) -> Result<Self::Output, Error> {
-        let mut output = Blp2Texture::new(input.width(), input.height());
-
-        // Convert compression
-        match input.compression() {
-            Blp1Compression::Jpeg => {
-                let rgba = input.decompress_jpeg()?;
-                output.compress_dxt1(&rgba)?;
-            }
-            Blp1Compression::Palettized => {
-                let rgba = input.decode_palette()?;
-                output.set_uncompressed(rgba);
-            }
-        }
-
-        // Generate mipmaps
-        output.generate_mipmaps();
-
-        Ok(output)
-    }
-}
-```
-
-### Handling Missing Features
-
-```rust
-/// Gracefully handle version differences
-pub struct VersionAdapter {
-    version: ClientVersion,
-}
-
-impl VersionAdapter {
-    pub fn load_model_animations(&self, model: &mut Model, path: &str) -> Result<(), Error> {
-        if ModelFeature::ExternalAnimations.is_supported(self.version) {
-            // Load from .anim files
-            let anim_pattern = format!("{}-*.anim", path.trim_end_matches(".m2"));
-            for anim_file in glob::glob(&anim_pattern)? {
-                let anim = Animation::load(anim_file?)?;
-                model.add_external_animation(anim);
-            }
-        } else {
-            // Animations are embedded in M2
-            println!("Using embedded animations for {}", path);
-        }
-        Ok(())
-    }
-}
-```
-
-## Version-Specific Behavior
-
-### Coordinate Systems
-
-```rust
-/// Handle coordinate system changes
-pub fn convert_coordinates(pos: Vec3, from: ClientVersion, to: ClientVersion) -> Vec3 {
-    // ADT coordinate system changed in Cataclysm
-    if from < ClientVersion::Cataclysm && to >= ClientVersion::Cataclysm {
-        // Apply transformation
-        Vec3 {
-            x: pos.x,
-            y: -pos.z,  // Y/Z swap
-            z: pos.y,
-        }
-    } else {
-        pos
-    }
-}
-```
-
-### String Encoding
-
-```rust
-/// Handle string encoding differences
-pub fn decode_string(data: &[u8], version: ClientVersion) -> Result<String, Error> {
-    match version {
-        ClientVersion::Classic => {
-            // ASCII only
-            String::from_utf8(data.to_vec())
-                .map_err(|e| Error::StringDecoding(e))
-        }
-        _ => {
-            // UTF-8 support
-            String::from_utf8(data.to_vec())
-                .map_err(|e| Error::StringDecoding(e))
-        }
-    }
-}
-```
-
-## Testing Across Versions
-
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_version_detection() {
-        let test_cases = vec![
-            (b"MD20\x00\x01\x00\x00", 256, ClientVersion::Classic),
-            (b"MD20\x08\x01\x00\x00", 264, ClientVersion::WotLK),
-            (b"MD20\x14\x01\x00\x00", 276, ClientVersion::MoP),
-        ];
-
-        for (data, expected_version, expected_client) in test_cases {
-            let version = detect_m2_version(data).unwrap();
-            assert_eq!(version, expected_version);
-
-            let client = ClientVersion::detect_from_m2(version).unwrap();
-            assert_eq!(client, expected_client);
-        }
-    }
-}
-```
+| Format | Magic | Notes |
+|--------|-------|-------|
+| MPQ | `MPQ\x1A` | All versions |
+| M2 (Legacy) | `MD20` | Pre-Legion |
+| M2 (Chunked) | `MD21` | Legion+ |
+| BLP1 | `BLP1` | Classic, TBC |
+| BLP2 | `BLP2` | WotLK+ |
+| WMO/ADT/WDT/WDL | `RVER` (MVER reversed) | Chunk-based |
 
 ## Best Practices
 
-1. **Always check versions** before parsing format-specific features
-2. **Provide fallbacks** for missing features in older versions
-3. **Test with multiple client versions** to ensure compatibility
-4. **Document version requirements** in your API
-5. **Use version adapters** to abstract differences
-6. **Log version information** for debugging
+1. Use each crate's version enum for version-aware code
+2. Let the parser detect versions automatically where possible
+3. Test with files from multiple WoW client versions
+4. Check optional chunk presence rather than assuming version
 
 ## See Also
 
