@@ -10,6 +10,9 @@ and this project adheres to
 
 ### Fixed
 
+- **wow-blp**: Fixed BLP1 palette size to use correct 256 colors instead of 255
+- **wow-blp**: Fixed 4-bit alpha encoding formula for RAW1 format conversion
+  - Alpha values now correctly scaled to 0-15 range before packing
 - **wow-blp**: Fixed BLP1 1-bit and 4-bit alpha channel scaling to 8-bit range (PR #46, #32)
   - 1-bit alpha now correctly maps 0→0, 1→255 (was 0→0, 1→1)
   - 4-bit alpha now correctly maps 0-15→0-255 via multiplication by 17 (was 0-15)
