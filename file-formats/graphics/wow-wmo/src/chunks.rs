@@ -83,7 +83,7 @@ pub struct MogiEntry {
 /// MOLT - Lights chunk (48 bytes per entry)
 ///
 /// On-disk layout matches SMOLight from BN/wiki:
-///   +0x00 type (u8), +0x01 atten (u8), +0x02 pad (u8[2]),
+///   +0x00 type (u8), +0x01 atten (u8), +0x02 pad (u8\[2\]),
 ///   +0x04 color (CImVector), +0x08 position (C3Vector),
 ///   +0x14 intensity (f32), +0x18 rotation (C4Quaternion),
 ///   +0x28 attenStart (f32), +0x2C attenEnd (f32)

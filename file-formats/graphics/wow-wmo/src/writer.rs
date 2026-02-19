@@ -7,8 +7,8 @@ use crate::types::{Color, Vec3};
 use crate::version::{WmoFeature, WmoVersion};
 use crate::wmo_group_types::{TexCoord, WmoBatch, WmoBspNode, WmoGroup, WmoLiquid};
 use crate::wmo_types::{
-    WmoDoodadDef, WmoDoodadSet, WmoFlags, WmoGroupInfo, WmoLight, WmoMaterial,
-    WmoPortal, WmoPortalReference, WmoRoot,
+    WmoDoodadDef, WmoDoodadSet, WmoFlags, WmoGroupInfo, WmoLight, WmoMaterial, WmoPortal,
+    WmoPortalReference, WmoRoot,
 };
 
 /// Helper trait for writing little-endian values
