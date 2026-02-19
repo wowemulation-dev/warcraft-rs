@@ -136,7 +136,7 @@ pub fn image_to_raw1(
         .into_rgba8();
     let indexed_alpha = index_alpha(&root_image, alpha_bits)?;
     let (root_quantized, cmap, nq) = quantize_rgba(root_image)?;
-    if cmap.len() != 255 {
+    if cmap.len() != 256 {
         return Err(Error::PaletteWrongSize(cmap.len()));
     }
     images.push(Raw1Image {
@@ -194,7 +194,7 @@ fn index_alpha_4bit(image: &RgbaImage) -> Vec<u8> {
                 i += 1;
                 res.push(0);
             }
-            let scaled_alpha = (((pixel[3] as f64) / 255.0) * 123.0) as u8;
+            let scaled_alpha = (((pixel[3] as f64) / 255.0) * 15.0).round() as u8;
             res[i] |= scaled_alpha << bits;
             bits += 4;
         }

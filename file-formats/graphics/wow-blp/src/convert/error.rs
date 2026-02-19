@@ -32,8 +32,8 @@ pub enum Error {
     /// Color map does not contain exactly 256 entries as required
     #[error("Color map length {0}, 256 expected!")]
     ColorMapLengthInvalid(usize),
-    /// Palette size mismatch (expected 255 colors)
-    #[error("Expected palette of 255 colors, but got {0}")]
+    /// Palette size mismatch (expected 256 colors)
+    #[error("Expected palette of 256 colors, but got {0}")]
     PaletteWrongSize(usize),
     /// Failed to convert decompressed DXT1 data to raw format
     #[error("Failed to process bytes from DXT1 decomporession")]
