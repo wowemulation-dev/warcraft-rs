@@ -25,6 +25,7 @@ jobs:
           echo "cache_count=$CACHE_COUNT" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Delete all caches
         if: steps.caches.outputs.cache_count != '0'
@@ -36,6 +37,7 @@ jobs:
           done < cache_ids.txt
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Summary
         run: |
