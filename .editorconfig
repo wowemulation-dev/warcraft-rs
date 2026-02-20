@@ -17,31 +17,12 @@ trim_trailing_whitespace = false
 [{Makefile,justfile,*.bash,*.sh}]
 indent_style = tab
 
-[*.{ps1,bat,cmd,inf}]
+[*.ps1]
 indent_style = tab
 end_of_line = crlf
 
-[*.{json,toml,yml,yaml,xml}]
+[*.{json,jsonc,toml,yml,yaml}]
 indent_size = 2
 
-[*.{js,jsx,php,ts,tsx,twig}]
+[*.{c,cpp,h}]
 indent_size = 4
-
-[*.{html,css}]
-indent_size = 4
-
-[{Capfile,Gemfile,*.rb,*.rake}]
-indent_size = 2
-
-[*.rs]
-charset = utf-8
-end_of_line = lf
-indent_style = space
-indent_size = 4
-trim_trailing_whitespace = true
-
-[*.{hcl,tf,tfvars}]
-indent_size = 2
-
-[.pass-template]
-indent_size = 2

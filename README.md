@@ -5,7 +5,7 @@ A Rust library and CLI toolset for parsing, manipulating, and creating World of 
 <div align="center">
 
 [![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/Q44pPMvGEd)
-[![Sponsor](https://img.shields.io/github/sponsors/wowemulation-dev?logo=github&style=flat-square)](https://github.com/sponsors/wowemulation-dev)
+[![Sponsor](https://img.shields.io/github/sponsors/danielsreichenbach?logo=github&style=flat-square)](https://github.com/sponsors/danielsreichenbach)
 [![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
 [![docs.rs](https://img.shields.io/docsrs/warcraft-rs)](https://docs.rs/warcraft-rs)
 [![Rust Version](https://img.shields.io/badge/rust-1.92+-orange.svg)](https://www.rust-lang.org)
@@ -15,9 +15,9 @@ A Rust library and CLI toolset for parsing, manipulating, and creating World of 
 
 </div>
 
-Part of the [awesome-wow-rust](https://github.com/arlyon/awesome-wow-rust) community.
+## Overview
 
-## WoW Version Support
+Part of the [awesome-wow-rust](https://github.com/arlyon/awesome-wow-rust) community.
 
 Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 
@@ -29,7 +29,7 @@ Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 | 4.3.4 | Cataclysm | ✅ Full Support |
 | 5.4.8 | Mists of Pandaria | ✅ Full Support |
 
-## Supported File Formats
+## Features
 
 - **MPQ Archives** - Game data archives with StormLib compatibility and
   parallel processing
@@ -135,11 +135,22 @@ cargo install --path warcraft-rs
 - [API Reference](docs/api/)
 - [Usage Examples](docs/guides/)
 
+## Support the Project
+
+If you find this project useful, please consider
+[sponsoring the project](https://github.com/sponsors/danielsreichenbach).
+
+This is currently a nights-and-weekends effort by one person. Funding goals:
+
+- **20 hours/week** - Sustained funding to dedicate real development time
+  instead of squeezing it into spare hours
+- **Public CDN mirror** - Host a community mirror for World of Warcraft builds,
+  ensuring long-term availability of historical game data
+
 ## Contributing
 
-See the [Contributing Guide](CONTRIBUTING.md) for development setup and guidelines.
-
-Thanks to all [contributors](CONTRIBUTORS.md).
+See the [Contributing Guide](CONTRIBUTING.md) for development setup and
+guidelines. Thanks to all [contributors](CONTRIBUTORS.md).
 
 ## License
 
@@ -158,6 +169,6 @@ be dual licensed as above, without any additional terms or conditions.
 
 ---
 
-*This project represents the collective knowledge of the WoW modding community
-and is based on reverse engineering efforts. Blizzard Entertainment has not
-officially documented any formats handled by this project.*
+**Note**: This project is not affiliated with Blizzard Entertainment. It is
+an independent implementation based on reverse engineering by the World of
+Warcraft emulation community.
