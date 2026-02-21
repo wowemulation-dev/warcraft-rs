@@ -136,60 +136,70 @@ impl HashLookup for Database {
         }
 
         let conn = self.connection();
-        let mut new_entries = 0;
-        let mut updated_entries = 0;
+        let mut total_affected: usize = 0;
 
-        for &(filename, source) in filenames {
-            // Check if entry exists
-            let mut rows = conn
-                .query(
-                    "SELECT 1 FROM filenames WHERE filename = ?1",
-                    turso::params![filename],
+        // Wrap all inserts in a single transaction to avoid per-row fsync overhead.
+        conn.execute("BEGIN", ()).await?;
+
+        let result = async {
+            // Prepare the statement once and reuse it for all rows.
+            let mut stmt = conn
+                .prepare_cached(
+                    "INSERT OR REPLACE INTO filenames (
+                        filename, hash_a, hash_b, hash_offset,
+                        het_hash_40_file, het_hash_40_name,
+                        het_hash_48_file, het_hash_48_name,
+                        het_hash_56_file, het_hash_56_name,
+                        het_hash_64_file, het_hash_64_name,
+                        source
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 )
                 .await?;
-            let exists = rows.next().await?.is_some();
 
-            let (hash_a, hash_b, hash_offset) = calculate_mpq_hashes(filename);
-            let het_40 = calculate_het_hashes(filename, 40);
-            let het_48 = calculate_het_hashes(filename, 48);
-            let het_56 = calculate_het_hashes(filename, 56);
-            let het_64 = calculate_het_hashes(filename, 64);
+            for &(filename, source) in filenames {
+                let (hash_a, hash_b, hash_offset) = calculate_mpq_hashes(filename);
+                let het_40 = calculate_het_hashes(filename, 40);
+                let het_48 = calculate_het_hashes(filename, 48);
+                let het_56 = calculate_het_hashes(filename, 56);
+                let het_64 = calculate_het_hashes(filename, 64);
 
-            conn.execute(
-                "INSERT OR REPLACE INTO filenames (
-                    filename, hash_a, hash_b, hash_offset,
-                    het_hash_40_file, het_hash_40_name,
-                    het_hash_48_file, het_hash_48_name,
-                    het_hash_56_file, het_hash_56_name,
-                    het_hash_64_file, het_hash_64_name,
-                    source
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
-                turso::params![
-                    filename,
-                    i64::from(hash_a),
-                    i64::from(hash_b),
-                    i64::from(hash_offset),
-                    het_40.0 as i64,
-                    het_40.1 as i64,
-                    het_48.0 as i64,
-                    het_48.1 as i64,
-                    het_56.0 as i64,
-                    het_56.1 as i64,
-                    het_64.0 as i64,
-                    het_64.1 as i64,
-                    source
-                ],
-            )
-            .await?;
+                let affected = stmt
+                    .execute(turso::params![
+                        filename,
+                        i64::from(hash_a),
+                        i64::from(hash_b),
+                        i64::from(hash_offset),
+                        het_40.0 as i64,
+                        het_40.1 as i64,
+                        het_48.0 as i64,
+                        het_48.1 as i64,
+                        het_56.0 as i64,
+                        het_56.1 as i64,
+                        het_64.0 as i64,
+                        het_64.1 as i64,
+                        source
+                    ])
+                    .await?;
 
-            if exists {
-                updated_entries += 1;
-            } else {
-                new_entries += 1;
+                total_affected += affected as usize;
+            }
+            Ok::<_, super::connection::DatabaseError>(())
+        }
+        .await;
+
+        match result {
+            Ok(()) => {
+                conn.execute("COMMIT", ()).await?;
+            }
+            Err(e) => {
+                let _ = conn.execute("ROLLBACK", ()).await;
+                return Err(e);
             }
         }
 
-        Ok((new_entries, updated_entries))
+        // INSERT OR REPLACE doesn't distinguish new vs updated at the SQL level,
+        // so we report all as new_entries for simplicity.
+        Ok((total_affected, 0))
     }
 
     async fn filename_exists(&self, filename: &str) -> Result<bool> {

@@ -9,6 +9,11 @@ pub(super) const SCHEMA_VERSION: i64 = 1;
 
 /// Initialize the database schema
 pub(super) async fn init_schema(conn: &Connection) -> Result<()> {
+    // Enable WAL mode for better write concurrency and throughput.
+    // PRAGMA returns a result row, so use query() rather than execute().
+    let _ = conn.query("PRAGMA journal_mode = WAL", ()).await?;
+    // NORMAL sync is safe with WAL — only syncs at checkpoint, not every commit
+    let _ = conn.query("PRAGMA synchronous = NORMAL", ()).await?;
     // Enable foreign keys
     conn.execute("PRAGMA foreign_keys = ON", ()).await?;
 
