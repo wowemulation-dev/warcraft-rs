@@ -46,6 +46,11 @@ console = "0.15"
 chrono = "0.4"
 glob = "0.3"
 
+# Async runtime and database
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+turso = { version = "0.4", default-features = false }
+directories = "5.0"
+
 # Image processing (for BLP)
 image = { version = "0.25", optional = true }
 

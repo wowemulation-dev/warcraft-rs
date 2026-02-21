@@ -93,3 +93,26 @@ pub use types::hash_type;
 pub use keys::{ASCII_TO_LOWER, ASCII_TO_UPPER, ENCRYPTION_TABLE};
 
 // Internal-only exports
+
+/// Calculate traditional MPQ hash values for a filename.
+///
+/// Returns `(hash_a, hash_b, hash_offset)` after normalizing the filename
+/// (converting `/` to `\` and uppercasing).
+pub fn calculate_mpq_hashes(filename: &str) -> (u32, u32, u32) {
+    let normalized = filename.replace('/', "\\").to_uppercase();
+    let hash_a = hash_string(&normalized, hash_type::NAME_A);
+    let hash_b = hash_string(&normalized, hash_type::NAME_B);
+    let hash_offset = hash_string(&normalized, hash_type::TABLE_OFFSET);
+    (hash_a, hash_b, hash_offset)
+}
+
+/// Calculate HET (Hash Extended Table) hash values for a filename.
+///
+/// Returns `(file_hash, name_hash)` used by HET tables. The filename is
+/// normalized (converting `/` to `\`) but not uppercased, as HET hashes
+/// are case-sensitive.
+pub fn calculate_het_hashes(filename: &str, hash_bits: u8) -> (u64, u64) {
+    let normalized = filename.replace('/', "\\");
+    let (file_hash, name_hash_u8) = het_hash(&normalized, hash_bits as u32);
+    (file_hash, name_hash_u8 as u64)
+}

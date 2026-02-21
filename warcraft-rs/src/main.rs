@@ -2,6 +2,7 @@
 
 mod cli;
 mod commands;
+mod database;
 mod utils;
 
 use anyhow::Result;
@@ -12,7 +13,8 @@ use std::io;
 
 use crate::cli::{Cli, Commands};
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Initialize logger
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
@@ -33,7 +35,7 @@ fn main() -> Result<()> {
     // Execute command
     match cli.command {
         #[cfg(feature = "mpq")]
-        Commands::Mpq { command } => commands::mpq::execute(command),
+        Commands::Mpq { command } => commands::mpq::execute(command).await,
 
         #[cfg(feature = "dbc")]
         Commands::Dbc { command } => commands::dbc::execute(command),

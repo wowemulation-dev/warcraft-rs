@@ -1,15 +1,14 @@
 //! Import functionality for populating the database
 
-use glob;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use thiserror::Error;
 
 use super::{Database, DatabaseError};
+use super::lookup::HashLookup;
 
-use crate::Archive;
-use crate::database::HashLookup;
+use wow_mpq::Archive;
 
 #[derive(Error, Debug)]
 pub enum ImportError {
@@ -20,7 +19,7 @@ pub enum ImportError {
     Io(#[from] std::io::Error),
 
     #[error("Archive error: {0}")]
-    Archive(#[from] crate::Error),
+    Archive(#[from] wow_mpq::Error),
 }
 
 pub(super) type ImportResult<T> = std::result::Result<T, ImportError>;
@@ -58,16 +57,20 @@ impl<'a> Importer<'a> {
     }
 
     /// Import filenames from a source
-    pub fn import(&self, path: &Path, source_type: ImportSource) -> ImportResult<ImportStats> {
+    pub async fn import(
+        &self,
+        path: &Path,
+        source_type: ImportSource,
+    ) -> ImportResult<ImportStats> {
         match source_type {
-            ImportSource::Listfile => self.import_listfile(path),
-            ImportSource::Archive => self.import_archive(path),
-            ImportSource::Directory => self.import_directory(path),
+            ImportSource::Listfile => self.import_listfile(path).await,
+            ImportSource::Archive => self.import_archive(path).await,
+            ImportSource::Directory => self.import_directory(path).await,
         }
     }
 
     /// Import from a listfile
-    fn import_listfile(&self, path: &Path) -> ImportResult<ImportStats> {
+    async fn import_listfile(&self, path: &Path) -> ImportResult<ImportStats> {
         let mut stats = ImportStats::default();
         let file = File::open(path)?;
         let reader = BufReader::new(file);
@@ -80,14 +83,14 @@ impl<'a> Importer<'a> {
 
             match line {
                 Ok(filename) => {
-                    let filename = filename.trim();
+                    let filename = filename.trim().to_string();
                     if !filename.is_empty() && !filename.starts_with('#') {
-                        batch.push((filename.to_string(), Some(source.clone())));
+                        batch.push((filename, Some(source.clone())));
 
                         // Process in batches
                         if batch.len() >= 1000 {
-                            match self.process_batch(&mut batch, &mut stats) {
-                                Ok(_) => {}
+                            match self.process_batch(&mut batch, &mut stats).await {
+                                Ok(()) => {}
                                 Err(e) => {
                                     log::error!("Error processing batch: {e}");
                                     stats.errors += batch.len();
@@ -105,19 +108,19 @@ impl<'a> Importer<'a> {
 
         // Process remaining
         if !batch.is_empty() {
-            self.process_batch(&mut batch, &mut stats)?;
+            self.process_batch(&mut batch, &mut stats).await?;
         }
 
         Ok(stats)
     }
 
     /// Import from an MPQ archive
-    fn import_archive(&self, path: &Path) -> ImportResult<ImportStats> {
+    async fn import_archive(&self, path: &Path) -> ImportResult<ImportStats> {
         let mut stats = ImportStats::default();
         let mut archive = Archive::open(path)?;
         let source = format!("archive:{}", path.display());
 
-        // Get list of files from the archive
+        // Get list of files from the archive (sync I/O)
         let files = archive.list()?;
         stats.files_processed = files.len();
 
@@ -128,21 +131,21 @@ impl<'a> Importer<'a> {
                 batch.push((file.name, Some(source.clone())));
 
                 if batch.len() >= 1000 {
-                    self.process_batch(&mut batch, &mut stats)?;
+                    self.process_batch(&mut batch, &mut stats).await?;
                 }
             }
         }
 
         // Process remaining
         if !batch.is_empty() {
-            self.process_batch(&mut batch, &mut stats)?;
+            self.process_batch(&mut batch, &mut stats).await?;
         }
 
         Ok(stats)
     }
 
     /// Import from a directory (scan for WoW file patterns)
-    fn import_directory(&self, path: &Path) -> ImportResult<ImportStats> {
+    async fn import_directory(&self, path: &Path) -> ImportResult<ImportStats> {
         let mut stats = ImportStats::default();
         let source = format!("directory:{}", path.display());
 
@@ -188,7 +191,7 @@ impl<'a> Importer<'a> {
                         batch.push((filename.to_string(), Some(source.clone())));
 
                         if batch.len() >= 1000 {
-                            self.process_batch(&mut batch, &mut stats)?;
+                            self.process_batch(&mut batch, &mut stats).await?;
                         }
                     }
                 }
@@ -197,14 +200,14 @@ impl<'a> Importer<'a> {
 
         // Process remaining
         if !batch.is_empty() {
-            self.process_batch(&mut batch, &mut stats)?;
+            self.process_batch(&mut batch, &mut stats).await?;
         }
 
         Ok(stats)
     }
 
     /// Process a batch of filenames
-    fn process_batch(
+    async fn process_batch(
         &self,
         batch: &mut Vec<(String, Option<String>)>,
         stats: &mut ImportStats,
@@ -214,7 +217,7 @@ impl<'a> Importer<'a> {
             .map(|(f, s)| (f.as_str(), s.as_deref()))
             .collect();
 
-        match self.db.store_filenames(&filenames) {
+        match self.db.store_filenames(&filenames).await {
             Ok((new_count, updated_count)) => {
                 stats.new_entries += new_count;
                 stats.updated_entries += updated_count;
