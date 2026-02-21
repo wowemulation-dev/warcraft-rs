@@ -4,5 +4,6 @@
 
 pub mod cli;
 pub mod commands;
+#[cfg(feature = "mpq")]
 pub mod database;
 pub mod utils;

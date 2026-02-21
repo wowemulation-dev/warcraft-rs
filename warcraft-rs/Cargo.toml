@@ -46,10 +46,11 @@ console = "0.15"
 chrono = "0.4"
 glob = "0.3"
 
-# Async runtime and database
+# Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-turso = { version = "0.4", default-features = false }
-directories = "5.0"
+# Database (only needed with mpq feature)
+turso = { version = "0.4", default-features = false, optional = true }
+directories = { version = "5.0", optional = true }
 
 # Image processing (for BLP)
 image = { version = "0.25", optional = true }
@@ -78,7 +79,7 @@ full = [
   "parallel",
   "yaml",
 ]
-mpq = []
+mpq = ["dep:turso", "dep:directories"]
 dbc = ["dep:wow-cdbc"]
 blp = ["dep:wow-blp", "dep:image"]
 m2 = ["dep:wow-m2"]

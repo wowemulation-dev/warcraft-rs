@@ -2,6 +2,7 @@
 
 mod cli;
 mod commands;
+#[cfg(feature = "mpq")]
 mod database;
 mod utils;
 
