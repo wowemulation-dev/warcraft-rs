@@ -5,8 +5,8 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use thiserror::Error;
 
-use super::{Database, DatabaseError};
 use super::lookup::HashLookup;
+use super::{Database, DatabaseError};
 
 use wow_mpq::Archive;
 

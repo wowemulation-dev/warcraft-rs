@@ -536,15 +536,17 @@ async fn list_archive(
 
     // Open database if needed
     let db = if use_db || record_to_db {
-        Some(Database::open_default().await.context("Failed to open database")?)
+        Some(
+            Database::open_default()
+                .await
+                .context("Failed to open database")?,
+        )
     } else {
         None
     };
 
     // Record filenames to database if requested
-    if record_to_db
-        && let Some(ref db) = db
-    {
+    if record_to_db && let Some(ref db) = db {
         let count = record_listfile_to_db(&mut archive, db).await?;
         if count > 0 {
             println!("Recorded {count} filenames to database");
@@ -655,9 +657,7 @@ async fn record_listfile_to_db(
 
         match db.store_filenames(&filenames_with_source).await {
             Ok((new_count, updated_count)) => {
-                log::info!(
-                    "Recorded {new_count} new and {updated_count} updated filenames"
-                );
+                log::info!("Recorded {new_count} new and {updated_count} updated filenames");
                 return Ok(new_count + updated_count);
             }
             Err(e) => {
@@ -2098,20 +2098,20 @@ fn show_entry_at_index(archive: &mut Archive, index: usize, _raw_dump: bool) -> 
 
 // Database command implementation
 async fn execute_db_command(command: DbCommands) -> Result<()> {
-    use std::io::Write;
     use crate::database::{Database, HashLookup, ImportSource, Importer};
     use crate::database::{calculate_het_hashes, calculate_mpq_hashes};
+    use std::io::Write;
 
     match command {
         DbCommands::Status { detailed } => {
-            let db = Database::open_default().await.context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let conn = db.connection();
 
             // Get basic statistics
             let filename_count: i64 = {
-                let mut rows = conn
-                    .query("SELECT COUNT(*) FROM filenames", ())
-                    .await?;
+                let mut rows = conn.query("SELECT COUNT(*) FROM filenames", ()).await?;
                 match rows.next().await? {
                     Some(row) => row.get(0)?,
                     None => 0,
@@ -2169,7 +2169,9 @@ async fn execute_db_command(command: DbCommands) -> Result<()> {
             source_type,
             show_progress,
         } => {
-            let db = Database::open_default().await.context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let importer = Importer::new(&db);
 
             let import_source = match source_type {
@@ -2208,7 +2210,9 @@ async fn execute_db_command(command: DbCommands) -> Result<()> {
             archive,
             include_anonymous,
         } => {
-            let db = Database::open_default().await.context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let mut mpq = Archive::open(&archive).context("Failed to open archive")?;
 
             let spinner = create_spinner("Analyzing archive...");
@@ -2227,7 +2231,9 @@ async fn execute_db_command(command: DbCommands) -> Result<()> {
         }
 
         DbCommands::Lookup { filename } => {
-            let db = Database::open_default().await.context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
 
             // Calculate and display hashes
             let (hash_a, hash_b, hash_offset) = calculate_mpq_hashes(&filename);
@@ -2271,7 +2277,9 @@ async fn execute_db_command(command: DbCommands) -> Result<()> {
         }
 
         DbCommands::Export { output, source } => {
-            let db = Database::open_default().await.context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let conn = db.connection();
 
             let mut file = fs::File::create(&output).context("Failed to create output file")?;
@@ -2315,7 +2323,9 @@ async fn execute_db_command(command: DbCommands) -> Result<()> {
             long,
             limit,
         } => {
-            let db = Database::open_default().await.context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let conn = db.connection();
 
             let mut result_rows: Vec<(String, i64, i64, Option<String>)> = Vec::new();
@@ -2325,9 +2335,7 @@ async fn execute_db_command(command: DbCommands) -> Result<()> {
                 let query = format!(
                     "SELECT filename, hash_a, hash_b, source FROM filenames WHERE filename LIKE ?1 ORDER BY filename LIMIT {limit}"
                 );
-                let mut rows = conn
-                    .query(&query, turso::params![like_pattern])
-                    .await?;
+                let mut rows = conn.query(&query, turso::params![like_pattern]).await?;
 
                 while let Some(row) = rows.next().await? {
                     result_rows.push((

@@ -127,10 +127,7 @@ impl HashLookup for Database {
         Ok(())
     }
 
-    async fn store_filenames(
-        &self,
-        filenames: &[(&str, Option<&str>)],
-    ) -> Result<(usize, usize)> {
+    async fn store_filenames(&self, filenames: &[(&str, Option<&str>)]) -> Result<(usize, usize)> {
         if filenames.is_empty() {
             return Ok((0, 0));
         }

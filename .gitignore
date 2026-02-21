@@ -42,3 +42,4 @@ dist/
 .env
 .env.*
 !.env.example
+perf.data
