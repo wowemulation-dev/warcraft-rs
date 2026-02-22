@@ -12,30 +12,30 @@ A library for parsing, validating, and converting World of Warcraft WDT (World D
 
 ## Status
 
-✅ **Production Ready** - Complete WDT parser with 100% parsing success rate across all WoW versions
+**Production Ready** - Complete WDT parser with 100% parsing success rate across all WoW versions
 
-## 🎮 Version Support
+## Version Support
 
 | WoW Version | Expansion | Status | Notes |
 |-------------|-----------|--------|-------|
-| 1.12.1      | Classic   | ✅ Complete | Full support |
-| 2.4.3       | TBC       | ✅ Complete | Full support |
-| 3.3.5a      | WotLK     | ✅ Complete | Full support |
-| 4.3.4       | Cataclysm | ✅ Complete | Full support |
-| 5.4.8       | MoP       | ✅ Complete | Full support |
+| 1.12.1      | Classic   | Complete | Full support |
+| 2.4.3       | TBC       | Complete | Full support |
+| 3.3.5a      | WotLK     | Complete | Full support |
+| 4.3.4       | Cataclysm | Complete | Full support |
+| 5.4.8       | MoP       | Complete | Full support |
 
-## 📦 Features
+## Features
 
-- ✅ **Parse WDT files** from all WoW versions (Classic through MoP)
-- ✅ **Validate WDT structure** with comprehensive validation rules
-- ✅ **Create new WDT files** programmatically
-- ✅ **Convert WDT files** between different WoW versions
-- ✅ **Support for all chunk types** (MVER, MPHD, MAIN, MAID, MWMO, MODF)
-- ✅ **Coordinate system conversion** utilities
-- ✅ **Comprehensive parser** with 100% success rate
-- ✅ **Extensive testing** with real WoW data files
+- Parse WDT files from all WoW versions (Classic through MoP)
+- Validate WDT structure with validation rules
+- Create new WDT files programmatically
+- Convert WDT files between different WoW versions
+- Support for all chunk types (MVER, MPHD, MAIN, MAID, MWMO, MODF)
+- Coordinate system conversion utilities
+- 100% parsing success rate
+- Tested with real WoW data files
 
-## 🚀 Quick Start
+## Quick Start
 
 Add to your `Cargo.toml`:
 
@@ -131,7 +131,7 @@ let (tile_x, tile_y) = world_to_tile(world_x, world_y);
 println!("World position maps to tile [{}, {}]", tile_x, tile_y);
 ```
 
-## 🔧 CLI Tool
+## CLI Tool
 
 WDT operations are available through the main `warcraft-rs` CLI tool:
 
@@ -152,7 +152,7 @@ warcraft-rs wdt convert input.wdt output.wdt --to wotlk
 warcraft-rs wdt tree Azeroth.wdt --show-refs
 ```
 
-## 📁 File Format Details
+## File Format Details
 
 WDT files define which terrain tiles exist for a map and contain:
 
@@ -163,7 +163,7 @@ WDT files define which terrain tiles exist for a map and contain:
 - **MWMO**: WMO filename storage (WMO-only maps or pre-Cata terrain)
 - **MODF**: WMO placement data (WMO-only maps)
 
-## 🧪 Testing
+## Testing
 
 Basic tests are included:
 
@@ -174,17 +174,17 @@ cargo test
 # Benchmarks are planned but not yet implemented
 ```
 
-## 📚 Documentation
+## Documentation
 
 - [Complete format specification](../../../docs/formats/world-data/wdt.md)
 - [API documentation](https://docs.rs/wow-wdt)
 
-## 🔗 Related Crates
+## Related Crates
 
 - [`wow-mpq`](../../archives/wow-mpq/) - MPQ archive support
 - [`wow-adt`](../wow-adt/) - ADT terrain files
 - [`wow-wdl`](../wow-wdl/) - WDL low-resolution terrain
 
-## 📄 License
+## License
 
 Licensed under either of [Apache License, Version 2.0](../../../LICENSE-APACHE) or [MIT license](../../../LICENSE-MIT) at your option.

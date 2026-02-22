@@ -352,7 +352,7 @@ int main() {
 
 ## Testing
 
-The storm-ffi crate includes comprehensive tests:
+The storm-ffi crate includes the following tests:
 
 ```bash
 # Run FFI tests

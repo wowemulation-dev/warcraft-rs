@@ -1,4 +1,4 @@
-# 🌍 World Data Formats
+# World Data Formats
 
 World data formats define terrain, maps, and the game world structure.
 

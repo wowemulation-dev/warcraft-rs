@@ -181,7 +181,6 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
     println!("====================");
     println!();
 
-    // Parse the ADT file with metadata
     let file_handle =
         File::open(file).with_context(|| format!("Failed to open ADT file: {file}"))?;
     let mut reader = BufReader::new(file_handle);
@@ -193,13 +192,11 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
     println!("Type: {:?}", metadata.file_type);
     println!("Version: {}", format_version(&metadata.version));
 
-    // Check for split files
     let path = Path::new(file);
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     let dir = path.parent().unwrap_or(Path::new("."));
 
     if !stem.ends_with("_obj0") && !stem.ends_with("_tex0") {
-        // Check for Cataclysm+ split files
         let tex0 = dir.join(format!("{stem}_tex0.adt"));
         let obj0 = dir.join(format!("{stem}_obj0.adt"));
         let lod = dir.join(format!("{stem}_lod.adt"));
@@ -353,7 +350,6 @@ fn execute_info(file: &str, detailed: bool) -> Result<()> {
             }
         }
 
-        // Create a table for chunk information
         let mut table = Table::new();
         table.set_format(*format::consts::FORMAT_BOX_CHARS);
         table.set_titles(Row::new(vec![
@@ -387,7 +383,6 @@ fn execute_validate(file: &str, level: &str, warnings: bool) -> Result<()> {
     println!("Level: {level}");
     println!();
 
-    // Parse the file (parsing validates structure)
     let file_handle =
         File::open(file).with_context(|| format!("Failed to open ADT file: {file}"))?;
     let mut reader = BufReader::new(file_handle);

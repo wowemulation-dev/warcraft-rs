@@ -1,4 +1,4 @@
-# 🗺️ Coordinate Systems
+# Coordinate Systems
 
 A concise guide to understanding World of Warcraft's coordinate systems.
 
@@ -259,6 +259,7 @@ fn get_height_at_position(world: &World, x: f32, y: f32) -> Option<f32> {
 
 ## See Also
 
+- [Model Coordinate Transformations](../COORDINATE_SYSTEMS.md) - WoW to Blender/Unity/Unreal coordinate transforms for M2 models
 - [ADT Format](../formats/world-data/adt.md)
 - [WDT Format](../formats/world-data/wdt.md)
 - [Map IDs Reference](map-ids.md)

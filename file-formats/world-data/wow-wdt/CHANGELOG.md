@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Smart chunk handling**: Version-aware logic for conditional chunk presence
 - **TrinityCore compliance**: Validated against server implementation for chunk behavior
 - **Map type detection**: Better distinction between terrain maps and WMO-only maps
-- **Comprehensive test suite**: Version-specific tests covering all WoW expansions
+- **Test suite**: Version-specific tests covering all WoW expansions
 
 ### Fixed
 

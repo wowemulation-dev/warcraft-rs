@@ -40,7 +40,7 @@ Based on empirical analysis of WMO files from original MPQ archives:
 | 17 | Battle for Azeroth (8.x) | Core + shadow chunks | Enhanced shadow mapping (MLSP, MLSS, MLSK) |
 | 17 | Shadowlands (9.x) | Core + volume chunks | Additional volume data types (MAVD, MBVD) |
 
-**Note**: Version number (17) remained constant from Vanilla through modern WoW, with functionality added through new optional chunks rather than version changes.
+**Note**: Version number (17) remained constant from Vanilla through later WoW, with functionality added through new optional chunks rather than version changes.
 
 ## File Structure Overview
 
@@ -508,7 +508,7 @@ struct MOLVEntry {
 
 #### MODI - Doodad File IDs
 
-Doodad file IDs for modern file reference system (Battle for Azeroth+). ✅ **Implemented**
+Doodad file IDs for file reference system (Battle for Azeroth+). ✅ **Implemented**
 
 ```rust
 /// MODI contains an array of u32 doodad IDs, same count as SMOHeader.nDoodadNames
@@ -521,7 +521,7 @@ fn parse_modi(data: &[u8]) -> Vec<u32> {
 
 #### MOM3 - New Materials
 
-New material system for modern WoW versions (WarWithin+). ✅ **Implemented**
+New material system for later WoW versions (WarWithin+). ✅ **Implemented**
 
 ```rust
 #[repr(C, packed)]
@@ -543,7 +543,7 @@ Container chunk for alpha WoW versions (version 14 only). ✅ **Implemented**
 
 #### GFID - Group File IDs
 
-File IDs for group files (modern WoW versions). ⚠️ **Format Specification Only**
+File IDs for group files (later WoW versions). ⚠️ **Format Specification Only**
 
 ```rust
 /// GFID contains an array of u32 file IDs, one per group
@@ -930,7 +930,7 @@ impl MOTAEntry {
 
 #### MOGX - Query Face Start
 
-Query face start index for modern collision (Dragonflight+). ✅ **Implemented**
+Query face start index for collision (Dragonflight+). ✅ **Implemented**
 
 ```rust
 /// MOGX contains a single u32 query face start index
@@ -941,7 +941,7 @@ fn parse_mogx(data: &[u8]) -> u32 {
 
 #### MPY2 - Extended Material Info
 
-Extended material information for modern rendering (Dragonflight+). ✅ **Implemented**
+Extended material information for rendering (Dragonflight+). ✅ **Implemented**
 
 ```rust
 #[repr(C, packed)]
@@ -994,7 +994,7 @@ struct MOBSEntry {
 }
 ```
 
-#### Additional Group Chunks (Modern Versions)
+#### Additional Group Chunks (Later Versions)
 
 - **MDAL** - Unknown chunk
 - **MOPL** - Terrain Cutting Planes (4.x+)

@@ -1472,7 +1472,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
 ## References
 
-- [Level of Detail for 3D Graphics](https://www.cs.unc.edu/~luebke/papers/book.html) - Comprehensive LOD book
+- [Level of Detail for 3D Graphics](https://www.cs.unc.edu/~luebke/papers/book.html) - LOD reference book
 - [View-Dependent Rendering](https://graphics.stanford.edu/papers/levoy-vdr/) - Advanced LOD techniques
-- [Nanite Virtualized Geometry](https://advances.realtimerendering.com/s2021/) - Modern LOD approaches
+- [Nanite Virtualized Geometry](https://advances.realtimerendering.com/s2021/) - LOD approaches
 - [Mesh Optimization](https://github.com/zeux/meshoptimizer) - Mesh simplification algorithms

@@ -1,6 +1,6 @@
 //! # wow_mpq - MPQ Archive Library
 //!
-//! A high-performance, safe Rust implementation of the MPQ (Mo'PaQ) archive format
+//! A Rust implementation of the MPQ (Mo'PaQ) archive format
 //! used by Blizzard Entertainment games.
 //!
 //! ## About the Name
@@ -15,9 +15,9 @@
 //! - Multiple compression algorithms (zlib, bzip2, LZMA, etc.)
 //! - Digital signature support (verification and generation)
 //! - Strong security with signature verification
-//! - Comprehensive error handling
+//! - Typed error handling
 //! - Optional memory-mapped files for high-performance access
-//! - SIMD-accelerated operations for maximum performance
+//! - SIMD-accelerated operations where available
 //!
 //! ## Examples
 //!

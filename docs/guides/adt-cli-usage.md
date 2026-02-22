@@ -57,7 +57,7 @@ warcraft-rs adt validate terrain.adt --level basic
 Validation levels:
 
 - **basic**: Essential structure checks
-- **standard**: Comprehensive validation (default)
+- **standard**: Full validation (default)
 - **strict**: All checks including best practices
 
 ### Convert Command

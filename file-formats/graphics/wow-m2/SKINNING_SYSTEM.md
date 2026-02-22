@@ -1,6 +1,6 @@
 # M2 Vertex Skinning System
 
-This document describes the comprehensive vertex skinning/deformation system implemented for the M2 model format.
+This document describes the vertex skinning/deformation system implemented for the M2 model format.
 
 ## Overview
 
@@ -24,7 +24,7 @@ The M2 vertex skinning system transforms vertices from their bind pose using bon
 3. **Integration with M2 Parser**
    - Fully integrated with the M2 crate API
    - Easy-to-use `M2Skinner` struct for skinning operations
-   - Comprehensive configuration options via `SkinningOptions`
+   - Configuration options via `SkinningOptions`
 
 4. **Error Handling and Resilience**
    - Gracefully handles invalid bone indices
@@ -117,13 +117,13 @@ let mut skinner = M2Skinner::new(&model.bones, options);
 ## File Structure
 
 - `src/skinning.rs` - Main skinning system implementation
-- `examples/vertex_skinning.rs` - Comprehensive usage example
+- `examples/vertex_skinning.rs` - Full usage example
 - `tests/skinning_integration.rs` - Integration tests
 - `src/lib.rs` - API exports and documentation
 
 ## Testing
 
-The skinning system includes comprehensive tests:
+The skinning system includes the following tests:
 
 ### Unit Tests (8 tests)
 - Skinner creation and initialization
@@ -204,4 +204,4 @@ The result is properly positioned vertices that represent the actual model geome
 
 ## Conclusion
 
-The M2 vertex skinning system provides a complete, production-ready solution for transforming M2 model vertices from their bind pose to properly positioned geometry. It handles all edge cases, provides excellent performance, and integrates seamlessly with the existing M2 parser infrastructure.
+The M2 vertex skinning system transforms M2 model vertices from their bind pose to properly positioned geometry. It handles all edge cases and integrates with the existing M2 parser infrastructure.

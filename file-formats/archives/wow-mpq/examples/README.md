@@ -34,7 +34,7 @@ cargo run --release --example <example_name> [arguments]
 
 ### Archive Creation and Modification
 
-- **`create_archive.rs`** - Comprehensive archive creation examples
+- **`create_archive.rs`** - Archive creation examples
 
   ```bash
   cargo run --example create_archive
@@ -70,7 +70,7 @@ cargo run --release --example <example_name> [arguments]
 
 World of Warcraft uses patch chains to apply updates:
 
-- **`wow_patch_chains.rs`** - Comprehensive patch chain operations for all WoW versions
+- **`wow_patch_chains.rs`** - Patch chain operations for all WoW versions
 
   ```bash
   cargo run --example wow_patch_chains
@@ -144,7 +144,7 @@ World of Warcraft uses patch chains to apply updates:
 Start with these examples to understand basic MPQ operations:
 
 1. `simple_list.rs` - Basic file listing
-2. `create_archive.rs` - Comprehensive creation guide
+2. `create_archive.rs` - Creation guide
 3. `list_archive_contents.rs` - Detailed archive information
 
 ### For Game Modding

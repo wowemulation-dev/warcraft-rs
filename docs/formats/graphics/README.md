@@ -1,4 +1,4 @@
-# 🎨 Graphics & Model Formats
+# Graphics and Model Formats
 
 Graphics formats handle textures, 3D models, animations, and visual effects.
 

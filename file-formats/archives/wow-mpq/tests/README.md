@@ -1,6 +1,6 @@
 # wow-mpq Tests
 
-This directory contains the comprehensive test suite for the wow-mpq library.
+This directory contains the test suite for the wow-mpq library.
 
 ## Test Structure
 
@@ -39,7 +39,7 @@ Compatibility and compliance tests:
 
 Real-world usage scenarios:
 
-- **real_world/** - Tests with actual game data patterns (includes comprehensive WoW version tests moved from examples)
+- **real_world/** - Tests with actual game data patterns (includes WoW version tests moved from examples)
 - **round_trip/** - Read/write/read verification
 - **stress/** - Edge cases and stress testing
 

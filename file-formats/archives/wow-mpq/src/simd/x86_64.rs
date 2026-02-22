@@ -20,7 +20,7 @@ use crate::crypto::{ASCII_TO_UPPER, ENCRYPTION_TABLE};
 
 /// SSE4.2 accelerated CRC32 calculation
 ///
-/// Uses the hardware CRC32 instruction for maximum performance.
+/// Uses the hardware CRC32 instruction.
 /// Processes data in 8-byte chunks when possible, falling back to
 /// smaller chunks for the remainder.
 ///

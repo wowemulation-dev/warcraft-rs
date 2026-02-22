@@ -2,7 +2,7 @@
 
 ## Status: ✅ Full Parity Achieved
 
-Both the Python and Rust M2 parsers have been enhanced to provide comprehensive data extraction capabilities. All major features from the Python reference implementation have been ported to the Rust production parser.
+Both the Python and Rust M2 parsers have been enhanced to provide full data extraction capabilities. All major features from the Python reference implementation have been ported to the Rust parser.
 
 ## Feature Comparison
 

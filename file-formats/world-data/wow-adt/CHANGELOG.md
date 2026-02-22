@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduced memory usage through selective parsing of needed chunks
   - Improved error messages with chunk-level context
   - Type-safe chunk parsing with compile-time validation
-- **New Modular Architecture** - Comprehensive module reorganization
+- **New Modular Architecture** - Module reorganization
   - `chunk_discovery` - Fast chunk enumeration phase for selective parsing
   - `chunk_header` - Chunk header abstraction with consistent handling
   - `chunk_id` - Type-safe chunk identifier with validation
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `serializer.rs` - Binary serialization
     - `validation.rs` - Pre-serialization validation
   - `file_type` - ADT file type detection and validation
-- **Enhanced Split File Support** - Comprehensive Cataclysm+ split file handling
+- **Enhanced Split File Support** - Cataclysm+ split file handling
   - `AdtSet` for loading complete split file sets with automatic discovery
   - Automatic split file discovery from root file path
   - Merged structure combining root, texture, and object data
@@ -139,7 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Comprehensive module documentation for split file architecture
+- Module documentation for split file architecture
 - Split file loading and merging examples
 - Updated API documentation with Cataclysm+ patterns
 
@@ -150,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MFBO chunk structure**: Fixed from incorrect 8 bytes to correct 36 bytes (2 planes × 9 int16 coordinates)
   - Changed from simple `min: u32, max: u32` to proper `min: [i16; 9], max: [i16; 9]` arrays
   - This matches TrinityCore server implementation and actual WoW client behavior
-- **Version detection API**: Enhanced with `detect_from_chunks_extended()` for comprehensive version detection
+- **Version detection API**: Enhanced with `detect_from_chunks_extended()` for full version detection
 - **API reorganization**: Some internal chunk structures updated for consistency
 
 ### Added
@@ -162,9 +162,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MTXP chunk parser (texture parameters for MoP+ with 16-byte entries)
   - Enhanced MH2O water chunk support (already implemented)
 - **TrinityCore compliance**: All chunk structures validated against authoritative server implementation
-- **Comprehensive test suite**: 30+ tests including version-specific and TrinityCore compliance validation
+- **Test suite**: 30+ tests including version-specific and TrinityCore compliance validation
 - **Version-specific features**: Progressive chunk detection based on expansion evolution
-- **High-level split file API**: `SplitAdtLoader` for easy handling of modern split terrain files
+- **High-level split file API**: `SplitAdtLoader` for handling Cataclysm+ split terrain files
 
 ### Fixed
 
@@ -195,4 +195,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alpha maps for texture blending
 - Flight bounds and holes
 - Parallel processing support for improved performance
-- Comprehensive validation tools
+- Validation tools

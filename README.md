@@ -23,11 +23,11 @@ Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 
 | Version | Expansion | Status |
 |---------|-----------|--------|
-| 1.12.1 | Vanilla | ✅ Full Support |
-| 2.4.3 | Burning Crusade | ✅ Full Support |
-| 3.3.5a | Wrath of the Lich King | ✅ Full Support |
-| 4.3.4 | Cataclysm | ✅ Full Support |
-| 5.4.8 | Mists of Pandaria | ✅ Full Support |
+| 1.12.1 | Vanilla | Full Support |
+| 2.4.3 | Burning Crusade | Full Support |
+| 3.3.5a | Wrath of the Lich King | Full Support |
+| 4.3.4 | Cataclysm | Full Support |
+| 5.4.8 | Mists of Pandaria | Full Support |
 
 ## Features
 

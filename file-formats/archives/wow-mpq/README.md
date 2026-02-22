@@ -21,7 +21,7 @@ bidirectional compatibility
 MPQ archives are used by World of Warcraft (versions 1.x through 5.x) to store
 game assets including models, textures, sounds, and data files. This crate provides
 a pure Rust implementation for reading, creating, and managing MPQ archives with
-comprehensive support for all format versions and features.
+support for all format versions and features.
 
 ## Features
 
@@ -31,7 +31,7 @@ comprehensive support for all format versions and features.
   and compression
 - **Archive Modification** - Add, remove, and rename files with automatic
   listfile/attributes updates
-- **Archive Rebuilding** - Comprehensive rebuild with format upgrades and
+- **Archive Rebuilding** - Rebuild with format upgrades and
   optimization
 - **All Compression Algorithms** - Zlib, BZip2, LZMA, Sparse, ADPCM,
   PKWare, Huffman
@@ -44,7 +44,7 @@ comprehensive support for all format versions and features.
 - **StormLib Compatibility** - 100% bidirectional compatibility with the
   reference implementation
 - **High Performance** - Efficient I/O, zero-copy where possible,
-  comprehensive benchmarks
+  benchmarks included
 - **Parallel Processing** - Multi-threaded extraction and validation for
   better performance
 
@@ -247,7 +247,7 @@ cargo run --example debug_archive -- archive.mpq
 
 ## Performance
 
-The crate includes comprehensive benchmarks showing excellent performance:
+The crate includes benchmarks:
 
 - **Archive Creation**: ~50-100 MB/s depending on compression
 - **File Extraction**: ~200-500 MB/s for uncompressed files

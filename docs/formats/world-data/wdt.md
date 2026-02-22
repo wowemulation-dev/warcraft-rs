@@ -671,7 +671,7 @@ const AZEROTH_29_29_LOD: u32 = 1287004;
 
 ## Additional WDT Files
 
-Modern WoW uses multiple WDT files per map, each serving specific purposes:
+Later WoW versions use multiple WDT files per map, each serving specific purposes:
 
 ### _lgt.wdt - Lighting (Legion 7.0+)
 
@@ -735,7 +735,7 @@ Based on TrinityCore's 3.3.5a implementation:
 
 ## Implementation Status - ✅ Implemented
 
-WDT parsing is implemented in the `wow-wdt` crate with comprehensive support for all WoW versions from Classic through modern expansions.
+WDT parsing is implemented in the `wow-wdt` crate with support for all WoW versions from Classic through later expansions.
 
 **Key Features:**
 - Parse WDT files using `WdtReader::from_reader()`
@@ -747,7 +747,7 @@ WDT parsing is implemented in the `wow-wdt` crate with comprehensive support for
 ## References
 
 1. **wowdev.wiki** - Primary source for WoW file format documentation
-   - Contains comprehensive chunk definitions and flag values
+   - Contains chunk definitions and flag values
 
 2. **libwarcraft** - C# implementation by WowDevTools
    - Fully compliant WDT read/write support

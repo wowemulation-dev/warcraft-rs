@@ -204,14 +204,12 @@ fn render_node(
     depth: usize,
     options: &TreeOptions,
 ) {
-    // Check depth limit
     if let Some(max_depth) = options.max_depth
         && depth > max_depth
     {
         return;
     }
 
-    // Node icon and name
     let icon = node.node_type.icon();
     let style = node.node_type.style(options.no_color);
     let connector = if depth == 0 {
@@ -230,14 +228,11 @@ fn render_node(
         style.apply_to(&node.name)
     );
 
-    // Add size if available
     if let Some(size) = node.size {
         line.push_str(&format!(" ({})", format_bytes(size)));
     }
 
-    // Add metadata if enabled and available
     if options.show_metadata && !node.metadata.is_empty() && options.compact {
-        // Show key metadata inline
         let mut meta_parts = Vec::new();
         for (key, value) in &node.metadata {
             if ["version", "count", "flags", "type"].contains(&key.as_str()) {
@@ -252,7 +247,6 @@ fn render_node(
     output.push_str(&line);
     output.push('\n');
 
-    // Show detailed metadata on separate lines (non-compact mode)
     if options.show_metadata && !options.compact && !node.metadata.is_empty() {
         let child_prefix = if depth == 0 {
             ""
@@ -274,7 +268,6 @@ fn render_node(
         }
     }
 
-    // Show external references
     if options.show_external_refs && !node.external_refs.is_empty() {
         let child_prefix = if depth == 0 {
             ""

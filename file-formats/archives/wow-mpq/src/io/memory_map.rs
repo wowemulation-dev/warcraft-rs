@@ -1,6 +1,6 @@
 //! Cross-platform memory-mapped file support with security boundaries
 //!
-//! Provides high-performance memory-mapped access to MPQ archives while
+//! Provides memory-mapped access to MPQ archives while
 //! maintaining security and cross-platform compatibility.
 //!
 //! Security features:

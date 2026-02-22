@@ -1,6 +1,6 @@
 # WoW Patch Chain Summary
 
-This document provides a comprehensive overview of how patch chaining works in
+This document provides an overview of how patch chaining works in
 each World of Warcraft version from 1.12.1 through 5.4.8, based on analysis of
 actual game archives.
 

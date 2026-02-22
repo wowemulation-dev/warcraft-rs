@@ -35,4 +35,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WDL low-resolution data inspection
 - Colored output and progress indicators
 - Cross-platform support (Windows, macOS, Linux)
-- Comprehensive help and examples
+- Help text and examples

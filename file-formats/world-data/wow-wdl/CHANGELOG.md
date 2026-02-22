@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Enhanced version support**: Improved parsing for different WDL format versions
-- **Comprehensive chunk support**: Full support for all documented chunks (MAOF, MAOH, MAHO, MWID, MWMO, MODF, ML)
+- **Chunk support**: Full support for all documented chunks (MAOF, MAOH, MAHO, MWID, MWMO, MODF, ML)
 - **Version detection**: Automatic detection across WoW expansions based on chunk evolution
 - **TrinityCore compliance**: Validated chunk structures and behavior against server implementation
 

@@ -13,18 +13,14 @@ pub fn truncate_path(path: &str, max_len: usize) -> String {
             .unwrap_or("");
 
         if filename.len() >= max_len {
-            // Filename alone is too long, truncate it
             format!("...{}", &filename[filename.len() - max_len + 3..])
         } else {
-            // Try to include some path with the filename
             let parts: Vec<&str> = path.split('/').collect();
             let mut result = String::new();
             let mut has_ellipsis = false;
 
-            // Calculate how much space we have for the path
             let space_for_path = max_len.saturating_sub(filename.len() + 1); // -1 for final '/'
 
-            // Try to fit path components from the beginning
             for part in parts.iter().take(parts.len() - 1) {
                 let needed = if result.is_empty() {
                     part.len()
@@ -33,7 +29,6 @@ pub fn truncate_path(path: &str, max_len: usize) -> String {
                 };
 
                 if !has_ellipsis && result.len() + needed > space_for_path {
-                    // Need to add ellipsis
                     if space_for_path >= 3 {
                         result = "...".to_string();
                         has_ellipsis = true;

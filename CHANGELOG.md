@@ -64,7 +64,7 @@ and this project adheres to
   - Enhanced caching strategy with better key management
   - Updated toolchain versions to use Rust 1.92 (dropped .0 suffix)
   - Separated quick-checks into distinct fmt, check, and clippy jobs
-  - Added comprehensive CI success validation
+  - Added CI success validation
   - Improved cache cleanup workflow with better error handling
 - **CI**: Enhanced cross-build and release workflows
   - Better matrix configuration for target builds
@@ -310,7 +310,7 @@ and this project adheres to
   - New modular architecture with 15+ new modules for maintainable code
   - High-level type-safe APIs: `RootAdt`, `Tex0Adt`, `Obj0Adt`, `LodAdt`
   - Enhanced split file support with `AdtSet` for automatic loading and merging
-  - Comprehensive builder API for ADT creation and serialization
+  - Builder API for ADT creation and serialization
   - Selective parsing capabilities for performance optimization
 - **MPQ Format**: Binary patch file (PTCH) support for Cataclysm+ updates
   - COPY patches for simple file replacement
@@ -342,7 +342,7 @@ and this project adheres to
   - Transparent PTCH patch handling during file reads
   - Simplified API with automatic patch detection
   - Enhanced priority-based file resolution
-- **Test Organization**: Comprehensive test suite restructuring
+- **Test Organization**: Test suite restructuring
   - Compliance tests organized by WoW expansion
   - Integration tests separated by functionality
   - Focused benchmarks for performance profiling
@@ -378,7 +378,7 @@ and this project adheres to
   - MORB (Bounding boxes) - Spatial boundaries for groups
   - MOTA (Portal attachment) - Portal-to-group associations
   - MOBS (Shadow batches) - Shadow rendering optimization data with signed index support
-- **WMO Tree Command**: Comprehensive visualization enhancements
+- **WMO Tree Command**: Visualization enhancements
   - Increased chunk coverage from 48.8% to 97.6% (40/41 chunks displayed)
   - Added `--detailed` flag for complete field-level data visibility
   - Enhanced material display with shader, blend mode, and texture data
@@ -388,6 +388,17 @@ and this project adheres to
   - Added alternative byte patterns for MOVB (VBOM, BVOM)
   - Added alternative byte patterns for MFOG (GFOM, GOFM)
   - Ensures proper chunk identification across all WoW expansions
+- **M2 Format**: Complete chunked format implementation with 25 chunks (Legion+ support)
+  - File reference chunks: SFID, AFID, TXID, PFID, SKID, BFID
+  - Particle system chunks: PABC, PADC, PSBC, PEDC, PCOL, PFDC
+  - Rendering enhancement chunks: TXAC, EDGF, NERF, DETL, RPID, GPID, DBOC
+  - Animation system chunks: AFRA, DPIV
+  - Export processing chunks: EXPT
+- **M2 Format**: Chunk validation and cross-reference checking
+- **M2 Format**: Physics file (.phys) basic parsing support via PFID references
+- **Code Quality**: Enhanced clippy linting with stricter rules (all, pedantic, nursery, cargo groups)
+- **Testing**: QA script adapted from cascette-rs
+- **Security**: Improved dependency security audit configuration with documented exceptions
 
 ### Changed
 
@@ -414,12 +425,21 @@ and this project adheres to
   - Added lint configuration to handle unsafe block requirements across Rust versions
   - Updated io::Error creation to use newer io::Error::other() method
   - Maintains compatibility with both MSRV (1.86.0) and stable Rust toolchain
-- **WMO Parser Robustness**: Comprehensive cross-expansion validation
+- **WMO Parser Robustness**: Cross-expansion validation
   - Tested against 149 WMO files from Vanilla, WotLK, and Cataclysm/MoP
   - Achieved 100% parsing success rate with zero errors
   - Properly handles float values stored in texture index fields
   - Correctly processes zero-count doodad references
   - Supports high material counts (100+) in complex models
+- **M2 Parsing**: Fixed redundant guard expressions in chunk pattern matching (29 instances)
+- **M2 Parsing**: Resolved needless borrows in iterator usage throughout codebase
+- **M2 Parsing**: Fixed is_some_and pattern usage for cleaner conditional logic
+- **M2 Parsing**: Corrected iterator patterns in rendering enhancement processing
+- **M2 Parsing**: Fixed stream position handling in chunk infrastructure
+- **CI/CD**: Skip CLI tests requiring MPQ test files in CI environment
+- **Dependencies**: Updated slab from 0.4.10 to 0.4.11 to fix security vulnerability
+- **Performance**: Optimized MPQ bulk extraction performance
+- **Code Quality**: Removed unused imports and variables across test modules
 
 - **M2 Triangle Index Parsing**: Critical mesh connectivity corruption causing fragmented geometry (CRITICAL FIX)
   - **Double Indirection Bug**: Fixed unnecessary two-level indirection in `get_resolved_indices()`
@@ -451,7 +471,7 @@ and this project adheres to
 
 - **M2 Bone Parsing**: Critical data corruption issues in vertex and bone parsing (MAJOR FIX)
   - **Invalid Bone Indices**: Vertices referencing non-existent bones (e.g., bones [51, 196, 141, 62] when only 34 exist)
-    - Enhanced `M2Vertex::parse_with_validation()` with comprehensive bone index validation
+    - Enhanced `M2Vertex::parse_with_validation()` with bone index validation
     - Invalid indices automatically clamped to root bone (index 0) for safety
     - Prevents rendering failures and vertex positioning corruption
   - **Missing Bone Weights**: 17% of vertices had zero bone weights making them unmovable
@@ -469,7 +489,7 @@ and this project adheres to
   - **Cross-Version Validation**: All fixes verified with real WoW models
     - Tested against Vanilla (HumanMale, Rabbit), TBC (DraeneiMale), and WotLK models
     - 100% parsing success rate with zero corruption detection
-    - Comprehensive test suite (144/144 tests passing) with new validation coverage
+    - Test suite (144/144 tests passing) with new validation coverage
 
 ### Changed
 
@@ -507,7 +527,7 @@ and this project adheres to
     - SIMD-optimized operations using glam library
     - Efficient matrix-based transformations for large datasets
     - Support for both individual and batch vertex processing
-  - **Comprehensive Documentation**: Complete coordinate system documentation with visual guides
+  - **Documentation**: Complete coordinate system documentation with visual guides
     - ASCII diagrams showing coordinate system orientations
     - Real-world examples with actual coordinate values
     - Performance optimization guidelines and best practices
@@ -534,7 +554,7 @@ and this project adheres to
   - **M2TrackResolver**: Follows M2Array offsets to load actual keyframe data from file
     - Resolves timestamps, values, and ranges for animation tracks
     - Extension traits for easy Vec3 and Quaternion track data access
-  - **ResolvedBoneAnimation**: Comprehensive bone transform data structure
+  - **ResolvedBoneAnimation**: Bone transform data structure
     - Bind pose translation, rotation (quaternion), and scale extraction
     - Full animation keyframe data with timestamps
     - Automatic fallback to identity transforms when no data exists
@@ -546,8 +566,8 @@ and this project adheres to
   - Added `ranges` field to M2Track for pre-Wrath versions (v263 and earlier)
   - Version-specific bone parsing that handles size differences between WoW expansions
   - Fixed embedded skin index resolution with proper two-level indirection
-  - Comprehensive bone validation with NaN detection and parent hierarchy checks
-- **M2 Enhanced Parser**: Comprehensive data extraction for vanilla WoW models
+  - Bone validation with NaN detection and parent hierarchy checks
+- **M2 Enhanced Parser**: Full data extraction for vanilla WoW models
   - Complete vertex parsing with bone weights and UV coordinates
   - Full bone hierarchy extraction with parent-child relationships
   - All animation sequences with version-aware timing (v256 vs v260+)
@@ -557,16 +577,16 @@ and this project adheres to
   - Model statistics calculation with bounding box and triangle counts
   - Rich visualization with hierarchical bone display and animation lists
 - **M2 Python Tools**: Reference implementation for M2 format validation
-  - Comprehensive M2 parser with full data structure extraction
+  - M2 parser with full data structure extraction
   - Batch testing tool for validating multiple models
   - Visual representation with Rich console output
   - JSON export capability for tool integration
   - Support for WoW versions 1.12.1 through 5.4.8
 - **M2 Examples**: Test suite and demonstration programs
-  - `enhanced_parser_demo` - Shows comprehensive parsing capabilities
+  - `enhanced_parser_demo` - Shows parsing capabilities
   - `test_sample_models` - Validates parser with real game models
   - 100% success rate on vanilla WoW test models
-- **MPQ Performance**: Comprehensive 8-phase optimization suite for 700x speedup on large archives
+- **MPQ Performance**: 8-phase optimization suite for 700x speedup on large archives
   - Phase 1: Optimized string formatting - removed redundant allocations in hot paths
   - Phase 2: Lazy loading architecture - defer hash/block table loading until needed
   - Phase 3: Security-first validation - early detection of malicious archives
@@ -579,7 +599,7 @@ and this project adheres to
   - `async` - Async/await support with Tokio runtime
   - `mmap` - Memory-mapped file access via memmap2
   - `simd` - SIMD acceleration with runtime CPU detection
-- **MPQ Security**: Comprehensive security framework
+- **MPQ Security**: Security framework
   - Adaptive compression ratio limits based on algorithm
   - Session-wide decompression tracking
   - Pattern-based attack detection
@@ -603,39 +623,8 @@ and this project adheres to
 - **MPQ Validation**: Security checks now run before any data processing
 - **MPQ Compression**: Integrated buffer pooling for all decompression operations
 - **MPQ CRC32**: Unified to use crc32fast for consistency across scalar/SIMD
-
-## [0.4.0] - 2025-08-29
-
-### Added
-
-- **M2 Format**: Complete chunked format implementation with 25 chunks (Legion+ support)
-  - File reference chunks: SFID, AFID, TXID, PFID, SKID, BFID
-  - Particle system chunks: PABC, PADC, PSBC, PEDC, PCOL, PFDC
-  - Rendering enhancement chunks: TXAC, EDGF, NERF, DETL, RPID, GPID, DBOC
-  - Animation system chunks: AFRA, DPIV
-  - Export processing chunks: EXPT
-- **M2 Format**: Comprehensive chunk validation and cross-reference checking
-- **M2 Format**: Physics file (.phys) basic parsing support via PFID references
-- **Code Quality**: Enhanced clippy linting with stricter rules (all, pedantic, nursery, cargo groups)
-- **Testing**: Comprehensive QA script adapted from cascette-rs for better code quality assurance
-- **Security**: Improved dependency security audit configuration with documented exceptions
-
-### Fixed
-
-- **M2 Parsing**: Fixed redundant guard expressions in chunk pattern matching (29 instances)
-- **M2 Parsing**: Resolved needless borrows in iterator usage throughout codebase
-- **M2 Parsing**: Fixed is_some_and pattern usage for cleaner conditional logic
-- **M2 Parsing**: Corrected iterator patterns in rendering enhancement processing
-- **M2 Parsing**: Fixed stream position handling in chunk infrastructure
-- **CI/CD**: Skip CLI tests requiring MPQ test files in CI environment
-- **Dependencies**: Updated slab from 0.4.10 to 0.4.11 to fix security vulnerability
-- **Performance**: Optimized MPQ bulk extraction performance
-- **Code Quality**: Removed unused imports and variables across test modules
-
-### Changed
-
 - **M2 Format**: Achieved 100% M2 specification compliance with chunked format support
-- **Documentation**: Updated M2 format documentation to reflect comprehensive implementation
+- **Documentation**: Updated M2 format documentation to reflect implementation
 - **Code Style**: Applied rustfmt formatting consistently across entire codebase
 - **Error Handling**: Enhanced error reporting with detailed chunk validation messages
 - **Testing**: Expanded test coverage to 135+ unit and integration tests
@@ -834,7 +823,7 @@ and this project adheres to
 - **storm-ffi**: Renamed from storm to storm-ffi while retaining
   libstorm library name
 - **storm-ffi**: Archive handles support both read-only and mutable operations
-- **Project-wide**: Comprehensive test reorganization with component,
+- **Project-wide**: Test reorganization with component,
   integration, scenarios, compliance directories
 - **Project-wide**: Consolidated examples from 50+ to 15 focused demonstrations
 - **All crates**: Replaced byteorder crate with native Rust byte order functions
@@ -856,7 +845,7 @@ and this project adheres to
   create_het_table_with_hash_table()
 - **warcraft-rs**: --parallel and --sequential flags (parallel now default)
 - **warcraft-rs**: --batch-size option (automatically optimized)
-- **wow-mpq**: Redundant examples consolidated into comprehensive demonstrations
+- **wow-mpq**: Redundant examples consolidated into fewer demonstrations
 
 ## [0.1.0] - 2025-06-13
 
@@ -888,7 +877,7 @@ and this project adheres to
 - **wow-mpq**: Generic index file extraction when no listfile exists
 - Initial workspace structure for World of Warcraft file format parsing
 - Rust 2024 edition support with MSRV 1.86
-- Comprehensive test organization (unit, integration, compliance, scenarios)
+- Test organization (unit, integration, compliance, scenarios)
 
 ### Fixed (0.1.0)
 

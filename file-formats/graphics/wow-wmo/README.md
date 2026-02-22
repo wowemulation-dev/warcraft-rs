@@ -1,6 +1,6 @@
 # wow-wmo
 
-A comprehensive Rust library for parsing, editing, validating, and converting World of Warcraft WMO (World Model Object) files.
+A Rust library for parsing, editing, validating, and converting World of Warcraft WMO (World Model Object) files.
 
 <div align="center">
 
@@ -12,7 +12,7 @@ A comprehensive Rust library for parsing, editing, validating, and converting Wo
 
 ## Status
 
-✅ **Production Ready** - Comprehensive WMO parser with full format support
+**Production Ready** - WMO parser with full format support
 
 ## Overview
 
@@ -202,17 +202,17 @@ warcraft-rs wmo tree building.wmo --show-refs
 
 | Version | Expansion | Status |
 |---------|-----------|--------|
-| 17 | Classic - Wrath of the Lich King | ✅ Fully Supported |
-| 18 | Cataclysm | ✅ Fully Supported |
-| 19 | Mists of Pandaria | ✅ Fully Supported |
-| 20 | Warlords of Draenor | ✅ Fully Supported |
-| 21 | Legion | ✅ Fully Supported |
-| 22 | Battle for Azeroth | ✅ Fully Supported |
-| 23 | Battle for Azeroth (8.1+) | ✅ Fully Supported |
-| 24 | Shadowlands | ✅ Fully Supported |
-| 25 | Shadowlands (9.1+) | ✅ Fully Supported |
-| 26 | Dragonflight | ✅ Fully Supported |
-| 27 | The War Within | ✅ Fully Supported |
+| 17 | Classic - Wrath of the Lich King | Supported |
+| 18 | Cataclysm | Supported |
+| 19 | Mists of Pandaria | Supported |
+| 20 | Warlords of Draenor | Supported |
+| 21 | Legion | Supported |
+| 22 | Battle for Azeroth | Supported |
+| 23 | Battle for Azeroth (8.1+) | Supported |
+| 24 | Shadowlands | Supported |
+| 25 | Shadowlands (9.1+) | Supported |
+| 26 | Dragonflight | Supported |
+| 27 | The War Within | Supported |
 
 ## Performance
 

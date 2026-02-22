@@ -657,10 +657,8 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
     let mut errors: Vec<String> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
 
-    // Check version
     log::debug!("BLP version: {:?}", blp.header.version);
 
-    // Check dimensions
     if blp.header.width == 0 || blp.header.height == 0 {
         errors.push("Invalid dimensions (0 width or height)".to_string());
     }
@@ -673,7 +671,6 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
         }
     }
 
-    // Check mipmap consistency
     if blp.header.has_mipmaps() {
         let expected_levels = (blp.header.width.max(blp.header.height) as f32).log2() as usize + 1;
         let actual_levels = blp.image_count();

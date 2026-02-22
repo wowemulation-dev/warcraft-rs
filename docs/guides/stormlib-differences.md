@@ -235,7 +235,7 @@ pub struct ThreadSafeMpqArchive {
 
 ## 8. Error Handling and Recovery
 
-### StormLib: Comprehensive Recovery
+### StormLib: Recovery
 
 - **Malformed archive detection**: Marks archives as read-only
 - **Automatic recovery**: Attempts to work with damaged archives
@@ -269,7 +269,7 @@ pub struct ThreadSafeMpqArchive {
 
 ### wow-mpq: Read-Focused Design
 
-- Comprehensive read support
+- Full read support
 - Basic write functionality
 - Archive creation support
 - Limited in-place modification
@@ -282,7 +282,7 @@ pub struct ThreadSafeMpqArchive {
 2. **Compile-time tables**: Storm buffer as const array
 3. **Extended attributes**: File timestamps and custom metadata
 4. **Sparse compression**: RLE algorithm for sparse data
-5. **LZMA compression**: Modern compression support
+5. **LZMA compression**: LZMA compression support
 6. **RSA signatures**: Digital signature verification
 7. **Listfile management**: Automatic listfile updates
 8. **Weak signature verification**: Support for older signatures

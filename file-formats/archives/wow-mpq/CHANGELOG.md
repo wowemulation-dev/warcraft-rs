@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Compression Module** - Minor fixes in compression algorithm selection
-- **Documentation** - Updated README with comprehensive patch file documentation
+- **Documentation** - Updated README with patch file documentation
   - Added PTCH format explanation and usage examples
   - Documented automatic patch application in PatchChain
   - Added CLI usage examples for patch chains
@@ -81,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of wow-mpq crate
 - Support for reading MPQ archives from WoW versions 1.12.1 through 5.4.8
 - Support for MPQ format versions 1, 2, 3, and 4
-- Comprehensive compression support (ZLIB, BZIP2, ADPCM, Huffman, Sparse, LZMA)
+- Compression support for ZLIB, BZIP2, ADPCM, Huffman, Sparse, LZMA
 - Full encryption/decryption support
 - Hash table (HT) and block table (BT) parsing
 - Extended attributes support
@@ -89,4 +89,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Patch archive support with proper file resolution
 - Parallel processing capabilities for improved performance
 - StormLib compatibility layer for validation
-- Comprehensive test suite and benchmarks
+- Test suite and benchmarks

@@ -1,4 +1,4 @@
-# 📊 Database Formats
+# Database Formats
 
 Database formats store game data in structured, tabular formats.
 

@@ -496,7 +496,6 @@ fn execute_tree(
     let mut reader = WdtReader::new(BufReader::new(file), version);
     let wdt = reader.read().context("Failed to parse WDT file")?;
 
-    // Create root node
     let file_name = path
         .file_name()
         .expect("path should have a file name component")
@@ -511,20 +510,17 @@ fn execute_tree(
         .with_metadata("type", map_type)
         .with_metadata("tiles", &wdt.count_existing_tiles().to_string());
 
-    // Add MVER chunk
     let mver_node = TreeNode::new("MVER".to_string(), NodeType::Chunk)
         .with_size(4)
         .with_metadata("version", &wdt.mver.version.to_string())
         .with_metadata("purpose", "Format version identifier");
     root = root.add_child(mver_node);
 
-    // Add MPHD chunk with detailed flag information
     let mut mphd_node = TreeNode::new("MPHD".to_string(), NodeType::Chunk)
         .with_size(32)
         .with_metadata("flags", &format!("0x{:08X}", wdt.mphd.flags.bits()))
         .with_metadata("purpose", "Map properties and global data");
 
-    // Add flag details
     let flag_descriptions = [
         (MphdFlags::WDT_USES_GLOBAL_MAP_OBJ, "WMO-only"),
         (MphdFlags::ADT_HAS_MCCV, "Vertex colors"),
@@ -546,7 +542,6 @@ fn execute_tree(
         }
     }
 
-    // Add BfA+ file data IDs if present
     if wdt.mphd.has_maid() {
         if let Some(lgt_id) = wdt.mphd.lgt_file_data_id {
             mphd_node = mphd_node.with_external_ref(
@@ -564,14 +559,12 @@ fn execute_tree(
 
     root = root.add_child(mphd_node);
 
-    // Add MAIN chunk with tile information
     let mut main_node = TreeNode::new("MAIN".to_string(), NodeType::Chunk)
         .with_size(64 * 64 * 8) // 64x64 grid, 8 bytes per entry
         .with_metadata("grid_size", "64x64")
         .with_metadata("existing_tiles", &wdt.count_existing_tiles().to_string())
         .with_metadata("purpose", "Tile existence and area mapping");
 
-    // Add sample tiles with external references
     let base_name = file_name.trim_end_matches(".wdt");
     let mut tile_count = 0;
     for y in 0..64 {

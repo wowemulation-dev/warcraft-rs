@@ -48,7 +48,7 @@ if let ParsedAdt::Root(root) = parsed {
 ### Version Detection Enhancements
 
 **What Changed:**
-Version detection now uses comprehensive chunk analysis instead of relying solely on MVER values (which are always 18 for all ADT versions).
+Version detection now uses chunk analysis instead of relying solely on MVER values (which are always 18 for all ADT versions).
 
 **Current API:**
 ```rust
@@ -150,7 +150,7 @@ match wdl.version {
 
 ### New Test Categories
 
-The test suite now includes comprehensive validation:
+The test suite now includes validation for all categories:
 
 ```bash
 # Run version-specific tests
@@ -247,7 +247,7 @@ If you encounter issues during migration:
 
 ## Summary
 
-This release significantly improves World of Warcraft file format support with better accuracy, comprehensive version handling, and TrinityCore compliance. While there are breaking changes, they fix incorrect implementations and provide much more robust parsing capabilities.
+This release improves World of Warcraft file format support with better accuracy, full version handling, and TrinityCore compliance. While there are breaking changes, they fix incorrect implementations and provide more reliable parsing.
 
 The migration effort is primarily around:
 - Updating MFBO chunk access patterns  

@@ -12,7 +12,7 @@ Parser for World of Warcraft ADT (terrain) files.
 
 ## Status
 
-✅ **Production Ready** - Full parsing and validation support for ADT terrain files.
+**Production Ready** - Full parsing and validation support for ADT terrain files.
 
 ## Overview
 
@@ -24,7 +24,7 @@ file.
 
 - **Full ADT Parsing** - Read and parse all chunk types
 - **Version Support** - Classic through Cataclysm+
-- **Validation** - Comprehensive validation with multiple strictness levels
+- **Validation** - Multiple strictness levels
 - **Version Conversion** - Convert between different WoW versions
 - **Split File Support** - Handle Cataclysm+ split ADT files (_tex0,_obj0, etc.)
 - **Tree Visualization** - Visualize ADT structure hierarchically
@@ -33,11 +33,11 @@ file.
 
 ## Supported Versions
 
-- ✅ Classic (1.12.1)
-- ✅ The Burning Crusade (2.4.3)
-- ✅ Wrath of the Lich King (3.3.5a)
-- ✅ Cataclysm (4.3.4)
-- ⚠️  Mists of Pandaria (5.4.8) - Basic support, may need updates
+- Classic (1.12.1)
+- The Burning Crusade (2.4.3)
+- Wrath of the Lich King (3.3.5a)
+- Cataclysm (4.3.4)
+- Mists of Pandaria (5.4.8) - Basic support, may need updates
 
 ## Installation
 

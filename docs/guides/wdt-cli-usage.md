@@ -1,6 +1,6 @@
 # WDT CLI Usage Guide
 
-The `warcraft-rs` command-line tool provides comprehensive WDT (World Data Table) operations through the `wdt` subcommand, supporting all World of Warcraft versions from Classic through modern expansions.
+The `warcraft-rs` command-line tool provides WDT (World Data Table) operations through the `wdt` subcommand, supporting all World of Warcraft versions from Classic through later expansions.
 
 **Key Features:**
 
@@ -327,7 +327,7 @@ Human-readable output suitable for terminal viewing and basic scripting.
 
 ### JSON Format
 
-Structured data perfect for web applications and modern data processing:
+Structured data for web applications and automated processing:
 
 ```bash
 warcraft-rs wdt tiles Azeroth.wdt --format json | jq '.[] | select(.area_id == 12)'

@@ -448,7 +448,6 @@ fn validate(path: &str, _show_warnings: bool, _detailed: bool) -> Result<()> {
 fn convert(input_path: &str, output_path: &str, version_str: &str) -> Result<()> {
     println!("Loading WMO file: {}", input_path);
 
-    // Parse target version from expansion name
     let target_version = WmoVersion::from_expansion_name(version_str)
         .with_context(|| format!("Invalid target version: {}", version_str))?;
 
@@ -466,7 +465,6 @@ fn convert(input_path: &str, output_path: &str, version_str: &str) -> Result<()>
     let discovery = discover_wmo_chunks(&mut reader)
         .with_context(|| format!("Failed to analyze WMO file: {}", input_path))?;
 
-    // Check if this is a root or group file by looking for MOHD (root header) chunk
     let is_root = discovery.chunks.iter().any(|c| c.id.as_str() == "MOHD");
 
     if !is_root {
@@ -484,7 +482,6 @@ fn convert(input_path: &str, output_path: &str, version_str: &str) -> Result<()>
         .with_context(|| format!("Failed to open input file: {}", input_path))?;
     let mut reader = BufReader::new(file);
 
-    // Parse as root file using WmoParser which returns the correct type
     let parser = WmoParser::new();
     let mut root = parser
         .parse_root(&mut reader)
@@ -503,12 +500,10 @@ fn convert(input_path: &str, output_path: &str, version_str: &str) -> Result<()>
         .convert_root(&mut root, target_version)
         .with_context(|| "Failed to convert WMO root")?;
 
-    // Create output file
     let output_file = File::create(output_path)
         .with_context(|| format!("Failed to create output file: {}", output_path))?;
     let mut output_writer = BufWriter::new(output_file);
 
-    // Write the converted root file
     let writer = WmoWriter::new();
     writer
         .write_root(&mut output_writer, &root, target_version)
@@ -715,7 +710,6 @@ fn tree(
 
     let mut reader = BufReader::new(file);
 
-    // Parse using our new API
     let parse_result = wow_wmo::parse_wmo_with_metadata(&mut reader)
         .with_context(|| format!("Failed to parse WMO file: {}", path.display()))?;
 

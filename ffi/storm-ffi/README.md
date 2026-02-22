@@ -12,7 +12,7 @@ StormLib-compatible C API for the World of Warcraft MPQ archive library.
 
 ## Status
 
-✅ **Implemented** - Drop-in StormLib replacement using wow-mpq.
+**Implemented** - Drop-in StormLib replacement using wow-mpq.
 
 ## Overview
 
@@ -28,11 +28,11 @@ The storm-ffi crate provides a C-compatible Foreign Function Interface (FFI) tha
 
 ## Supported Versions
 
-- ✅ **Classic** (1.12.1) - Full support
-- ✅ **The Burning Crusade** (2.4.3) - Full support
-- ✅ **Wrath of the Lich King** (3.3.5a) - Full support
-- ✅ **Cataclysm** (4.3.4) - Full support
-- ✅ **Mists of Pandaria** (5.4.8) - Full support
+- **Classic** (1.12.1) - Full support
+- **The Burning Crusade** (2.4.3) - Full support
+- **Wrath of the Lich King** (3.3.5a) - Full support
+- **Cataclysm** (4.3.4) - Full support
+- **Mists of Pandaria** (5.4.8) - Full support
 
 ## Usage
 
@@ -142,7 +142,7 @@ switch (error) {
 See the [examples](examples/) directory for C examples:
 
 - `basic.c` - Simple archive open/close example
-- `storm_example.c` - Comprehensive usage example
+- `storm_example.c` - Full usage example
 
 ## Building from Source
 

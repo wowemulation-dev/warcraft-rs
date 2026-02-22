@@ -1199,7 +1199,7 @@ fn smart_extract(archive: &mut Archive, filename: &str) -> Result<Option<Vec<u8>
   archives
 - [🎭 Loading M2 Models](./m2-models.md) - Extract and load M2 model files
 - [🏛️ WMO Rendering Guide](./wmo-rendering.md) - Extract and render WMO files
-- [📦 WoW Patch Chain Summary](./wow-patch-chain-summary.md) - Comprehensive guide
+- [📦 WoW Patch Chain Summary](./wow-patch-chain-summary.md) - Guide
   to patch chaining across all WoW versions
 
 ## References

@@ -14,7 +14,7 @@ cargo run --example <example_name> [arguments]
 
 ### wmo_app.rs - WMO Manipulation Application
 
-A comprehensive WMO (World Map Object) manipulation tool that demonstrates:
+A WMO (World Map Object) manipulation tool that demonstrates:
 
 - Parsing WMO root files and group files
 - Editing WMO properties and data

@@ -1,4 +1,4 @@
-# 📦 Archive Formats
+# Archive Formats
 
 Archive formats are used to store and compress World of Warcraft game assets.
 

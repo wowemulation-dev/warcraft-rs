@@ -136,7 +136,6 @@ fn execute_validate(path: PathBuf, version: Option<String>) -> Result<()> {
 
     let mut reader = BufReader::new(file);
 
-    // Create parser with specified version if provided
     let parser = if let Some(version_str) = version {
         let version = parse_version(&version_str)?;
         WdlParser::with_version(version)
@@ -144,7 +143,6 @@ fn execute_validate(path: PathBuf, version: Option<String>) -> Result<()> {
         WdlParser::new()
     };
 
-    // Parse the file
     let wdl_file = parser
         .parse(&mut reader)
         .with_context(|| format!("Failed to parse WDL file: {}", path.display()))?;
@@ -181,7 +179,6 @@ fn execute_convert(
 
     let mut reader = BufReader::new(input_file);
 
-    // Create parser with specified source version if provided
     let parser = if let Some(version_str) = from {
         let version = parse_version(&version_str)?;
         WdlParser::with_version(version)
@@ -189,13 +186,11 @@ fn execute_convert(
         WdlParser::new()
     };
 
-    // Parse the input file
     println!("Parsing input file...");
     let wdl_file = parser
         .parse(&mut reader)
         .with_context(|| format!("Failed to parse WDL file: {}", input.display()))?;
 
-    // Parse the target version
     let target_version = parse_version(&to)?;
 
     // Show progress for conversion
@@ -214,7 +209,6 @@ fn execute_convert(
 
     let mut writer = BufWriter::new(output_file);
 
-    // Write the converted file
     let output_parser = WdlParser::with_version(target_version);
     output_parser
         .write(&mut writer, &converted_file)
@@ -242,7 +236,6 @@ fn execute_info(path: PathBuf) -> Result<()> {
 
     let mut reader = BufReader::new(file);
 
-    // Parse the file
     let parser = WdlParser::new();
     let wdl_file = parser
         .parse(&mut reader)
@@ -294,7 +287,6 @@ fn execute_info(path: PathBuf) -> Result<()> {
         );
     }
 
-    // Create chunk summary table
     let mut chunk_counts = std::collections::HashMap::new();
     for chunk in &wdl_file.chunks {
         // Convert the 4-byte magic to a string - reverse the bytes to get readable magic
@@ -364,7 +356,6 @@ fn execute_tree(
         .parse(&mut reader)
         .context("Failed to parse WDL file")?;
 
-    // Create root node
     let file_name = path
         .file_name()
         .expect("path should have a file name component")
@@ -402,7 +393,6 @@ fn execute_tree(
         chunk_groups.entry(chunk_name).or_default().push(chunk);
     }
 
-    // Add chunks to tree
     for (chunk_type, chunks) in chunk_groups {
         let (description, purpose) = match chunk_type.as_str() {
             "MVER" => ("Version Chunk", "Format version identifier"),
@@ -432,7 +422,6 @@ fn execute_tree(
             .with_metadata("description", description)
             .with_metadata("purpose", purpose);
 
-        // Add external references for certain chunk types
         if show_external_refs {
             match chunk_type.as_str() {
                 "MARE" => {

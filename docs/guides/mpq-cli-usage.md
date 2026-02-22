@@ -1,7 +1,7 @@
 # MPQ CLI Usage Guide
 
 The `warcraft-rs` command-line tool provides MPQ archive operations through the
-`mpq` subcommand with excellent compatibility for all World of Warcraft MPQ archives.
+`mpq` subcommand with full compatibility for all World of Warcraft MPQ archives.
 
 **Key Features:**
 

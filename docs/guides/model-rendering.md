@@ -2,7 +2,7 @@
 
 ## Overview
 
-Rendering World of Warcraft models efficiently requires understanding of modern
+Rendering World of Warcraft models efficiently requires understanding of
 GPU techniques, shader programming, and optimization strategies. This guide covers
 advanced rendering techniques for M2 models and WMOs using `warcraft-rs`, including
 materials, lighting, effects, and performance optimization.
@@ -11,7 +11,7 @@ materials, lighting, effects, and performance optimization.
 
 Before implementing model rendering, ensure you have:
 
-- Strong understanding of modern graphics APIs (wgpu, Vulkan, OpenGL)
+- Strong understanding of graphics APIs (wgpu, Vulkan, OpenGL)
 - Knowledge of shader programming (WGSL, GLSL, HLSL)
 - Understanding of rendering pipelines and GPU architecture
 - Familiarity with PBR (Physically Based Rendering) concepts
@@ -1402,7 +1402,7 @@ impl LodSelector {
 
 ## References
 
-- [Real-Time Rendering](https://www.realtimerendering.com/) - Comprehensive rendering techniques
+- [Real-Time Rendering](https://www.realtimerendering.com/) - Rendering techniques reference
 - [GPU Gems](https://developer.nvidia.com/gpugems) - Advanced GPU programming
-- [Learn OpenGL](https://learnopengl.com/) - Modern OpenGL techniques
-- [GPU-Driven Rendering](https://advances.realtimerendering.com/s2015/aaltonenhaar_siggraph2015_combined_final_footer_220dpi.pdf) - Modern GPU-driven techniques
+- [Learn OpenGL](https://learnopengl.com/) - OpenGL techniques
+- [GPU-Driven Rendering](https://advances.realtimerendering.com/s2015/aaltonenhaar_siggraph2015_combined_final_footer_220dpi.pdf) - GPU-driven techniques

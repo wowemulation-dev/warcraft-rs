@@ -1,6 +1,6 @@
 # wow-wdt Tests
 
-This directory contains the comprehensive test suite for wow-wdt.
+This directory contains the test suite for wow-wdt.
 
 ## Test Structure
 
@@ -119,7 +119,7 @@ Critical operations are benchmarked:
 
 ## Validation Tests
 
-Comprehensive validation includes:
+Validation includes:
 
 - Chunk size verification
 - Offset boundary checks

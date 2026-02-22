@@ -13,7 +13,7 @@ data for continents.
 
 ## Status
 
-✅ **Production Ready** - Complete WDL parser with support for all WoW versions
+**Production Ready** - Complete WDL parser with support for all WoW versions
 
 ## Overview
 
@@ -33,13 +33,13 @@ These files enable:
 
 ## Features
 
-- ✅ Parse all WDL chunk types (MVER, MAOF, MARE, MAHO, etc.)
-- ✅ Support for all WoW versions (Classic through Legion+)
-- ✅ Height data extraction and interpolation
-- ✅ Hole detection and manipulation
-- ✅ World object placement data
-- ✅ Version conversion between formats
-- ✅ Validation and error handling
+- Parse all WDL chunk types (MVER, MAOF, MARE, MAHO, etc.)
+- Support for all WoW versions (Classic through Legion+)
+- Height data extraction and interpolation
+- Hole detection and manipulation
+- World object placement data
+- Version conversion between formats
+- Validation and error handling
 
 ## Installation
 
@@ -93,23 +93,23 @@ WDL files use a chunk-based structure:
 
 | Chunk | Description | Required |
 |-------|-------------|----------|
-| **MVER** | Version number | ✅ |
-| **MAOF** | Map area offset table (64x64 grid) | ✅ |
-| **MARE** | Map area heightmap data (545 heights per tile) | ✅ |
-| **MAHO** | Map area hole bitmasks | ❌ |
-| **MWMO** | WMO filename list | ❌ |
-| **MWID** | WMO filename offsets | ❌ |
-| **MODF** | WMO placement data | ❌ |
-| **ML*** | Legion+ model chunks | ❌ |
+| **MVER** | Version number | Yes |
+| **MAOF** | Map area offset table (64x64 grid) | Yes |
+| **MARE** | Map area heightmap data (545 heights per tile) | Yes |
+| **MAHO** | Map area hole bitmasks | No |
+| **MWMO** | WMO filename list | No |
+| **MWID** | WMO filename offsets | No |
+| **MODF** | WMO placement data | No |
+| **ML*** | Legion+ model chunks | No |
 
 ## Supported Versions
 
-- ✅ **Classic** (1.12.1) - Version 18
-- ✅ **The Burning Crusade** (2.4.3) - Version 18
-- ✅ **Wrath of the Lich King** (3.3.5a) - Version 18
-- ✅ **Cataclysm** (4.3.4) - Version 18
-- ✅ **Mists of Pandaria** (5.4.8) - Version 18
-- ✅ **Legion+** (7.0+) - Version 18 with ML** chunks
+- **Classic** (1.12.1) - Version 18
+- **The Burning Crusade** (2.4.3) - Version 18
+- **Wrath of the Lich King** (3.3.5a) - Version 18
+- **Cataclysm** (4.3.4) - Version 18
+- **Mists of Pandaria** (5.4.8) - Version 18
+- **Legion+** (7.0+) - Version 18 with ML** chunks
 
 ## Examples
 
@@ -173,18 +173,18 @@ WdlParser::with_version(WdlVersion::Legion)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| MVER parsing | ✅ | All versions supported |
-| MAOF parsing | ✅ | 64x64 offset grid |
-| MARE parsing | ✅ | 17x17 + 16x16 heights |
-| MAHO parsing | ✅ | Hole bitmasks |
-| WMO chunks | ✅ | Pre-Legion support |
-| ML** chunks | ✅ | Legion+ support |
-| Version conversion | ✅ | Between all formats |
-| Data validation | ✅ | Comprehensive validation |
-| Error handling | ✅ | Robust error types |
-| Height interpolation | 🚧 | Planned |
-| Coordinate conversion | 🚧 | Planned |
-| Minimap generation | 🚧 | Planned |
+| MVER parsing | Done | All versions supported |
+| MAOF parsing | Done | 64x64 offset grid |
+| MARE parsing | Done | 17x17 + 16x16 heights |
+| MAHO parsing | Done | Hole bitmasks |
+| WMO chunks | Done | Pre-Legion support |
+| ML** chunks | Done | Legion+ support |
+| Version conversion | Done | Between all formats |
+| Data validation | Done | Validation |
+| Error handling | Done | Error types |
+| Height interpolation | Planned | - |
+| Coordinate conversion | Planned | - |
+| Minimap generation | Planned | - |
 
 ## License
 

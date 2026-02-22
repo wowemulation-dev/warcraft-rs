@@ -918,7 +918,7 @@ These chunks are present in all analyzed versions:
 
 ### Wrath of the Lich King Additions (3.3.5a+)
 
-- **MH2O** - Modern water system (replaces legacy MCLQ)
+- **MH2O** - New water system (replaces legacy MCLQ)
 
 ### Cataclysm Additions (4.3.4+)
 

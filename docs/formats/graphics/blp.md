@@ -299,7 +299,7 @@ save_blp(&new_blp, "output.blp")?;
 
 ### DXT Compression (BLP2)
 
-Most common for modern textures:
+Most common for BLP2 textures:
 
 ```rust
 use wow_blp::convert::{Blp2Format, DxtAlgorithm};
@@ -554,7 +554,7 @@ fn create_game_texture(input: &str, output: &str) -> Result<(), Box<dyn std::err
 ## Performance Tips
 
 - DXT textures can be uploaded directly to GPU without decompression
-- RAW1 (palettized) provides excellent compression for textures with limited colors
+- RAW1 (palettized) provides good compression for textures with limited colors
 - Use DXT1 for opaque textures to save memory
 - Use DXT5 for textures with smooth alpha gradients
 - Generate mipmaps for 3D textures to improve rendering performance
@@ -625,7 +625,7 @@ All textures use power-of-2 dimensions exclusively:
 
 #### RAW1 (Palettized)
 - Limited to 256 colors
-- Excellent for textures with limited color palettes
+- Suitable for textures with limited color palettes
 - Alpha precision depends on bit depth (0/1/4/8 bits)
 
 #### DXT (BLP2)
@@ -643,7 +643,7 @@ All textures use power-of-2 dimensions exclusively:
 
 ## Key Findings Summary
 
-**Based on comprehensive analysis of 50+ BLP files from WoW 1.12.1:**
+**Based on analysis of 50+ BLP files from WoW 1.12.1:**
 
 ### Format Standardization
 - **BLP2 Universal**: All files use BLP2 format, no legacy BLP0/BLP1 in WoW

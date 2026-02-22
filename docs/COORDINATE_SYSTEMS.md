@@ -287,10 +287,14 @@ assert_eq!(
 );
 ```
 
+## See Also
+
+- [Map Grid and World Coordinates](resources/coordinates.md) - ADT tile grid, world coordinates, and grid-to-world conversion
+
 ## References
 
 - [wowdev.wiki ADT Format](https://wowdev.wiki/ADT) - Original coordinate system documentation
-- [wowdev.wiki M2 Format](https://wowdev.wiki/M2) - Model coordinate specifications  
+- [wowdev.wiki M2 Format](https://wowdev.wiki/M2) - Model coordinate specifications
 - [Blender Coordinate System](https://docs.blender.org/manual/en/latest/advanced/coordinate_systems.html)
 - [Unity Coordinate System](https://docs.unity3d.com/Manual/StandardAssetsImportingMeshes.html)
 - [Unreal Engine Coordinate System](https://docs.unrealengine.com/4.27/en-US/Basics/CoordinateSpace/)

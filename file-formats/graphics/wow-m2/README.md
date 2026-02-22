@@ -12,7 +12,7 @@ A Rust library for parsing, validating, and converting World of Warcraft M2 mode
 
 ## Overview
 
-`wow-m2` provides comprehensive support for M2 model files across all World of Warcraft expansions from Classic (1.12.1) through The War Within (11.x). The library handles:
+`wow-m2` supports M2 model files across all World of Warcraft expansions from Classic (1.12.1) through The War Within (11.x). The library handles:
 
 - **M2 Models** (`.m2`/`.mdx`) - 3D character, creature, and object models
 - **Skin Files** (`.skin`) - Level-of-detail and submesh information
@@ -21,13 +21,13 @@ A Rust library for parsing, validating, and converting World of Warcraft M2 mode
 
 ## Features
 
-- ✅ Parse and validate M2 models from all WoW versions
-- ✅ Convert models between different game versions
-- ✅ **Coordinate system transformations** for Blender, Unity, Unreal Engine
-- ✅ Support for all chunk types (bones, animations, textures, etc.)
-- ✅ Comprehensive error handling with detailed context
-- ✅ Zero-copy parsing where possible for performance
-- ✅ Optional serde support for serialization
+- Parse and validate M2 models from all WoW versions
+- Convert models between different game versions
+- Coordinate system transformations for Blender, Unity, Unreal Engine
+- Support for all chunk types (bones, animations, textures, etc.)
+- Error handling with detailed context
+- Zero-copy parsing where possible for performance
+- Optional serde support for serialization
 
 ## Installation
 
@@ -127,17 +127,17 @@ let version = M2Version::from_expansion_name("MoP")?;
 
 | Expansion | Version Range | Support |
 |-----------|---------------|---------|
-| Classic | 1.12.x | ✅ Full |
-| TBC | 2.4.x | ✅ Full |
-| WotLK | 3.3.x | ✅ Full |
-| Cataclysm | 4.3.x | ✅ Full |
-| MoP | 5.4.x | ✅ Full |
-| WoD | 6.2.x | ✅ Full |
-| Legion | 7.3.x | ✅ Full |
-| BfA | 8.3.x | ✅ Full |
-| Shadowlands | 9.x | ✅ Full |
-| Dragonflight | 10.x | ✅ Full |
-| The War Within | 11.x | ✅ Full |
+| Classic | 1.12.x | Full |
+| TBC | 2.4.x | Full |
+| WotLK | 3.3.x | Full |
+| Cataclysm | 4.3.x | Full |
+| MoP | 5.4.x | Full |
+| WoD | 6.2.x | Full |
+| Legion | 7.3.x | Full |
+| BfA | 8.3.x | Full |
+| Shadowlands | 9.x | Full |
+| Dragonflight | 10.x | Full |
+| The War Within | 11.x | Full |
 
 ## Examples
 
@@ -149,7 +149,7 @@ See the `examples/` directory for more detailed examples:
 
 ## Documentation
 
-- **[Coordinate Systems Guide](../../../docs/COORDINATE_SYSTEMS.md)** - Comprehensive guide to WoW coordinate systems and transformations
+- **[Coordinate Systems Guide](../../../docs/COORDINATE_SYSTEMS.md)** - WoW coordinate systems and transformations
 - **[API Documentation](https://docs.rs/wow-m2)** - Complete API reference
 
 ## License

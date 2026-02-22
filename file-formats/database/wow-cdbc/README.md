@@ -12,14 +12,14 @@ Parser for World of Warcraft DBC (client database) files.
 
 ## Features
 
-- 🔍 Parse DBC files with runtime schema definition
-- 📊 Type-safe field access with proper value types
-- 🔤 Efficient string block handling with caching support
-- 🗂️ Indexed lookups by key field for fast access
-- 🔬 Schema discovery for unknown DBC formats
-- 📝 DBD (Database Definition) file support for WoWDBDefs compatibility
-- 🚀 Lazy loading support for large files
-- 🛠️ Export to common formats (CSV, JSON, YAML)
+- Parse DBC files with runtime schema definition
+- Type-safe field access with proper value types
+- Efficient string block handling with caching support
+- Indexed lookups by key field for fast access
+- Schema discovery for unknown DBC formats
+- DBD (Database Definition) file support for WoWDBDefs compatibility
+- Lazy loading support for large files
+- Export to common formats (CSV, JSON, YAML)
 
 ## Installation
 
@@ -73,11 +73,11 @@ if let Some(record) = records.get_record_by_key(0) {  // Eastern Kingdoms
 
 ## Supported Versions
 
-- ✅ Classic (1.12.1) - WDBC format
-- ✅ The Burning Crusade (2.4.3) - WDBC format
-- ✅ Wrath of the Lich King (3.3.5a) - WDBC format
-- ✅ Cataclysm (4.3.4) - WDBC format
-- ✅ Mists of Pandaria (5.4.8) - WDB2/WDB5 formats
+- Classic (1.12.1) - WDBC format
+- The Burning Crusade (2.4.3) - WDBC format
+- Wrath of the Lich King (3.3.5a) - WDBC format
+- Cataclysm (4.3.4) - WDBC format
+- Mists of Pandaria (5.4.8) - WDB2/WDB5 formats
 
 ## DBD Support
 

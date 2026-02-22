@@ -12,7 +12,7 @@ Parser and encoder for Blizzard BLP texture files used in Warcraft III and World
 
 ## Status
 
-✅ **Implemented** - Full BLP parsing and encoding functionality.
+**Implemented** - Full BLP parsing and encoding functionality.
 
 ## Features
 
