@@ -3,6 +3,7 @@
 use chrono::{DateTime, Utc};
 
 /// Type of hash used in the archive
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashType {
     /// Traditional MPQ hash table
@@ -12,6 +13,7 @@ pub enum HashType {
 }
 
 /// Represents a filename and all its associated hashes
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct FileRecord {
     /// Unique database identifier
@@ -39,6 +41,7 @@ pub struct FileRecord {
 }
 
 /// Represents an analyzed MPQ archive
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ArchiveRecord {
     /// Unique database identifier
@@ -53,27 +56,4 @@ pub struct ArchiveRecord {
     pub mpq_version: Option<u32>,
     /// Number of files in the archive
     pub file_count: Option<u32>,
-}
-
-/// Represents a file found in an archive (unused, for future functionality)
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub(super) struct ArchiveFileRecord {
-    pub archive_id: i64,
-    pub hash_a: u32,
-    pub hash_b: u32,
-    pub file_size: Option<u64>,
-    pub compressed_size: Option<u64>,
-    pub flags: Option<u32>,
-    pub filename_id: Option<i64>,
-}
-
-/// Statistics about the database (unused, for future functionality)
-#[allow(dead_code)]
-#[derive(Debug)]
-pub(super) struct DatabaseStats {
-    pub total_filenames: usize,
-    pub total_archives: usize,
-    pub total_archive_files: usize,
-    pub filenames_by_source: Vec<(String, usize)>,
 }

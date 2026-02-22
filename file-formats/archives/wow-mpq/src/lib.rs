@@ -127,7 +127,6 @@ pub mod builder;
 pub mod compare;
 pub mod compression;
 pub mod crypto;
-pub mod database;
 pub mod error;
 pub mod header;
 pub mod io;
@@ -172,7 +171,8 @@ pub use tables::{BetFileInfo, BetTable, BlockEntry, BlockTable, HashEntry, HashT
 
 // Re-export crypto for CLI usage
 pub use crypto::{
-    decrypt_block, decrypt_dword, encrypt_block, hash_string, hash_type, jenkins_hash,
+    calculate_het_hashes, calculate_mpq_hashes, decrypt_block, decrypt_dword, encrypt_block,
+    hash_string, hash_type, jenkins_hash,
 };
 
 // Re-export compression for testing

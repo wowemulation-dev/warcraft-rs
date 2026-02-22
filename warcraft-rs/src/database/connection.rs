@@ -1,7 +1,6 @@
-//! Database connection management
+//! Database connection management using turso (async SQLite)
 
 use directories::ProjectDirs;
-use rusqlite::{Connection, Result as SqlResult};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -10,9 +9,9 @@ use super::schema;
 /// Errors that can occur during database operations
 #[derive(Error, Debug)]
 pub enum DatabaseError {
-    /// SQLite database error
-    #[error("SQLite error: {0}")]
-    Sqlite(#[from] rusqlite::Error),
+    /// Database error from turso
+    #[error("Database error: {0}")]
+    Database(#[from] turso::Error),
 
     /// Filesystem I/O error
     #[error("I/O error: {0}")]
@@ -25,31 +24,41 @@ pub enum DatabaseError {
 
 pub(super) type Result<T> = std::result::Result<T, DatabaseError>;
 
-/// Database connection wrapper
+/// Database connection wrapper.
+///
+/// Holds both the `turso::Database` (which must outlive the connection) and
+/// a `turso::Connection` used for all queries.
 #[derive(Debug)]
 pub struct Database {
-    conn: Connection,
+    /// The turso database handle -- must outlive `conn`.
+    _db: turso::Database,
+    conn: turso::Connection,
     path: PathBuf,
 }
 
 impl Database {
     /// Open or create a database at the default location
-    pub fn open_default() -> Result<Self> {
+    pub async fn open_default() -> Result<Self> {
         let path = Self::default_path()?;
-        Self::open(&path)
+        Self::open(&path).await
     }
 
     /// Open or create a database at the specified path
-    pub fn open(path: &Path) -> Result<Self> {
+    pub async fn open(path: &Path) -> Result<Self> {
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
 
-        let conn = Connection::open(path)?;
-        schema::init_schema(&conn)?;
+        let db = turso::Builder::new_local(&path.to_string_lossy())
+            .build()
+            .await?;
+        let conn = db.connect()?;
+
+        schema::init_schema(&conn).await?;
 
         Ok(Self {
+            _db: db,
             conn,
             path: path.to_path_buf(),
         })
@@ -66,27 +75,12 @@ impl Database {
     }
 
     /// Get a reference to the underlying connection
-    pub fn connection(&self) -> &Connection {
+    pub fn connection(&self) -> &turso::Connection {
         &self.conn
-    }
-
-    /// Get a mutable reference to the underlying connection
-    pub fn connection_mut(&mut self) -> &mut Connection {
-        &mut self.conn
     }
 
     /// Get the database file path
     pub fn path(&self) -> &Path {
         &self.path
-    }
-
-    /// Begin a transaction
-    pub fn transaction(&mut self) -> SqlResult<rusqlite::Transaction<'_>> {
-        self.conn.transaction()
-    }
-
-    /// Execute a batch of SQL statements
-    pub fn execute_batch(&self, sql: &str) -> SqlResult<()> {
-        self.conn.execute_batch(sql)
     }
 }

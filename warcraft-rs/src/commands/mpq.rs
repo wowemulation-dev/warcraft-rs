@@ -387,7 +387,7 @@ pub enum ImportSourceArg {
     Directory,
 }
 
-pub fn execute(command: MpqCommands) -> Result<()> {
+pub async fn execute(command: MpqCommands) -> Result<()> {
     match command {
         MpqCommands::List {
             archive,
@@ -396,7 +396,7 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             use_db,
             record_to_db,
             show_patches,
-        } => list_archive(&archive, long, filter, use_db, record_to_db, show_patches),
+        } => list_archive(&archive, long, filter, use_db, record_to_db, show_patches).await,
         MpqCommands::Extract {
             archive,
             output,
@@ -516,11 +516,11 @@ pub fn execute(command: MpqCommands) -> Result<()> {
             patches,
             detailed,
         } => visualize_patch_chain(&base, patches, detailed),
-        MpqCommands::Db(db_command) => execute_db_command(db_command),
+        MpqCommands::Db(db_command) => execute_db_command(db_command).await,
     }
 }
 
-fn list_archive(
+async fn list_archive(
     path: &str,
     long: bool,
     filter: Option<String>,
@@ -528,7 +528,7 @@ fn list_archive(
     record_to_db: bool,
     show_patches: bool,
 ) -> Result<()> {
-    use wow_mpq::database::Database;
+    use crate::database::Database;
 
     let spinner = create_spinner("Opening archive...");
     let mut archive = Archive::open(path).context("Failed to open archive")?;
@@ -536,14 +536,18 @@ fn list_archive(
 
     // Open database if needed
     let db = if use_db || record_to_db {
-        Some(Database::open_default().context("Failed to open database")?)
+        Some(
+            Database::open_default()
+                .await
+                .context("Failed to open database")?,
+        )
     } else {
         None
     };
 
     // Record filenames to database if requested
     if record_to_db && let Some(ref db) = db {
-        let count = archive.record_listfile_to_db(db)?;
+        let count = record_listfile_to_db(&mut archive, db).await?;
         if count > 0 {
             println!("Recorded {count} filenames to database");
         }
@@ -552,7 +556,7 @@ fn list_archive(
     // Get file list
     let entries = if use_db {
         if let Some(ref db) = db {
-            archive.list_with_db(db)?
+            list_with_db(&mut archive, db).await?
         } else {
             archive.list()?
         }
@@ -612,6 +616,58 @@ fn list_archive(
     }
 
     Ok(())
+}
+
+/// List files in an archive with database lookup for names
+async fn list_with_db(
+    archive: &mut Archive,
+    db: &crate::database::Database,
+) -> Result<Vec<wow_mpq::FileEntry>> {
+    use crate::database::HashLookup;
+
+    let mut entries = archive.list_all_with_hashes()?;
+
+    for entry in &mut entries {
+        if let Some((hash_a, hash_b)) = entry.hashes
+            && let Ok(Some(filename)) = db.lookup_filename(hash_a, hash_b).await
+        {
+            entry.name = filename;
+        }
+    }
+
+    Ok(entries)
+}
+
+/// Record all filenames from an archive's listfile to the database
+async fn record_listfile_to_db(
+    archive: &mut Archive,
+    db: &crate::database::Database,
+) -> Result<usize> {
+    use crate::database::HashLookup;
+
+    if archive.find_file("(listfile)")?.is_some()
+        && let Ok(listfile_data) = archive.read_file("(listfile)")
+        && let Ok(filenames) = wow_mpq::special_files::parse_listfile(&listfile_data)
+    {
+        let source = format!("archive:{}", archive.path().display());
+        let filenames_with_source: Vec<(&str, Option<&str>)> = filenames
+            .iter()
+            .map(|f| (f.as_str(), Some(source.as_str())))
+            .collect();
+
+        match db.store_filenames(&filenames_with_source).await {
+            Ok((new_count, updated_count)) => {
+                log::info!("Recorded {new_count} new and {updated_count} updated filenames");
+                return Ok(new_count + updated_count);
+            }
+            Err(e) => {
+                log::error!("Failed to store filenames in database: {e}");
+                anyhow::bail!("Database error: {e}");
+            }
+        }
+    }
+
+    Ok(0)
 }
 
 struct ExtractOptions {
@@ -2041,19 +2097,26 @@ fn show_entry_at_index(archive: &mut Archive, index: usize, _raw_dump: bool) -> 
 }
 
 // Database command implementation
-fn execute_db_command(command: DbCommands) -> Result<()> {
+async fn execute_db_command(command: DbCommands) -> Result<()> {
+    use crate::database::{Database, HashLookup, ImportSource, Importer};
+    use crate::database::{calculate_het_hashes, calculate_mpq_hashes};
     use std::io::Write;
-    use wow_mpq::database::{Database, HashLookup, ImportSource, Importer};
-    use wow_mpq::database::{calculate_het_hashes, calculate_mpq_hashes};
 
     match command {
         DbCommands::Status { detailed } => {
-            let db = Database::open_default().context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let conn = db.connection();
 
             // Get basic statistics
-            let filename_count: i64 =
-                conn.query_row("SELECT COUNT(*) FROM filenames", [], |row| row.get(0))?;
+            let filename_count: i64 = {
+                let mut rows = conn.query("SELECT COUNT(*) FROM filenames", ()).await?;
+                match rows.next().await? {
+                    Some(row) => row.get(0)?,
+                    None => 0,
+                }
+            };
 
             println!("MPQ Hash Database Status");
             println!("========================");
@@ -2064,16 +2127,17 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
                 println!("\nDetailed Statistics:");
 
                 // Count by source
-                let mut stmt = conn.prepare(
-                    "SELECT source, COUNT(*) FROM filenames GROUP BY source ORDER BY COUNT(*) DESC",
-                )?;
-                let sources = stmt.query_map([], |row| {
-                    Ok((row.get::<_, Option<String>>(0)?, row.get::<_, i64>(1)?))
-                })?;
+                let mut rows = conn
+                    .query(
+                        "SELECT source, COUNT(*) FROM filenames GROUP BY source ORDER BY COUNT(*) DESC",
+                        (),
+                    )
+                    .await?;
 
                 println!("\nFilenames by source:");
-                for source in sources {
-                    let (src, count) = source?;
+                while let Some(row) = rows.next().await? {
+                    let src: Option<String> = row.get(0).ok();
+                    let count: i64 = row.get(1)?;
                     println!(
                         "  {}: {}",
                         src.unwrap_or_else(|| "unknown".to_string()),
@@ -2082,16 +2146,17 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
                 }
 
                 // Recent additions
-                let mut stmt = conn.prepare(
-                    "SELECT filename, created_at FROM filenames ORDER BY created_at DESC LIMIT 10",
-                )?;
-                let recent = stmt.query_map([], |row| {
-                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-                })?;
+                let mut rows = conn
+                    .query(
+                        "SELECT filename, created_at FROM filenames ORDER BY created_at DESC LIMIT 10",
+                        (),
+                    )
+                    .await?;
 
                 println!("\nMost recent additions:");
-                for entry in recent {
-                    let (filename, created_at) = entry?;
+                while let Some(row) = rows.next().await? {
+                    let filename: String = row.get(0)?;
+                    let created_at: String = row.get(1)?;
                     println!("  {filename} - {created_at}");
                 }
             }
@@ -2104,7 +2169,9 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             source_type,
             show_progress,
         } => {
-            let db = Database::open_default().context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let importer = Importer::new(&db);
 
             let import_source = match source_type {
@@ -2121,6 +2188,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
 
             let stats = importer
                 .import(Path::new(&path), import_source)
+                .await
                 .context("Import failed")?;
 
             if let Some(s) = spinner {
@@ -2142,13 +2210,15 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             archive,
             include_anonymous,
         } => {
-            let db = Database::open_default().context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let mut mpq = Archive::open(&archive).context("Failed to open archive")?;
 
             let spinner = create_spinner("Analyzing archive...");
 
             // Record listfile entries
-            let count = mpq.record_listfile_to_db(&db)?;
+            let count = record_listfile_to_db(&mut mpq, &db).await?;
 
             spinner.finish_with_message(format!("Recorded {count} filenames from listfile"));
 
@@ -2161,7 +2231,9 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
         }
 
         DbCommands::Lookup { filename } => {
-            let db = Database::open_default().context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
 
             // Calculate and display hashes
             let (hash_a, hash_b, hash_offset) = calculate_mpq_hashes(&filename);
@@ -2195,7 +2267,7 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             );
 
             // Check if it exists in database
-            if db.filename_exists(&filename)? {
+            if db.filename_exists(&filename).await? {
                 println!("\n✓ Filename exists in database");
             } else {
                 println!("\n✗ Filename not found in database");
@@ -2205,35 +2277,41 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
         }
 
         DbCommands::Export { output, source } => {
-            let db = Database::open_default().context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let conn = db.connection();
-
-            let mut query = "SELECT DISTINCT filename FROM filenames".to_string();
-            let mut params: Vec<String> = Vec::new();
-
-            if let Some(src) = source {
-                query.push_str(" WHERE source = ?1");
-                params.push(src);
-            }
-
-            query.push_str(" ORDER BY filename");
-
-            let mut stmt = conn.prepare(&query)?;
-            let filenames: Vec<String> = if params.is_empty() {
-                stmt.query_map([], |row| row.get::<_, String>(0))?
-                    .collect::<std::result::Result<Vec<_>, _>>()?
-            } else {
-                stmt.query_map([&params[0]], |row| row.get::<_, String>(0))?
-                    .collect::<std::result::Result<Vec<_>, _>>()?
-            };
 
             let mut file = fs::File::create(&output).context("Failed to create output file")?;
             let mut count = 0;
 
-            for filename in filenames {
-                writeln!(file, "{filename}")?;
-                count += 1;
-            }
+            if let Some(src) = source {
+                let mut rows = conn
+                    .query(
+                        "SELECT DISTINCT filename FROM filenames WHERE source = ?1 ORDER BY filename",
+                        turso::params![src],
+                    )
+                    .await?;
+
+                while let Some(row) = rows.next().await? {
+                    let filename: String = row.get(0)?;
+                    writeln!(file, "{filename}")?;
+                    count += 1;
+                }
+            } else {
+                let mut rows = conn
+                    .query(
+                        "SELECT DISTINCT filename FROM filenames ORDER BY filename",
+                        (),
+                    )
+                    .await?;
+
+                while let Some(row) = rows.next().await? {
+                    let filename: String = row.get(0)?;
+                    writeln!(file, "{filename}")?;
+                    count += 1;
+                }
+            };
 
             println!("Exported {count} filenames to {output}");
 
@@ -2245,58 +2323,60 @@ fn execute_db_command(command: DbCommands) -> Result<()> {
             long,
             limit,
         } => {
-            let db = Database::open_default().context("Failed to open database")?;
+            let db = Database::open_default()
+                .await
+                .context("Failed to open database")?;
             let conn = db.connection();
 
-            let mut query = "SELECT filename, hash_a, hash_b, source FROM filenames".to_string();
-            let mut params: Vec<String> = Vec::new();
+            let mut result_rows: Vec<(String, i64, i64, Option<String>)> = Vec::new();
 
             if let Some(pattern) = filter {
-                query.push_str(" WHERE filename LIKE ?1");
-                params.push(pattern.replace('*', "%"));
-            }
+                let like_pattern = pattern.replace('*', "%");
+                let query = format!(
+                    "SELECT filename, hash_a, hash_b, source FROM filenames WHERE filename LIKE ?1 ORDER BY filename LIMIT {limit}"
+                );
+                let mut rows = conn.query(&query, turso::params![like_pattern]).await?;
 
-            query.push_str(&format!(" ORDER BY filename LIMIT {limit}"));
-
-            let mut stmt = conn.prepare(&query)?;
-            let rows: Vec<(String, u32, u32, Option<String>)> = if params.is_empty() {
-                stmt.query_map([], |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, u32>(1)?,
-                        row.get::<_, u32>(2)?,
-                        row.get::<_, Option<String>>(3)?,
-                    ))
-                })?
-                .collect::<std::result::Result<Vec<_>, _>>()?
+                while let Some(row) = rows.next().await? {
+                    result_rows.push((
+                        row.get::<String>(0)?,
+                        row.get::<i64>(1)?,
+                        row.get::<i64>(2)?,
+                        row.get::<Option<String>>(3).ok().flatten(),
+                    ));
+                }
             } else {
-                stmt.query_map([&params[0]], |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, u32>(1)?,
-                        row.get::<_, u32>(2)?,
-                        row.get::<_, Option<String>>(3)?,
-                    ))
-                })?
-                .collect::<std::result::Result<Vec<_>, _>>()?
-            };
+                let query = format!(
+                    "SELECT filename, hash_a, hash_b, source FROM filenames ORDER BY filename LIMIT {limit}"
+                );
+                let mut rows = conn.query(&query, ()).await?;
+
+                while let Some(row) = rows.next().await? {
+                    result_rows.push((
+                        row.get::<String>(0)?,
+                        row.get::<i64>(1)?,
+                        row.get::<i64>(2)?,
+                        row.get::<Option<String>>(3).ok().flatten(),
+                    ));
+                }
+            }
 
             if long {
                 let mut table = create_table(vec!["Filename", "Hash A", "Hash B", "Source"]);
-                for (filename, hash_a, hash_b, source) in rows {
+                for (filename, hash_a, hash_b, source) in result_rows {
                     add_table_row(
                         &mut table,
                         vec![
                             filename,
-                            format!("0x{:08X}", hash_a),
-                            format!("0x{:08X}", hash_b),
+                            format!("0x{hash_a:08X}"),
+                            format!("0x{hash_b:08X}"),
                             source.unwrap_or_else(|| "unknown".to_string()),
                         ],
                     );
                 }
                 println!("{table}");
             } else {
-                for (filename, _, _, _) in rows {
+                for (filename, _, _, _) in result_rows {
                     println!("{filename}");
                 }
             }

@@ -48,11 +48,6 @@ rayon = "1.10"
 parking_lot = "0.12"
 lru = "0.12"
 
-# Database support
-rusqlite = { version = "0.32", features = ["bundled"] }
-directories = "5.0"
-chrono = "0.4"
-glob = "0.3"
 
 # Async I/O support (optional)
 tokio = { version = "1.0", features = ["io-util", "time", "sync", "rt", "fs", "macros"], optional = true }

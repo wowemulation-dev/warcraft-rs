@@ -5,16 +5,6 @@
 !.gitignore
 !.gitattributes
 
-# Project files
-/.cache/
-/.fleet/
-/.idea/
-/.vscode/
-
-# OS specific temporary files
-.DS_Store
-Thumbs.db
-
 # Added by cargo
 /target/
 
@@ -52,7 +42,4 @@ dist/
 .env
 .env.*
 !.env.example
-
-# Tools output
-tools/adt/samples/
-tools/adt/reports/
+perf.data

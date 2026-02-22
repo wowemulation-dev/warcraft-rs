@@ -1,14 +1,21 @@
 //! Database schema and migration management
 
-use rusqlite::{Connection, Result};
+use turso::Connection;
+
+use super::connection::Result;
 
 /// Current schema version
-pub(super) const SCHEMA_VERSION: i32 = 1;
+pub(super) const SCHEMA_VERSION: i64 = 1;
 
 /// Initialize the database schema
-pub(super) fn init_schema(conn: &Connection) -> Result<()> {
+pub(super) async fn init_schema(conn: &Connection) -> Result<()> {
+    // Enable WAL mode for better write concurrency and throughput.
+    // PRAGMA returns a result row, so use query() rather than execute().
+    let _ = conn.query("PRAGMA journal_mode = WAL", ()).await?;
+    // NORMAL sync is safe with WAL — only syncs at checkpoint, not every commit
+    let _ = conn.query("PRAGMA synchronous = NORMAL", ()).await?;
     // Enable foreign keys
-    conn.execute("PRAGMA foreign_keys = ON", [])?;
+    conn.execute("PRAGMA foreign_keys = ON", ()).await?;
 
     // Create version table
     conn.execute(
@@ -16,26 +23,31 @@ pub(super) fn init_schema(conn: &Connection) -> Result<()> {
             version INTEGER PRIMARY KEY,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     // Check current version
-    let current_version: Option<i32> = conn
-        .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
-            row.get(0)
-        })
-        .unwrap_or(None);
+    let current_version: Option<i64> = {
+        let mut rows = conn
+            .query("SELECT MAX(version) FROM schema_version", ())
+            .await?;
+        match rows.next().await? {
+            Some(row) => row.get::<Option<i64>>(0).ok().flatten(),
+            None => None,
+        }
+    };
 
     // Apply migrations
-    if current_version.is_none() || current_version.unwrap() < 1 {
-        migrate_v1(conn)?;
+    if current_version.is_none() || current_version.is_some_and(|v| v < 1) {
+        migrate_v1(conn).await?;
     }
 
     Ok(())
 }
 
 /// Migration to version 1: Initial schema
-fn migrate_v1(conn: &Connection) -> Result<()> {
+async fn migrate_v1(conn: &Connection) -> Result<()> {
     // Unified table for all filename-hash mappings
     conn.execute(
         "CREATE TABLE IF NOT EXISTS filenames (
@@ -46,19 +58,20 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             hash_b INTEGER NOT NULL,
             hash_offset INTEGER NOT NULL,
             -- HET hashes (stored for multiple bit sizes)
-            het_hash_40_file INTEGER,  -- 40-bit HET file hash
-            het_hash_40_name INTEGER,  -- 40-bit HET name hash
-            het_hash_48_file INTEGER,  -- 48-bit HET file hash
-            het_hash_48_name INTEGER,  -- 48-bit HET name hash
-            het_hash_56_file INTEGER,  -- 56-bit HET file hash
-            het_hash_56_name INTEGER,  -- 56-bit HET name hash
-            het_hash_64_file INTEGER,  -- 64-bit HET file hash
-            het_hash_64_name INTEGER,  -- 64-bit HET name hash
+            het_hash_40_file INTEGER,
+            het_hash_40_name INTEGER,
+            het_hash_48_file INTEGER,
+            het_hash_48_name INTEGER,
+            het_hash_56_file INTEGER,
+            het_hash_56_name INTEGER,
+            het_hash_64_file INTEGER,
+            het_hash_64_name INTEGER,
             source TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     // Archive analysis results
     conn.execute(
@@ -70,8 +83,9 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             mpq_version INTEGER,
             file_count INTEGER
         )",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     // Files found in archives
     conn.execute(
@@ -85,51 +99,60 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             filename_id INTEGER REFERENCES filenames(id),
             PRIMARY KEY (archive_id, hash_a, hash_b)
         )",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     // Create indices for fast lookups
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_filename_hashes ON filenames(hash_a, hash_b)",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_archive_files_hashes ON archive_files(hash_a, hash_b)",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_archive_analysis_path ON archive_analysis(archive_path)",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     // Indices for HET table lookups at different bit sizes
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_het_40 ON filenames(het_hash_40_file, het_hash_40_name)",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_het_48 ON filenames(het_hash_48_file, het_hash_48_name)",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_het_56 ON filenames(het_hash_56_file, het_hash_56_name)",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_het_64 ON filenames(het_hash_64_file, het_hash_64_name)",
-        [],
-    )?;
+        (),
+    )
+    .await?;
 
     // Record migration
     conn.execute(
         "INSERT INTO schema_version (version) VALUES (?1)",
-        [SCHEMA_VERSION],
-    )?;
+        turso::params![SCHEMA_VERSION],
+    )
+    .await?;
 
     Ok(())
 }
