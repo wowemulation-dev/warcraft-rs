@@ -230,7 +230,7 @@ error: could not compile `warcraft-rs` (bin "warcraft-rs") due to previous error
 ### Getting Help
 
 - Open an [issue on GitHub](https://github.com/wowemulation-dev/warcraft-rs/issues)
-- Join our [Discord community](https://discord.gg/Q44pPMvGEd)
+- Join our [Discord community](https://discord.gg/Jj4uWy3DGP)
 
 ## Next Steps
 

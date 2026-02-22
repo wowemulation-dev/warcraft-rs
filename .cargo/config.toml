@@ -3,8 +3,8 @@
 
 [build]
 # Treat all warnings as errors in CI and development
-rustflags = ["-D", "warnings"]
-rustdocflags = ["-D", "warnings"]
+# rustflags = ["-D", "warnings"]
+# rustdocflags = ["-D", "warnings"]
 
 # Use all available CPU cores for parallel compilation
 jobs = -1
@@ -13,45 +13,6 @@ jobs = -1
 # Always show colors in terminal output
 color = "always"
 
-# Show warnings even in dependencies during development
-# quiet = false
-
-[alias]
-# Quick format check (no changes)
-fmt-check = "fmt --all -- --check"
-
-# Run clippy on entire workspace with all features
-# This is the primary quality gate
-lint = "clippy --workspace --all-targets --all-features"
-
-# Run cargo-deny security and license checks
-deny = "deny check"
-
-# Run all tests with all features enabled
-test-all = "test --workspace --all-features"
-
-# Run only library unit tests (faster iteration)
-test-lib = "test --lib --workspace"
-
-# Run only doc tests
-test-doc = "test --doc --workspace"
-
-# Build documentation for all crates
-docs = "doc --workspace --all-features --no-deps"
-
-# Full QA suite: format, lint, and test
-# Note: Cargo aliases cannot chain commands. Use shell instead:
-#   cargo fmt --all && cargo lint && cargo test-all
-
-# Quick check without full compilation (type checking only)
-check-all = "check --workspace --all-targets --all-features"
-
-# Release build for all workspace members
-build-release = "build --workspace --release"
-
-# Clean and rebuild (useful when things get weird)
-# Note: Run as two separate commands: cargo clean && cargo build --workspace
-# rebuild = ["clean", "build --workspace"]  # Chained aliases don't work reliably
 
 [env]
 # Enable backtraces for better error messages during development

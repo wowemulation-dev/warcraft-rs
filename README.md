@@ -4,7 +4,7 @@ A Rust library and CLI toolset for parsing, manipulating, and creating World of 
 
 <div align="center">
 
-[![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/Q44pPMvGEd)
+[![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/Jj4uWy3DGP)
 [![Sponsor](https://img.shields.io/github/sponsors/danielsreichenbach?logo=github&style=flat-square)](https://github.com/sponsors/danielsreichenbach)
 [![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
 [![docs.rs](https://img.shields.io/docsrs/warcraft-rs)](https://docs.rs/warcraft-rs)
