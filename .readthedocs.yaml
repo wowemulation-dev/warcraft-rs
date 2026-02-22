@@ -1,0 +1,20 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+build:
+  os: ubuntu-lts-latest
+  tools:
+    rust: latest
+  jobs:
+    install:
+      # Install to a known location since RTD uses asdf for Rust,
+      # which places binaries outside the standard ~/.cargo/bin path.
+      # Each job command runs in its own shell, so PATH changes don't
+      # persist between lines.
+      - cargo install mdbook mdbook-mermaid --root $HOME/.local
+    build:
+      html:
+        # Prepend install dir to PATH so mdbook can find mdbook-mermaid
+        - PATH=$HOME/.local/bin:$PATH mdbook build docs --dest-dir $READTHEDOCS_OUTPUT/html
