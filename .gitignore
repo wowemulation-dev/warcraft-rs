@@ -43,3 +43,6 @@ dist/
 .env.*
 !.env.example
 perf.data
+
+# mdbook build output
+docs/book/

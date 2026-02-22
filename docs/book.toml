@@ -1,0 +1,16 @@
+[book]
+title = "warcraft-rs"
+description = "Rust libraries for World of Warcraft file formats"
+authors = ["warcraft-rs contributors"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+git-repository-url = "https://github.com/wowemulation-dev/warcraft-rs"
+edit-url-template = "https://github.com/wowemulation-dev/warcraft-rs/edit/main/docs/src/{path}"

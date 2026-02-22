@@ -79,5 +79,5 @@ provides examples for parsing and handling them.
 
 ## Contributing
 
-See our [Contributing Guide](../CONTRIBUTING.md) for information on how to
+See our [Contributing Guide](../../CONTRIBUTING.md) for information on how to
 contribute to this project.
