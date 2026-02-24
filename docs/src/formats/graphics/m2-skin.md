@@ -75,12 +75,12 @@ enum GeosetType {
 ## Usage Example
 
 ```rust
-use warcraft_rs::m2::{M2Model, M2Skin, LodLevel};
+use wow_m2::{M2Model, parse_m2, load_skin};
 
 // Load model and skin
-let mut model = M2Model::open("Character/Human/Female/HumanFemale.m2")?;
-let skin = M2Skin::open("Character/Human/Female/HumanFemale00.skin")?;
-model.set_skin(skin);
+let format = M2Model::load("Character/Human/Female/HumanFemale.m2")?;
+let model = format.model();
+let skin = load_skin("Character/Human/Female/HumanFemale00.skin")?;
 
 // Get mesh data
 let mesh_data = model.build_mesh_data()?;
@@ -100,8 +100,7 @@ for submesh in &mesh_data.submeshes {
 }
 
 // Load different LOD
-let lod1_skin = M2Skin::open("Character/Human/Female/HumanFemale01.skin")?;
-model.set_skin(lod1_skin);
+let lod1_skin = load_skin("Character/Human/Female/HumanFemale01.skin")?;
 ```
 
 ## LOD Management
@@ -152,7 +151,7 @@ impl DynamicLodModel {
             if self.skins[new_lod as usize].is_none() {
                 let skin_path = format!("{}{:02}.skin",
                     self.base_model.base_name(), new_lod);
-                self.skins[new_lod as usize] = Some(M2Skin::open(&skin_path)?);
+                self.skins[new_lod as usize] = Some(load_skin(&skin_path)?);
             }
 
             // Apply skin
@@ -305,7 +304,7 @@ impl SkinStreamer {
 
             // Async load
             let skin = tokio::spawn(async move {
-                M2Skin::open(path)
+                load_skin(path)
             });
 
             let loaded_skin = skin.await??;
@@ -355,4 +354,3 @@ impl SkinStreamer {
 
 - [M2 Format](m2.md) - Main model format
 - [LOD System Guide](../../guides/lod-system.md)
-- [Character Customization Guide](../../guides/character-customization.md)

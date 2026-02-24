@@ -60,36 +60,22 @@ struct PhysicsConstraint {
 ## Usage Example
 
 ```rust
-use warcraft_rs::m2::{M2Model, M2Physics, PhysicsSimulator};
+use wow_m2::M2Model;
 
-// Load model with physics
-let mut model = M2Model::open("Character/Human/Female/HumanFemale.m2")?;
-let physics = M2Physics::open("Character/Human/Female/HumanFemale.phys")?;
+// Load model
+let format = M2Model::load("Character/Human/Female/HumanFemale.m2")?;
+let model = format.model();
 
-// Create physics simulator
-let mut simulator = PhysicsSimulator::new(&model, &physics);
-simulator.set_gravity(Vec3::new(0.0, -9.81, 0.0));
-simulator.set_wind(Vec3::new(2.0, 0.0, 1.0));
-
-// Update loop
-let delta_time = 0.016; // 60 FPS
-loop {
-    // Update physics simulation
-    simulator.step(delta_time);
-
-    // Apply physics to model bones
-    for (bone_id, transform) in simulator.get_bone_transforms() {
-        model.set_bone_transform(bone_id, transform);
-    }
-
-    // Render model with physics-animated bones
-    model.render();
-}
-
-// Configure physics properties
-simulator.set_damping(0.98);
-simulator.set_iterations(4);
-simulator.enable_self_collision(true);
+// Physics data (.phys files) contains bone simulation parameters.
+// The wow-m2 crate parses the M2 model and its bone hierarchy.
+// Physics simulation (cloth, hair) would be implemented in your
+// rendering engine using the bone data and .phys file constraints.
+//
+// The .phys file is a separate binary file with the same base name:
+//   Character/Human/Female/HumanFemale.phys
+//
+// It contains rigid body definitions, collision shapes, and joint
+// constraints that drive the physics simulation for dynamic bones.
 ```
 
 ## Physics Systems
@@ -296,7 +282,7 @@ impl PhysicsAssetLoader {
     fn load_with_fallback(&mut self, model_path: &str) -> Option<Arc<M2Physics>> {
         // Try exact match
         let phys_path = model_path.replace(".m2", ".phys");
-        if let Ok(physics) = M2Physics::open(&phys_path) {
+        if let Ok(physics) = load_phys_file(&phys_path) {
             return Some(Arc::new(physics));
         }
 
@@ -385,5 +371,3 @@ impl PhysicsQualitySettings {
 ## See Also
 
 - [M2 Format](m2.md) - Main model format
-- [Physics Simulation Guide](../../guides/physics-simulation.md)
-- [Performance Optimization Guide](../../guides/performance-optimization.md)

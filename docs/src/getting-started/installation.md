@@ -117,7 +117,7 @@ cargo run --features wdt -- wdt info map.wdt
 Available features:
 
 - `mpq` - MPQ archive support (always available)
-- `cdbc` - DBC database support (enabled by default)
+- `dbc` - DBC database support (enabled by default)
 - `blp` - BLP texture support (enabled by default)
 - `m2` - M2 model support (enabled by default)
 - `wmo` - WMO object support (enabled by default)
@@ -206,7 +206,7 @@ cargo run
 #### Rust Version Error
 
 ```text
-error: package `warcraft-rs v0.6.1` cannot be built because it requires rustc 1.92 or newer
+error: package `warcraft-rs v0.6.4` cannot be built because it requires rustc 1.92 or newer
 ```
 
 **Solution**: Update Rust with `rustup update`

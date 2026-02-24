@@ -44,7 +44,7 @@ Before working with textures, ensure you have:
 ### 1. Loading BLP Files
 
 ```rust
-use warcraft_rs::blp::{Blp, BlpImage, BlpFormat};
+use wow_blp::{BlpImage, parser::load_blp}; // BlpFormat is illustrative
 use std::path::Path;
 
 fn load_blp_texture(file_path: &str) -> Result<Blp, Box<dyn std::error::Error>> {
@@ -78,7 +78,7 @@ fn load_multiple_textures(paths: &[&str]) -> Vec<Result<Blp, Box<dyn std::error:
 ### 2. Converting BLP to Raw RGBA
 
 ```rust
-use warcraft_rs::blp::{Blp, BlpFormat, MipmapLevel};
+use wow_blp::BlpImage; // BlpFormat, MipmapLevel are illustrative
 
 fn convert_blp_to_rgba(blp: &Blp, mipmap_level: usize) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Get specific mipmap level
@@ -594,7 +594,7 @@ impl TextureAtlas {
 ### Complete Texture Manager
 
 ```rust
-use warcraft_rs::blp::*;
+use wow_blp::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

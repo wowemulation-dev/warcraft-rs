@@ -58,40 +58,19 @@ Different WoW versions use different format versions:
 
 ## Quick Reference
 
-### Reading Files
-
-```rust
-// Most formats follow this pattern
-let file = FileFormat::open("path/to/file.ext")?;
-
-// Access data
-for item in file.items() {
-    // Process item
-}
-```
-
-### Common Traits
-
-All formats implement these traits where applicable:
-
-```rust
-trait FileFormat {
-    fn open(path: &str) -> Result<Self, Error>;
-    fn version(&self) -> u32;
-    fn validate(&self) -> Result<(), Error>;
-}
-```
+Each crate has its own parsing approach. See [Traits & Interfaces](../api/traits.md)
+for the different patterns used across crates.
 
 ## Tools & Utilities
 
-`warcraft-rs` provides command-line tools for each format:
+`warcraft-rs` provides CLI subcommands for each format:
 
 ```bash
 # Extract MPQ archive
-warcraft-mpq extract archive.mpq output/
+warcraft-rs mpq extract archive.mpq --output output/
 
 # Convert BLP to PNG
-warcraft-blp convert texture.blp texture.png
+warcraft-rs blp convert texture.blp texture.png
 
 # Export DBC as CSV
 warcraft-rs dbc export Spell.dbc --format csv

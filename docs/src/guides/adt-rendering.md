@@ -231,8 +231,8 @@ fn generate_terrain_indices(adt: &Adt) -> Vec<u32> {
 ### 4. Loading and Applying Textures
 
 ```rust
-use warcraft_rs::adt::{TextureInfo, AlphaMap};
-use warcraft_rs::blp::Blp;
+use wow_adt::{TextureInfo, AlphaMap};
+use wow_blp::Blp;
 
 struct TerrainTextures {
     diffuse_maps: Vec<TextureId>,
@@ -357,7 +357,7 @@ void main() {
 ### 6. Handling Water
 
 ```rust
-use warcraft_rs::adt::{WaterChunk, LiquidType};
+use wow_adt::{WaterChunk, LiquidType};
 
 struct WaterMesh {
     vertices: Vec<WaterVertex>,
@@ -435,7 +435,7 @@ fn generate_chunk_water(water: &WaterChunk, chunk: &TerrainChunk) -> WaterMesh {
 ### Complete Terrain Renderer
 
 ```rust
-use warcraft_rs::adt::{Adt, Map};
+use wow_adt::{Adt, Map};
 use wgpu::*;
 
 pub struct TerrainRenderer {
@@ -541,7 +541,7 @@ impl TerrainRenderer {
 ### LOD System for Large Terrains
 
 ```rust
-use warcraft_rs::adt::{Adt, LodLevel};
+use wow_adt::{Adt, LodLevel};
 
 pub struct TerrainLodSystem {
     lod_levels: Vec<LodLevel>,

@@ -130,10 +130,10 @@ cargo install --path warcraft-rs
 
 ## Documentation
 
-- [Getting Started Guide](docs/getting-started/quick-start.md)
-- [Format Documentation](docs/formats/)
-- [API Reference](docs/api/)
-- [Usage Examples](docs/guides/)
+- [Getting Started Guide](docs/src/getting-started/quick-start.md)
+- [Format Documentation](docs/src/formats/)
+- [API Reference](docs/src/api/)
+- [Usage Examples](docs/src/guides/)
 
 ## Support the Project
 

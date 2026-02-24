@@ -33,9 +33,10 @@ use wow_wdt::{WdtReader, version::WowVersion};
 let reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
 let wdt = reader.read()?;
 
-// wow-m2: parse from cursor
-use wow_m2::M2Model;
-let model = M2Model::parse(&mut cursor)?;
+// wow-m2: free function returning M2Format enum
+use wow_m2::parse_m2;
+let format = parse_m2(&mut cursor)?;
+let model = format.model();
 
 // wow-adt: standalone function
 use wow_adt::api::parse_adt;
@@ -170,12 +171,11 @@ image.save("minimap_mask.png")?;
 
 ```rust
 use wow_wdl::parser::WdlParser;
-use wow_wdl::version::WdlVersion;
 use std::io::Cursor;
 
 // Parse a WDL file
 let data = std::fs::read("World/Maps/Azeroth/Azeroth.wdl")?;
-let parser = WdlParser::new(WdlVersion::WotLK);
+let mut parser = WdlParser::new();
 let wdl = parser.parse(&mut Cursor::new(data))?;
 
 // The WdlFile struct contains the parsed chunk data
@@ -188,21 +188,21 @@ println!("WDL version: {:?}", wdl.version);
 ### Basic Model Loading
 
 ```rust
-use wow_m2::M2Model;
+use wow_m2::{parse_m2, parse_skin};
 
 // Load M2 model
 let data = std::fs::read("Creature/Murloc/Murloc.m2")?;
 let mut cursor = std::io::Cursor::new(data);
-let model = M2Model::parse(&mut cursor)?;
+let format = parse_m2(&mut cursor)?;
+let model = format.model();
 
 // Access model data through the header and parsed fields
 println!("Model version: {:?}", model.header.version);
 
 // Load associated skin file
-use wow_m2::skin::SkinFile;
 let skin_data = std::fs::read("Creature/Murloc/Murloc00.skin")?;
 let mut skin_cursor = std::io::Cursor::new(skin_data);
-let skin = SkinFile::parse(&mut skin_cursor)?;
+let skin = parse_skin(&mut skin_cursor)?;
 ```
 
 ## Loading World Data
@@ -239,10 +239,12 @@ for y in 0..64 {
 // For WMO-only maps (like dungeons)
 if wdt.is_wmo_only() {
     if let Some(ref mwmo) = wdt.mwmo {
-        println!("Global WMO: {}", mwmo.filename());
+        for name in &mwmo.filenames {
+            println!("Global WMO: {}", name);
+        }
     }
     if let Some(ref modf) = wdt.modf {
-        for placement in modf.entries() {
+        for placement in &modf.entries {
             println!("WMO placed at: {:?}", placement.position);
         }
     }
@@ -302,8 +304,8 @@ let data = std::fs::read("DBFilesClient/Item.dbc")?;
 let dbc = DbcParser::parse(&mut Cursor::new(data))?;
 
 // Access header information
-println!("Records: {}", dbc.record_count());
-println!("Fields per record: {}", dbc.field_count());
+println!("Records: {}", dbc.header().record_count);
+println!("Fields per record: {}", dbc.header().field_count);
 
 // The CLI provides additional functionality:
 // - Schema discovery and validation
@@ -343,10 +345,10 @@ for chunk in data.chunks(4096) {
 ### Error Recovery
 
 ```rust
-use wow_blp::parser::{load_blp, error::LoadError};
+use wow_blp::parser::load_blp;
 use wow_blp::BlpImage;
 
-fn load_texture_with_fallback(path: &str, fallback: &str) -> Result<BlpImage, LoadError> {
+fn load_texture_with_fallback(path: &str, fallback: &str) -> Result<BlpImage, wow_blp::parser::LoadError> {
     match load_blp(path) {
         Ok(texture) => Ok(texture),
         Err(_) => {

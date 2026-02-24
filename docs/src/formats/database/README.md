@@ -15,7 +15,7 @@ Database formats store game data in structured, tabular formats.
 
 ## DBC Structure
 
-DBCs are essentially binary CSV files with a header:
+DBCs are binary tabular files with a header:
 
 ```text
 Header (20 bytes)
@@ -49,43 +49,39 @@ String Block (variable)
 ### Reading DBC Files
 
 ```rust
-use warcraft_rs::dbc::{Dbc, DbcReader};
+use wow_cdbc::DbcParser;
+use std::io::BufReader;
+use std::fs::File;
 
-// Generic DBC reading
-let dbc = Dbc::open("DBFilesClient/Item.dbc")?;
-println!("Records: {}", dbc.record_count());
+let file = File::open("DBFilesClient/Item.dbc")?;
+let mut reader = BufReader::new(file);
+let parser = DbcParser::parse(&mut reader)?;
 
-// Typed reading
-let items: DbcReader<Item> = DbcReader::open("DBFilesClient/Item.dbc")?;
-for item in items {
-    println!("Item {}: {}", item.id, item.name);
-}
+let header = parser.header();
+println!("Records: {}", header.record_count);
+println!("Fields per record: {}", header.field_count);
 ```
 
-### Working with Strings
+### Schema-Based Parsing
 
 ```rust
-// DBCs store strings as offsets into a string block
-let name = dbc.get_string(record.name_offset)?;
+use wow_cdbc::{DbcParser, Schema, SchemaField, FieldType};
 
-// Localized strings have multiple offsets
-let localized_name = dbc.get_localized_string(
-    record.name_offsets,
-    Locale::EnUS
-)?;
-```
+let parser = DbcParser::parse(&mut reader)?;
 
-### Indexing and Lookups
+// Define a schema for the DBC file
+let mut schema = Schema::new("SpellItemEnchantment");
+schema.add_field(SchemaField::new("ID", FieldType::UInt32));
+schema.add_field(SchemaField::new("Charges", FieldType::UInt32));
+schema.add_field(SchemaField::new("Description", FieldType::String));
+schema.set_key_field("ID");
 
-```rust
-use warcraft_rs::dbc::IndexedDbc;
+// Apply the schema and parse records
+let parser = parser.with_schema(schema)?;
+let record_set = parser.parse_records()?;
 
-// Build index for fast lookups
-let items = IndexedDbc::<Item>::open("DBFilesClient/Item.dbc")?;
-
-// O(1) lookup by ID
-if let Some(item) = items.get(12345) {
-    println!("Found: {}", item.name);
+for record in record_set.iter() {
+    println!("{:?}", record);
 }
 ```
 
@@ -105,42 +101,15 @@ WoW supports 16 locales in DBC files:
 | 7 | esMX | Spanish (Mexico) |
 | 8 | ruRU | Russian |
 
-## Schema Definitions
-
-Define DBC schemas using derive macros:
-
-```rust
-#[derive(DbcRecord)]
-struct Item {
-    #[dbc(id)]
-    id: u32,
-    class: u32,
-    subclass: u32,
-    #[dbc(string)]
-    name: String,
-    #[dbc(localized_string)]
-    description: LocalizedString,
-    display_id: u32,
-    quality: u32,
-    flags: u32,
-}
-```
-
-## Performance Considerations
-
-1. **Memory Usage**: Large DBCs can use significant memory
-2. **Indexing**: Build indexes for frequently accessed data
-3. **Caching**: Cache parsed records
-4. **Lazy Loading**: Load strings on demand
-
 ## Tools
 
-- `warcraft-dbc` - CLI tool for DBC operations
-- DBC to CSV conversion
-- Schema generation from DBCs
+The CLI provides DBC operations:
+
+```bash
+warcraft-rs dbc info Item.dbc
+warcraft-rs dbc export Item.dbc --format csv
+```
 
 ## See Also
 
 - [DBC Data Extraction Guide](../../guides/dbc-extraction.md)
-- [DBC Schema Reference](../../api/dbc-schemas.md)
-- [Localization Guide](../../guides/localization.md)

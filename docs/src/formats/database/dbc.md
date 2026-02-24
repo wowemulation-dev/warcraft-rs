@@ -945,6 +945,3 @@ Field   Value       Description
 ## See Also
 
 - [DBC Extraction Guide](../../guides/dbc-extraction.md)
-- [DBC Schema Guide](../../guides/dbc-schemas.md)
-- [Data Mining Guide](../../guides/data-mining.md)
-- [Localization Guide](../../guides/localization.md)

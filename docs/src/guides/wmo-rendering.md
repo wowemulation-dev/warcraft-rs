@@ -602,7 +602,7 @@ impl WmoRenderer {
 ### Complete WMO Scene Manager
 
 ```rust
-use warcraft_rs::wmo::*;
+use wow_wmo::*;
 use std::sync::Arc;
 
 pub struct WmoSceneManager {

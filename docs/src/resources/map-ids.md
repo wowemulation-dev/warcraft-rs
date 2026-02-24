@@ -155,29 +155,17 @@ bitflags! {
 ## Usage Example
 
 ```rust
-use warcraft_rs::dbc::{MapRecord, DbcTable};
+use wow_cdbc::DbcParser;
+use std::io::BufReader;
+use std::fs::File;
 
 // Load Map.dbc
-let maps = DbcTable::<MapRecord>::open("DBFilesClient/Map.dbc")?;
+let file = File::open("DBFilesClient/Map.dbc")?;
+let parser = DbcParser::parse(&mut BufReader::new(file))?;
 
-// Find Eastern Kingdoms
-if let Some(ek) = maps.find_by_id(0) {
-    println!("Map: {}", ek.name());
-    println!("Directory: {}", ek.directory);
-    println!("Instance Type: {}", ek.instance_type);
-
-    // Check if it's a continent
-    if ek.instance_type == 0 {
-        println!("This is a continent map");
-    }
-}
-
-// List all battlegrounds
-let battlegrounds = maps.iter()
-    .filter(|map| map.is_battleground())
-    .collect::<Vec<_>>();
-
-println!("Found {} battlegrounds", battlegrounds.len());
+let header = parser.header();
+println!("Map.dbc: {} records, {} fields each",
+    header.record_count, header.field_count);
 ```
 
 ## Notes

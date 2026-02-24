@@ -105,7 +105,7 @@ impl Transform {
 ### 2. Animation Tracks and Keyframes
 
 ```rust
-use warcraft_rs::m2::{AnimationBlock, InterpolationType};
+use wow_m2::{AnimationBlock, InterpolationType};
 
 #[derive(Debug, Clone)]
 pub struct AnimationClip {
@@ -867,7 +867,7 @@ impl AnimationEventHandler {
 ### Complete Animation Player
 
 ```rust
-use warcraft_rs::m2::M2Model;
+use wow_m2::M2Model;
 
 pub struct AnimationPlayer {
     model: Arc<M2Model>,

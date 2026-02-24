@@ -57,32 +57,19 @@ struct AnimFileData {
 ## Usage Example
 
 ```rust
-use warcraft_rs::m2::{M2Model, AnimLoader, AnimationId};
+use wow_m2::{M2Model, AnimFile};
 
 // Load base model
-let mut model = M2Model::open("Character/Human/Male/HumanMale.m2")?;
+let format = M2Model::load("Character/Human/Male/HumanMale.m2")?;
+let model = format.model();
 
-// Load external animation
-let anim_loader = AnimLoader::new();
-let dance_anim = anim_loader.load_animation(&model, AnimationId::Dance)?;
+// Load external animation file
+let anim = AnimFile::load("Character/Human/Male/HumanMale0066-00.anim")?;
+println!("Loaded animation with {} sections", anim.sections.len());
 
-// Apply animation to model
-model.add_external_animation(dance_anim);
-
-// Play the loaded animation
-model.play_animation(AnimationId::Dance);
-
-// Batch load animations
-let combat_anims = anim_loader.load_animation_set(&model, &[
-    AnimationId::Attack1H,
-    AnimationId::Attack2H,
-    AnimationId::AttackOff,
-    AnimationId::Parry,
-])?;
-
-for anim in combat_anims {
-    model.add_external_animation(anim);
-}
+// Animation files are discovered by filename convention:
+// <ModelName><AnimID>-<SubAnimID>.anim
+// e.g., HumanMale0066-00.anim for Dance (AnimID 66)
 ```
 
 ## Animation ID Mapping
@@ -306,4 +293,3 @@ impl AnimationManager {
 
 - [M2 Format](m2.md) - Main model format
 - [Animation System Guide](../../guides/animation-system.md)
-- [Memory Management Guide](../../guides/memory-management.md)

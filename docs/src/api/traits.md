@@ -66,8 +66,8 @@ let archive = Archive::open("archive.mpq")?;
 let reader = WdtReader::new(BufReader::new(file), WowVersion::WotLK);
 let wdt = reader.read()?;
 
-// wow-m2: load returns M2Format (Legacy or Chunked variant)
-let format = M2Model::load("model.m2")?;
+// wow-m2: parse_m2 returns M2Format (Legacy or Chunked variant)
+let format = parse_m2(&mut reader)?;
 let model = format.model();
 
 // wow-adt: standalone function
@@ -79,8 +79,8 @@ let parsed = parse_adt(&mut reader)?;
 Crates with write support provide builder or writer types:
 
 ```rust
-// wow-mpq: Archive with create/add methods
-let mut archive = Archive::create("new.mpq")?;
+// wow-mpq: OpenOptions with create method
+let mut archive = OpenOptions::new().create("new.mpq")?;
 
 // wow-wdt: WdtWriter wraps a writer
 let writer = WdtWriter::new(&mut output);

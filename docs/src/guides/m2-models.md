@@ -148,7 +148,7 @@ fn normalize_bone_weights(weights: [u8; 4]) -> [f32; 4] {
 ### 3. Building Render Meshes from Skins
 
 ```rust
-use warcraft_rs::m2::{M2Skin, M2Model, RenderFlag};
+use wow_m2::{SkinFile, M2Model}; // RenderFlag is illustrative
 
 struct ModelMesh {
     vertex_buffer: Buffer,
@@ -218,7 +218,7 @@ fn build_render_mesh(m2: &M2Model, skin: &M2Skin, device: &Device) -> ModelMesh 
 ### 4. Setting Up Skeletal Animation
 
 ```rust
-use warcraft_rs::m2::{M2Bone, M2Animation, AnimationBlock};
+// Bone and animation types from wow_m2
 use nalgebra::{Matrix4, Vector3, Quaternion};
 
 struct BoneTransform {
@@ -309,8 +309,7 @@ fn transform_to_matrix(transform: &BoneTransform) -> Matrix4<f32> {
 ### 5. Loading and Applying Textures
 
 ```rust
-use warcraft_rs::m2::{M2Texture, TextureType};
-use warcraft_rs::blp::Blp;
+// Texture types from wow_m2, BLP loading from wow_blp
 
 struct ModelTextures {
     textures: Vec<TextureHandle>,
@@ -467,7 +466,7 @@ impl M2Renderer {
 ### Complete M2 Model Loader
 
 ```rust
-use warcraft_rs::m2::*;
+use wow_m2::*;
 use std::collections::HashMap;
 
 pub struct M2ModelManager {

@@ -56,32 +56,30 @@ graph LR
 ### Loading a Character Model
 
 ```rust
-use warcraft_rs::{M2, M2Skin, Blp};
+use wow_m2::{parse_m2, parse_skin};
+use wow_blp::parser::load_blp;
 
 // Load base model
-let model = M2::open("Character/Human/Male/HumanMale.m2")?;
+let data = std::fs::read("Character/Human/Male/HumanMale.m2")?;
+let format = parse_m2(&mut std::io::Cursor::new(data))?;
+let model = format.model();
 
 // Load skin (mesh data)
-let skin = M2Skin::open("Character/Human/Male/HumanMale00.skin")?;
+let skin_data = std::fs::read("Character/Human/Male/HumanMale00.skin")?;
+let skin = parse_skin(&mut std::io::Cursor::new(skin_data))?;
 
 // Load textures
-for texture_id in model.texture_ids() {
-    let texture = Blp::open(&texture_id)?;
-}
+let texture = load_blp("Character/Human/Male/HumanMaleSkin00.blp")?;
 ```
 
-### Rendering a Building
+### Loading a Building
 
 ```rust
-use warcraft_rs::{Wmo, WmoGroup};
+use wow_wmo::api::parse_wmo;
 
 // Load root WMO
-let wmo = Wmo::open("World/wmo/Azeroth/Buildings/Stormwind/Stormwind.wmo")?;
-
-// Load groups (rooms)
-for i in 0..wmo.group_count() {
-    let group = WmoGroup::open(&format!("Stormwind_{:03}.wmo", i))?;
-}
+let data = std::fs::read("World/wmo/Azeroth/Buildings/Stormwind/Stormwind.wmo")?;
+let wmo = parse_wmo(&mut std::io::Cursor::new(data))?;
 ```
 
 ## Texture Management
@@ -97,28 +95,14 @@ for i in 0..wmo.group_count() {
 ### Loading Textures
 
 ```rust
-use warcraft_rs::Blp;
+use wow_blp::parser::load_blp;
+use wow_blp::convert::blp_to_image;
 
-let blp = Blp::open("Textures/Armor/Leather_A_01.blp")?;
+let blp = load_blp("Textures/Armor/Leather_A_01.blp")?;
 
-// Get raw pixel data
-let pixels = blp.get_rgba(0)?; // Mipmap level 0
-
-// Convert to your renderer's format
-let texture = create_texture(blp.width(), blp.height(), &pixels);
-```
-
-## Animation System
-
-M2 models use a keyframe-based animation system:
-
-```rust
-// Play an animation
-let anim = model.get_animation("Stand")?;
-for frame in 0..anim.duration() {
-    let transforms = model.calculate_bones(anim, frame);
-    // Apply to mesh
-}
+// Convert to standard image format
+let image = blp_to_image(&blp, 0)?; // Mipmap level 0
+image.save("output.png")?;
 ```
 
 ## Performance Tips
@@ -132,5 +116,5 @@ for frame in 0..anim.duration() {
 ## See Also
 
 - [Loading M2 Models Guide](../../guides/m2-models.md)
-- [Texture Pipeline](../../guides/texture-pipeline.md)
+- [Texture Loading](../../guides/texture-loading.md)
 - [WMO Rendering](../../guides/wmo-rendering.md)

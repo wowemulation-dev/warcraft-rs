@@ -21,10 +21,13 @@ type of game asset including models, textures, sounds, and data files.
 ### Extracting Game Assets
 
 ```rust
-use warcraft_rs::mpq::Archive;
+use wow_mpq::Archive;
 
-let archive = Archive::open("Data/art.mpq")?;
-let files = archive.list_files();
+let mut archive = Archive::open("Data/art.mpq")?;
+let entries = archive.list()?;
+for entry in entries {
+    println!("{}: {} bytes", entry.name, entry.size);
+}
 ```
 
 ### Working with Patches
@@ -37,15 +40,14 @@ WoW uses a patch chain system where newer MPQs override files in older ones:
 
 ## Tools
 
-- `warcraft-mpq` - Command-line tool for MPQ operations
-- MPQ Editor - GUI tool for browsing archives
+- `warcraft-rs mpq` - CLI commands for MPQ operations
 - Ladik's MPQ Editor - Popular Windows MPQ editor
 
 ## Performance Tips
 
 1. **Caching**: Cache frequently accessed files in memory
-2. **Streaming**: Use streaming APIs for large files
-3. **Parallel Extraction**: Extract multiple files concurrently
+2. **Streaming**: Read files on demand rather than extracting all at once
+3. **Parallel Extraction**: Use `--threads` flag in CLI for concurrent extraction
 4. **Compression**: Choose appropriate compression for your use case
 
 ## See Also
