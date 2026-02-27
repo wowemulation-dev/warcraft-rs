@@ -1,0 +1,72 @@
+name: Format Support
+description: Request support for a WoW file format or format version
+title: "[Format]: "
+labels: ["enhancement", "format-support"]
+body:
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I have searched existing issues to ensure this isn't a duplicate
+          required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: File Format
+      description: Which file format is this about?
+      options:
+        - MPQ
+        - BLP (textures)
+        - DBC/DB2 (databases)
+        - M2 (models)
+        - WMO (world objects)
+        - ADT (terrain)
+        - WDT (world tables)
+        - WDL (world detail)
+        - SKIN (model skin)
+        - ANIM (animation)
+        - PHYS (physics)
+        - SKEL (skeleton)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: wow-version
+    attributes:
+      label: WoW Version
+      description: Which WoW version or expansion is this for?
+      placeholder: "e.g., 3.3.5a (12340), Cataclysm 4.3.4, MoP 5.4.8"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the format feature or version that needs support
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Links to format documentation or specifications
+      placeholder: |
+        - WoWDev wiki links
+        - Other implementations
+        - Specification documents
+    validations:
+      required: false
+
+  - type: textarea
+    id: sample-data
+    attributes:
+      label: Sample Data
+      description: Any hex dumps, field descriptions, or data structures
+      render: text
+    validations:
+      required: false

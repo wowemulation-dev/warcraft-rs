@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/orgs/wowemulation-dev/discussions
+    about: Ask questions, share ideas, and discuss with the community
+  - name: FAQ
+    url: https://github.com/wowemulation-dev/.github/blob/main/FAQ.md
+    about: Check our frequently asked questions
+  - name: Security Policy
+    url: https://github.com/wowemulation-dev/.github/blob/main/SECURITY.md
+    about: Review our security policy and responsible disclosure process
