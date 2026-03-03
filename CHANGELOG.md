@@ -22,6 +22,7 @@ and this project adheres to
   - Pre-Cataclysm M2 files WITH flag set now correctly parse combos
   - Cataclysm+ M2 files WITHOUT flag set no longer read garbage data
   - Flag is properly preserved during version conversion
+- **wow-blp**: Fixed order in which RGB channels are packed and unpacked of RAW1 format
 
 ## [0.6.4] - 2026-02-16
 
