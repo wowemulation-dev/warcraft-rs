@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `decrypt_table_data` no longer corrupts trailing bytes not aligned to a 4-byte DWORD boundary, matching StormLib's `DecryptMpqBlock` behavior
   - V4 compressed hash/block tables are now decrypted before decompression, matching StormLib's `LoadMpqTable` behavior
   - Added `from_bytes_decrypted` to `HashTable` and `BlockTable` to avoid double-decrypting data in the V4 compressed table path
+- **LZMA Decompression** - Fixed MPQ LZMA format handling
+  - MPQ archives use a custom LZMA header with a leading filter byte (0x00) before the standard LZMA stream; this byte was not being stripped, causing the LZMA decoder to misparse the properties and dictionary size
+  - LZMA compression now produces MPQ-compatible format with the filter byte prefix
 - **Compression Module** - Minor fixes in compression algorithm selection
 - **Documentation** - Updated README with patch file documentation
   - Added PTCH format explanation and usage examples
