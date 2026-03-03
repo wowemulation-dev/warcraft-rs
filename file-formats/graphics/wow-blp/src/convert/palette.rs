@@ -20,10 +20,10 @@ pub fn quantize_rgba(
         .color_map_rgb()
         .chunks(3)
         .map(|col| {
-            let red = col[0] as u32;
+            let blue = col[2] as u32;
             let green = (col[1] as u32) << 8;
-            let blue = (col[2] as u32) << 16;
-            red + green + blue
+            let red = (col[0] as u32) << 16;
+            blue + green + red
         })
         .collect();
 
