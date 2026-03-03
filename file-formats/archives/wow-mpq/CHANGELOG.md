@@ -41,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **V4 Archive Support** - Fixed two bugs preventing MPQ V4 archives from loading
+  - `decrypt_table_data` no longer corrupts trailing bytes not aligned to a 4-byte DWORD boundary, matching StormLib's `DecryptMpqBlock` behavior
+  - V4 compressed hash/block tables are now decrypted before decompression, matching StormLib's `LoadMpqTable` behavior
+  - Added `from_bytes_decrypted` to `HashTable` and `BlockTable` to avoid double-decrypting data in the V4 compressed table path
 - **Compression Module** - Minor fixes in compression algorithm selection
 - **Documentation** - Updated README with patch file documentation
   - Added PTCH format explanation and usage examples

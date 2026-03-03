@@ -10,6 +10,7 @@ and this project adheres to
 
 ### Fixed
 
+- **wow-mpq**: Fixed V4 archive support — `decrypt_table_data` no longer corrupts trailing bytes, and V4 compressed hash/block tables are now decrypted before decompression
 - **wow-blp**: Fixed BLP1 palette size to use correct 256 colors instead of 255
 - **wow-blp**: Fixed 4-bit alpha encoding formula for RAW1 format conversion
   - Alpha values now correctly scaled to 0-15 range before packing

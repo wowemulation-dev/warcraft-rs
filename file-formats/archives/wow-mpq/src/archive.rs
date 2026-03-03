@@ -482,15 +482,18 @@ impl Archive {
                     if hash_table_offset + compressed_size > file_size {
                         log::warn!("Hash table extends beyond file, skipping");
                     } else {
-                        // Read potentially compressed table
-                        match self.read_compressed_table(
+                        // V4 tables are encrypted on disk; decrypt before decompressing,
+                        // then parse without re-decrypting.
+                        let key = hash_string("(hash table)", hash_type::FILE_KEY);
+                        match self.read_compressed_encrypted_table(
                             hash_table_offset,
                             compressed_size,
                             uncompressed_size,
+                            key,
                         ) {
                             Ok(table_data) => {
-                                // Parse the hash table from the decompressed data
-                                match HashTable::from_bytes(
+                                // Data is already decrypted — use from_bytes_decrypted
+                                match HashTable::from_bytes_decrypted(
                                     &table_data,
                                     self.header.hash_table_size,
                                 ) {
@@ -628,15 +631,18 @@ impl Archive {
                     if block_table_offset + compressed_size > file_size {
                         log::warn!("Block table extends beyond file, skipping");
                     } else {
-                        // Read potentially compressed table
-                        match self.read_compressed_table(
+                        // V4 tables are encrypted on disk; decrypt before decompressing,
+                        // then parse without re-decrypting.
+                        let key = hash_string("(block table)", hash_type::FILE_KEY);
+                        match self.read_compressed_encrypted_table(
                             block_table_offset,
                             compressed_size,
                             uncompressed_size,
+                            key,
                         ) {
                             Ok(table_data) => {
-                                // Parse the block table from the decompressed data
-                                match BlockTable::from_bytes(
+                                // Data is already decrypted — use from_bytes_decrypted
+                                match BlockTable::from_bytes_decrypted(
                                     &table_data,
                                     self.header.block_table_size,
                                 ) {
@@ -2627,6 +2633,72 @@ impl Archive {
                 log::debug!("Signature file found but not a valid weak signature format");
                 Ok(SignatureStatus::None)
             }
+        }
+    }
+
+    /// Read a compressed and encrypted table from a V4 archive.
+    ///
+    /// V4 hash/block tables are encrypted on disk. The entire compressed blob
+    /// (including the compression type byte) must be decrypted before the
+    /// compression type can be read and decompression applied.
+    /// This matches StormLib's `LoadMpqTable` behavior.
+    fn read_compressed_encrypted_table(
+        &mut self,
+        offset: u64,
+        compressed_size: u64,
+        uncompressed_size: usize,
+        key: u32,
+    ) -> Result<Vec<u8>> {
+        self.reader.seek(SeekFrom::Start(offset))?;
+
+        let mut raw_data = vec![0u8; compressed_size as usize];
+        self.reader.read_exact(&mut raw_data)?;
+
+        if (compressed_size as usize) < uncompressed_size {
+            // Decrypt the entire blob before reading the compression type
+            let full_len = (raw_data.len() / 4) * 4;
+            let mut u32_buffer: Vec<u32> = raw_data[..full_len]
+                .chunks_exact(4)
+                .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+                .collect();
+
+            decrypt_block(&mut u32_buffer, key);
+
+            for (i, &val) in u32_buffer.iter().enumerate() {
+                let bytes = val.to_le_bytes();
+                raw_data[i * 4..(i + 1) * 4].copy_from_slice(&bytes);
+            }
+
+            // Now byte 0 is the (decrypted) compression type
+            if raw_data.is_empty() {
+                return Err(Error::invalid_format("Empty compressed table data"));
+            }
+
+            let compression_type = raw_data[0];
+            let compressed_content = &raw_data[1..];
+
+            log::debug!(
+                "Decompressing encrypted table with method 0x{compression_type:02X}, \
+                 compressed_size={compressed_size}, uncompressed_size={uncompressed_size}"
+            );
+
+            compression::decompress(compressed_content, compression_type, uncompressed_size)
+        } else {
+            // Not compressed — just decrypt in place
+            let full_len = (raw_data.len() / 4) * 4;
+            let mut u32_buffer: Vec<u32> = raw_data[..full_len]
+                .chunks_exact(4)
+                .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+                .collect();
+
+            decrypt_block(&mut u32_buffer, key);
+
+            for (i, &val) in u32_buffer.iter().enumerate() {
+                let bytes = val.to_le_bytes();
+                raw_data[i * 4..(i + 1) * 4].copy_from_slice(&bytes);
+            }
+
+            Ok(raw_data[..uncompressed_size].to_vec())
         }
     }
 

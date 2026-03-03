@@ -176,7 +176,23 @@ impl BlockTable {
             chunk.copy_from_slice(&decrypted.to_le_bytes());
         }
 
-        // Parse entries
+        Self::parse_entries(&raw_data, size)
+    }
+
+    /// Create a block table from already-decrypted bytes (used for V4 compressed tables
+    /// where decryption was applied before decompression)
+    pub fn from_bytes_decrypted(data: &[u8], size: u32) -> Result<Self> {
+        // Validate data size
+        let expected_size = size as usize * 16;
+        if data.len() < expected_size {
+            return Err(Error::block_table("Insufficient data for block table"));
+        }
+
+        Self::parse_entries(data, size)
+    }
+
+    /// Parse block entries from raw (already decrypted) bytes
+    fn parse_entries(raw_data: &[u8], size: u32) -> Result<Self> {
         let mut entries = Vec::with_capacity(size as usize);
         for i in 0..size as usize {
             let offset = i * 16;
