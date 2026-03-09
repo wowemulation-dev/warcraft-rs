@@ -107,7 +107,7 @@ pub use types::*;
 pub use schema_loader::{SchemaDefinition, SchemaFieldDefinition};
 
 #[cfg(feature = "serde")]
-pub use export::export_to_json;
+pub use export::{export_to_json, import_from_json};
 
 #[cfg(feature = "csv_export")]
 pub use export::export_to_csv;

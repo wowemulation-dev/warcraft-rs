@@ -537,15 +537,10 @@ fn generate_yaml_schema(
 
     yaml.push_str(&format!("name: {base_name}\n"));
 
-    // Find key field
-    let key_field = build
-        .fields
-        .iter()
-        .find(|f| f.is_key)
-        .map(|f| f.name.clone())
-        .unwrap_or_else(|| "ID".to_string());
-
-    yaml.push_str(&format!("key_field: {key_field}\n"));
+    // Only emit key_field when the DBD explicitly marks one with $id$
+    if let Some(key_field) = build.fields.iter().find(|f| f.is_key).map(|f| &f.name) {
+        yaml.push_str(&format!("key_field: {key_field}\n"));
+    }
     yaml.push_str("fields:\n");
 
     // Generate fields
