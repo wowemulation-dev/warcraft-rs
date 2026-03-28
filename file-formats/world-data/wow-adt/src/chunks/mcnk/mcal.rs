@@ -71,6 +71,22 @@ impl AlphaMap {
                     output.push(low | (low << 4));
                     output.push(high | (high << 4));
                 }
+
+                // Fix last column and last row: old 4-bit alpha maps store
+                // only 63 meaningful values per axis; the 64th column/row
+                // contains undefined data.  Copy the second-to-last value
+                // into the last position so that edge texels are
+                // well-defined and match neighbouring chunks.
+                // Reference: Noggit3 Alphamap::readNotCompressed().
+                for i in 0..Self::RESOLUTION {
+                    output[i * Self::RESOLUTION + (Self::RESOLUTION - 1)] =
+                        output[i * Self::RESOLUTION + (Self::RESOLUTION - 2)];
+                    output[(Self::RESOLUTION - 1) * Self::RESOLUTION + i] =
+                        output[(Self::RESOLUTION - 2) * Self::RESOLUTION + i];
+                }
+                output[(Self::RESOLUTION - 1) * Self::RESOLUTION + (Self::RESOLUTION - 1)] =
+                    output[(Self::RESOLUTION - 2) * Self::RESOLUTION + (Self::RESOLUTION - 2)];
+
                 Ok(output)
             }
 
@@ -488,6 +504,42 @@ mod tests {
         // Byte 2: 0x8A -> low=0xA (0xAA), high=0x8 (0x88)
         assert_eq!(decompressed[4], 0xAA);
         assert_eq!(decompressed[5], 0x88);
+    }
+
+    #[test]
+    fn uncompressed_2048_last_row_col_fix() {
+        // Old 4-bit alpha maps have undefined data in the last column (63)
+        // and last row (63).  decompress() should copy column 62 → 63 and
+        // row 62 → 63 to eliminate chunk-boundary seams.
+        let mut data = vec![0u8; 2048];
+
+        // Put a distinctive value at row 0, col 62 (byte index 31 in
+        // 4-bit packed form: col 62 is the high nibble of byte 31).
+        // 4-bit packed: byte i holds col 2i (low) and col 2i+1 (high).
+        // col 62 = high nibble of byte 31 → value 0xA
+        data[31] = 0xA0; // low nibble (col 62)=0, high nibble (col 63)=0xA
+        // Actually: byte 31 → col 62 = low nibble, col 63 = high nibble
+        // Let's set col 62 (low nibble of byte 31) to 0xB
+        data[31] = 0x0B; // col 62 = 0xB (expands to 0xBB), col 63 = 0x0
+
+        let alpha_map = AlphaMap::new(data, AlphaFormat::Uncompressed2048);
+        let decompressed = alpha_map.decompress().unwrap();
+
+        // After fix: col 63 should equal col 62 on row 0
+        let col62 = decompressed[0 * 64 + 62]; // 0xBB
+        let col63 = decompressed[0 * 64 + 63];
+        assert_eq!(col62, 0xBB);
+        assert_eq!(col63, col62, "last column should be copied from second-to-last");
+
+        // Row 63 should equal row 62 (both are all-zero in this test)
+        for col in 0..64 {
+            assert_eq!(
+                decompressed[63 * 64 + col],
+                decompressed[62 * 64 + col],
+                "last row at col {} should match second-to-last row",
+                col,
+            );
+        }
     }
 
     #[test]
@@ -1003,9 +1055,19 @@ mod tests {
         assert_eq!(alpha_map.format, AlphaFormat::Uncompressed2048);
         assert_eq!(alpha_map.data.len(), 2048);
 
-        // Verify round-trip
+        // Verify round-trip (last row/column is fixed by decompress, so
+        // compare only the interior 63×63 region).
         let decompressed = alpha_map.decompress().unwrap();
-        assert_eq!(decompressed, data);
+        for row in 0..63 {
+            for col in 0..63 {
+                assert_eq!(
+                    decompressed[row * 64 + col],
+                    data[row * 64 + col],
+                    "mismatch at ({}, {})",
+                    col, row,
+                );
+            }
+        }
     }
 
     #[test]
@@ -1093,9 +1155,19 @@ mod tests {
         assert_eq!(alpha_map.format, AlphaFormat::Uncompressed2048);
         assert_eq!(alpha_map.data.len(), 2048);
 
-        // Verify round-trip
+        // Verify round-trip (last row/column is fixed by decompress, so
+        // compare only the interior 63×63 region).
         let decompressed = alpha_map.decompress().unwrap();
-        assert_eq!(decompressed, data);
+        for row in 0..63 {
+            for col in 0..63 {
+                assert_eq!(
+                    decompressed[row * 64 + col],
+                    data[row * 64 + col],
+                    "mismatch at ({}, {})",
+                    col, row,
+                );
+            }
+        }
     }
 
     #[test]
