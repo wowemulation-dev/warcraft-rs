@@ -63,6 +63,16 @@ serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde_yaml_ng = { version = "0.10", optional = true }
 
+# Transitive dependency version floors (not used directly here; pinned to
+# raise the resolver's minimum across the workspace).
+# aegis: pulled in via turso. 0.9.7 fails to build on clang >= 22 because its
+#   per-function `target("...,evex512")` attribute no longer enables avx512f.
+#   0.9.8 gates the evex512 form to clang 18-21.
+# num-bigint-dig: pulled in via rsa (wow-mpq). 0.8.4 uses the private `vec!`
+#   macro re-export which is a future-incompat in rustc. Fixed in 0.8.5+.
+aegis = { version = "0.9.8", optional = true }
+num-bigint-dig = { version = "0.8.6", default-features = false, features = ["i128", "prime", "zeroize"] }
+
 [features]
 default = ["mpq", "dbc", "blp", "m2", "wmo", "adt", "wdt", "wdl"]
 full = [
@@ -79,7 +89,7 @@ full = [
   "parallel",
   "yaml",
 ]
-mpq = ["dep:turso", "dep:directories"]
+mpq = ["dep:turso", "dep:directories", "dep:aegis"]
 dbc = ["dep:wow-cdbc"]
 blp = ["dep:wow-blp", "dep:image"]
 m2 = ["dep:wow-m2"]

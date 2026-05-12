@@ -124,8 +124,8 @@ pub fn parse_dbd_content(content: &str) -> Result<DbdFile, Box<dyn std::error::E
     for line in content.lines() {
         let line = line.trim();
 
-        // Skip empty lines
-        if line.is_empty() {
+        // Skip empty lines and human-readable COMMENT lines (per DBD spec).
+        if line.is_empty() || line.starts_with("COMMENT") {
             continue;
         }
 
@@ -147,16 +147,21 @@ pub fn parse_dbd_content(content: &str) -> Result<DbdFile, Box<dyn std::error::E
             current_section = Some("COLUMNS");
             continue;
         } else if let Some(stripped) = line.strip_prefix("BUILD ") {
-            // Save previous build if any
-            save_pending_build(
-                &mut builds,
-                &mut current_build_versions,
-                &mut current_build_fields,
-            );
-
-            current_section = Some("BUILD");
             let versions: Vec<String> = stripped.split(", ").map(|s| s.to_string()).collect();
-            current_build_versions = versions;
+            // Stacked BUILD lines (consecutive BUILDs with no fields between them)
+            // share the same following field block. Accumulate versions instead
+            // of starting a new build with an empty body.
+            if current_section == Some("BUILD") && current_build_fields.is_empty() {
+                current_build_versions.extend(versions);
+            } else {
+                save_pending_build(
+                    &mut builds,
+                    &mut current_build_versions,
+                    &mut current_build_fields,
+                );
+                current_build_versions = versions;
+            }
+            current_section = Some("BUILD");
             continue;
         } else if let Some(stripped) = line.strip_prefix("LAYOUT ") {
             // Save previous build/layout if any
@@ -328,6 +333,9 @@ fn parse_field_line(line: &str) -> DbdField {
     let mut is_relation = false;
     let mut is_noninline = false;
 
+    // Strip trailing `// human comment` (per WoWDBDefs DBD spec).
+    let line = line.split("//").next().unwrap_or(line).trim();
+
     // Check for special markers
     let line = if let Some(stripped) = line.strip_prefix("$id$") {
         is_key = true;
@@ -412,7 +420,13 @@ pub fn convert_to_yaml_schemas(
     for build in &dbd_file.builds {
         if should_generate_version(&build.versions, version_filter, generate_all) {
             let version_suffix = determine_version_suffix(&build.versions);
-            let yaml_content = generate_yaml_schema(&column_map, build, base_name, &version_suffix);
+            let yaml_content = generate_yaml_schema(
+                &column_map,
+                build,
+                base_name,
+                &version_suffix,
+                version_filter,
+            );
             let filename = generate_filename(base_name, &build.versions[0]);
             results.push((filename, yaml_content, version_suffix));
         }
@@ -427,8 +441,13 @@ pub fn convert_to_yaml_schemas(
 
         if should_generate_version(&pseudo_build.versions, version_filter, generate_all) {
             let version_suffix = determine_version_suffix(&pseudo_build.versions);
-            let yaml_content =
-                generate_yaml_schema(&column_map, &pseudo_build, base_name, &version_suffix);
+            let yaml_content = generate_yaml_schema(
+                &column_map,
+                &pseudo_build,
+                base_name,
+                &version_suffix,
+                version_filter,
+            );
             let filename = if layout.builds.is_empty() {
                 format!("{}_layout_{}.yaml", base_name, &layout.hash[..8])
             } else {
@@ -450,8 +469,13 @@ pub fn convert_to_yaml_schemas(
             fields: layout.fields.clone(),
         };
         let version_suffix = "Latest".to_string();
-        let yaml_content =
-            generate_yaml_schema(&column_map, &pseudo_build, base_name, &version_suffix);
+        let yaml_content = generate_yaml_schema(
+            &column_map,
+            &pseudo_build,
+            base_name,
+            &version_suffix,
+            version_filter,
+        );
         let filename = format!("{base_name}_latest.yaml");
         results.push((filename, yaml_content, version_suffix));
     }
@@ -522,11 +546,57 @@ fn generate_filename(base_name: &str, version: &str) -> String {
     format!("{base_name}_{sanitized_version}.yaml")
 }
 
+/// Locale ordering for the WotLK-era (3.x and 4.0 pre-collapse) locstring layout.
+/// 16 stringref slots are stored in this order, followed by a single u32 flags field.
+const LOCSTRING_LOCALES_WOTLK: &[&str] = &[
+    "enUS", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "esMX", "ruRU", "unk9", "unk10",
+    "unk11", "unk12", "unk13", "unk14", "unk15",
+];
+
+/// Locale ordering for the Vanilla/TBC-era (1.x, 2.x) locstring layout.
+/// 8 stringref slots are stored in this order, followed by a single u32 flags field.
+const LOCSTRING_LOCALES_CLASSIC: &[&str] = &[
+    "enUS", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "esMX",
+];
+
+/// Determine the per-locale stringref slots that make up a `locstring`.
+///
+/// When `target_version` is provided (e.g. the `--version` CLI filter), the
+/// era is resolved from that string. Otherwise it's resolved from the build's
+/// first listed version. This matters because a single field block in a DBD
+/// is often shared across many builds spanning multiple expansions; the file
+/// on disk only matches one of them, so the user's target wins.
+///
+/// Returns an empty slice for 4.1+ builds where `locstring` collapsed back to
+/// a single string field.
+fn locstring_locales_for_build(
+    build: &DbdBuild,
+    target_version: Option<&str>,
+) -> &'static [&'static str] {
+    let pick = target_version
+        .or_else(|| build.versions.first().map(|s| s.as_str()))
+        .unwrap_or("");
+
+    let mut parts = pick.split('.');
+    let major: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let minor: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+
+    match major {
+        0..=2 => LOCSTRING_LOCALES_CLASSIC,
+        3 => LOCSTRING_LOCALES_WOTLK,
+        // The 4.0 pre-Cataclysm client kept the WotLK locstring layout; from
+        // 4.1 onward it collapsed back to a single string field.
+        4 if minor == 0 => LOCSTRING_LOCALES_WOTLK,
+        _ => &[],
+    }
+}
+
 fn generate_yaml_schema(
     column_map: &HashMap<String, &DbdColumn>,
     build: &DbdBuild,
     base_name: &str,
     version_suffix: &str,
+    target_version: Option<&str>,
 ) -> String {
     let mut yaml = String::new();
 
@@ -543,9 +613,33 @@ fn generate_yaml_schema(
     }
     yaml.push_str("fields:\n");
 
+    let locstring_locales = locstring_locales_for_build(build, target_version);
+
     // Generate fields
     for field in &build.fields {
         let column = column_map.get(&field.name);
+
+        let is_locstring = column.is_some_and(|c| c.base_type == "locstring");
+
+        if is_locstring && !locstring_locales.is_empty() {
+            // Pre-4.1 layout: emit one StringRef per locale plus a flags field.
+            for locale in locstring_locales {
+                yaml.push_str(&format!("  - name: {}_{}\n", field.name, locale));
+                yaml.push_str("    type_name: String\n");
+                yaml.push_str(&format!(
+                    "    description: Localized {} text ({})\n",
+                    field.name.to_lowercase(),
+                    locale
+                ));
+            }
+            yaml.push_str(&format!("  - name: {}_flags\n", field.name));
+            yaml.push_str("    type_name: UInt32\n");
+            yaml.push_str(&format!(
+                "    description: Locale flags bitmask for {}\n",
+                field.name
+            ));
+            continue;
+        }
 
         // Determine field type
         let field_type = if let Some(col) = column {
@@ -639,6 +733,192 @@ mod tests {
         assert!(field.is_array);
         assert_eq!(field.array_size, Some(9));
         assert_eq!(field.type_size, TypeSize::UInt16);
+    }
+
+    #[test]
+    fn test_parse_skips_comment_lines() {
+        let dbd = "\
+COLUMNS
+int ID
+
+BUILD 3.3.5.12340
+COMMENT unknown_flag=1
+$id$ID<32>
+";
+        let dbd_file = parse_dbd_content(dbd).unwrap();
+        // The COMMENT line must not be turned into a phantom field.
+        assert_eq!(dbd_file.builds[0].fields.len(), 1);
+        assert_eq!(dbd_file.builds[0].fields[0].name, "ID");
+    }
+
+    #[test]
+    fn test_parse_field_line_strips_inline_comment() {
+        // DanceMoves.dbd has lines like `Name_lang // pre-8622 ...` — the comment
+        // must be stripped from the field name so column lookups still work.
+        let field =
+            parse_field_line("Name_lang // pre-8622 this uses the old 9 locale locstring format");
+        assert_eq!(field.name, "Name_lang");
+
+        let field = parse_field_line("$id$ID<32> // primary key");
+        assert_eq!(field.name, "ID");
+        assert!(field.is_key);
+        assert_eq!(field.type_size, TypeSize::Int32);
+    }
+
+    #[test]
+    fn test_parse_stacked_builds_share_fields() {
+        // AreaTrigger.dbd-style: several consecutive BUILD lines share a single
+        // field block. All builds should be saved with the same fields.
+        let dbd = "\
+COLUMNS
+int ID
+
+BUILD 3.0.8.9328
+BUILD 3.0.1.8303-3.3.5.12340
+BUILD 2.0.0.5610-2.4.3.8606
+$id$ID<32>
+";
+        let dbd_file = parse_dbd_content(dbd).unwrap();
+        // One stacked BUILD group becomes one DbdBuild whose `versions` lists all entries.
+        assert_eq!(dbd_file.builds.len(), 1);
+        assert_eq!(
+            dbd_file.builds[0].versions,
+            vec!["3.0.8.9328", "3.0.1.8303-3.3.5.12340", "2.0.0.5610-2.4.3.8606",]
+        );
+        assert_eq!(dbd_file.builds[0].fields.len(), 1);
+    }
+
+    #[test]
+    fn test_locstring_expansion_wotlk() {
+        let dbd = "\
+COLUMNS
+int ID
+locstring Name_lang
+int Flags
+
+BUILD 3.3.5.12340
+$id$ID<32>
+Name_lang
+Flags<32>
+";
+        let dbd_file = parse_dbd_content(dbd).unwrap();
+        let column_map: HashMap<String, &DbdColumn> =
+            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        let yaml = generate_yaml_schema(
+            &column_map,
+            &dbd_file.builds[0],
+            "Test",
+            "3.3.5a",
+            Some("3.3.5"),
+        );
+        let name_lines: Vec<&str> = yaml
+            .lines()
+            .filter(|l| l.trim_start().starts_with("- name:"))
+            .collect();
+        // ID + 16 locale stringrefs + Name_lang_flags + Flags = 19
+        assert_eq!(name_lines.len(), 19);
+        assert!(yaml.contains("- name: Name_lang_enUS"));
+        assert!(yaml.contains("- name: Name_lang_ruRU"));
+        assert!(yaml.contains("- name: Name_lang_unk15"));
+        assert!(yaml.contains("- name: Name_lang_flags"));
+        assert!(!yaml.contains("- name: Name_lang\n"));
+    }
+
+    #[test]
+    fn test_locstring_expansion_classic() {
+        let dbd = "\
+COLUMNS
+int ID
+locstring Name_lang
+
+BUILD 1.12.1.5875
+$id$ID<32>
+Name_lang
+";
+        let dbd_file = parse_dbd_content(dbd).unwrap();
+        let column_map: HashMap<String, &DbdColumn> =
+            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        let yaml = generate_yaml_schema(
+            &column_map,
+            &dbd_file.builds[0],
+            "Test",
+            "1.12.x",
+            Some("1.12"),
+        );
+        let name_lines: Vec<&str> = yaml
+            .lines()
+            .filter(|l| l.trim_start().starts_with("- name:"))
+            .collect();
+        // ID + 8 locale stringrefs + flags = 10
+        assert_eq!(name_lines.len(), 10);
+        assert!(yaml.contains("- name: Name_lang_enUS"));
+        assert!(!yaml.contains("- name: Name_lang_ruRU"));
+        assert!(yaml.contains("- name: Name_lang_flags"));
+    }
+
+    #[test]
+    fn test_locstring_no_expansion_modern() {
+        let dbd = "\
+COLUMNS
+int ID
+locstring Name_lang
+
+BUILD 5.4.8.18414
+$id$ID<32>
+Name_lang
+";
+        let dbd_file = parse_dbd_content(dbd).unwrap();
+        let column_map: HashMap<String, &DbdColumn> =
+            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        let yaml = generate_yaml_schema(
+            &column_map,
+            &dbd_file.builds[0],
+            "Test",
+            "5.4.8",
+            Some("5.4.8"),
+        );
+        // ID + Name_lang (single string)
+        assert!(yaml.contains("- name: Name_lang\n"));
+        assert!(!yaml.contains("Name_lang_enUS"));
+    }
+
+    #[test]
+    fn test_locstring_expansion_uses_target_version_not_first_build() {
+        // Achievement_Category-style: a stacked BUILD group spans 6.0 down to
+        // 3.3.5; the listed *first* version is 6.0, but a 3.3.5 client needs
+        // the WotLK 16-locale layout. The target_version filter must win.
+        let dbd = "\
+COLUMNS
+int ID
+locstring Name_lang
+int Ui_order
+
+BUILD 6.0.1.18179
+BUILD 4.0.0.11792
+BUILD 3.0.1.8622-3.3.5.12340
+$id$ID<32>
+Name_lang
+Ui_order<32>
+";
+        let dbd_file = parse_dbd_content(dbd).unwrap();
+        let column_map: HashMap<String, &DbdColumn> =
+            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        // Filtering for 3.3.5 should expand the locstring to 16 locales + flags.
+        let yaml = generate_yaml_schema(
+            &column_map,
+            &dbd_file.builds[0],
+            "Test",
+            "3.3.5a",
+            Some("3.3.5"),
+        );
+        let name_lines: Vec<&str> = yaml
+            .lines()
+            .filter(|l| l.trim_start().starts_with("- name:"))
+            .collect();
+        // ID + 16 locale stringrefs + Name_lang_flags + Ui_order = 19
+        assert_eq!(name_lines.len(), 19);
+        assert!(yaml.contains("- name: Name_lang_enUS"));
+        assert!(yaml.contains("- name: Name_lang_flags"));
     }
 
     #[test]
