@@ -31,9 +31,13 @@ pub fn raw1_to_image(
         for (i, pixel) in res_image.pixels_mut().enumerate() {
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
-            pixel.0[0] = (color & 0xFF) as u8;
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;
-            pixel.0[2] = ((color >> 16) & 0xFF) as u8;
+            // BLP2 palette stored BGRA per the format spec (byte 0 = B, byte 2 = R).
+            // Earlier code interpreted it as RGBA (byte 0 → R), which swaps R↔B on every
+            // palettized Blizzard atlas. Concretely visible on `WestfallDetailDoodads01.blp`:
+            // the authored brown/tan grass palette would render as saturated blue/teal.
+            pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R from byte 2
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G from byte 1
+            pixel.0[2] = (color & 0xFF) as u8; // B from byte 0
         }
         Ok(DynamicImage::ImageRgb8(res_image))
     } else if alpha_bits == 1 {
@@ -52,9 +56,13 @@ pub fn raw1_to_image(
         for (i, pixel) in res_image.pixels_mut().enumerate() {
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
-            pixel.0[0] = (color & 0xFF) as u8;
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;
-            pixel.0[2] = ((color >> 16) & 0xFF) as u8;
+            // BLP2 palette stored BGRA per the format spec (byte 0 = B, byte 2 = R).
+            // Earlier code interpreted it as RGBA (byte 0 → R), which swaps R↔B on every
+            // palettized Blizzard atlas. Concretely visible on `WestfallDetailDoodads01.blp`:
+            // the authored brown/tan grass palette would render as saturated blue/teal.
+            pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R from byte 2
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G from byte 1
+            pixel.0[2] = (color & 0xFF) as u8; // B from byte 0
             let bit = (raw_image.indexed_alpha[i / 8] >> (i % 8)) & 0x01;
             pixel.0[3] = if bit == 1 { 255 } else { 0 };
         }
@@ -76,9 +84,13 @@ pub fn raw1_to_image(
         for (i, pixel) in res_image.pixels_mut().enumerate() {
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
-            pixel.0[0] = (color & 0xFF) as u8;
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;
-            pixel.0[2] = ((color >> 16) & 0xFF) as u8;
+            // BLP2 palette stored BGRA per the format spec (byte 0 = B, byte 2 = R).
+            // Earlier code interpreted it as RGBA (byte 0 → R), which swaps R↔B on every
+            // palettized Blizzard atlas. Concretely visible on `WestfallDetailDoodads01.blp`:
+            // the authored brown/tan grass palette would render as saturated blue/teal.
+            pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R from byte 2
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G from byte 1
+            pixel.0[2] = (color & 0xFF) as u8; // B from byte 0
             let alpha_block = raw_image.indexed_alpha[i / 2];
             let nibble = if i % 2 == 0 {
                 alpha_block & 0x0F
@@ -104,9 +116,13 @@ pub fn raw1_to_image(
         for (i, pixel) in res_image.pixels_mut().enumerate() {
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
-            pixel.0[0] = (color & 0xFF) as u8;
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;
-            pixel.0[2] = ((color >> 16) & 0xFF) as u8;
+            // BLP2 palette stored BGRA per the format spec (byte 0 = B, byte 2 = R).
+            // Earlier code interpreted it as RGBA (byte 0 → R), which swaps R↔B on every
+            // palettized Blizzard atlas. Concretely visible on `WestfallDetailDoodads01.blp`:
+            // the authored brown/tan grass palette would render as saturated blue/teal.
+            pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R from byte 2
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G from byte 1
+            pixel.0[2] = (color & 0xFF) as u8; // B from byte 0
             pixel.0[3] = raw_image.indexed_alpha[i];
         }
         Ok(DynamicImage::ImageRgba8(res_image))

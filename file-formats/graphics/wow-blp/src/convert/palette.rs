@@ -15,15 +15,18 @@ pub fn quantize_rgba(
     // quantize
     let nq = color_quant::NeuQuant::new(sample_fact, palette_size, img.as_raw());
     let quantized: Vec<u8> = img.pixels().map(|pix| nq.index_of(&pix.0) as u8).collect();
-    // collect palette
+    // collect palette — BLP2 spec stores palette entries as BGRA (byte 0 = B, byte 2 = R).
+    // Earlier code wrote R in byte 0 (the B slot) and B in byte 2 (the R slot), producing
+    // non-spec BLPs. The decoder had a matching bug, so round-tripping wow-blp's own output
+    // worked — but reading real Blizzard atlases (spec-conforming BGRA) swapped R↔B.
     let palette = nq
         .color_map_rgb()
         .chunks(3)
         .map(|col| {
-            let red = col[0] as u32;
+            let red = (col[0] as u32) << 16;
             let green = (col[1] as u32) << 8;
-            let blue = (col[2] as u32) << 16;
-            red + green + blue
+            let blue = col[2] as u32;
+            red | green | blue
         })
         .collect();
 
