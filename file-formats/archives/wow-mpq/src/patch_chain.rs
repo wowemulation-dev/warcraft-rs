@@ -175,7 +175,7 @@ impl PatchChain {
     /// 2. Read all patches for this file in priority order
     /// 3. Apply patches sequentially to produce the final result
     fn read_patched_file(&mut self, filename: &str, _patch_idx: usize) -> Result<Vec<u8>> {
-        use crate::patch::{PatchFile, apply_patch};
+        use crate::patch::{apply_patch, PatchFile};
 
         // Step 1: Find the base file (search lower priority archives)
         let mut base_data: Option<Vec<u8>> = None;
@@ -437,7 +437,7 @@ impl PatchChain {
         let mut loaded_archives = loaded_archives?;
 
         // Sort by priority (highest first)
-        loaded_archives.sort_by(|a, b| b.priority.cmp(&a.priority));
+        loaded_archives.sort_by_key(|b| std::cmp::Reverse(b.priority));
 
         let mut chain = Self {
             archives: loaded_archives,

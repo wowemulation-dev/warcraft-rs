@@ -690,12 +690,11 @@ fn validate_blp(file: PathBuf, strict: bool) -> Result<()> {
                 errors.push("JPEG header is empty".to_string());
             }
         }
-        BlpContent::Dxt1(_) | BlpContent::Dxt3(_) | BlpContent::Dxt5(_) => {
+        BlpContent::Dxt1(_) | BlpContent::Dxt3(_) | BlpContent::Dxt5(_)
             // DXT requires dimensions to be multiples of 4
-            if blp.header.width % 4 != 0 || blp.header.height % 4 != 0 {
+            if (blp.header.width % 4 != 0 || blp.header.height % 4 != 0) => {
                 errors.push("DXT format requires dimensions to be multiples of 4".to_string());
             }
-        }
         _ => {}
     }
 

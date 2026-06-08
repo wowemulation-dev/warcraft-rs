@@ -3,11 +3,15 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "dbd_to_yaml")]
-#[command(about = "Convert a DBD (Database Definition) file to a YAML schema for a specific WoW build version")]
-#[command(long_about = "Reads a WoWDBDefs .dbd file and outputs a YAML schema that is \
+#[command(
+    about = "Convert a DBD (Database Definition) file to a YAML schema for a specific WoW build version"
+)]
+#[command(
+    long_about = "Reads a WoWDBDefs .dbd file and outputs a YAML schema that is \
     compatible with the wow-cdbc schema loader. Use --build to target a specific \
     game version (e.g. '3.3.5.12340'). If --build is omitted the first build \
-    section in the DBD is used.")]
+    section in the DBD is used."
+)]
 struct Cli {
     /// The DBD file to convert
     input: PathBuf,
@@ -38,11 +42,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let build_filter = cli.build.as_deref();
     let generate_all = build_filter.is_none();
 
-    let schemas = wow_cdbc::dbd::convert_to_yaml_schemas(&dbd_file, &base_name, build_filter, generate_all);
+    let schemas =
+        wow_cdbc::dbd::convert_to_yaml_schemas(&dbd_file, &base_name, build_filter, generate_all);
 
     if schemas.is_empty() {
         if let Some(b) = build_filter {
-            eprintln!("No build section matched '{}' in {}", b, cli.input.display());
+            eprintln!(
+                "No build section matched '{}' in {}",
+                b,
+                cli.input.display()
+            );
             eprintln!("Available builds:");
             for build in &dbd_file.builds {
                 eprintln!("  {}", build.versions.join(", "));
@@ -69,7 +78,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     std::fs::write(&cli.output, yaml_content)?;
-    println!("Schema for '{}' written to: {}", version_suffix, cli.output.display());
+    println!(
+        "Schema for '{}' written to: {}",
+        version_suffix,
+        cli.output.display()
+    );
 
     Ok(())
 }

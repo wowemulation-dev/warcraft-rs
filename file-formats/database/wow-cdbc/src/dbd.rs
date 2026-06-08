@@ -783,7 +783,11 @@ $id$ID<32>
         assert_eq!(dbd_file.builds.len(), 1);
         assert_eq!(
             dbd_file.builds[0].versions,
-            vec!["3.0.8.9328", "3.0.1.8303-3.3.5.12340", "2.0.0.5610-2.4.3.8606",]
+            vec![
+                "3.0.8.9328",
+                "3.0.1.8303-3.3.5.12340",
+                "2.0.0.5610-2.4.3.8606",
+            ]
         );
         assert_eq!(dbd_file.builds[0].fields.len(), 1);
     }
@@ -802,8 +806,11 @@ Name_lang
 Flags<32>
 ";
         let dbd_file = parse_dbd_content(dbd).unwrap();
-        let column_map: HashMap<String, &DbdColumn> =
-            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        let column_map: HashMap<String, &DbdColumn> = dbd_file
+            .columns
+            .iter()
+            .map(|c| (c.name.clone(), c))
+            .collect();
         let yaml = generate_yaml_schema(
             &column_map,
             &dbd_file.builds[0],
@@ -836,8 +843,11 @@ $id$ID<32>
 Name_lang
 ";
         let dbd_file = parse_dbd_content(dbd).unwrap();
-        let column_map: HashMap<String, &DbdColumn> =
-            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        let column_map: HashMap<String, &DbdColumn> = dbd_file
+            .columns
+            .iter()
+            .map(|c| (c.name.clone(), c))
+            .collect();
         let yaml = generate_yaml_schema(
             &column_map,
             &dbd_file.builds[0],
@@ -868,8 +878,11 @@ $id$ID<32>
 Name_lang
 ";
         let dbd_file = parse_dbd_content(dbd).unwrap();
-        let column_map: HashMap<String, &DbdColumn> =
-            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        let column_map: HashMap<String, &DbdColumn> = dbd_file
+            .columns
+            .iter()
+            .map(|c| (c.name.clone(), c))
+            .collect();
         let yaml = generate_yaml_schema(
             &column_map,
             &dbd_file.builds[0],
@@ -901,8 +914,11 @@ Name_lang
 Ui_order<32>
 ";
         let dbd_file = parse_dbd_content(dbd).unwrap();
-        let column_map: HashMap<String, &DbdColumn> =
-            dbd_file.columns.iter().map(|c| (c.name.clone(), c)).collect();
+        let column_map: HashMap<String, &DbdColumn> = dbd_file
+            .columns
+            .iter()
+            .map(|c| (c.name.clone(), c))
+            .collect();
         // Filtering for 3.3.5 should expand the locstring to 16 locales + flags.
         let yaml = generate_yaml_schema(
             &column_map,

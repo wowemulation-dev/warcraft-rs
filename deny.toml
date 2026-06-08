@@ -8,70 +8,75 @@ version = 2
 yanked = "deny"
 # Security advisory exceptions:
 ignore = [
-    # RUSTSEC-2023-0071: RSA timing sidechannel attack vulnerability
-    # Justification: The rsa crate is only used for MPQ archive signature verification (public key operations).
-    # The vulnerability affects private key operations (decryption/signing) which we do not perform.
-    # Public key verification is not vulnerable to timing attacks in the same way.
-    # Dependency tree: rsa -> used for verifying MPQ signatures only
-    # Last reviewed: 2025-02-12
-    "RUSTSEC-2023-0071",
+  # RUSTSEC-2023-0071: RSA timing sidechannel attack vulnerability
+  # Justification: The rsa crate is only used for MPQ archive signature verification (public key operations).
+  # The vulnerability affects private key operations (decryption/signing) which we do not perform.
+  # Public key verification is not vulnerable to timing attacks in the same way.
+  # Dependency tree: rsa -> used for verifying MPQ signatures only
+  # Last reviewed: 2025-02-12
+  "RUSTSEC-2023-0071",
 
-    # RUSTSEC-2024-0436: paste crate is unmaintained
-    # Justification: This is a transitive dependency from rav1e (AV1 encoder), used only when building
-    # the CLI with image encoding features. rav1e is itself maintained and the paste usage is
-    # limited to macro expansion during compilation, not runtime.
-    # Dependency tree: rav1e -> paste (build-time macro only)
-    # Alternative: Consider switching from rav1e when a suitable AV1 encoder alternative is available
-    # Last reviewed: 2025-02-12
-    "RUSTSEC-2024-0436",
+  # RUSTSEC-2024-0436: paste crate is unmaintained
+  # Justification: This is a transitive dependency from rav1e (AV1 encoder), used only when building
+  # the CLI with image encoding features. rav1e is itself maintained and the paste usage is
+  # limited to macro expansion during compilation, not runtime.
+  # Dependency tree: rav1e -> paste (build-time macro only)
+  # Alternative: Consider switching from rav1e when a suitable AV1 encoder alternative is available
+  # Last reviewed: 2025-02-12
+  "RUSTSEC-2024-0436",
 
-    # RUSTSEC-2025-0119: number_prefix crate is unmaintained
-    # Justification: This is a transitive dependency from indicatif (via pklib -> wow-mpq).
-    # The crate provides formatting for numbers with SI unit prefixes. It is used in progress bar
-    # rendering for formatting large byte counts. The functionality is stable and the unmaintained
-    # status does not pose security risks (no vulnerabilities reported).
-    # Dependency tree: number_prefix -> indicatif -> pklib -> wow-mpq
-    # Alternative: Could migrate to indicatif 0.18.x which uses unit-prefix, but this would require
-    # updating pklib which is out of our control.
-    # Last reviewed: 2025-02-16
-    "RUSTSEC-2025-0119",
+  # RUSTSEC-2025-0119: number_prefix crate is unmaintained
+  # Justification: This is a transitive dependency from indicatif (via pklib -> wow-mpq).
+  # The crate provides formatting for numbers with SI unit prefixes. It is used in progress bar
+  # rendering for formatting large byte counts. The functionality is stable and the unmaintained
+  # status does not pose security risks (no vulnerabilities reported).
+  # Dependency tree: number_prefix -> indicatif -> pklib -> wow-mpq
+  # Alternative: Could migrate to indicatif 0.18.x which uses unit-prefix, but this would require
+  # updating pklib which is out of our control.
+  # Last reviewed: 2025-02-16
+  "RUSTSEC-2025-0119",
 ]
 
 [licenses]
 version = 2
 allow = [
-    "MIT",
-    "Apache-2.0",
-    "Apache-2.0 WITH LLVM-exception",
-    "BSD-3-Clause",
-    "BSD-2-Clause",
-    "ISC",
-    "Unicode-3.0",
-    "Unicode-DFS-2016",
-    "CC0-1.0",
-    "MPL-2.0",
-    "Zlib",
-    "bzip2-1.0.6",
-    "NCSA",
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-3-Clause",
+  "BSD-2-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "CC0-1.0",
+  "MPL-2.0",
+  "Zlib",
+  "bzip2-1.0.6",
+  "NCSA",
 ]
 
 [bans]
 multiple-versions = "warn"
 deny = []
 skip = [
-    # These duplicates are from external dependencies we can't control
-    { name = "bitflags", version = "1.3.2" },  # Used by png/image
-    { name = "thiserror", version = "1.0" },   # Used by rav1e
-    { name = "thiserror-impl", version = "1.0" },
-    { name = "rand", version = "0.8" },        # Used by rsa
-    { name = "rand_core", version = "0.6" },
-    { name = "rand_chacha", version = "0.3" },
-    { name = "getrandom", version = "0.2" },
-    { name = "unicode-width", version = "0.1" }, # Used by prettytable-rs
-    { name = "windows-sys", version = "0.59" },
-    { name = "windows-targets", version = "0.52" },
-    { name = "windows_x86_64_gnu", version = "0.52" },
-    { name = "windows_x86_64_msvc", version = "0.52" },
+  # These duplicates are from external dependencies we can't control
+  { name = "hashbrown", version = "0.15.5" },
+  { name = "indicatif", version = "0.17.11" },
+  { name = "itertools", version = "0.12.1" },
+  { name = "itertools", version = "0.13.0" },
+  { name = "linux-raw-sys", version = "0.4.15" },
+  { name = "nom", version = "7.1.3" },
+  { name = "r-efi", version = "5.3.0" },
+  { name = "rustc-hash", version = "1.1.0" },
+  { name = "rustix", version = "0.38.44" },
+  { name = "windows-sys", version = "0.48.0" },
+  { name = "windows-sys", version = "0.61.2" },
+  { name = "windows_aarch64_gnullvm", version = "0.48.5" },
+  { name = "windows_aarch64_msvc", version = "0.48.5" },
+  { name = "windows_i686_gnu", version = "0.48.5" },
+  { name = "windows_i686_msvc", version = "0.48.5" },
+  { name = "windows_x86_64_gnullvm", version = "0.48.5" },
+  { name = "winnow", version = "0.7.15" },
+  { name = "wit-bindgen", version = "0.51.0" },
 ]
 
 [sources]

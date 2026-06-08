@@ -4,12 +4,12 @@
 //! - Method-level: Basic parameter checks
 //! - Build-level: Structural and reference validation
 
-use crate::ChunkId;
+use crate::chunks::blend_mesh::{MbbbChunk, MbmhChunk, MbmiChunk, MbnvChunk};
 use crate::chunks::DoodadPlacement;
 use crate::chunks::WmoPlacement;
-use crate::chunks::blend_mesh::{MbbbChunk, MbmhChunk, MbmiChunk, MbnvChunk};
 use crate::error::{AdtError, Result};
 use crate::version::AdtVersion;
+use crate::ChunkId;
 
 /// Validate texture filename format.
 ///
@@ -188,22 +188,22 @@ pub fn validate_version_chunk_compatibility(version: AdtVersion, chunk: ChunkId)
                 });
             }
         }
-        ChunkId::MTXP | ChunkId::MBMH | ChunkId::MBBB | ChunkId::MBNV | ChunkId::MBMI => {
-            if version != AdtVersion::MoP {
-                let chunk_name = match chunk {
-                    ChunkId::MTXP => "MTXP (texture parameters)",
-                    ChunkId::MBMH => "MBMH (blend mesh headers)",
-                    ChunkId::MBBB => "MBBB (blend mesh bounds)",
-                    ChunkId::MBNV => "MBNV (blend mesh vertices)",
-                    ChunkId::MBMI => "MBMI (blend mesh indices)",
-                    _ => unreachable!(),
-                };
-                return Err(AdtError::ChunkParseError {
-                    chunk,
-                    offset: 0,
-                    details: format!("{} requires MoP, but version is {:?}", chunk_name, version),
-                });
-            }
+        ChunkId::MTXP | ChunkId::MBMH | ChunkId::MBBB | ChunkId::MBNV | ChunkId::MBMI
+            if version != AdtVersion::MoP =>
+        {
+            let chunk_name = match chunk {
+                ChunkId::MTXP => "MTXP (texture parameters)",
+                ChunkId::MBMH => "MBMH (blend mesh headers)",
+                ChunkId::MBBB => "MBBB (blend mesh bounds)",
+                ChunkId::MBNV => "MBNV (blend mesh vertices)",
+                ChunkId::MBMI => "MBMI (blend mesh indices)",
+                _ => unreachable!(),
+            };
+            return Err(AdtError::ChunkParseError {
+                chunk,
+                offset: 0,
+                details: format!("{} requires MoP, but version is {:?}", chunk_name, version),
+            });
         }
         _ => {}
     }
