@@ -1854,12 +1854,10 @@ fn create_file_node(
                     .with_external_ref(&format!("{base_name}.skin"), detect_ref_type("file.skin"));
                 node = node.with_external_ref("*.blp", detect_ref_type("file.blp"));
             }
-            "dbc" => {
-                // Some DBC files reference other files
-                if file_name.to_lowercase().contains("item") {
-                    node = node
-                        .with_external_ref("Interface/Icons/*.blp", detect_ref_type("file.blp"));
-                }
+            "dbc"
+                if file_name.to_lowercase().contains("item") =>
+            {
+                node = node.with_external_ref("Interface/Icons/*.blp", detect_ref_type("file.blp"));
             }
             _ => {}
         }

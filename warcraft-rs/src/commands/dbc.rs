@@ -7,7 +7,8 @@ use std::io::{self, BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use wow_cdbc::{
-    DbcParser, RecordSet, SchemaDefinition, SchemaDiscoverer, Value, export_to_csv, export_to_json,
+    DbcParser, DbcWriter, RecordSet, SchemaDefinition, SchemaDiscoverer, Value, export_to_csv,
+    export_to_json, import_from_json,
 };
 
 #[cfg(feature = "yaml")]
@@ -61,6 +62,20 @@ pub enum DbcCommands {
         /// Output file (stdout if not specified)
         #[arg(short, long)]
         output: Option<PathBuf>,
+    },
+
+    /// Import DBC data from a JSON file
+    Import {
+        /// Path to the input JSON file
+        file: PathBuf,
+
+        /// Path to the schema YAML file
+        #[arg(short, long)]
+        schema: PathBuf,
+
+        /// Output DBC file path
+        #[arg(short, long)]
+        output: PathBuf,
     },
 
     /// Analyze a DBC file for performance and structure
@@ -140,6 +155,11 @@ pub fn execute(command: DbcCommands) -> Result<()> {
             format,
             output,
         } => export_command(&file, &schema, format, output.as_deref()),
+        DbcCommands::Import {
+            file,
+            schema,
+            output,
+        } => import_command(&file, &schema, &output),
         DbcCommands::Analyze {
             file,
             schema,
@@ -380,6 +400,46 @@ fn export_command(
             }
         }
     }
+
+    Ok(())
+}
+
+/// Import DBC data from a JSON file using a schema
+fn import_command(file: &Path, schema_path: &Path, output: &Path) -> Result<()> {
+    // Load schema
+    let schema_def = SchemaDefinition::from_yaml(schema_path)
+        .map_err(|e| anyhow::anyhow!("Failed to load schema {}: {}", schema_path.display(), e))?;
+    let schema = schema_def
+        .to_schema()
+        .map_err(|e| anyhow::anyhow!("Failed to convert schema definition: {}", e))?;
+
+    // Open JSON input
+    let json_file = File::open(file)
+        .with_context(|| format!("Failed to open JSON file: {}", file.display()))?;
+    let reader = BufReader::new(json_file);
+
+    // Parse JSON into a record set
+    let record_set = import_from_json(reader, schema)
+        .with_context(|| format!("Failed to import JSON file: {}", file.display()))?;
+
+    let record_count = record_set.len();
+
+    // Write output DBC file
+    let output_file = File::create(output)
+        .with_context(|| format!("Failed to create output file: {}", output.display()))?;
+    let writer = BufWriter::new(output_file);
+
+    let mut dbc_writer = DbcWriter::new(writer);
+    dbc_writer
+        .write_records(&record_set)
+        .with_context(|| format!("Failed to write DBC file: {}", output.display()))?;
+
+    println!(
+        "Imported {} records from {} to {}",
+        record_count,
+        file.display(),
+        output.display()
+    );
 
     Ok(())
 }

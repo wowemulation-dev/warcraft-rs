@@ -50,6 +50,14 @@ impl StringBlock {
         &self.data
     }
 
+    /// Create a string block from raw bytes.
+    ///
+    /// Used when constructing a `RecordSet` during import, where the string block
+    /// is built in memory rather than read from a file.
+    pub fn from_bytes(data: Vec<u8>) -> Self {
+        Self { data }
+    }
+
     /// Get the size of the string block in bytes
     pub fn size(&self) -> usize {
         self.data.len()

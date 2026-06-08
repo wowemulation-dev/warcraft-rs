@@ -86,7 +86,9 @@ impl SchemaDefinition {
         }
 
         if let Some(key_field) = &self.key_field {
-            schema.set_key_field(key_field);
+            schema
+                .try_set_key_field(key_field)
+                .map_err(|e| format!("key_field '{}': {}", key_field, e))?;
         }
 
         Ok(schema)

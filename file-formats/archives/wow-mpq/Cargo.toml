@@ -46,11 +46,18 @@ rayon = "1.10"
 
 # Thread-safe data structures and caching
 parking_lot = "0.12"
-lru = "0.12"
+lru = "0.18"
 
 
 # Async I/O support (optional)
-tokio = { version = "1.0", features = ["io-util", "time", "sync", "rt", "fs", "macros"], optional = true }
+tokio = { version = "1.0", features = [
+  "io-util",
+  "time",
+  "sync",
+  "rt",
+  "fs",
+  "macros",
+], optional = true }
 
 # Memory-mapped files (optional)
 memmap2 = { version = "0.9", optional = true }

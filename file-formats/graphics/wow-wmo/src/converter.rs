@@ -121,17 +121,17 @@ impl WmoConverter {
         self.convert_group_flags(&mut group.header.flags, current_version, target_version);
 
         // Handle liquid data changes if needed
-        if group.liquid.is_some() {
+        if let Some(ref mut liquid) = group.liquid {
             if target_version >= WmoVersion::Wod
                 && !current_version.supports_feature(WmoFeature::LiquidV2)
             {
                 // Upgrade to LiquidV2 format (more complex liquid data)
-                self.upgrade_liquid_to_v2(group.liquid.as_mut().unwrap())?;
+                self.upgrade_liquid_to_v2(liquid)?;
             } else if target_version < WmoVersion::Wod
                 && current_version.supports_feature(WmoFeature::LiquidV2)
             {
                 // Downgrade from LiquidV2 format (simplify liquid data)
-                self.downgrade_liquid_from_v2(group.liquid.as_mut().unwrap())?;
+                self.downgrade_liquid_from_v2(liquid)?;
             }
         }
 
