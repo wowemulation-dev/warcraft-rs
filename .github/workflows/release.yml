@@ -239,13 +239,16 @@ jobs:
           echo "CLI release: ${{ needs.release-cli.result }}"
 
           if [[ "${{ needs.determine-release-type.outputs.release-libraries }}" == "true" ]] && [[ "${{ needs.release-libraries.result }}" != "success" ]]; then
-            echo "Library release failed"
+            echo "::error::Library release failed"
             exit 1
           fi
 
-          if [[ "${{ needs.determine-release-type.outputs.release-cli }}" == "true" ]] && [[ "${{ needs.release-cli.result }}" != "success" ]]; then
-            echo "CLI release failed"
-            exit 1
-          fi
+              if [[ "${{ needs.determine-release-type.outputs.release-cli }}" == "true" ]]; then
+                if [[ "${{ needs.release-cli.result }}" == "success" ]]; then
+                  echo "CLI release: all builds succeeded"
+                else
+                  echo "::warning::Some CLI builds failed (see release-cli job for details). Release was still created with successful artifacts."
+                fi
+              fi
 
-          echo "All releases completed successfully!"
+              echo "::notice::Release v${{ needs.determine-release-type.outputs.version }} completed successfully"

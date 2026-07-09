@@ -208,6 +208,7 @@ jobs:
 
   create-release:
     name: Create Release
+    if: ${{ always() && !cancelled() && needs.generate-ephemeral-keys.result == 'success' }}
     needs: [generate-ephemeral-keys, build-binaries]
     runs-on: ubuntu-latest
     steps:
