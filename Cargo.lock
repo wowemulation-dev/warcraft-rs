@@ -3035,7 +3035,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "storm-ffi"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "cbindgen",
  "crc32fast",
@@ -3796,7 +3796,7 @@ dependencies = [
 
 [[package]]
 name = "warcraft-rs"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "aegis",
  "anyhow",
@@ -4320,7 +4320,7 @@ dependencies = [
 
 [[package]]
 name = "wow-adt"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "binrw",
  "criterion",
@@ -4336,7 +4336,7 @@ dependencies = [
 
 [[package]]
 name = "wow-blp"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "bytes",
  "color_quant",
@@ -4353,7 +4353,7 @@ dependencies = [
 
 [[package]]
 name = "wow-cdbc"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "binrw",
  "clap",
@@ -4374,7 +4374,7 @@ dependencies = [
 
 [[package]]
 name = "wow-m2"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -4396,7 +4396,7 @@ dependencies = [
 
 [[package]]
 name = "wow-mpq"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "adler2",
  "assert_cmd",
@@ -4433,7 +4433,7 @@ dependencies = [
 
 [[package]]
 name = "wow-wdl"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "criterion",
  "memchr",
@@ -4442,7 +4442,7 @@ dependencies = [
 
 [[package]]
 name = "wow-wdt"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -4456,7 +4456,7 @@ dependencies = [
 
 [[package]]
 name = "wow-wmo"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "binrw",
  "bitflags",

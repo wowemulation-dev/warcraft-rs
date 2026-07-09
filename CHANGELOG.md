@@ -6,12 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-07-09
+
+### Added
+
+- **wow-cdbc**: JSON import support for DBC files (PR #53)
+  - `warcraft-rs dbc import --schema <yaml> --output <dbc> <json>` converts JSON array to WDBC binary
+  - `import_from_json` library function with type coercion and string interning
+  - `StringBlock::from_bytes` in-memory constructor needed by the importer
+  - Fixed `dbd_to_yaml` to use correct `type_name`, per-build layout, and array sizes
+  - Fixed `generate_yaml_schema` to omit `key_field` when no `$id$` marker exists
+  - Fixed `schema_loader::to_schema` to return errors instead of panicking on unknown key fields
+- **Tooling**: Custom issue templates for the project
+- **Tooling**: Profiling tools (perf) added to mise configuration
 
 ### Fixed
 
-- **wow-mpq**: Fixed V4 archive support — `decrypt_table_data` no longer corrupts trailing bytes, and V4 compressed hash/block tables are now decrypted before decompression
-- **wow-mpq**: Fixed LZMA decompression — MPQ LZMA format has a leading filter byte that was not stripped, causing decoder failures on V4 archives
+- **wow-blp**: Palettized BLP palette color channel order — BLP palette is BGRX on disk (byte 0 = B, byte 2 = R), not 0xBBGGRR. Encoder and decoder both had R↔B swapped, causing red/blue inversion on real Blizzard BLPs (PR #59, closes #52, #58)
+- **wow-mpq**: Fixed V4 archive support — `decrypt_table_data` no longer corrupts trailing bytes not aligned to a 4-byte DWORD boundary, matching StormLib's `DecryptMpqBlock`. V4 compressed hash/block tables are now decrypted before decompression (the encrypted first byte was misinterpreted as the compression type)
+- **wow-mpq**: Fixed LZMA decompression — MPQ LZMA format has a 14-byte header with 1 filter byte (0x00) + 5 LZMA props + 8 byte uncompressed size. The filter byte was not stripped, causing lzma_rs to compute wrong dictionary size (524381 instead of 2048)
 - **wow-blp**: Fixed BLP1 palette size to use correct 256 colors instead of 255
 - **wow-blp**: Fixed 4-bit alpha encoding formula for RAW1 format conversion
   - Alpha values now correctly scaled to 0-15 range before packing
@@ -24,6 +37,35 @@ and this project adheres to
   - Pre-Cataclysm M2 files WITH flag set now correctly parse combos
   - Cataclysm+ M2 files WITHOUT flag set no longer read garbage data
   - Flag is properly preserved during version conversion
+- **wow-wmo**: Fixed MOLT (SMOLight) `MoltEntry` struct — was 32 bytes, missing the C4Quaternion rotation field at +0x18 (should be 48 bytes). Parser read rotation.x/rotation.y as attenuation_start/attenuation_end, then skipped the actual attenuation values. Writer had a different field order from both BN and the parser, corrupting roundtripped data
+- **wow-wmo**: Fixed doc comment bracket escaping in MOLT to prevent rustdoc intra-doc link errors
+- **wow-adt**: Fixed MCIN `McnkEntry` field naming — offset 0x0C is `async_id`, not `layer_count`. Matches BN, wowdev.wiki, and wooly-beast
+- **wow-cdbc**: Fixed language string size and build version selection for DBC schema loading
+- **wow-cdbc**: Gated database module behind `mpq` feature flag
+- **CI**: Added `GH_REPO` variable to cache cleanup workflow
+
+### Changed
+
+- **wow-mpq**: Removed `pub mod database` — hash database moved to `warcraft-rs` CLI (BREAKING)
+  - `calculate_mpq_hashes` and `calculate_het_hashes` promoted to `wow_mpq::crypto`
+  - Removed `rusqlite`, `directories`, `chrono`, and `glob` dependencies from `wow-mpq`
+- **warcraft-rs**: Refactored hash database from `wow-mpq` to `warcraft-rs` CLI (PR #51, closes #50)
+  - New async `warcraft-rs/src/database/` module using `turso` (async SQLite)
+  - CLI made async with `#[tokio::main]`
+  - `mpq` command dispatch, `list_archive`, and `execute_db_command` now async
+- **wow-blp**: Palette color channel documented as BGRX (confirmed via 3.3.5a client RE — `DecompPalFastPath` copies 3 bytes per entry as BGR)
+- **Performance**: Database bulk insert optimized with transactions, WAL journal mode, `synchronous=NORMAL`, and `prepare_cached` — 185k filenames from ~6 min down to ~15s
+- **Documentation**: Converted `docs/` to mdbook with mermaid diagram support
+- **Documentation**: Added Read the Docs configuration
+- **Documentation**: Fixed inaccurate API examples and CLI flags across all crate READMEs
+- **Documentation**: Fixed incorrect API references and broken imports across docs (replaced fabricated `warcraft_rs::` namespace with actual crate paths)
+- **Documentation**: Standardized README structure with badges and sponsor links
+- **Documentation**: Standardized KISS/DRY principles across docs and code comments
+- **Tooling**: Simplified cargo config, updated Discord link
+- **Tooling**: Synced license files from org, removed outdated CoC
+- **Tooling**: Reorganized mise.toml with profiling tools, removed duplicate CONTRIBUTING.md and SECURITY.md
+
+## [Unreleased]
 
 ## [0.6.4] - 2026-02-16
 
@@ -895,6 +937,9 @@ and this project adheres to
 - **wow-mpq**: Attributes files use full StormLib-compatible format
   (CRC32+MD5+timestamp) instead of CRC32-only
 
+[0.7.0]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.6.4...v0.7.0
+[0.6.4]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.6.0...v0.6.1
 [0.4.0]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.3.1...v0.4.0
