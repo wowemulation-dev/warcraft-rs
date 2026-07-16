@@ -3422,20 +3422,31 @@ impl M2Model {
             M2Material::parse(r, header.version)
         })?;
 
-        // Parse particle emitters
+        // Parse particle emitters. These are cosmetic, and the vanilla (v256) layout is not fully
+        // pinned down — a malformed read here must not fail the *whole* model parse. Degrade to an
+        // empty list. See https://github.com/wowemulation-dev/warcraft-rs/issues/56.
         let particle_emitters = read_array(reader, &header.particle_emitters.convert(), |r| {
             M2ParticleEmitter::parse(r, header.version)
-        })?;
+        })
+        .unwrap_or_else(|e| {
+            log::warn!("M2: skipping particle emitters (parse error: {e})");
+            Vec::new()
+        });
 
         // Parse ribbon emitters
         let ribbon_emitters = read_array(reader, &header.ribbon_emitters.convert(), |r| {
             M2RibbonEmitter::parse(r, header.version)
         })?;
 
-        // Parse texture animations
+        // Parse texture animations. Cosmetic; degrade to empty on a malformed read rather than
+        // failing the whole model. See https://github.com/wowemulation-dev/warcraft-rs/issues/56.
         let texture_animations = read_array(reader, &header.texture_animations.convert(), |r| {
             M2TextureAnimation::parse(r)
-        })?;
+        })
+        .unwrap_or_else(|e| {
+            log::warn!("M2: skipping texture animations (parse error: {e})");
+            Vec::new()
+        });
 
         // Parse color animations
         let color_animations = read_array(reader, &header.color_animations.convert(), |r| {
@@ -3464,22 +3475,29 @@ impl M2Model {
             M2Camera::parse(r, header.version)
         })?;
 
-        // Parse lights
+        // Parse lights. Cosmetic; degrade to empty on a malformed read rather than failing the whole
+        // model. See https://github.com/wowemulation-dev/warcraft-rs/issues/56.
         let lights = read_array(reader, &header.lights.convert(), |r| {
             M2Light::parse(r, header.version)
-        })?;
+        })
+        .unwrap_or_else(|e| {
+            log::warn!("M2: skipping lights (parse error: {e})");
+            Vec::new()
+        });
 
         // Collect raw animation keyframe data for bones before constructing raw_data
         let bone_animation_data = collect_bone_animation_data(reader, &bones, header.version)?;
 
-        // Collect raw animation keyframe data for particle emitters
-        let particle_animation_data = collect_particle_animation_data(reader, &particle_emitters)?;
+        // Collect raw animation keyframe data for particle emitters (cosmetic; degrade to empty).
+        let particle_animation_data =
+            collect_particle_animation_data(reader, &particle_emitters).unwrap_or_default();
 
         // Collect raw animation keyframe data for ribbon emitters
         let ribbon_animation_data = collect_ribbon_animation_data(reader, &ribbon_emitters)?;
 
-        // Collect raw animation keyframe data for texture animations
-        let texture_animation_data = collect_texture_animation_data(reader, &texture_animations)?;
+        // Collect raw animation keyframe data for texture animations (cosmetic; degrade to empty).
+        let texture_animation_data =
+            collect_texture_animation_data(reader, &texture_animations).unwrap_or_default();
 
         // Collect raw animation keyframe data for color animations
         let color_animation_data = collect_color_animation_data(reader, &color_animations)?;
@@ -3497,8 +3515,9 @@ impl M2Model {
         // Collect raw animation keyframe data for cameras
         let camera_animation_data = collect_camera_animation_data(reader, &cameras)?;
 
-        // Collect raw animation keyframe data for lights
-        let light_animation_data = collect_light_animation_data(reader, &lights)?;
+        // Collect raw animation keyframe data for lights (cosmetic; degrade to empty).
+        let light_animation_data =
+            collect_light_animation_data(reader, &lights).unwrap_or_default();
 
         // Collect embedded skin data for pre-WotLK models (version <= 263)
         let embedded_skins = collect_embedded_skin_data(reader, &header)?;
