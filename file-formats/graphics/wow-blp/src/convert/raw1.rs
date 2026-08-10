@@ -2,7 +2,8 @@ use super::error::Error;
 use super::mipmap::generate_mipmaps;
 use super::palette::*;
 use crate::types::*;
-use ::image::{DynamicImage, RgbImage, RgbaImage, imageops::FilterType};
+extern crate image as image_crate;
+use image_crate::{imageops::FilterType, DynamicImage, RgbImage, RgbaImage};
 
 pub fn raw1_to_image(
     header: &BlpHeader,
@@ -32,8 +33,8 @@ pub fn raw1_to_image(
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
             pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;  // G
-            pixel.0[2] = (color & 0xFF) as u8;          // B
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G
+            pixel.0[2] = (color & 0xFF) as u8; // B
         }
         Ok(DynamicImage::ImageRgb8(res_image))
     } else if alpha_bits == 1 {
@@ -53,8 +54,8 @@ pub fn raw1_to_image(
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
             pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;  // G
-            pixel.0[2] = (color & 0xFF) as u8;          // B
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G
+            pixel.0[2] = (color & 0xFF) as u8; // B
             let bit = (raw_image.indexed_alpha[i / 8] >> (i % 8)) & 0x01;
             pixel.0[3] = if bit == 1 { 255 } else { 0 };
         }
@@ -77,8 +78,8 @@ pub fn raw1_to_image(
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
             pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;  // G
-            pixel.0[2] = (color & 0xFF) as u8;          // B
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G
+            pixel.0[2] = (color & 0xFF) as u8; // B
             let alpha_block = raw_image.indexed_alpha[i / 2];
             let nibble = if i % 2 == 0 {
                 alpha_block & 0x0F
@@ -105,8 +106,8 @@ pub fn raw1_to_image(
             let ci = raw_image.indexed_rgb[i];
             let color = image.cmap[ci as usize];
             pixel.0[0] = ((color >> 16) & 0xFF) as u8; // R
-            pixel.0[1] = ((color >> 8) & 0xFF) as u8;  // G
-            pixel.0[2] = (color & 0xFF) as u8;          // B
+            pixel.0[1] = ((color >> 8) & 0xFF) as u8; // G
+            pixel.0[2] = (color & 0xFF) as u8; // B
             pixel.0[3] = raw_image.indexed_alpha[i];
         }
         Ok(DynamicImage::ImageRgba8(res_image))
@@ -223,5 +224,42 @@ fn index_alpha(image: &RgbaImage, alpha_bits: u32) -> Result<Vec<u8>, Error> {
         Ok(index_alpha_8bit(image))
     } else {
         Err(Error::Raw1InvalidAlphaBits(alpha_bits))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verifies that a real BGRX palette entry becomes standard RGBA output.
+    #[test]
+    fn bgrx_palette_decodes_to_rgba() {
+        let header = BlpHeader {
+            version: BlpVersion::Blp2,
+            content: BlpContentTag::Direct,
+            flags: BlpFlags::Blp2 {
+                compression: Compression::Raw1,
+                alpha_bits: 0,
+                alpha_type: AlphaType::None,
+                has_mipmaps: 0,
+            },
+            width: 1,
+            height: 1,
+            mipmap_locator: MipmapLocator::Internal {
+                offsets: [0; 16],
+                sizes: [0; 16],
+            },
+        };
+        let raw = BlpRaw1 {
+            cmap: vec![0x0011_2233; 256],
+            images: vec![Raw1Image {
+                indexed_rgb: vec![0],
+                indexed_alpha: Vec::new(),
+            }],
+        };
+        let image = raw1_to_image(&header, &raw, 0)
+            .expect("decode BGRX palette")
+            .to_rgba8();
+        assert_eq!(image.into_raw(), vec![0x11, 0x22, 0x33, 0xff]);
     }
 }
