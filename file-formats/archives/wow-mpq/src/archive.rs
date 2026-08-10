@@ -152,6 +152,9 @@ pub struct OpenOptions {
     /// provides faster startup but may defer error detection.
     pub load_tables: bool,
 
+    /// Whether to load optional `(attributes)` metadata with the tables.
+    pub load_attributes: bool,
+
     /// MPQ format version to use when creating new archives.
     ///
     /// This field is only used when creating new archives via `create()`.
@@ -168,6 +171,7 @@ impl OpenOptions {
     pub fn new() -> Self {
         Self {
             load_tables: true,
+            load_attributes: true,
             version: None,
         }
     }
@@ -182,6 +186,12 @@ impl OpenOptions {
     /// Self for method chaining
     pub fn load_tables(mut self, load: bool) -> Self {
         self.load_tables = load;
+        self
+    }
+
+    /// Set whether optional `(attributes)` metadata loads with the tables.
+    pub fn load_attributes(mut self, load: bool) -> Self {
+        self.load_attributes = load;
         self
     }
 
@@ -276,6 +286,8 @@ pub struct Archive {
     bet_table: Option<BetTable>,
     /// File attributes from (attributes) file
     attributes: Option<special_files::Attributes>,
+    /// Whether optional `(attributes)` metadata should be loaded.
+    load_attributes: bool,
 }
 
 impl Archive {
@@ -305,6 +317,7 @@ impl Archive {
             bet_table: None,
             het_table: None,
             attributes: None,
+            load_attributes: options.load_attributes,
         };
 
         // Load tables if requested
@@ -775,12 +788,14 @@ impl Archive {
             }
         }
 
-        // Load attributes if present
-        match self.load_attributes() {
-            Ok(()) => {}
-            Err(e) => {
-                log::warn!("Failed to load attributes: {e:?}");
-                // Continue without attributes
+        if self.load_attributes {
+            // Load attributes if present
+            match self.load_attributes() {
+                Ok(()) => {}
+                Err(e) => {
+                    log::warn!("Failed to load attributes: {e:?}");
+                    // Continue without attributes
+                }
             }
         }
 
@@ -1048,6 +1063,7 @@ impl Archive {
                         het_table: None,
                         bet_table: None,
                         attributes: None,
+                        load_attributes: self.load_attributes,
                     };
 
                     if let Ok(size) = temp_archive.read_het_table_size(pos) {
@@ -1091,6 +1107,7 @@ impl Archive {
                         het_table: None,
                         bet_table: None,
                         attributes: None,
+                        load_attributes: self.load_attributes,
                     };
 
                     if let Ok(size) = temp_archive.read_bet_table_size(pos) {
@@ -3051,13 +3068,45 @@ impl FileEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::encrypt_block;
+    use crate::{encrypt_block, FormatVersion};
 
     #[test]
     fn test_open_options() {
         let opts = OpenOptions::new().load_tables(false);
 
         assert!(!opts.load_tables);
+    }
+
+    /// Verifies that `(attributes)` remains discoverable while its large
+    /// metadata payload is loaded only when explicitly requested.
+    #[test]
+    fn test_attributes_loading_can_be_skipped() {
+        let directory = tempfile::tempdir().expect("temporary archive directory");
+        let path = directory.path().join("attributes.mpq");
+        ArchiveBuilder::new()
+            .version(FormatVersion::V2)
+            .attributes_option(crate::AttributesOption::GenerateCrc32)
+            .add_file_data(b"fixture".to_vec(), "fixture.txt")
+            .build(&path)
+            .expect("build attributes fixture");
+
+        let skipped = Archive::open_with_options(
+            &path,
+            OpenOptions::new().load_tables(true).load_attributes(false),
+        )
+        .expect("open attributes fixture without metadata");
+        assert!(skipped
+            .find_file("(attributes)")
+            .expect("find attributes entry")
+            .is_some());
+        assert!(skipped.attributes().is_none());
+
+        let loaded = Archive::open_with_options(
+            &path,
+            OpenOptions::new().load_tables(true).load_attributes(true),
+        )
+        .expect("open attributes fixture with metadata");
+        assert!(loaded.attributes().is_some());
     }
 
     #[test]
