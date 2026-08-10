@@ -1,6 +1,6 @@
 use super::super::bounds::get_bounded_slice;
 use super::super::error::Error;
-use super::super::reader::{ByteReader, Cursor, read_u32_array};
+use super::super::reader::{read_u32_array, ByteReader, Cursor};
 use super::super::types::ParseResult;
 use crate::types::*;
 use log::*;
@@ -66,32 +66,37 @@ pub fn parse_dxtn<'a>(
     let mut read_image = |i: usize| -> ParseResult<()> {
         let offset = offsets[i];
         let size = sizes[i];
-        if offset as usize >= original_input.len() {
+        let offset = usize::try_from(offset).map_err(|_| Error::OutOfBounds {
+            offset: usize::MAX,
+            size: 0,
+        })?;
+        let size = usize::try_from(size).map_err(|_| Error::OutOfBounds {
+            offset,
+            size: usize::MAX,
+        })?;
+        let end = offset
+            .checked_add(size)
+            .ok_or(Error::OutOfBounds { offset, size })?;
+        if offset > original_input.len() {
             error!(
                 "Offset of mipmap {} is out of bounds! {} >= {}",
                 i,
                 offset,
                 original_input.len()
             );
-            return Err(Error::OutOfBounds {
-                offset: offset as usize,
-                size: 0,
-            });
+            return Err(Error::OutOfBounds { offset, size: 0 });
         }
-        if (offset + size) as usize > original_input.len() {
+        if end > original_input.len() {
             error!(
                 "Offset+size of mipmap {} is out of bounds! {} > {}",
                 i,
-                offset + size,
+                end,
                 original_input.len()
             );
-            return Err(Error::OutOfBounds {
-                offset: offset as usize,
-                size: size as usize,
-            });
+            return Err(Error::OutOfBounds { offset, size });
         }
 
-        let image_bytes = &original_input[offset as usize..(offset + size) as usize];
+        let image_bytes = &original_input[offset..end];
         let n = blp_header.mipmap_pixels(i);
         let blocks_n = ((n as f32) / 16.0).ceil() as usize;
         let mut blocks_size = blocks_n * dxtn.block_size();
@@ -121,8 +126,56 @@ pub fn parse_dxtn<'a>(
     if blp_header.has_mipmaps() {
         trace!("Mipmaps count: {}", blp_header.mipmaps_count());
         for i in 1..(blp_header.mipmaps_count() + 1).min(16) {
+            if sizes[i] == 0 {
+                trace!("Size of mipmap {i} is 0 bytes, I stop reading of images");
+                break;
+            }
             read_image(i)?;
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verifies zero-sized trailing mipmap slots terminate a valid BLP2 chain.
+    #[test]
+    fn zero_sized_trailing_mipmaps_are_ignored() {
+        let header = BlpHeader {
+            version: BlpVersion::Blp2,
+            content: BlpContentTag::Direct,
+            flags: BlpFlags::Blp2 {
+                compression: Compression::Dxtc,
+                alpha_bits: 8,
+                alpha_type: AlphaType::EightBit,
+                has_mipmaps: 1,
+            },
+            width: 128,
+            height: 512,
+            mipmap_locator: MipmapLocator::Internal {
+                offsets: [0; 16],
+                sizes: [0; 16],
+            },
+        };
+        let data = vec![0; 65_536];
+        let mut offsets = [0; 16];
+        let mut sizes = [0; 16];
+        sizes[0] = data.len() as u32;
+        offsets[1] = data.len() as u32;
+        let mut images = Vec::new();
+
+        parse_dxtn(
+            &header,
+            DxtnFormat::Dxt5,
+            &data,
+            &offsets,
+            &sizes,
+            &mut images,
+            &data,
+        )
+        .expect("zero-sized mipmap terminator should be valid");
+        assert_eq!(images.len(), 1);
+    }
 }
