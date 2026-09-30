@@ -29,8 +29,8 @@ pub use color_animation::{M2Color, M2ColorAnimation};
 pub use event::{M2Event, M2EventType};
 pub use file_references::{
     AnimationFileIds, AnimationTrack, BoneData, BoneFileIds, BoneNode, CollisionMesh, LodData,
-    LodLevel, PhysicsData, PhysicsFileId, PhysicsMaterial, SkeletonData, SkeletonFileId,
-    SkinFileIds, TextureFileIds,
+    PhysicsData, PhysicsFileId, PhysicsMaterial, SkeletonData, SkeletonFileId, SkinFileIds,
+    TextureFileIds,
 };
 pub use infrastructure::{ChunkHeader, ChunkReader};
 pub use light::{M2Light, M2LightFlags, M2LightType};

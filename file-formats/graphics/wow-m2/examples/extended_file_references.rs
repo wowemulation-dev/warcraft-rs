@@ -62,29 +62,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Demonstrate LOD support (LDV1)
     if let Some(lod_data) = model.get_lod_data() {
         println!("\nLevel of Detail Support:");
-        println!("  Number of LOD levels: {}", lod_data.len());
-
-        for (index, level) in lod_data.levels.iter().enumerate() {
-            println!(
-                "    LOD {}: distance={}, skin_file_index={}, vertices={}, triangles={}",
-                index,
-                level.distance,
-                level.skin_file_index,
-                level.vertex_count,
-                level.triangle_count
-            );
-        }
-
-        // Demonstrate LOD selection
-        let distances = [50.0, 90.0, 200.0];
-        for &distance in &distances {
-            if let Some(selected_lod) = model.select_lod(distance) {
-                println!(
-                    "  At distance {}: use skin file {}",
-                    distance, selected_lod.skin_file_index
-                );
-            }
-        }
+        println!("  Number of LOD levels: {}", lod_data.lod_count);
+        println!("  Max LOD index: {:?}", lod_data.max_lod());
+        println!("  Particle bone LOD: {:?}", lod_data.particle_bone_lod);
     }
 
     println!("\nNote: This example demonstrates the parsing of extended file reference chunks.");
@@ -133,19 +113,12 @@ fn create_mock_chunked_m2() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
 
     // LDV1 chunk - Level of Detail
     data.extend_from_slice(b"LDV1");
-    data.extend_from_slice(&28u32.to_le_bytes()); // Chunk size: 28 bytes (2 levels × 14 bytes each)
-
-    // LOD Level 1: High detail
-    data.extend_from_slice(&80.0f32.to_le_bytes()); // distance
-    data.extend_from_slice(&0u16.to_le_bytes()); // skin_file_index
-    data.extend_from_slice(&4096u32.to_le_bytes()); // vertex_count
-    data.extend_from_slice(&8192u32.to_le_bytes()); // triangle_count
-
-    // LOD Level 2: Low detail
-    data.extend_from_slice(&200.0f32.to_le_bytes()); // distance
-    data.extend_from_slice(&1u16.to_le_bytes()); // skin_file_index
-    data.extend_from_slice(&1024u32.to_le_bytes()); // vertex_count
-    data.extend_from_slice(&2048u32.to_le_bytes()); // triangle_count
+    data.extend_from_slice(&16u32.to_le_bytes()); // Chunk size: 16 bytes (single record)
+    data.extend_from_slice(&0u16.to_le_bytes()); // unknown_0
+    data.extend_from_slice(&2u16.to_le_bytes()); // lod_count
+    data.extend_from_slice(&10.0f32.to_le_bytes()); // unknown_2
+    data.extend_from_slice(&[0, 1, 1, 1]); // particle_bone_lod
+    data.extend_from_slice(&0u32.to_le_bytes()); // unknown_4
 
     Ok(data)
 }
