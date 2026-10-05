@@ -124,7 +124,7 @@ and this project adheres to
 - **Tooling**: Simplified mise configuration to tool definitions only
   - Removed task definitions from mise.toml (use cargo aliases instead)
   - Reduced configuration from 212 lines to tool pinning only
-  - Added markdownlint, actionlint, and cross tools
+  - Added mado (markdown linter), actionlint, and cross tools
 - **Tooling**: Refactored install scripts for reusability across projects
   - install.sh and install.ps1 now support generic binary installation
   - Configurable via environment variables (BINARY_NAMES, BINARY_DEFAULT, REPO, TAG_PREFIX)

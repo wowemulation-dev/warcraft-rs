@@ -1,0 +1,99 @@
+[lint]
+respect-ignore = true
+respect-gitignore = "repository-only"
+output-format = "concise"
+quiet = false
+exclude = []
+rules = [
+  "MD001",
+  "MD002",
+  "MD003",
+  "MD004",
+  "MD006",
+  "MD009",
+  "MD010",
+  "MD012",
+  "MD013",
+  "MD014",
+  "MD018",
+  "MD019",
+  "MD020",
+  "MD021",
+  "MD022",
+  "MD023",
+  "MD025",
+  "MD026",
+  "MD027",
+  "MD028",
+  "MD030",
+  "MD031",
+  "MD032",
+  "MD033",
+  "MD034",
+  "MD035",
+  "MD036",
+  "MD037",
+  "MD038",
+  "MD039",
+  "MD040",
+  "MD041",
+  "MD046",
+  "MD047",
+]
+
+[lint.md003]
+style = "consistent"
+
+[lint.md004]
+style = "dash"
+
+[lint.md013]
+line-length = 100
+code-blocks = false
+tables = false
+
+[lint.md033]
+allowed-elements = [
+  "a",
+  "br",
+  "details",
+  "div",
+  "figcaption",
+  "figure",
+  "hostname",
+  "img",
+  "picture",
+  "source",
+  "strong",
+  "sub",
+  "summary",
+  "sup",
+]
+
+[lint.md035]
+style = "consistent"
+
+[lint.md040]
+allowed-languages = [
+  "bash",
+  "c",
+  "cmake",
+  "cpp",
+  "diff",
+  "dockerfile",
+  "glsl",
+  "hcl",
+  "json",
+  "ldif",
+  "lua",
+  "markdown",
+  "mermaid",
+  "pgsql",
+  "powershell",
+  "python",
+  "rust",
+  "shell",
+  "sql",
+  "toml",
+  "yaml",
+]
