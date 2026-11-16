@@ -2620,43 +2620,13 @@ impl M2Model {
                     reader.seek(SeekFrom::Start(end_pos))?;
                 }
                 b"LDV1" => {
-                    // Parse LDV1 (Level of Detail) chunk
-                    let current_pos = reader.stream_position()?;
-                    let end_pos = current_pos + header.size as u64;
+                    // Parse LDV1 (Level of Detail) chunk, a single 16-byte record
+                    let mut chunk_data = vec![0u8; header.size as usize];
+                    reader.read_exact(&mut chunk_data)?;
+                    let chunk_cursor = std::io::Cursor::new(chunk_data);
+                    let mut chunk_reader = ChunkReader::new(chunk_cursor, header.clone())?;
 
-                    // LDV1 format: each LOD level is 14 bytes
-                    const LOD_LEVEL_SIZE: u32 = 14;
-
-                    if header.size % LOD_LEVEL_SIZE != 0 {
-                        return Err(M2Error::ParseError(format!(
-                            "LDV1 chunk size {} is not a multiple of LOD level size {}",
-                            header.size, LOD_LEVEL_SIZE
-                        )));
-                    }
-
-                    let count = header.size / LOD_LEVEL_SIZE;
-                    let mut levels = Vec::with_capacity(count as usize);
-
-                    for _ in 0..count {
-                        use crate::chunks::file_references::LodLevel;
-
-                        let distance = reader.read_f32_le()?;
-                        let skin_file_index = reader.read_u16_le()?;
-                        let vertex_count = reader.read_u32_le()?;
-                        let triangle_count = reader.read_u32_le()?;
-
-                        levels.push(LodLevel {
-                            distance,
-                            skin_file_index,
-                            vertex_count,
-                            triangle_count,
-                        });
-                    }
-
-                    lod_data = Some(LodData { levels });
-
-                    // Ensure we're at the correct position
-                    reader.seek(SeekFrom::Start(end_pos))?;
+                    lod_data = Some(LodData::read(&mut chunk_reader)?);
                 }
                 b"EXPT" => {
                     // Parse EXPT (Extended Particle v1) chunk
@@ -5642,11 +5612,6 @@ impl M2Model {
     /// Get the number of bone files referenced
     pub fn bone_file_count(&self) -> usize {
         self.bone_file_ids.as_ref().map_or(0, |ids| ids.len())
-    }
-
-    /// Select the appropriate LOD level for a given distance
-    pub fn select_lod(&self, distance: f32) -> Option<&crate::chunks::file_references::LodLevel> {
-        self.lod_data.as_ref()?.select_lod(distance)
     }
 
     /// Check if the model has LOD data

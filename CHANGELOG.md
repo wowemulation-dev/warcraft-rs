@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **wow-m2**: LDV1 chunk is now parsed as the single 16-byte record documented on wowdev.wiki (`unk0`, `lodCount`, `unk2_f`, `particleBoneLod[4]`, `unk4`) instead of an array of 14-byte levels. Chunked (MD21) models with an LDV1 chunk, such as current Classic Era clients, previously failed with "LDV1 chunk size 16 is not a multiple of LOD level size 14"
+  - Breaking: `LodData` now exposes `unknown_0`, `lod_count`, `unknown_2`, `particle_bone_lod` and `unknown_4`; `LodLevel`, `LodData::levels`/`len`/`is_empty`/`select_lod` and `M2Model::select_lod` are removed
+
 ## [0.7.0] - 2026-07-09
 
 ### Added

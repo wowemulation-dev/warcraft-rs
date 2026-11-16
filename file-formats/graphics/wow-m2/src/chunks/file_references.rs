@@ -125,25 +125,20 @@ pub struct BoneFileIds {
     pub ids: Vec<u32>,
 }
 
-/// LDV1 chunk - Level of Detail Configuration
-/// Contains level of detail settings and skin file assignments
+/// LDV1 chunk - Level of Detail Configuration (8.0.1+)
+/// A single 16-byte record, not an array of per-level entries
 #[derive(Debug, Clone)]
 pub struct LodData {
-    /// LOD levels configuration
-    pub levels: Vec<LodLevel>,
-}
-
-/// Single LOD level configuration
-#[derive(Debug, Clone)]
-pub struct LodLevel {
-    /// Distance threshold for this LOD level
-    pub distance: f32,
-    /// Skin file index to use for this LOD level
-    pub skin_file_index: u16,
-    /// Number of vertices at this LOD level
-    pub vertex_count: u32,
-    /// Number of triangles at this LOD level
-    pub triangle_count: u32,
+    /// Unknown
+    pub unknown_0: u16,
+    /// Number of LOD levels (`_lod*.skin` files in SFID); max LOD is `lod_count - 1`
+    pub lod_count: u16,
+    /// Unknown, the client uses `clamp(740.0 / unknown_2, 0.5, 5.0)`
+    pub unknown_2: f32,
+    /// Per-LOD flags controlling whether particle emitters animate, indexed by current LOD
+    pub particle_bone_lod: [u8; 4],
+    /// Unknown
+    pub unknown_4: u32,
 }
 
 /// Basic physics data structure for .phys files
@@ -333,64 +328,38 @@ impl BoneFileIds {
 }
 
 impl LodData {
+    /// Size of the LDV1 record in bytes
+    pub const SIZE: u32 = 16;
+
     /// Read LDV1 chunk data from a chunk reader
     pub fn read<R: Read + Seek>(reader: &mut ChunkReader<R>) -> Result<Self> {
-        // LDV1 format: each LOD level is 14 bytes
-        // 4 bytes: distance (float)
-        // 2 bytes: skin_file_index (u16)
-        // 4 bytes: vertex_count (u32)
-        // 4 bytes: triangle_count (u32)
-        const LOD_LEVEL_SIZE: u32 = 14;
-
-        if !reader.chunk_size().is_multiple_of(LOD_LEVEL_SIZE) {
+        if reader.chunk_size() < Self::SIZE {
             return Err(crate::error::M2Error::ParseError(format!(
-                "LDV1 chunk size {} is not a multiple of LOD level size {}",
+                "LDV1 chunk size {} is smaller than LodData size {}",
                 reader.chunk_size(),
-                LOD_LEVEL_SIZE
+                Self::SIZE
             )));
         }
 
-        let count = reader.chunk_size() / LOD_LEVEL_SIZE;
-        let mut levels = Vec::with_capacity(count as usize);
+        let unknown_0 = reader.read_u16_le()?;
+        let lod_count = reader.read_u16_le()?;
+        let unknown_2 = reader.read_f32_le()?;
+        let mut particle_bone_lod = [0u8; 4];
+        reader.read_exact(&mut particle_bone_lod)?;
+        let unknown_4 = reader.read_u32_le()?;
 
-        for _ in 0..count {
-            let distance = reader.read_f32_le()?;
-            let skin_file_index = reader.read_u16_le()?;
-            let vertex_count = reader.read_u32_le()?;
-            let triangle_count = reader.read_u32_le()?;
-
-            levels.push(LodLevel {
-                distance,
-                skin_file_index,
-                vertex_count,
-                triangle_count,
-            });
-        }
-
-        Ok(LodData { levels })
+        Ok(LodData {
+            unknown_0,
+            lod_count,
+            unknown_2,
+            particle_bone_lod,
+            unknown_4,
+        })
     }
 
-    /// Select the appropriate LOD level for a given distance
-    pub fn select_lod(&self, distance: f32) -> Option<&LodLevel> {
-        // Find the first LOD level where the distance is less than or equal to the threshold
-        // LOD levels should be sorted by distance (closest first)
-        self.levels
-            .iter()
-            .find(|lod| distance <= lod.distance)
-            .or_else(|| {
-                // If no level matches, use the last (most distant) level
-                self.levels.last()
-            })
-    }
-
-    /// Get the number of LOD levels
-    pub fn len(&self) -> usize {
-        self.levels.len()
-    }
-
-    /// Check if there are no LOD levels
-    pub fn is_empty(&self) -> bool {
-        self.levels.is_empty()
+    /// Highest LOD index (`lod_count - 1`), or `None` if `lod_count` is 0
+    pub fn max_lod(&self) -> Option<u16> {
+        self.lod_count.checked_sub(1)
     }
 }
 
@@ -773,46 +742,28 @@ mod tests {
     #[test]
     fn test_ldv1_parsing() {
         let data = vec![
-            // First LOD level (14 bytes)
-            0x00, 0x00, 0xA0, 0x42, // distance = 80.0f
-            0x00, 0x00, // skin_file_index = 0
-            0x00, 0x10, 0x00, 0x00, // vertex_count = 4096
-            0x00, 0x20, 0x00, 0x00, // triangle_count = 8192
-            // Second LOD level (14 bytes)
-            0x00, 0x00, 0xC8, 0x42, // distance = 100.0f
-            0x01, 0x00, // skin_file_index = 1
-            0x00, 0x08, 0x00, 0x00, // vertex_count = 2048
-            0x00, 0x10, 0x00, 0x00, // triangle_count = 4096
+            0x07, 0x00, // unknown_0 = 7
+            0x03, 0x00, // lod_count = 3
+            0x00, 0x00, 0x20, 0x41, // unknown_2 = 10.0f
+            0x00, 0x01, 0x01, 0x02, // particle_bone_lod = [0, 1, 1, 2]
+            0x78, 0x56, 0x34, 0x12, // unknown_4 = 0x12345678
         ];
 
         let header = ChunkHeader {
             magic: *b"LDV1",
-            size: 28,
+            size: 16,
         };
         let cursor = Cursor::new(data);
         let mut chunk_reader = ChunkReader::new(cursor, header).unwrap();
 
         let ldv1 = LodData::read(&mut chunk_reader).unwrap();
 
-        assert_eq!(ldv1.len(), 2);
-        assert!(!ldv1.is_empty());
-
-        let level0 = &ldv1.levels[0];
-        assert_eq!(level0.distance, 80.0);
-        assert_eq!(level0.skin_file_index, 0);
-        assert_eq!(level0.vertex_count, 4096);
-        assert_eq!(level0.triangle_count, 8192);
-
-        let level1 = &ldv1.levels[1];
-        assert_eq!(level1.distance, 100.0);
-        assert_eq!(level1.skin_file_index, 1);
-        assert_eq!(level1.vertex_count, 2048);
-        assert_eq!(level1.triangle_count, 4096);
-
-        // Test LOD selection
-        assert_eq!(ldv1.select_lod(50.0).unwrap().skin_file_index, 0); // Close distance -> high detail
-        assert_eq!(ldv1.select_lod(90.0).unwrap().skin_file_index, 1); // Far distance -> low detail
-        assert_eq!(ldv1.select_lod(200.0).unwrap().skin_file_index, 1); // Very far -> use last level
+        assert_eq!(ldv1.unknown_0, 7);
+        assert_eq!(ldv1.lod_count, 3);
+        assert_eq!(ldv1.unknown_2, 10.0);
+        assert_eq!(ldv1.particle_bone_lod, [0, 1, 1, 2]);
+        assert_eq!(ldv1.unknown_4, 0x12345678);
+        assert_eq!(ldv1.max_lod(), Some(2));
     }
 
     #[test]
@@ -832,7 +783,7 @@ mod tests {
 
     #[test]
     fn test_ldv1_invalid_size() {
-        let data = vec![0x01, 0x02, 0x03]; // Not a multiple of 14 bytes
+        let data = vec![0x01, 0x02, 0x03]; // Shorter than 16 bytes
 
         let header = ChunkHeader {
             magic: *b"LDV1",
