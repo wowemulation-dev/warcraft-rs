@@ -8,7 +8,8 @@ no shared error type across crates.
 | Crate | Error Type | Module |
 |-------|-----------|--------|
 | wow-mpq | `Error` | `wow_mpq::error` |
-| wow-blp | `LoadError`, `EncodeError`, `ConvertError` | `wow_blp::parser`, `wow_blp::encode`, `wow_blp::convert` |
+| wow-blp | `LoadError`, `EncodeError`, `ConvertError` | `wow_blp::parser`, `wow_blp::encode`,
+`wow_blp::convert` |
 | wow-m2 | `M2Error` | `wow_m2::error` |
 | wow-wmo | `WmoError` | `wow_wmo::error` |
 | wow-adt | `AdtError` | `wow_adt::error` |

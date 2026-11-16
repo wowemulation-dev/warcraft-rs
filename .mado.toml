@@ -3,7 +3,10 @@ respect-ignore = true
 respect-gitignore = "repository-only"
 output-format = "concise"
 quiet = false
-exclude = []
+exclude = [
+  # mdbook build file: its multiple H1 sections are the book outline, not prose
+  "docs/src/SUMMARY.md",
+]
 rules = [
   "MD001",
   "MD002",
@@ -94,6 +97,7 @@ allowed-languages = [
   "rust",
   "shell",
   "sql",
+  "text",
   "toml",
   "yaml",
 ]

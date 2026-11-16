@@ -521,7 +521,8 @@ fn het_bet_algorithm_overview(archive: &Archive, filename: &str) {
 
 ### Compression Methods
 
-Files can be compressed using multiple algorithms, identified by the first byte after decompression:
+Files can be compressed using multiple algorithms, identified by the first byte after
+decompression:
 
 ```rust
 use wow_mpq::compression::{decompress, compress, flags};
@@ -693,7 +694,7 @@ fn modify_archive_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ Read files from a mutable archive
     let data = archive.read_file("some_file.txt")?;
-    
+
     // ✅ List files (convenience method)
     let files = archive.list()?;
     for entry in files {

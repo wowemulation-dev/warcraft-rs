@@ -12,8 +12,9 @@ many other game elements.
 - **Purpose**: Client-side database tables for game data
 - **Structure**: Fixed-size records with defined schemas - ✅ Implemented
 - **Encoding**: Little-endian binary format - ✅ Implemented
-- **String Storage**: Separate string block with offset references - ✅ Implemented  
-- **Localization**: Built-in support for multiple languages - ⚠️ Partial - Multiple language support available but not all localizations tested
+- **String Storage**: Separate string block with offset references - ✅ Implemented
+- **Localization**: Built-in support for multiple languages - ⚠️ Partial -
+  Multiple language support available but not all localizations tested
 
 ## Key Characteristics
 
@@ -38,7 +39,7 @@ This documentation focuses on the WDBC v1 format used in Classic through WotLK.
 
 A DBC file consists of three main sections:
 
-```
+```text
 +----------------+
 |     Header     |  20 bytes
 +----------------+
@@ -136,7 +137,7 @@ impl DbcRecord {
 
 The string block contains null-terminated UTF-8 strings referenced by offset:
 
-```
+```text
 Offset  Content
 0x0000  \0              (empty string)
 0x0001  "Fireball\0"
@@ -499,7 +500,7 @@ use std::fs::File;
 use std::io::BufReader;
 use wow_cdbc::{DbcParser, FieldType, Schema, SchemaField};
 
-// Open a DBC file  
+// Open a DBC file
 let file = File::open("SpellItemEnchantment.dbc")?;
 let mut reader = BufReader::new(file);
 
@@ -540,87 +541,91 @@ DBC writing functionality is not currently implemented in the `wow-cdbc` crate.
 ### Memory Mapping
 
 For large DBC files, consider memory mapping:
-    /// Create a new DBC builder
-    pub fn new(field_count: u32) -> Self {
-        let mut builder = DbcBuilder {
-            field_count,
-            records: Vec::new(),
-            strings: HashMap::new(),
-            string_data: vec![0], // Start with null string
-        };
 
-        // Add empty string at offset 0
-        builder.strings.insert(String::new(), 0);
+```rust
+/// Create a new DBC builder
+pub fn new(field_count: u32) -> Self {
+    let mut builder = DbcBuilder {
+        field_count,
+        records: Vec::new(),
+        strings: HashMap::new(),
+        string_data: vec![0], // Start with null string
+    };
 
-        builder
-    }
+    // Add empty string at offset 0
+    builder.strings.insert(String::new(), 0);
 
-    /// Add a string to the string block
-    pub fn add_string(&mut self, string: &str) -> u32 {
-        if string.is_empty() {
-            return 0;
-        }
-
-        // Check if string already exists
-        if let Some(&offset) = self.strings.get(string) {
-            return offset;
-        }
-
-        // Add new string
-        let offset = self.string_data.len() as u32;
-        self.string_data.extend_from_slice(string.as_bytes());
-        self.string_data.push(0); // Null terminator
-
-        self.strings.insert(string.to_string(), offset);
-        offset
-    }
-
-    /// Add a record
-    pub fn add_record(&mut self, fields: Vec<u32>) -> Result<(), DbcError> {
-        if fields.len() != self.field_count as usize {
-            return Err(DbcError::InvalidHeader);
-        }
-
-        self.records.push(fields);
-        Ok(())
-    }
-
-    /// Write the DBC file
-    pub fn write_file(&self, path: &str) -> Result<(), DbcError> {
-        let file = File::create(path).map_err(DbcError::Io)?;
-        let mut writer = BufWriter::new(file);
-
-        // Build header
-        let header = DbcHeader {
-            magic: *b"WDBC",
-            record_count: self.records.len() as u32,
-            field_count: self.field_count,
-            record_size: self.field_count * 4,
-            string_block_size: self.string_data.len() as u32,
-        };
-
-        // Write header
-        writer.write_all(&header.magic).map_err(DbcError::Io)?;
-        writer.write_all(&header.record_count.to_le_bytes()).map_err(DbcError::Io)?;
-        writer.write_all(&header.field_count.to_le_bytes()).map_err(DbcError::Io)?;
-        writer.write_all(&header.record_size.to_le_bytes()).map_err(DbcError::Io)?;
-        writer.write_all(&header.string_block_size.to_le_bytes()).map_err(DbcError::Io)?;
-
-        // Write records
-        for record in &self.records {
-            for &field in record {
-                writer.write_all(&field.to_le_bytes()).map_err(DbcError::Io)?;
-            }
-        }
-
-        // Write string block
-        writer.write_all(&self.string_data).map_err(DbcError::Io)?;
-
-        writer.flush().map_err(DbcError::Io)?;
-        Ok(())
-    }
+    builder
 }
 
+/// Add a string to the string block
+pub fn add_string(&mut self, string: &str) -> u32 {
+    if string.is_empty() {
+        return 0;
+    }
+
+    // Check if string already exists
+    if let Some(&offset) = self.strings.get(string) {
+        return offset;
+    }
+
+    // Add new string
+    let offset = self.string_data.len() as u32;
+    self.string_data.extend_from_slice(string.as_bytes());
+    self.string_data.push(0); // Null terminator
+
+    self.strings.insert(string.to_string(), offset);
+    offset
+}
+
+/// Add a record
+pub fn add_record(&mut self, fields: Vec<u32>) -> Result<(), DbcError> {
+    if fields.len() != self.field_count as usize {
+        return Err(DbcError::InvalidHeader);
+    }
+
+    self.records.push(fields);
+    Ok(())
+}
+
+/// Write the DBC file
+pub fn write_file(&self, path: &str) -> Result<(), DbcError> {
+    let file = File::create(path).map_err(DbcError::Io)?;
+    let mut writer = BufWriter::new(file);
+
+    // Build header
+    let header = DbcHeader {
+        magic: *b"WDBC",
+        record_count: self.records.len() as u32,
+        field_count: self.field_count,
+        record_size: self.field_count * 4,
+        string_block_size: self.string_data.len() as u32,
+    };
+
+    // Write header
+    writer.write_all(&header.magic).map_err(DbcError::Io)?;
+    writer.write_all(&header.record_count.to_le_bytes()).map_err(DbcError::Io)?;
+    writer.write_all(&header.field_count.to_le_bytes()).map_err(DbcError::Io)?;
+    writer.write_all(&header.record_size.to_le_bytes()).map_err(DbcError::Io)?;
+    writer.write_all(&header.string_block_size.to_le_bytes()).map_err(DbcError::Io)?;
+
+    // Write records
+    for record in &self.records {
+        for &field in record {
+            writer.write_all(&field.to_le_bytes()).map_err(DbcError::Io)?;
+        }
+    }
+
+    // Write string block
+    writer.write_all(&self.string_data).map_err(DbcError::Io)?;
+
+    writer.flush().map_err(DbcError::Io)?;
+    Ok(())
+}
+}
+```
+
+```rust
 /// Example: Create a simple Item.dbc
 fn create_item_dbc() -> Result<(), DbcError> {
     let mut builder = DbcBuilder::new(8); // Item.dbc has 8 fields
@@ -653,12 +658,6 @@ fn create_item_dbc() -> Result<(), DbcError> {
     Ok(())
 }
 ```
-
-## Performance Considerations
-
-### Memory Mapping
-
-For large DBC files, consider memory mapping:
 
 ```rust
 use memmap2::MmapOptions;
@@ -938,7 +937,8 @@ Field   Value       Description
 ## References
 
 - [WoWDev Wiki - DBC](https://wowdev.wiki/DBC)
-- [TrinityCore DBC Structures](https://github.com/TrinityCore/TrinityCore/tree/master/src/server/game/DataStores)
+- [TrinityCore DBC
+  Structures](https://github.com/TrinityCore/TrinityCore/tree/master/src/server/game/DataStores)
 - [WoWDBDefs](https://github.com/wowdev/WoWDBDefs)
 - [Modcraft DBC Tutorial](https://model-changing.net/tutorials/article/50-dbc-editing-basics/)
 

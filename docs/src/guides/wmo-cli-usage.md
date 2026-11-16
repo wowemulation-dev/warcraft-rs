@@ -1,10 +1,12 @@
 # WMO CLI Usage Guide 🏰
 
-This guide covers the `warcraft-rs wmo` command and its subcommands for working with World Map Object (WMO) files.
+This guide covers the `warcraft-rs wmo` command and its subcommands for working with World Map
+Object (WMO) files.
 
 ## Overview
 
-The WMO command provides tools for parsing, validating, converting, and manipulating WMO files. WMO files represent buildings, dungeons, and other large structures in World of Warcraft.
+The WMO command provides tools for parsing, validating, converting, and manipulating WMO files. WMO
+files represent buildings, dungeons, and other large structures in World of Warcraft.
 
 ## Installation
 

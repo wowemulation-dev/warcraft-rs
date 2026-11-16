@@ -1,0 +1,7 @@
+# jactionlint configuration
+# Replaces actionlint (unmaintained). The "correctness" profile covers what
+# actionlint checked plus jactionlint's bug detectors. The "default" profile
+# additionally enforces security posture and policy rules (pinned actions,
+# timeouts, permissions, template injection, ...); enable it when the
+# workflows have been migrated to those practices.
+profile: correctness

@@ -39,14 +39,16 @@ Compatibility and compliance tests:
 
 Real-world usage scenarios:
 
-- **real_world/** - Tests with actual game data patterns (includes WoW version tests moved from examples)
+- **real_world/** - Tests with actual game data patterns (includes WoW version tests moved from
+  examples)
 - **round_trip/** - Read/write/read verification
 - **stress/** - Edge cases and stress testing
 
 **Recent additions** (moved from examples):
+
 - `all_wow_versions_comprehensive.rs` - Cross-version testing
 - `cataclysm_files_comprehensive.rs` - Cataclysm-specific tests
-- `mop_files_comprehensive.rs` - Mists of Pandaria tests  
+- `mop_files_comprehensive.rs` - Mists of Pandaria tests
 - `tbc_files_comprehensive.rs` - Burning Crusade tests
 - `wotlk_files_comprehensive.rs` - Wrath of the Lich King tests
 - `archive_structure_analysis.rs` - Deep archive analysis
@@ -87,7 +89,8 @@ cargo test -p wow-mpq -- --ignored
 
 ## StormLib Comparison Tests
 
-The `/stormlib_comparison` directory contains C++ test programs that verify compatibility with the StormLib reference implementation.
+The `/stormlib_comparison` directory contains C++ test programs that verify compatibility with the
+StormLib reference implementation.
 
 ### Building StormLib tests
 
@@ -115,7 +118,8 @@ Most tests generate their own test data using utilities in `test_utils/`:
 
 ### Real Game Data
 
-Some tests (marked with `#[ignore]`) require actual WoW data files. Set the following environment variables:
+Some tests (marked with `#[ignore]`) require actual WoW data files. Set the following environment
+variables:
 
 - `WOW_DATA_DIR` - Path to WoW Data directory
 - `WOW_VERSION` - Version being tested (e.g., "3.3.5a")

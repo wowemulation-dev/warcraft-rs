@@ -917,25 +917,24 @@ impl WmoWriter {
         for node in nodes {
             // Write plane normal and flags packed into first float
             let plane_flags;
-            let plane_normal_x;
 
             // Encode the normal into the first float and flags
-            if node.plane.normal.x.abs() > 0.999 {
+            let plane_normal_x = if node.plane.normal.x.abs() > 0.999 {
                 plane_flags = 0; // X axis
-                plane_normal_x = f32::from_bits(plane_flags);
+                f32::from_bits(plane_flags)
             } else if node.plane.normal.y.abs() > 0.999 {
                 plane_flags = 1; // Y axis
-                plane_normal_x = f32::from_bits(plane_flags);
+                f32::from_bits(plane_flags)
             } else if node.plane.normal.z.abs() > 0.999 {
                 plane_flags = 2; // Z axis
-                plane_normal_x = f32::from_bits(plane_flags);
+                f32::from_bits(plane_flags)
             } else {
                 plane_flags = 3; // Custom normal
 
                 // Encode x component into the upper 30 bits
                 let x_encoded = (node.plane.normal.x * 32767.0) as i32;
-                plane_normal_x = f32::from_bits((x_encoded << 2 | plane_flags as i32) as u32);
-            }
+                f32::from_bits((x_encoded << 2 | plane_flags as i32) as u32)
+            };
 
             if plane_flags < 3 {
                 writer.write_u32_le(plane_flags)?;

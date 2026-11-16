@@ -112,14 +112,16 @@ impl HashTable {
 
         // Convert to u32s, decrypt, then convert back
         let mut u32_buffer: Vec<u32> = raw_data
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
             .collect();
 
         decrypt_block(&mut u32_buffer, key);
 
         // Write decrypted u32s back to bytes
-        for (chunk, &decrypted) in raw_data.chunks_exact_mut(4).zip(&u32_buffer) {
+        for (chunk, &decrypted) in raw_data.as_chunks_mut::<4>().0.iter_mut().zip(&u32_buffer) {
             chunk.copy_from_slice(&decrypted.to_le_bytes());
         }
 
@@ -158,14 +160,16 @@ impl HashTable {
 
         // Convert to u32s, decrypt, then convert back
         let mut u32_buffer: Vec<u32> = raw_data
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
             .collect();
 
         decrypt_block(&mut u32_buffer, key);
 
         // Write decrypted u32s back to bytes
-        for (chunk, &decrypted) in raw_data.chunks_exact_mut(4).zip(&u32_buffer) {
+        for (chunk, &decrypted) in raw_data.as_chunks_mut::<4>().0.iter_mut().zip(&u32_buffer) {
             chunk.copy_from_slice(&decrypted.to_le_bytes());
         }
 

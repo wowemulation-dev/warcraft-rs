@@ -93,7 +93,7 @@ wdl.save("azeroth.wdl")?;
 
 WDL files are found in the same directories as WDT files:
 
-```
+```text
 world/maps/[mapname]/[mapname].wdl
 ```
 

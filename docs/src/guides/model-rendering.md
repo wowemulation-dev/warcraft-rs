@@ -1405,4 +1405,6 @@ impl LodSelector {
 - [Real-Time Rendering](https://www.realtimerendering.com/) - Rendering techniques reference
 - [GPU Gems](https://developer.nvidia.com/gpugems) - Advanced GPU programming
 - [Learn OpenGL](https://learnopengl.com/) - OpenGL techniques
-- [GPU-Driven Rendering](https://advances.realtimerendering.com/s2015/aaltonenhaar_siggraph2015_combined_final_footer_220dpi.pdf) - GPU-driven techniques
+- [GPU-Driven
+  Rendering](https://advances.realtimerendering.com/s2015/aaltonenhaar_siggraph2015_combined_final_footer_220dpi.pdf)
+  - GPU-driven techniques

@@ -15,7 +15,7 @@ mod tests {
 
         // Write MVER chunk (always first)
         let mver_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'V', b'E', b'R']),
+            id: ChunkId::from_bytes(*b"MVER"),
             size: 4,
         };
         mver_header.write(&mut cursor).unwrap();
@@ -23,7 +23,7 @@ mod tests {
 
         // Write MOHD chunk (required)
         let mohd_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'H', b'D']),
+            id: ChunkId::from_bytes(*b"MOHD"),
             size: 64,
         };
         mohd_header.write(&mut cursor).unwrap();
@@ -32,7 +32,7 @@ mod tests {
         // Write MOTX chunk with texture data
         let textures = b"texture1.blp\0texture2.blp\0";
         let motx_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'T', b'X']),
+            id: ChunkId::from_bytes(*b"MOTX"),
             size: textures.len() as u32,
         };
         motx_header.write(&mut cursor).unwrap();
@@ -59,7 +59,7 @@ mod tests {
 
         // Write MVER chunk
         let mver_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'V', b'E', b'R']),
+            id: ChunkId::from_bytes(*b"MVER"),
             size: 4,
         };
         mver_header.write(&mut cursor).unwrap();
@@ -67,7 +67,7 @@ mod tests {
 
         // Write MOHD chunk
         let mohd_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'H', b'D']),
+            id: ChunkId::from_bytes(*b"MOHD"),
             size: 64,
         };
         mohd_header.write(&mut cursor).unwrap();
@@ -76,7 +76,7 @@ mod tests {
         // Write MOSB chunk with skybox data
         let skybox = b"skybox.blp\0";
         let mosb_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'S', b'B']),
+            id: ChunkId::from_bytes(*b"MOSB"),
             size: skybox.len() as u32,
         };
         mosb_header.write(&mut cursor).unwrap();
@@ -101,7 +101,7 @@ mod tests {
 
         // Write MVER chunk
         let mver_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'V', b'E', b'R']),
+            id: ChunkId::from_bytes(*b"MVER"),
             size: 4,
         };
         mver_header.write(&mut cursor).unwrap();
@@ -109,7 +109,7 @@ mod tests {
 
         // Write MOHD chunk
         let mohd_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'H', b'D']),
+            id: ChunkId::from_bytes(*b"MOHD"),
             size: 64,
         };
         mohd_header.write(&mut cursor).unwrap();
@@ -117,7 +117,7 @@ mod tests {
 
         // Write MOPV chunk with vertices
         let mopv_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'P', b'V']),
+            id: ChunkId::from_bytes(*b"MOPV"),
             size: 24, // 2 vertices * 12 bytes each
         };
         mopv_header.write(&mut cursor).unwrap();
@@ -155,7 +155,7 @@ mod tests {
 
         // Write MVER chunk
         let mver_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'V', b'E', b'R']),
+            id: ChunkId::from_bytes(*b"MVER"),
             size: 4,
         };
         mver_header.write(&mut cursor).unwrap();
@@ -163,7 +163,7 @@ mod tests {
 
         // Write MOHD chunk
         let mohd_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'H', b'D']),
+            id: ChunkId::from_bytes(*b"MOHD"),
             size: 64,
         };
         mohd_header.write(&mut cursor).unwrap();
@@ -171,7 +171,7 @@ mod tests {
 
         // Write MOPT chunk with portal data
         let mopt_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'P', b'T']),
+            id: ChunkId::from_bytes(*b"MOPT"),
             size: 20, // 1 portal * 20 bytes
         };
         mopt_header.write(&mut cursor).unwrap();
@@ -206,7 +206,7 @@ mod tests {
 
         // Write MVER chunk
         let mver_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'V', b'E', b'R']),
+            id: ChunkId::from_bytes(*b"MVER"),
             size: 4,
         };
         mver_header.write(&mut cursor).unwrap();
@@ -214,7 +214,7 @@ mod tests {
 
         // Write MOHD chunk
         let mohd_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'H', b'D']),
+            id: ChunkId::from_bytes(*b"MOHD"),
             size: 64,
         };
         mohd_header.write(&mut cursor).unwrap();
@@ -222,7 +222,7 @@ mod tests {
 
         // Write MOPR chunk with references
         let mopr_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'P', b'R']),
+            id: ChunkId::from_bytes(*b"MOPR"),
             size: 16, // 2 references * 8 bytes each
         };
         mopr_header.write(&mut cursor).unwrap();
@@ -262,7 +262,7 @@ mod tests {
 
         // Write MVER chunk
         let mver_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'V', b'E', b'R']),
+            id: ChunkId::from_bytes(*b"MVER"),
             size: 4,
         };
         mver_header.write(&mut cursor).unwrap();
@@ -270,7 +270,7 @@ mod tests {
 
         // Write MOHD chunk
         let mohd_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'H', b'D']),
+            id: ChunkId::from_bytes(*b"MOHD"),
             size: 64,
         };
         mohd_header.write(&mut cursor).unwrap();
@@ -279,7 +279,7 @@ mod tests {
         // Write MODN chunk with doodad names
         let names = b"doodad1.m2\0doodad2.m2\0";
         let modn_header = ChunkHeader {
-            id: ChunkId::from_bytes([b'M', b'O', b'D', b'N']),
+            id: ChunkId::from_bytes(*b"MODN"),
             size: names.len() as u32,
         };
         modn_header.write(&mut cursor).unwrap();

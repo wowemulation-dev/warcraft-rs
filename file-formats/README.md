@@ -26,6 +26,7 @@ file-formats/
 ### Archives
 
 - **MPQ** - The primary archive format used by World of Warcraft for
+
   storing game assets
 
 ### World Data

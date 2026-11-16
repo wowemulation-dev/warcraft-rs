@@ -33,7 +33,7 @@ cargo test -p wow-wmo -- --nocapture
 The current test suite covers:
 
 - **Version compatibility** - Classic through Legion WMO versions
-- **Flag operations** - WMO flags, material flags, and group flags  
+- **Flag operations** - WMO flags, material flags, and group flags
 - **Data types** - Core types like Vec3, Color, BoundingBox, ChunkId
 - **Component structures** - Headers, materials, lights, doodads, portals
 - **Special handling** - Texture marker values and validation

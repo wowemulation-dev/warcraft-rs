@@ -1,6 +1,7 @@
 # wow-wmo
 
-A Rust library for parsing, editing, validating, and converting World of Warcraft WMO (World Model Object) files.
+A Rust library for parsing, editing, validating, and converting World of Warcraft WMO (World Model
+Object) files.
 
 <div align="center">
 
@@ -16,7 +17,8 @@ A Rust library for parsing, editing, validating, and converting World of Warcraf
 
 ## Overview
 
-WMO files represent buildings, dungeons, and other large structures in World of Warcraft. They consist of a root file containing metadata and multiple group files containing geometry data.
+WMO files represent buildings, dungeons, and other large structures in World of Warcraft. They
+consist of a root file containing metadata and multiple group files containing geometry data.
 
 ## Features
 
@@ -33,8 +35,10 @@ WMO files represent buildings, dungeons, and other large structures in World of 
 
 ### Supported Chunks
 
-- Root file chunks: MVER, MOHD, MOTX, MOMT, MOGN, MOGI, MOSB, MOPV, MOPT, MOPR, MOVV, MOVB, MOLT, MODS, MODN, MODD, MFOG, MCVP, GFID
-- Group file chunks: MOGP, MOPY, MOVI, MOVT, MONR, MOTV, MOBA, MOLR, MODR, MOBN, MOBR, MOCV, MLIQ, MORI, MORB, MOTA, MOBS
+- Root file chunks: MVER, MOHD, MOTX, MOMT, MOGN, MOGI, MOSB, MOPV, MOPT, MOPR, MOVV, MOVB, MOLT,
+  MODS, MODN, MODD, MFOG, MCVP, GFID
+- Group file chunks: MOGP, MOPY, MOVI, MOVT, MONR, MOTV, MOBA, MOLR, MODR, MOBN, MOBR, MOCV, MLIQ,
+  MORI, MORB, MOTA, MOBS
 
 ## Installation
 
@@ -248,7 +252,8 @@ cargo run --example parse_wmo
 
 Licensed under either of
 
-- Apache License, Version 2.0, ([LICENSE-APACHE](../../../LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- Apache License, Version 2.0, ([LICENSE-APACHE](../../../LICENSE-APACHE) or
+  <http://www.apache.org/licenses/LICENSE-2.0>)
 - MIT license ([LICENSE-MIT](../../../LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.

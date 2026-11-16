@@ -1519,7 +1519,11 @@ impl AnimationStreamer {
 
 ## References
 
-- [Skeletal Animation](https://learnopengl.com/Guest-Articles/2020/Skeletal-Animation) - Understanding skeletal animation
-- [Animation Compression](https://www.gdcvault.com/play/1020583/Animation-Compression-Theory-and-Practice) - GDC talk on animation compression
+- [Skeletal Animation](https://learnopengl.com/Guest-Articles/2020/Skeletal-Animation) -
+  Understanding skeletal animation
+- [Animation
+  Compression](https://www.gdcvault.com/play/1020583/Animation-Compression-Theory-and-Practice) -
+  GDC talk on animation compression
 - [FABRIK Algorithm](http://www.andreasaristidou.com/FABRIK.html) - IK solving algorithm
-- [Animation State Machines](https://docs.unity3d.com/Manual/AnimatorControllers.html) - Unity's approach to animation state machines
+- [Animation State Machines](https://docs.unity3d.com/Manual/AnimatorControllers.html) - Unity's
+  approach to animation state machines

@@ -6,7 +6,8 @@ This directory contains examples demonstrating the usage of the warcraft-rs CLI 
 
 ### tree_visualization_demo.rs
 
-Demonstrates the tree visualization utility used by various CLI commands to display hierarchical file format structures.
+Demonstrates the tree visualization utility used by various CLI commands to display hierarchical
+file format structures.
 
 ## Running Examples
 

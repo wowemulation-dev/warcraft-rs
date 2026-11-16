@@ -1035,7 +1035,9 @@ impl MutableArchive {
 
             // Convert to u32s for encryption
             let mut u32_buffer: Vec<u32> = output_data
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
                 .collect();
 
@@ -1205,7 +1207,9 @@ impl MutableArchive {
             // Encrypt the table
             let key = hash_string("(hash table)", hash_type::FILE_KEY);
             let mut u32_buffer: Vec<u32> = table_data
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
                 .collect();
             encrypt_block(&mut u32_buffer, key);
@@ -1233,7 +1237,9 @@ impl MutableArchive {
             // Encrypt the table
             let key = hash_string("(block table)", hash_type::FILE_KEY);
             let mut u32_buffer: Vec<u32> = table_data
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
                 .collect();
             encrypt_block(&mut u32_buffer, key);
@@ -1286,7 +1292,9 @@ impl MutableArchive {
         // Encrypt the hash table
         let key = hash_string("(hash table)", hash_type::FILE_KEY);
         let mut u32_buffer: Vec<u32> = table_data
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
             .collect();
         encrypt_block(&mut u32_buffer, key);
@@ -1309,7 +1317,9 @@ impl MutableArchive {
         // Encrypt the block table
         let key = hash_string("(block table)", hash_type::FILE_KEY);
         let mut u32_buffer: Vec<u32> = table_data
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
             .collect();
         encrypt_block(&mut u32_buffer, key);

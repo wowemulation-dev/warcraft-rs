@@ -35,6 +35,17 @@ ignore = [
   # updating pklib which is out of our control.
   # Last reviewed: 2025-02-16
   "RUSTSEC-2025-0119",
+
+  # RUSTSEC-2024-0449: unsafe-libyaml crate is unmaintained
+  # Justification: This is a transitive dependency from serde_yaml_ng, used by wow-cdbc for
+  # parsing YAML database files. The upstream repository is archived (read-only), but no
+  # security vulnerabilities have been reported. It is a C-code translation (c2rust) of
+  # libyaml with a long stability track record.
+  # Dependency tree: unsafe-libyaml -> serde_yaml_ng -> wow-cdbc
+  # Alternative: Migrate to a safe Rust YAML parser (e.g. saphyr), which is a larger change
+  # that should be evaluated separately.
+  # Last reviewed: 2026-11-16
+  "RUSTSEC-2024-0449",
 ]
 
 [licenses]

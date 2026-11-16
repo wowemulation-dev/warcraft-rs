@@ -259,15 +259,10 @@ impl M2Vertex {
 
     /// Get the effective bone count used by this vertex
     pub fn effective_bone_count(&self) -> u32 {
-        let mut count = 0;
-
-        for i in 0..4 {
-            if self.bone_weights[i] > 0 {
-                count += 1;
-            }
-        }
-
-        count
+        self.bone_weights
+            .iter()
+            .filter(|&weight| *weight > 0)
+            .count() as u32
     }
 
     /// Calculate the size of this vertex in bytes for a specific version

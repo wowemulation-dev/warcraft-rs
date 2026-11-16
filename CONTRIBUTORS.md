@@ -4,7 +4,8 @@ Thank you to everyone who has contributed to the `warcraft-rs` project.
 
 ## Project Lead
 
-- **Daniel S. Reichenbach** ([@danielsreichenbach](https://github.com/danielsreichenbach)) - Project creator and maintainer
+- **Daniel S. Reichenbach** ([@danielsreichenbach](https://github.com/danielsreichenbach)) -
+  Project creator and maintainer
 
 ## Core Contributors
 

@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Enhanced world data commands**: Updated ADT, WDT, and WDL commands with improved version support
+- **Enhanced world data commands**: Updated ADT, WDT, and WDL commands with improved version
+  support
 - **Better version detection**: CLI now automatically detects and displays WoW version information
 - **TrinityCore validation**: Commands can now validate files against server-standard behavior
 - Support for old skin format in the m2 skin-info command
@@ -19,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Command accuracy**: All world data commands now use corrected chunk structures and version detection
+- **Command accuracy**: All world data commands now use corrected chunk structures and version
+  detection
 - **Error handling**: Better error messages for version-specific file format issues
 
 ## [0.2.0] - 2025-06-28

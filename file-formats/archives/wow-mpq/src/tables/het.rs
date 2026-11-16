@@ -185,8 +185,8 @@ impl HetTable {
 
         log::debug!(
             "HET extracted data: hash_table={:?}, file_indices={:?}",
-            &hash_table,
-            &file_indices
+            hash_table,
+            file_indices
         );
 
         Ok(Self {

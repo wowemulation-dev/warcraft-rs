@@ -1,16 +1,17 @@
 # World of Warcraft Coordinate Systems
 
-This document explains the coordinate system used by World of Warcraft and provides utilities for transforming coordinates to common target systems used in 3D applications and game engines.
+This document explains the coordinate system used by World of Warcraft and provides utilities for
+transforming coordinates to common target systems used in 3D applications and game engines.
 
 ## WoW Coordinate System
 
 World of Warcraft uses a **right-handed coordinate system** with the following axis orientations:
 
 - **X-axis**: **North** (positive X points north)
-- **Y-axis**: **West** (positive Y points west)  
+- **Y-axis**: **West** (positive Y points west)
 - **Z-axis**: **Up** (positive Z points upward, 0 = sea level)
 
-```
+```text
        Z (Up)
        ^
        |
@@ -22,35 +23,38 @@ Y <----+
 ```
 
 This coordinate system is used consistently across all WoW file formats including:
+
 - M2 models (vertices, bones, attachments)
-- ADT terrain tiles 
+- ADT terrain tiles
 - WMO world objects
 - Camera positions and orientations
 
 ## Common Target Systems
 
 ### Blender (Right-handed)
+
 - **Right** = (1, 0, 0) → X-axis
-- **Forward** = (0, 1, 0) → Y-axis  
+- **Forward** = (0, 1, 0) → Y-axis
 - **Up** = (0, 0, 1) → Z-axis
 
-```
+```text
        Z (Up)
        ^
        |
        |
-       +----> Y (Forward)  
+       +----> Y (Forward)
       /
      /
     v X (Right)
 ```
 
 ### Unity (Left-handed)
+
 - **Right** = (1, 0, 0) → X-axis
 - **Up** = (0, 1, 0) → Y-axis
 - **Forward** = (0, 0, 1) → Z-axis
 
-```
+```text
     Y (Up)
     ^
     |
@@ -62,6 +66,7 @@ This coordinate system is used consistently across all WoW file formats includin
 ```
 
 ### Unreal Engine (Left-handed)
+
 - **Forward** = (1, 0, 0) → X-axis
 - **Right** = (0, 1, 0) → Y-axis
 - **Up** = (0, 0, 1) → Z-axis
@@ -71,17 +76,20 @@ This coordinate system is used consistently across all WoW file formats includin
 ### WoW → Blender
 
 **Positions/Vertices:**
-```
+
+```python
 blender_position = (wow_y, -wow_x, wow_z)
 ```
 
 **Rotations (Quaternions):**
-```
+
+```python
 blender_quaternion = (wow_w, wow_y, -wow_x, wow_z)
 ```
 
 **Example with actual coordinates:**
-```
+
+```text
 WoW position: (100.0, 200.0, 50.0)    # 100 north, 200 west, 50 up
 Blender position: (200.0, -100.0, 50.0)  # 200 forward, -100 right, 50 up
 ```
@@ -89,24 +97,28 @@ Blender position: (200.0, -100.0, 50.0)  # 200 forward, -100 right, 50 up
 ### WoW → Unity
 
 **Positions/Vertices:**
-```
+
+```python
 unity_position = (-wow_y, wow_z, wow_x)
 ```
 
 **Rotations (Quaternions):**
-```
+
+```python
 unity_quaternion = (wow_y, -wow_z, -wow_x, wow_w)
 ```
 
 ### WoW → Unreal Engine
 
 **Positions/Vertices:**
-```
+
+```python
 unreal_position = (wow_x, -wow_y, wow_z)
 ```
 
 **Rotations (Quaternions):**
-```
+
+```python
 unreal_quaternion = (-wow_x, wow_y, -wow_z, wow_w)
 ```
 
@@ -165,20 +177,26 @@ let blender_anim = transform_animation_data(&anim, CoordinateSystem::Blender)?;
 
 ## Why Models Appear Wrong Without Transformation
 
-When loading WoW models directly into 3D applications without coordinate transformation, you'll typically see:
+When loading WoW models directly into 3D applications without coordinate transformation, you'll
+typically see:
 
-### Blender Issues:
+### Blender Issues
+
 - **Model rotated 90° clockwise** (what should face north faces east)
 - **Model appears "sideways"** relative to Blender's default orientation
 - **Animations don't align** with Blender's bone system expectations
 
-### Unity Issues:  
+### Unity Issues
+
 - **Model faces wrong direction** (north becomes forward, confusing navigation)
 - **Physics and collision detection problems** due to axis mismatch
 - **Camera controls feel inverted** when adapted from WoW coordinate expectations
 
-### Root Cause:
-These issues occur because each system interprets the same numeric coordinate values according to its own axis conventions. A point at `(100, 0, 0)` means "100 units north" in WoW but "100 units right" in Blender.
+### Root Cause
+
+These issues occur because each system interprets the same numeric coordinate values according to
+its own axis conventions. A point at `(100, 0, 0)` means "100 units north" in WoW but "100 units
+right" in Blender.
 
 ## Implementation Details
 
@@ -192,7 +210,8 @@ These issues occur because each system interprets the same numeric coordinate va
 
 ### Quaternion Component Mapping
 
-Quaternion transformations require careful component remapping because rotations around different axes need to be preserved correctly:
+Quaternion transformations require careful component remapping because rotations around different
+axes need to be preserved correctly:
 
 | WoW Quat | Blender | Unity | Unreal |
 |----------|---------|-------|--------|
@@ -206,7 +225,8 @@ Quaternion transformations require careful component remapping because rotations
 For more complex transformations or when working with transformation matrices directly:
 
 **WoW → Blender Transformation Matrix:**
-```
+
+```text
 [ 0  1  0  0]   [wow_x]   [blender_x]
 [-1  0  0  0] × [wow_y] = [blender_y]
 [ 0  0  1  0]   [wow_z]   [blender_z]
@@ -216,6 +236,7 @@ For more complex transformations or when working with transformation matrices di
 ## Performance Considerations
 
 ### Bulk Transformations
+
 When transforming large numbers of coordinates (thousands of vertices), use SIMD operations:
 
 ```rust
@@ -228,6 +249,7 @@ let blender_positions: Vec<glam::Vec3> = wow_positions
 ```
 
 ### In-Place Transformations
+
 For memory efficiency, prefer in-place transformations when possible:
 
 ```rust
@@ -243,24 +265,33 @@ for position in vertex_positions.iter_mut() {
 ## Common Pitfalls and Solutions
 
 ### Pitfall 1: Forgetting Quaternion Sign Corrections
+
 **Problem:** Rotations appear correct but are mirrored or inverted.
-**Solution:** Always apply the correct sign changes for quaternion components as shown in the transformation formulas.
+**Solution:** Always apply the correct sign changes for quaternion components as shown in the
+transformation formulas.
 
 ### Pitfall 2: Mixing Coordinate Systems
+
 **Problem:** Some model parts use transformed coordinates while others don't.
-**Solution:** Consistently transform ALL coordinate data - vertices, bones, attachments, cameras, etc.
+**Solution:** Consistently transform ALL coordinate data - vertices, bones, attachments, cameras,
+etc.
 
 ### Pitfall 3: Animation Timing Issues
+
 **Problem:** Animations play correctly but bones rotate in wrong directions.
-**Solution:** Transform animation keyframe data using the same coordinate system as the rest of the model.
+**Solution:** Transform animation keyframe data using the same coordinate system as the rest of the
+model.
 
 ### Pitfall 4: Texture Coordinate Confusion
+
 **Problem:** Textures appear flipped or rotated incorrectly.
-**Solution:** Texture coordinates (UV mappings) typically don't need coordinate system transformation - only 3D spatial coordinates do.
+**Solution:** Texture coordinates (UV mappings) typically don't need coordinate system
+transformation - only 3D spatial coordinates do.
 
 ## Validation and Testing
 
 ### Visual Verification Checklist
+
 When implementing coordinate transformations:
 
 - [ ] Model faces the expected "forward" direction in target application
@@ -271,6 +302,7 @@ When implementing coordinate transformations:
 - [ ] Camera positions and orientations work as expected
 
 ### Test Cases
+
 Use these known coordinate transformations to verify implementation:
 
 ```rust
@@ -289,12 +321,15 @@ assert_eq!(
 
 ## See Also
 
-- [Map Grid and World Coordinates](resources/coordinates.md) - ADT tile grid, world coordinates, and grid-to-world conversion
+- [Map Grid and World Coordinates](resources/coordinates.md) - ADT tile grid, world coordinates,
+  and grid-to-world conversion
 
 ## References
 
 - [wowdev.wiki ADT Format](https://wowdev.wiki/ADT) - Original coordinate system documentation
 - [wowdev.wiki M2 Format](https://wowdev.wiki/M2) - Model coordinate specifications
-- [Blender Coordinate System](https://docs.blender.org/manual/en/latest/advanced/coordinate_systems.html)
+- [Blender Coordinate
+  System](https://docs.blender.org/manual/en/latest/advanced/coordinate_systems.html)
 - [Unity Coordinate System](https://docs.unity3d.com/Manual/StandardAssetsImportingMeshes.html)
-- [Unreal Engine Coordinate System](https://docs.unrealengine.com/4.27/en-US/Basics/CoordinateSpace/)
+- [Unreal Engine Coordinate
+  System](https://docs.unrealengine.com/4.27/en-US/Basics/CoordinateSpace/)

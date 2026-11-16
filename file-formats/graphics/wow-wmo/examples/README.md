@@ -27,6 +27,7 @@ cargo run --example wmo_app -- <command> [arguments]
 ```
 
 Available commands:
+
 - `parse <file.wmo>` - Parse and display WMO information
 - `edit <file.wmo>` - Interactive WMO editing
 - `visualize <file.wmo>` - Generate WMO visualization

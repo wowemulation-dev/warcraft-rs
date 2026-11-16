@@ -4,18 +4,18 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.*'
-      - '*-cli-v[0-9]+.*'
-      - '*-libs-v[0-9]+.*'
+      - "v[0-9]+.*"
+      - "*-cli-v[0-9]+.*"
+      - "*-libs-v[0-9]+.*"
 
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 0.1.0)'
+        description: "Version to release (e.g., 0.1.0)"
         required: true
         type: string
       release-type:
-        description: 'Release type'
+        description: "Release type"
         required: true
         type: choice
         options:
@@ -24,12 +24,12 @@ on:
           - cli
         default: all
       dry-run:
-        description: 'Dry run (no actual publishing)'
+        description: "Dry run (no actual publishing)"
         required: false
         type: boolean
         default: false
       skip-tests:
-        description: 'Skip tests (use with caution)'
+        description: "Skip tests (use with caution)"
         required: false
         type: boolean
         default: false

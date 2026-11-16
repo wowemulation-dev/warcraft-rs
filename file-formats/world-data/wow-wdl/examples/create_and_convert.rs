@@ -38,11 +38,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add a heightmap tile
     let mut heightmap = HeightMapTile::new();
-    for i in 0..HeightMapTile::OUTER_COUNT {
-        heightmap.outer_values[i] = (i as i16) % 100;
+    for (i, entry) in heightmap.outer_values.iter_mut().enumerate() {
+        *entry = (i as i16) % 100;
     }
-    for i in 0..HeightMapTile::INNER_COUNT {
-        heightmap.inner_values[i] = ((i + 100) as i16) % 100;
+    for (i, entry) in heightmap.inner_values.iter_mut().enumerate() {
+        *entry = ((i + 100) as i16) % 100;
     }
     file.heightmap_tiles.insert((10, 20), heightmap);
 

@@ -279,9 +279,7 @@ fn test_modify_multiple_mcnk_chunks() {
 
     // Modify only second MCNK chunk
     if let Some(heights) = &mut root.mcnk_chunks_mut()[1].heights {
-        for height in &mut heights.heights {
-            *height = 999.0;
-        }
+        heights.heights.fill(999.0);
     }
 
     // Rebuild and serialize

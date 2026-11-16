@@ -5,11 +5,11 @@ on:
   workflow_call:
     inputs:
       version:
-        description: 'Version to release'
+        description: "Version to release"
         required: true
         type: string
       dry-run:
-        description: 'Dry run (no actual release)'
+        description: "Dry run (no actual release)"
         required: false
         type: boolean
         default: false
@@ -17,11 +17,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 0.1.0)'
+        description: "Version to release (e.g., 0.1.0)"
         required: true
         type: string
       dry-run:
-        description: 'Dry run (no actual release)'
+        description: "Dry run (no actual release)"
         required: false
         type: boolean
         default: false

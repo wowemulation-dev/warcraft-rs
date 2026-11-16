@@ -4,7 +4,8 @@ Unified command-line tool for working with World of Warcraft file formats.
 
 <div align="center">
 
-[![Crates.io Version](https://img.shields.io/crates/v/warcraft-rs)](https://crates.io/crates/warcraft-rs)
+[![Crates.io
+Version](https://img.shields.io/crates/v/warcraft-rs)](https://crates.io/crates/warcraft-rs)
 [![docs.rs](https://img.shields.io/docsrs/warcraft-rs)](https://docs.rs/warcraft-rs)
 
 </div>

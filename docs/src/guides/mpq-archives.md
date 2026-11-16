@@ -316,7 +316,7 @@ fn modify_archive_example() -> Result<(), Box<dyn std::error::Error>> {
     // Read files from a mutable archive (convenience method)
     let data = archive.read_file("some_file.txt")?;
     println!("File content: {} bytes", data.len());
-    
+
     // List files (convenience method)
     let files = archive.list()?;
     for entry in files {
@@ -891,7 +891,9 @@ fn basic_archive_test(archive: &mut Archive) -> Result<(), Box<dyn std::error::E
 
 **Problem**: Getting "-28 byte attributes file size mismatch" warnings with official WoW archives.
 
-**Solution**: This is normal and expected behavior. All Blizzard MPQ archives have exactly 28 extra zero bytes at the end of their attributes files. The warning is informational only - the archives work perfectly.
+**Solution**: This is normal and expected behavior. All Blizzard MPQ archives have exactly 28 extra
+zero bytes at the end of their attributes files. The warning is informational only - the archives
+work perfectly.
 
 ```rust
 // The warning looks like:
@@ -1194,12 +1196,17 @@ fn smart_extract(archive: &mut Archive, filename: &str) -> Result<Option<Vec<u8>
 ## Related Guides
 
 - [📝 DBC Data Extraction](./dbc-extraction.md) - Extract and parse DBC files from
+
   MPQ archives
+
 - [🖼️ Texture Loading Guide](./texture-loading.md) - Load BLP textures from MPQ
+
   archives
+
 - [🎭 Loading M2 Models](./m2-models.md) - Extract and load M2 model files
 - [🏛️ WMO Rendering Guide](./wmo-rendering.md) - Extract and render WMO files
 - [📦 WoW Patch Chain Summary](./wow-patch-chain-summary.md) - Guide
+
   to patch chaining across all WoW versions
 
 ## References
@@ -1207,5 +1214,7 @@ fn smart_extract(archive: &mut Archive, filename: &str) -> Result<Option<Vec<u8>
 - [MPQ Format Documentation](https://wowdev.wiki/MPQ) - Detailed MPQ format specification
 - [StormLib](https://github.com/ladislav-zezula/StormLib) - Reference C++ implementation
 - [Blizzard Archive Formats](http://www.zezula.net/en/mpq/mpqformat.html) - Technical
+
   details
+
 - [WoW File Formats](https://wowdev.wiki/) - Complete WoW file format documentation

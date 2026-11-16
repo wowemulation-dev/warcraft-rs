@@ -34,7 +34,8 @@ Demonstrates all major features of the DBC parser including:
 
 ### comprehensive_simple
 
-A simplified version of the comprehensive example that demonstrates core DBC parsing functionality without all the advanced features.
+A simplified version of the comprehensive example that demonstrates core DBC parsing functionality
+without all the advanced features.
 
 ### schema_discovery
 
@@ -52,7 +53,8 @@ You can provide your own DBC files by passing the path as a command-line argumen
 
 ## DBD Files
 
-The examples also demonstrate DBD (Database Definition) file support. DBD files can be obtained from:
+The examples also demonstrate DBD (Database Definition) file support. DBD files can be obtained
+from:
 
 - [WoWDBDefs Repository](https://github.com/wowdev/WoWDBDefs)
 

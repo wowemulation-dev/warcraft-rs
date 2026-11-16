@@ -173,7 +173,7 @@ pub fn parse_group_file<R: Read + Seek>(
         match chunk_info.id.as_str() {
             "MVER" => {
                 // Read version
-                group.version = reader.read_le()?;
+                group.version = BinReaderExt::read_le(&mut *reader)?;
             }
             "MOGP" => {
                 // Read group header
@@ -218,7 +218,9 @@ pub fn parse_group_file<R: Read + Seek>(
                 // Read vertex indices
                 let count = chunk_info.size / 2; // Each index is 2 bytes
                 for _ in 0..count {
-                    group.vertex_indices.push(reader.read_le()?);
+                    group
+                        .vertex_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MOVT" => {
@@ -260,14 +262,14 @@ pub fn parse_group_file<R: Read + Seek>(
                 // Read light references
                 let count = chunk_info.size / 2; // Each ref is 2 bytes
                 for _ in 0..count {
-                    group.light_refs.push(reader.read_le()?);
+                    group.light_refs.push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MODR" => {
                 // Read doodad references
                 let count = chunk_info.size / 2; // Each ref is 2 bytes
                 for _ in 0..count {
-                    group.doodad_refs.push(reader.read_le()?);
+                    group.doodad_refs.push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MOBN" => {
@@ -281,7 +283,9 @@ pub fn parse_group_file<R: Read + Seek>(
                 // Read BSP face indices
                 let count = chunk_info.size / 2; // Each index is 2 bytes
                 for _ in 0..count {
-                    group.bsp_face_indices.push(reader.read_le()?);
+                    group
+                        .bsp_face_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MLIQ" => {
@@ -293,7 +297,7 @@ pub fn parse_group_file<R: Read + Seek>(
             "MOGX" => {
                 // Read query face start (Dragonflight+)
                 if chunk_info.size >= 4 {
-                    group.query_face_start = Some(reader.read_le()?);
+                    group.query_face_start = Some(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MPY2" => {
@@ -307,21 +311,25 @@ pub fn parse_group_file<R: Read + Seek>(
                 // Read extended vertex indices (Shadowlands+)
                 let count = chunk_info.size / 4; // Each index is 4 bytes (u32)
                 for _ in 0..count {
-                    group.extended_vertex_indices.push(reader.read_le()?);
+                    group
+                        .extended_vertex_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MOQG" => {
                 // Read query faces (Dragonflight+)
                 let count = chunk_info.size / 4; // Each face is 4 bytes (u32)
                 for _ in 0..count {
-                    group.query_faces.push(reader.read_le()?);
+                    group.query_faces.push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MORI" => {
                 // Read triangle strip indices
                 let count = chunk_info.size / 2; // Each index is 2 bytes (u16)
                 for _ in 0..count {
-                    group.triangle_strip_indices.push(reader.read_le()?);
+                    group
+                        .triangle_strip_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MORB" => {
@@ -442,7 +450,9 @@ fn parse_nested_chunks<R: Read + Seek>(
                 // Read vertex indices
                 let count = chunk_size / 2; // Each index is 2 bytes
                 for _ in 0..count {
-                    group.vertex_indices.push(reader.read_le()?);
+                    group
+                        .vertex_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MOVT" => {
@@ -491,7 +501,9 @@ fn parse_nested_chunks<R: Read + Seek>(
                 // Read BSP face indices
                 let count = chunk_size / 2; // Each index is 2 bytes
                 for _ in 0..count {
-                    group.bsp_face_indices.push(reader.read_le()?);
+                    group
+                        .bsp_face_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MLIQ" => {
@@ -503,7 +515,7 @@ fn parse_nested_chunks<R: Read + Seek>(
             "MOGX" => {
                 // Read query face start (Dragonflight+)
                 if chunk_size >= 4 {
-                    group.query_face_start = Some(reader.read_le()?);
+                    group.query_face_start = Some(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MPY2" => {
@@ -517,21 +529,25 @@ fn parse_nested_chunks<R: Read + Seek>(
                 // Read extended vertex indices (Shadowlands+)
                 let count = chunk_size / 4; // Each index is 4 bytes (u32)
                 for _ in 0..count {
-                    group.extended_vertex_indices.push(reader.read_le()?);
+                    group
+                        .extended_vertex_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MOQG" => {
                 // Read query faces (Dragonflight+)
                 let count = chunk_size / 4; // Each face is 4 bytes (u32)
                 for _ in 0..count {
-                    group.query_faces.push(reader.read_le()?);
+                    group.query_faces.push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MORI" => {
                 // Read triangle strip indices
                 let count = chunk_size / 2; // Each index is 2 bytes (u16)
                 for _ in 0..count {
-                    group.triangle_strip_indices.push(reader.read_le()?);
+                    group
+                        .triangle_strip_indices
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MORB" => {

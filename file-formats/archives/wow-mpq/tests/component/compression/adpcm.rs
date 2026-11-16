@@ -31,7 +31,9 @@ fn generate_test_audio(samples: usize) -> Vec<u8> {
 
 /// Extract samples from byte data for comparison
 fn extract_samples(data: &[u8]) -> Vec<i16> {
-    data.chunks_exact(2)
+    data.as_chunks::<2>()
+        .0
+        .iter()
         .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]))
         .collect()
 }

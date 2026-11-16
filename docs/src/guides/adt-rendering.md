@@ -851,5 +851,8 @@ pub async fn load_adts_async(filenames: Vec<String>) -> Vec<Result<Adt, Box<dyn 
 
 - [ADT Format Documentation](https://wowdev.wiki/ADT) - Complete ADT file format specification
 - [WoW Coordinate System](https://wowdev.wiki/Coordinates) - Understanding WoW's coordinate system
-- [Terrain Rendering Techniques](https://developer.nvidia.com/gpugems/gpugems2/part-i-geometric-complexity/chapter-2-terrain-rendering-using-gpu-based-geometry) - GPU-based terrain rendering
-- [Texture Splatting](https://en.wikipedia.org/wiki/Texture_splatting) - Multi-texture terrain blending
+- [Terrain Rendering
+  Techniques](https://developer.nvidia.com/gpugems/gpugems2/part-i-geometric-complexity/chapter-2-terrain-rendering-using-gpu-based-geometry)
+  - GPU-based terrain rendering
+- [Texture Splatting](https://en.wikipedia.org/wiki/Texture_splatting) - Multi-texture terrain
+  blending

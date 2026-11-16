@@ -16,7 +16,9 @@ StormLib-compatible C API for the World of Warcraft MPQ archive library.
 
 ## Overview
 
-The storm-ffi crate provides a C-compatible Foreign Function Interface (FFI) that emulates the StormLib API, wrapping the native Rust `wow-mpq` implementation. This allows C/C++ applications that expect StormLib's interface to use the memory-safe Rust implementation instead.
+The storm-ffi crate provides a C-compatible Foreign Function Interface (FFI) that emulates the
+StormLib API, wrapping the native Rust `wow-mpq` implementation. This allows C/C++ applications
+that expect StormLib's interface to use the memory-safe Rust implementation instead.
 
 ## Features
 
@@ -189,7 +191,8 @@ While the storm-ffi crate aims for StormLib compatibility, there are some differ
 
 Licensed under either of
 
-- Apache License, Version 2.0, ([LICENSE-APACHE](../../LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- Apache License, Version 2.0, ([LICENSE-APACHE](../../LICENSE-APACHE) or
+  <http://www.apache.org/licenses/LICENSE-2.0>)
 - MIT license ([LICENSE-MIT](../../LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.

@@ -254,10 +254,10 @@ impl WdlParser {
             let chunk = &file.chunks[index];
             let mut cursor = Cursor::new(&chunk.data);
 
-            for i in 0..64 * 64 {
+            for entry in file.map_tile_offsets.iter_mut() {
                 let mut buf = [0u8; 4];
                 cursor.read_exact(&mut buf).map_err(WdlError::Io)?;
-                file.map_tile_offsets[i] = u32::from_le_bytes(buf);
+                *entry = u32::from_le_bytes(buf);
             }
 
             // Now parse the MARE and MAHO chunks using the offsets

@@ -18,7 +18,9 @@ pub(crate) fn decrypt_table_data(data: &mut [u8], key: u32) {
 
     // Convert full chunks to u32 array for decryption
     let mut u32_buffer: Vec<u32> = chunks
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
         .collect();
 

@@ -112,7 +112,7 @@ warcraft-rs wdt tree azeroth.wdt
 
 WDT files are located in map directories:
 
-```
+```text
 world/maps/[mapname]/[mapname].wdt
 ```
 

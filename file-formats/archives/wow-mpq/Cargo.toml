@@ -149,8 +149,12 @@ name = "create_archive"
 
 
 [[example]]
-name = "list_archive_contents"
+name = "wow_patch_chains"
+required-features = ["test-utils"]
 
+
+[[example]]
+name = "list_archive_contents"
 [[example]]
 name = "list_with_names"
 

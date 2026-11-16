@@ -3,6 +3,7 @@
 This guide documents breaking API changes across warcraft-rs releases.
 
 Since warcraft-rs is pre-1.0, minor version bumps may include breaking changes:
+
 - **PATCH** (0.x.Y) = Bug fixes, no breaking changes
 - **MINOR** (0.Y.0) = New features, may include breaking changes
 - **MAJOR** (Y.0.0) = Reserved for 1.0+ stable API
@@ -12,18 +13,21 @@ Since warcraft-rs is pre-1.0, minor version bumps may include breaking changes:
 ### MFBO Chunk Structure Fix
 
 **What Changed:**
-The MFBO (flight boundaries) chunk structure was corrected from an incorrect 8-byte format to the proper 36-byte format used by TrinityCore and WoW clients.
+The MFBO (flight boundaries) chunk structure was corrected from an incorrect 8-byte format to the
+proper 36-byte format used by TrinityCore and WoW clients.
 
 **Before (Incorrect):**
+
 ```rust
 pub struct MfboChunk {
     pub min: u32,  // Wrong: single 4-byte value
-    pub max: u32,  // Wrong: single 4-byte value  
+    pub max: u32,  // Wrong: single 4-byte value
 }
 // Total: 8 bytes (incorrect)
 ```
 
 **After (Correct):**
+
 ```rust
 pub struct MfboChunk {
     pub max: [i16; 9],  // Maximum flight boundary plane (9 coordinates)
@@ -33,6 +37,7 @@ pub struct MfboChunk {
 ```
 
 **Migration:**
+
 ```rust
 use wow_adt::{parse_adt, ParsedAdt};
 
@@ -48,9 +53,11 @@ if let ParsedAdt::Root(root) = parsed {
 ### Version Detection Enhancements
 
 **What Changed:**
-Version detection now uses chunk analysis instead of relying solely on MVER values (which are always 18 for all ADT versions).
+Version detection now uses chunk analysis instead of relying solely on MVER values (which are
+always 18 for all ADT versions).
 
 **Current API:**
+
 ```rust
 use wow_adt::{parse_adt, ParsedAdt, AdtVersion};
 
@@ -103,13 +110,16 @@ if let ParsedAdt::Root(root) = parsed {
 ### Conditional MWMO Chunk Handling
 
 **What Changed:**
-WDT files now correctly handle MWMO chunk presence based on WoW version and map type, matching TrinityCore server behavior.
+WDT files now correctly handle MWMO chunk presence based on WoW version and map type, matching
+TrinityCore server behavior.
 
 **Key Changes:**
+
 - **Pre-Cataclysm**: All maps have MWMO chunks (even if empty)
 - **Cataclysm+**: Only WMO-only maps have MWMO chunks, terrain maps don't
 
 **Current API:**
+
 ```rust
 use wow_wdt::{WdtReader, version::WowVersion};
 
@@ -130,6 +140,7 @@ if wdt.is_wmo_only() {
 Enhanced parsing for different WDL format versions with better chunk handling.
 
 **Usage:**
+
 ```rust
 use wow_wdl::{WdlParser, WdlVersion};
 
@@ -137,7 +148,7 @@ use wow_wdl::{WdlParser, WdlVersion};
 let parser = WdlParser::new(); // Uses latest version support
 let wdl = parser.parse(&mut reader)?;
 
-// Check detected version  
+// Check detected version
 match wdl.version {
     WdlVersion::Vanilla => println!("Classic WDL format"),
     WdlVersion::Wotlk => println!("Enhanced water support"),
@@ -156,7 +167,7 @@ The test suite now includes validation for all categories:
 # Run version-specific tests
 cargo test --package wow-adt --test lib -- scenarios::version_specific
 
-# Run TrinityCore compliance tests  
+# Run TrinityCore compliance tests
 cargo test --package wow-adt --test lib -- compliance::trinitycore
 
 # Run all integration tests
@@ -166,11 +177,13 @@ cargo test --package wow-adt --test lib
 ## Performance Considerations
 
 ### Memory Usage
+
 - **Split file support** reduces memory usage for selective loading
 - **Lazy chunk parsing** improves startup time for large terrain files
 - **Version detection caching** avoids redundant analysis
 
 ### Compatibility
+
 - **TrinityCore compliance** ensures server compatibility
 - **Automatic version detection** handles mixed-version content
 - **Graceful degradation** for unsupported chunks
@@ -178,6 +191,7 @@ cargo test --package wow-adt --test lib
 ## Common Migration Patterns
 
 ### Pattern 1: Version-Aware ADT Code
+
 ```rust
 use wow_adt::{parse_adt, ParsedAdt, AdtVersion};
 
@@ -200,6 +214,7 @@ if let ParsedAdt::Root(root) = &parsed {
 ```
 
 ### Pattern 2: Error Handling
+
 ```rust
 use wow_adt::{parse_adt, AdtError};
 
@@ -241,16 +256,19 @@ cargo test --package wow-wdl
 If you encounter issues during migration:
 
 1. **Check the examples** in the updated documentation
-2. **Review the test suite** for usage patterns  
+2. **Review the test suite** for usage patterns
 3. **Open an issue** with specific migration questions
 4. **Consult TrinityCore** for server-side behavior questions
 
 ## Summary
 
-This release improves World of Warcraft file format support with better accuracy, full version handling, and TrinityCore compliance. While there are breaking changes, they fix incorrect implementations and provide more reliable parsing.
+This release improves World of Warcraft file format support with better accuracy, full version
+handling, and TrinityCore compliance. While there are breaking changes, they fix incorrect
+implementations and provide more reliable parsing.
 
 The migration effort is primarily around:
-- Updating MFBO chunk access patterns  
+
+- Updating MFBO chunk access patterns
 - Leveraging automatic version detection
 - Handling conditional chunk presence appropriately
 

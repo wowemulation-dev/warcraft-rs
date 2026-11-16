@@ -3,6 +3,7 @@
 ## Version-Specific Findings
 
 ### Vanilla (1.12.1) - Version 256
+
 - **Embedded Skins**: Yes, all skin data embedded in M2 file
 - **Bone Count**: Typically fewer bones (e.g., HumanMale: 96 bones)
 - **Animation Count**: Slightly fewer animations (e.g., HumanMale: 142)
@@ -11,6 +12,7 @@
 - **File Size**: Larger due to embedded skins (e.g., HumanMale: 2.5MB)
 
 ### The Burning Crusade (2.4.3) - Version 260
+
 - **Embedded Skins**: Yes, still embedded like vanilla
 - **Bone Count**: More bones for enhanced detail (e.g., HumanMale: 119 bones)
 - **Animation Count**: More animations (e.g., HumanMale: 143)
@@ -22,6 +24,7 @@
 ### Key Parsing Differences
 
 #### Animation Duration Calculation
+
 ```rust
 // Version 256 (Vanilla)
 let duration_ms = end_timestamp.saturating_sub(animation.start_timestamp);
@@ -31,6 +34,7 @@ let duration_ms = animation.start_timestamp; // Direct duration value
 ```
 
 #### Embedded Skin Detection
+
 ```rust
 pub fn has_embedded_skins(&self) -> bool {
     // Vanilla (256) and TBC (260-263) have embedded skins
@@ -42,18 +46,21 @@ pub fn has_embedded_skins(&self) -> bool {
 ## Validation Results
 
 ### Python Parser
+
 - ✅ Vanilla (256): Full support with all data extracted
 - ✅ TBC (260): Full support with all data extracted
 - Both versions parse vertices, bones, animations, textures successfully
 
 ### Rust Parser
+
 - ✅ Vanilla (256): Complete parsing with enhanced data extraction
 - ✅ TBC (260): Complete parsing with enhanced data extraction
 - Successfully handles version-specific differences
 
 ## Known Issues
 
-1. **Animation Duration Values**: Some TBC animations show extremely large duration values (e.g., 1073787628ms), suggesting:
+1. **Animation Duration Values**: Some TBC animations show extremely large duration values (e.g.,
+   1073787628ms), suggesting:
    - Possible float/int conversion issues
    - Endianness problems in specific fields
    - Different encoding for certain animation types

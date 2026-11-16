@@ -16,10 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed vanilla M2 embedded skin submesh parsing to use correct 32-byte alignment (empirically validated)
-- Added version-aware submesh parsing to handle vanilla (32-byte) vs post-vanilla (48-byte) submesh structures
-- Updated `SkinSubmesh::parse_with_version()` to correctly parse vanilla submeshes with 8×u16 + 4×f32 layout
-- Enhanced `parse_embedded_skin()` to accept M2 version parameter for proper submesh structure detection
+- Fixed vanilla M2 embedded skin submesh parsing to use correct 32-byte alignment (empirically
+  validated)
+- Added version-aware submesh parsing to handle vanilla (32-byte) vs post-vanilla (48-byte) submesh
+  structures
+- Updated `SkinSubmesh::parse_with_version()` to correctly parse vanilla submeshes with 8×u16 +
+  4×f32 layout
+- Enhanced `parse_embedded_skin()` to accept M2 version parameter for proper submesh structure
+  detection
 
 ### Validated
 
@@ -47,7 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed mipmap offset and size arrays to use fixed-size arrays ([u32; 16]) instead of dynamic vectors
+- Fixed mipmap offset and size arrays to use fixed-size arrays ([u32; 16]) instead of dynamic
+  vectors
 
 ### Removed
 

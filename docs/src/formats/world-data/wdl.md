@@ -11,7 +11,8 @@ and supporting world map generation.
 - **Purpose**: Low-resolution terrain for distant viewing and world maps - ✅ Implemented
 - **Coverage**: Entire continent in one file - ✅ Implemented
 - **Resolution**: 17x17 height values per ADT tile - ✅ Implemented
-- **Use Case**: Map view, flight paths, distant terrain, minimap generation - ⚠️ Parsing Implemented, Rendering Not Implemented
+- **Use Case**: Map view, flight paths, distant terrain, minimap generation - ⚠️ Parsing
+  Implemented, Rendering Not Implemented
 - **Format**: Chunk-based binary format (similar to other Blizzard formats) - ✅ Implemented
 
 ## Version History
@@ -52,21 +53,25 @@ struct ChunkHeader {
 Based on empirical analysis of WDL files across WoW versions:
 
 ### Classic (1.12.1)
+
 - **Core chunks**: MVER, MAOF, MARE
 - **MAOF size**: 16384 bytes (64×64×4 bytes)
 - **MARE size**: 1090 bytes (when present)
 
 ### The Burning Crusade (2.4.3)
+
 - **New chunk**: MAHO (height holes/occlusion)
 - **MAHO size**: Variable (typically 32-2176 bytes)
 - All other chunks unchanged
 
 ### Wrath of the Lich King (3.3.5a)
+
 - No new chunks
 - MAHO more commonly present
 - Structure remains stable
 
 ### Cataclysm (4.3.4) - MAJOR CHANGES
+
 - **New chunks**: MWID, MWMO, MODF
 - **MWID**: WMO instance IDs (often 0 bytes)
 - **MWMO**: WMO filenames (often 0 bytes)
@@ -74,6 +79,7 @@ Based on empirical analysis of WDL files across WoW versions:
 - Support for WMO references in low-res world
 
 ### Mists of Pandaria (5.4.8)
+
 - No structural changes from Cataclysm
 - Same chunk set as 4.3.4
 
@@ -112,6 +118,7 @@ struct MaofChunk {
 ```
 
 **Notes**:
+
 - Most entries are zero (86-100% zeros in tested files)
 - Non-zero values indicate tiles with terrain data
 - Grid corresponds to ADT tile layout
@@ -128,6 +135,7 @@ struct MareChunk {
 ```
 
 **Structure** (preliminary analysis):
+
 - Contains 17×17 height grid per tile (545 int16 values = 1090 bytes)
 - Provides low-resolution heightmap for distant terrain
 - Not present in all WDL files (only maps with terrain)
@@ -144,6 +152,7 @@ struct MahoChunk {
 ```
 
 **Notes**:
+
 - Size varies based on map complexity
 - Often contains many zero values
 - Used for occlusion culling optimization
@@ -195,6 +204,7 @@ struct ModfEntry {
 ```
 
 **Notes**:
+
 - Often empty (0 bytes) in WDL files
 - When present, uses same structure as ADT MODF chunks
 - Primarily for major landmarks visible from distance
@@ -274,7 +284,9 @@ WDT (World Directory Table)
 ### Usage Patterns
 
 1. **Distance-Based Switching**: Engine switches between ADT and WDL based on
+
    camera distance
+
 2. **World Map Generation**: WDL data generates world map imagery
 3. **Minimap Support**: Low-resolution data for minimap rendering
 4. **Memory Optimization**: Allows unloading high-detail ADT data when not needed

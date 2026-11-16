@@ -21,12 +21,15 @@ The primary community resource for WoW file format documentation:
 ### StormLib (MPQ)
 
 - [StormLib GitHub](https://github.com/ladislav-zezula/StormLib) - C++ MPQ
+
   library (reference implementation)
+
 - Note: `wow-mpq` has 98.75% compatibility with StormLib archives
 
 ### BLP format
 
-- [BLPConverter](https://www.wowinterface.com/downloads/info14110-BLPConverter.html) - BLP texture converter
+- [BLPConverter](https://www.wowinterface.com/downloads/info14110-BLPConverter.html) - BLP texture
+  converter
 
 ### WoW Model Viewer
 
@@ -43,7 +46,9 @@ The primary community resource for WoW file format documentation:
 
 - [TrinityCore](https://www.trinitycore.org/) - WoW server emulator
 - [GitHub Repository](https://github.com/TrinityCore/TrinityCore) - Source code
-- [DBC Structures](https://github.com/TrinityCore/TrinityCore/tree/master/src/server/game/DataStores) - DBC definitions
+- [DBC
+  Structures](https://github.com/TrinityCore/TrinityCore/tree/master/src/server/game/DataStores) -
+  DBC definitions
 
 ### Mangos
 
@@ -56,7 +61,8 @@ The primary community resource for WoW file format documentation:
 
 - [WoW Internals](https://github.com/gtker/wow_messages/wiki) - Protocol documentation
 - [macOS Metal Renderer](https://www.youtube.com/watch?v=UiJJqB9nRzE) - WoW's Metal implementation
-- [WoW 64-bit Client](https://us.forums.blizzard.com/en/wow/t/wow-64-bit-client/17859) - Architecture changes
+- [WoW 64-bit Client](https://us.forums.blizzard.com/en/wow/t/wow-64-bit-client/17859) -
+  Architecture changes
 
 ## Related Projects
 
@@ -108,7 +114,9 @@ The primary community resource for WoW file format documentation:
 ### Modding Policies
 
 - [Blizzard Legal](https://www.blizzard.com/en-us/legal) - Terms of service
-- [WoW EULA](https://www.blizzard.com/en-us/legal/fba4d00f-c7e4-4883-b8b9-1b4500a402ea/world-of-warcraft-end-user-license-agreement) - End user license
+- [WoW
+  EULA](https://www.blizzard.com/en-us/legal/fba4d00f-c7e4-4883-b8b9-1b4500a402ea/world-of-warcraft-end-user-license-agreement)
+  - End user license
 
 ## Contributing
 

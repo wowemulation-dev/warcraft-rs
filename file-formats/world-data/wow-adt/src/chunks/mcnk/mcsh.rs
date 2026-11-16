@@ -352,8 +352,8 @@ mod tests {
         }
 
         // Verify all 512 bytes have bit 0 set
-        for byte_index in 0..512 {
-            assert_eq!(chunk.shadow_map[byte_index] & 1, 1);
+        for &byte in &chunk.shadow_map {
+            assert_eq!(byte & 1, 1);
         }
 
         assert_eq!(chunk.shadowed_count(), 512);

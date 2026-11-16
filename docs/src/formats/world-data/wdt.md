@@ -1,6 +1,7 @@
 # World of Warcraft WDT Format Documentation
 
-> **Validation Status**: This documentation has been validated against 100 real WDT files from WoW versions 1.12.1 through 5.4.8, achieving 100% parsing success rate.
+> **Validation Status**: This documentation has been validated against 100 real WDT files from WoW
+> versions 1.12.1 through 5.4.8, achieving 100% parsing success rate.
 
 ## Table of Contents
 
@@ -39,18 +40,26 @@
 
 ## Introduction
 
-WDT (World Data Table) files are fundamental components of World of Warcraft's world rendering system. They serve as master indexes that define which map tiles (ADT files) exist in a world and can optionally reference a global World Map Object (WMO) for WMO-only maps like instances.
+WDT (World Data Table) files are fundamental components of World of Warcraft's world rendering
+system. They serve as master indexes that define which map tiles (ADT files) exist in a world and
+can optionally reference a global World Map Object (WMO) for WMO-only maps like instances.
 
 ## Purpose and Overview
 
 WDT files serve several critical functions:
 
-1. **Map Tile Presence**: Define which of the potential 64×64 ADT tiles actually exist for a given map - ✅ Implemented
-2. **Global WMO Reference**: For indoor/instance maps, reference a single global WMO - ✅ Implemented
-3. **Map Properties**: Store various flags and properties that affect how the entire map is rendered - ✅ Implemented
-4. **Lighting Information**: Define global lighting properties and light sources - ⚠️ Format Specification Only
-5. **Fog Effects**: Control volumetric fog and atmospheric effects - ⚠️ Format Specification Only
-6. **Occlusion Data**: Provide low-resolution occlusion information for improved rendering performance - ⚠️ Format Specification Only
+1. **Map Tile Presence**: Define which of the potential 64×64 ADT tiles actually exist for a given
+   map - ✅ Implemented
+2. **Global WMO Reference**: For indoor/instance maps, reference a single global WMO - ✅
+   Implemented
+3. **Map Properties**: Store various flags and properties that affect how the entire map is
+   rendered - ✅ Implemented
+4. **Lighting Information**: Define global lighting properties and light sources - ⚠️ Format
+   Specification Only
+5. **Fog Effects**: Control volumetric fog and atmospheric effects - ⚠️ Format Specification
+   Only
+6. **Occlusion Data**: Provide low-resolution occlusion information for improved rendering
+   performance - ⚠️ Format Specification Only
 
 ## File Structure
 
@@ -66,7 +75,9 @@ struct IffChunk {
 
 ## Coordinate Systems
 
-World of Warcraft uses different coordinate systems for different file types and purposes. Understanding these systems is crucial for correctly parsing and rendering WDT data, especially when dealing with WMO placement.
+World of Warcraft uses different coordinate systems for different file types and purposes.
+Understanding these systems is crucial for correctly parsing and rendering WDT data, especially
+when dealing with WMO placement.
 
 ### ADT/WDT Terrain Coordinate System
 
@@ -94,7 +105,8 @@ This means model space has inverted X and Y compared to terrain space.
 
 ### MDDF/MODF Placement Coordinate System
 
-Placement chunks use a **right-handed coordinate system** with completely different axis orientation:
+Placement chunks use a **right-handed coordinate system** with completely different axis
+orientation:
 
 - **X-axis**: Points West
 - **Y-axis**: Points Up (vertical)
@@ -157,7 +169,8 @@ For main WDT files:
 2. **MPHD** - Map header with flags and file references
 3. **MAIN** - Map tile presence information
 4. **MAID** - FileDataIDs for ADT files (post-8.1)
-5. **MWMO** - Global WMO filename (WMO-only maps have data; pre-4.x terrain maps have empty chunk; 4.x+ terrain maps have NO chunk)
+5. **MWMO** - Global WMO filename (WMO-only maps have data; pre-4.x terrain maps have empty chunk;
+   4.x+ terrain maps have NO chunk)
 6. **MODF** - Global WMO placement (WMO-only maps with HasTerrain flag)
 
 For auxiliary WDT files:
@@ -205,6 +218,7 @@ struct MPHD {
 ```
 
 **Important**: The presence of specific chunks depends on the MPHD flags:
+
 - Maps with flag 0x0001 (HasTerrain/WdtUsesGlobalMapObj) will have MWMO and MODF chunks
 - Maps without this flag are terrain-based and may not have MWMO/MODF chunks
 
@@ -291,12 +305,14 @@ struct MWMO {
 
 - In MOP, this chunk is limited to 0x100 bytes due to stack allocation
 - **Pre-4.x**: Both WMO-only and terrain maps have MWMO chunks (terrain maps have 0-byte data)
-- **4.x+ (Cataclysm onwards)**: Only WMO-only maps have MWMO chunks; terrain maps have NO MWMO chunk
+- **4.x+ (Cataclysm onwards)**: Only WMO-only maps have MWMO chunks; terrain maps have NO MWMO
+  chunk
 - Presence correlates with MPHD flag 0x0001 (HasTerrain/WdtUsesGlobalMapObj)
 
 ### MODF - Map Object Definition
 
-Placement information for the global WMO (if present). Only appears in WMO-only maps (MPHD flag 0x0001 set).
+Placement information for the global WMO (if present). Only appears in WMO-only maps (MPHD flag
+0x0001 set).
 
 ```rust
 struct MODF {
@@ -332,7 +348,8 @@ enum ModfFlags {
 
 ## Light-Related Chunks (_lgt.wdt)
 
-These chunks are specific to _lgt.wdt files, introduced in Legion (7.0) for enhanced lighting systems.
+These chunks are specific to _lgt.wdt files, introduced in Legion (7.0) for enhanced lighting
+systems.
 
 ### MPL2 - Point Light v2
 
@@ -475,7 +492,8 @@ struct MtxfEntry {
 
 ## Fog Chunks (_fogs.wdt)
 
-These chunks are found in _fogs.wdt files, which were added in Legion but became meaningful in Battle for Azeroth.
+These chunks are found in _fogs.wdt files, which were added in Legion but became meaningful in
+Battle for Azeroth.
 
 ### MVFX - Map Volumetric Fog Effects
 
@@ -554,17 +572,20 @@ struct MANM {
 Based on analysis of WDT files from WoW versions 1.12.1 through 5.4.8:
 
 ### Core Chunks (Present in all versions)
+
 - **MVER**: Always present, always version 18
 - **MPHD**: Always present, flags evolve across versions
 - **MAIN**: Always present, defines tile existence
 
 ### Conditional Chunks
-- **MWMO**: 
+
+- **MWMO**:
   - 1.12.1-3.3.5a: Present in ALL maps (empty for terrain maps)
   - 4.x+: Only in WMO-only maps (flag 0x0001)
 - **MODF**: Only in WMO-only maps with objects (flag 0x0001)
 
 ### Version-Specific Chunks
+
 - **MAID**: 8.1.0+ (BfA) - FileDataID system
 - **Light chunks** (_lgt.wdt): 7.0+ (Legion)
 - **Fog chunks** (_fogs.wdt): 7.0+ (functional in 8.0+)
@@ -642,11 +663,12 @@ Based on analysis of WDT files from WoW versions 1.12.1 through 5.4.8:
 
 ## FileDataID System
 
-Starting with patch 8.1.0, WoW transitioned from filename-based file references to FileDataID system:
+Starting with patch 8.1.0, WoW transitioned from filename-based file references to FileDataID
+system:
 
 ### Pre-8.1.0 System
 
-```
+```text
 world/maps/azeroth/azeroth_29_29.adt
 world/maps/azeroth/azeroth_29_29_obj0.adt
 world/maps/azeroth/azeroth_29_29_tex0.adt
@@ -735,9 +757,11 @@ Based on TrinityCore's 3.3.5a implementation:
 
 ## Implementation Status - ✅ Implemented
 
-WDT parsing is implemented in the `wow-wdt` crate with support for all WoW versions from Classic through later expansions.
+WDT parsing is implemented in the `wow-wdt` crate with support for all WoW versions from Classic
+through later expansions.
 
 **Key Features:**
+
 - Parse WDT files using `WdtReader::from_reader()`
 - Support for all chunk types (MVER, MPHD, MAIN, MAID, MWMO, MODF)
 - Version-aware parsing with validation
@@ -766,4 +790,6 @@ WDT parsing is implemented in the `wow-wdt` crate with support for all WoW versi
 
 ---
 
-*This documentation represents the collective knowledge of the WoW modding community and is based on reverse engineering efforts. Blizzard Entertainment has not officially documented these formats.*
+*This documentation represents the collective knowledge of the WoW modding community and is based
+on reverse engineering efforts. Blizzard Entertainment has not officially documented these
+formats.*

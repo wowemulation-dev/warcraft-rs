@@ -378,7 +378,8 @@ done
 > cargo run --features full -- wdl validate Azeroth.wdl
 > ```
 
-The `warcraft-rs` tool also provides WDL (World of Warcraft Low-resolution terrain) file operations:
+The `warcraft-rs` tool also provides WDL (World of Warcraft Low-resolution terrain) file
+operations:
 
 ### WDL Validation
 

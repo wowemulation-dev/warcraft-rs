@@ -11,18 +11,27 @@ zero or more group files that contain geometry data.
 - **Magic**: Chunk-based format with 4-character identifiers (reversed in file)
 - **Purpose**: Large static world geometry with interior/exterior areas
 - **Components**: Root file + multiple group files
-- **Features**: Portal data ⚠️ **Parsing Only**, BSP trees ⚠️ **Parsing Only**, lighting data ⚠️ **Parsing Only**, multiple LODs ⚠️ **Format Specification**
+- **Features**: Portal data ⚠️ **Parsing Only**, BSP trees ⚠️ **Parsing Only**,
+  lighting data ⚠️ **Parsing Only**, multiple LODs ⚠️ **Format Specification**
+  **Parsing Only**, multiple LODs ⚠️ **Format Specification**
 - **Use Cases**: Buildings, dungeons, caves, large structures, instances
 
 ## Key Characteristics
 
 - **Chunk-based format**: Similar to other Blizzard formats, using 4-character
+
   chunk identifiers
+
 - **Multi-file structure**: Root file + group files (numbered _000.wmo to_999.wmo)
-- **Portal data**: ⚠️ **Format Specification Only** - Portal vertices and normals parsed, visibility culling not implemented
-- **BSP trees**: ⚠️ **Format Specification Only** - Node structure parsed, collision detection not implemented  
-- **Multiple LOD support**: ⚠️ **Format Specification Only** - LOD data parsed, rendering optimization not implemented
-- **Lighting data**: ⚠️ **Format Specification Only** - Light parameters parsed, lighting calculations not implemented
+- **Portal data**: ⚠️ **Format Specification Only** - Portal vertices and normals parsed,
+  visibility culling not implemented
+- **BSP trees**: ⚠️ **Format Specification Only** - Node structure parsed, collision detection
+  not
+  implemented
+- **Multiple LOD support**: ⚠️ **Format Specification Only** - LOD data parsed, rendering
+  optimization not implemented
+- **Lighting data**: ⚠️ **Format Specification Only** - Light parameters parsed, lighting
+  calculations not implemented
 
 ## Version History
 
@@ -30,17 +39,21 @@ Based on empirical analysis of WMO files from original MPQ archives:
 
 | Version | Expansion | Core Chunks | Notable Changes |
 |---------|-----------|-------------|-----------------|
-| 17 | Vanilla WoW (1.12.1) | MVER, MOHD, MOTX, MOMT, MOGN, MOGI, MOSB, MOPV, MOPT, MOPR, MOVV, MOVB, MOLT, MODS, MODN, MODD, MFOG | Original format with 17 core chunks |
+| 17 | Vanilla WoW (1.12.1) | MVER, MOHD, MOTX, MOMT, MOGN, MOGI, MOSB, MOPV, MOPT, MOPR, MOVV,
+  MOVB, MOLT, MODS, MODN, MODD, MFOG | Original format with 17 core chunks |
 | 17 | The Burning Crusade (2.4.3) | Same as 1.12.1 | No new chunks detected in samples |
 | 17 | Wrath of the Lich King (3.3.5a) | Same as 1.12.1 | No new chunks detected in samples |
-| 17 | Cataclysm (4.3.4) | Core + MCVP | Added MCVP (Convex Volume Planes, 496 bytes in transport WMOs) |
+| 17 | Cataclysm (4.3.4) | Core + MCVP | Added MCVP (Convex Volume Planes, 496 bytes in transport
+  WMOs) |
 | 17 | Mists of Pandaria (5.4.8) | Core + MCVP | No additional chunks detected |
 | 17 | Warlords of Draenor (6.x) | Core + GFID | Added GFID chunk for file IDs |
 | 17 | Legion (7.x) | Core + MOP2, MPVD | Added MOP2 (Portal Info 2), MPVD (particle volumes) |
-| 17 | Battle for Azeroth (8.x) | Core + shadow chunks | Enhanced shadow mapping (MLSP, MLSS, MLSK) |
+| 17 | Battle for Azeroth (8.x) | Core + shadow chunks | Enhanced shadow mapping (MLSP, MLSS, MLSK)
+  |
 | 17 | Shadowlands (9.x) | Core + volume chunks | Additional volume data types (MAVD, MBVD) |
 
-**Note**: Version number (17) remained constant from Vanilla through later WoW, with functionality added through new optional chunks rather than version changes.
+**Note**: Version number (17) remained constant from Vanilla through later WoW, with functionality
+  added through new optional chunks rather than version changes.
 
 ## File Structure Overview
 
@@ -68,7 +81,9 @@ println!("Size: {}", header.size);
 Based on analysis of WMO files from WoW versions 1.12.1 through 3.3.5a:
 
 ### Core Chunk Structure (All Versions)
+
 All analyzed WMO root files consistently contain these 17 chunks in order:
+
 1. **MVER** (4 bytes) - Version, always value 17
 2. **MOHD** (64 bytes) - Header with counts and flags
 3. **MOTX** (variable) - Texture filenames, null-terminated strings
@@ -88,7 +103,9 @@ All analyzed WMO root files consistently contain these 17 chunks in order:
 17. **MFOG** (variable) - Fog parameters, 48 bytes per fog entry
 
 ### Group File Structure
+
 Group files (e.g., `*_000.wmo`) contain a single large MOGP chunk:
+
 - **MVER** (4 bytes) - Version 17
 - **MOGP** (entire remaining file) - Contains all group geometry sub-chunks
 
@@ -347,7 +364,8 @@ fn analyze_light(light: &WmoLight) {
 
     match &light.properties {
         WmoLightProperties::Spot { direction, hotspot, falloff } => {
-            println!("Spot light: direction {:?}, hotspot {}, falloff {}", direction, hotspot, falloff);
+            println!("Spot light: direction {:?}, hotspot {}, falloff {}", direction, hotspot,
+  falloff);
         }
         WmoLightProperties::Directional { direction } => {
             println!("Directional light: direction {:?}", direction);
@@ -659,7 +677,8 @@ fn parse_movi(data: &[u8]) -> Vec<[u16; 3]> {
 Vertex positions. ✅ **Implemented**
 
 Vertices chunk with count = size / (sizeof(float) * 3). 3 floats per vertex.
-**Important**: Coordinates are in (X,Z,-Y) order as WMOs use a coordinate system with Z-up and Y into screen,
+**Important**: Coordinates are in (X,Z,-Y) order as WMOs use a coordinate system with Z-up and Y
+  into screen,
 while OpenGL uses Z toward viewer and Y up.
 
 ```rust
@@ -1132,8 +1151,10 @@ pub fn calculate_vertex_lighting(
                 // Directional light
                 let light_dir = normalize(&light.position);
                 let n_dot_l = dot_product(vertex_normal, &light_dir).max(0.0);
-                final_color[0] += n_dot_l * light.intensity * ((light.color >> 16) & 0xFF) as f32 / 255.0;
-                final_color[1] += n_dot_l * light.intensity * ((light.color >> 8) & 0xFF) as f32 / 255.0;
+                final_color[0] += n_dot_l * light.intensity * ((light.color >> 16) & 0xFF) as f32 /
+  255.0;
+                final_color[1] += n_dot_l * light.intensity * ((light.color >> 8) & 0xFF) as f32 /
+  255.0;
                 final_color[2] += n_dot_l * light.intensity * (light.color & 0xFF) as f32 / 255.0;
             }
             2 | 3 => {
@@ -1178,22 +1199,37 @@ pub fn calculate_vertex_lighting(
 6. [WoWMapViewer Source Code](https://github.com/Marlamin/WoWMapViewer)
 7. [PyWoW WMO Module](https://github.com/wowdev/pywowlib)
 
+### Implementation References
+
+- **C++**: [StormLib](https://github.com/ladislav-zezula/StormLib) for MPQ reading
+- **C#**: [libwarcraft](https://github.com/WowDevTools/libwarcraft) for complete WMO support
+- **Python**: [pywow](https://github.com/wowdev/pywowlib) for WMO parsing
+- **JavaScript**: [tswow](https://github.com/tswow/tswow) for modding framework
+
+This documentation is based on reverse engineering efforts by the WoW modding community and may
+  contain inaccuracies. Always verify against known working implementations when developing WMO
+  parsing code.
+
 ## Key Findings from Empirical Analysis
 
 ### Format Stability
+
 - **Version Consistency**: All WMO files from 1.12.1 through 3.3.5a use version 17
 - **Chunk Order**: The 17 core chunks always appear in the same order
 - **Backward Compatibility**: No breaking changes detected between versions
 - **Extension Model**: New features added via optional chunks, not format changes
 
 ### Common Patterns
+
 - **Empty Chunks**: MOVV and MOVB frequently have 0 size (no visibility blocking)
 - **Single Doodad Set**: Most WMOs have just one doodad set (32 bytes)
 - **Skybox**: Usually empty (4 bytes of zeros) for indoor WMOs
 - **Consistent Sizes**: MOHD always 64 bytes, MVER always 4 bytes
 
 ### Implementation Priority
+
 Based on chunk frequency and importance:
+
 1. **Essential**: MVER, MOHD, MOTX, MOMT, MOGI, MOGN (basic structure)
 2. **Important**: MODD, MODN, MODS (doodad placement)
 3. **Lighting**: MOLT, MFOG (visual quality)
@@ -1201,6 +1237,7 @@ Based on chunk frequency and importance:
 5. **Optional**: MOVV, MOVB (rarely used)
 
 ### File Size Distribution
+
 - **Root files**: Typically 50KB - 500KB
 - **Group files**: Typically 100KB - 2MB per group
 - **Texture paths**: Average 500-5000 bytes
@@ -1213,120 +1250,121 @@ Based on chunk frequency and importance:
 - [ADT Format](../world-data/adt.md) - Terrain that WMOs sit on
 - [WMO Rendering Guide](../../guides/wmo-rendering.md)
 
-        Ok(wmo)
-    }
+```rust
+Ok(wmo)
+}
 }
 
 pub struct WMOGroup {
-    pub header: MOGPHeader,
-    pub vertices: Vec<[f32; 3]>,
-    pub normals: Vec<[f32; 3]>,
-    pub tex_coords: Vec<Vec<[f32; 2]>>,
-    pub vertex_colors: Option<Vec<[f32; 4]>>,
-    pub triangles: Vec<[u16; 3]>,
-    pub materials: Vec<u8>,
-    pub render_batches: Vec<MOBAEntry>,
-    pub bsp_tree: Option<BSPTree>,
-    pub liquid: Option<LiquidData>,
+pub header: MOGPHeader,
+pub vertices: Vec<[f32; 3]>,
+pub normals: Vec<[f32; 3]>,
+pub tex_coords: Vec<Vec<[f32; 2]>>,
+pub vertex_colors: Option<Vec<[f32; 4]>>,
+pub triangles: Vec<[u16; 3]>,
+pub materials: Vec<u8>,
+pub render_batches: Vec<MOBAEntry>,
+pub bsp_tree: Option<BSPTree>,
+pub liquid: Option<LiquidData>,
 }
 
 impl WMOGroup {
-    pub fn read<R: Read + Seek>(reader: &mut R) -> io::Result<Self> {
-        let chunk = Chunk::read(reader)?;
-        if chunk.header.id_string() != "MOGP" {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Expected MOGP chunk",
-            ));
+pub fn read<R: Read + Seek>(reader: &mut R) -> io::Result<Self> {
+let chunk = Chunk::read(reader)?;
+if chunk.header.id_string() != "MOGP" {
+    return Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        "Expected MOGP chunk",
+    ));
+}
+
+let mut group_reader = io::Cursor::new(chunk.data);
+let header: MOGPHeader = read_struct(&mut group_reader)?;
+
+let mut group = WMOGroup {
+    header,
+    vertices: Vec::new(),
+    normals: Vec::new(),
+    tex_coords: Vec::new(),
+    vertex_colors: None,
+    triangles: Vec::new(),
+    materials: Vec::new(),
+    render_batches: Vec::new(),
+    bsp_tree: None,
+    liquid: None,
+};
+
+// Read sub-chunks
+while group_reader.position() < group_reader.get_ref().len() as u64 {
+    let sub_chunk = Chunk::read(&mut group_reader)?;
+
+    match sub_chunk.header.id_string().as_str() {
+        "MOVT" => {
+            let verts: Vec<MOVTEntry> = read_array(&sub_chunk.data)?;
+            group.vertices = verts.iter().map(|v| v.position).collect();
         }
-
-        let mut group_reader = io::Cursor::new(chunk.data);
-        let header: MOGPHeader = read_struct(&mut group_reader)?;
-
-        let mut group = WMOGroup {
-            header,
-            vertices: Vec::new(),
-            normals: Vec::new(),
-            tex_coords: Vec::new(),
-            vertex_colors: None,
-            triangles: Vec::new(),
-            materials: Vec::new(),
-            render_batches: Vec::new(),
-            bsp_tree: None,
-            liquid: None,
-        };
-
-        // Read sub-chunks
-        while group_reader.position() < group_reader.get_ref().len() as u64 {
-            let sub_chunk = Chunk::read(&mut group_reader)?;
-
-            match sub_chunk.header.id_string().as_str() {
-                "MOVT" => {
-                    let verts: Vec<MOVTEntry> = read_array(&sub_chunk.data)?;
-                    group.vertices = verts.iter().map(|v| v.position).collect();
-                }
-                "MONR" => {
-                    let norms: Vec<MONREntry> = read_array(&sub_chunk.data)?;
-                    group.normals = norms.iter().map(|n| n.normal).collect();
-                }
-                "MOTV" => {
-                    let coords: Vec<MOTVEntry> = read_array(&sub_chunk.data)?;
-                    let tex_coords = coords.iter().map(|tc| [tc.u, tc.v]).collect();
-                    group.tex_coords.push(tex_coords);
-                }
-                "MOVI" => {
-                    group.triangles = parse_movi(&sub_chunk.data);
-                }
-                "MOPY" => {
-                    let mopy: Vec<MOPYEntry> = read_array(&sub_chunk.data)?;
-                    group.materials = mopy.iter().map(|m| m.material_id).collect();
-                }
-                "MOBA" => {
-                    group.render_batches = read_array(&sub_chunk.data)?;
-                }
-                "MOCV" => {
-                    let colors: Vec<MOCVEntry> = read_array(&sub_chunk.data)?;
-                    group.vertex_colors = Some(
-                        colors.iter().map(|c| c.to_rgba_f32()).collect()
-                    );
-                }
-                _ => {
-                    // Unknown sub-chunk
-                }
-            }
+        "MONR" => {
+            let norms: Vec<MONREntry> = read_array(&sub_chunk.data)?;
+            group.normals = norms.iter().map(|n| n.normal).collect();
         }
-
-        Ok(group)
+        "MOTV" => {
+            let coords: Vec<MOTVEntry> = read_array(&sub_chunk.data)?;
+            let tex_coords = coords.iter().map(|tc| [tc.u, tc.v]).collect();
+            group.tex_coords.push(tex_coords);
+        }
+        "MOVI" => {
+            group.triangles = parse_movi(&sub_chunk.data);
+        }
+        "MOPY" => {
+            let mopy: Vec<MOPYEntry> = read_array(&sub_chunk.data)?;
+            group.materials = mopy.iter().map(|m| m.material_id).collect();
+        }
+        "MOBA" => {
+            group.render_batches = read_array(&sub_chunk.data)?;
+        }
+        "MOCV" => {
+            let colors: Vec<MOCVEntry> = read_array(&sub_chunk.data)?;
+            group.vertex_colors = Some(
+                colors.iter().map(|c| c.to_rgba_f32()).collect()
+            );
+        }
+        _ => {
+            // Unknown sub-chunk
+        }
     }
+}
+
+Ok(group)
+}
 }
 
 /// Helper function to read a struct from bytes
 fn read_struct<T>(data: &[u8]) -> io::Result<T> {
-    if data.len() < std::mem::size_of::<T>() {
-        return Err(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "Not enough data for struct",
-        ));
-    }
+if data.len() < std::mem::size_of::<T>() {
+return Err(io::Error::new(
+    io::ErrorKind::UnexpectedEof,
+    "Not enough data for struct",
+));
+}
 
-    unsafe {
-        Ok(std::ptr::read_unaligned(data.as_ptr() as *const T))
-    }
+unsafe {
+Ok(std::ptr::read_unaligned(data.as_ptr() as *const T))
+}
 }
 
 /// Helper function to read an array of structs
 fn read_array<T>(data: &[u8]) -> io::Result<Vec<T>> {
-    let item_size = std::mem::size_of::<T>();
-    let count = data.len() / item_size;
+let item_size = std::mem::size_of::<T>();
+let count = data.len() / item_size;
 
-    let mut result = Vec::with_capacity(count);
-    for i in 0..count {
-        let start = i * item_size;
-        let item = read_struct(&data[start..start + item_size])?;
-        result.push(item);
-    }
+let mut result = Vec::with_capacity(count);
+for i in 0..count {
+let start = i * item_size;
+let item = read_struct(&data[start..start + item_size])?;
+result.push(item);
+}
 
-    Ok(result)
+Ok(result)
 }
 ```
 
@@ -1472,71 +1510,3 @@ fn test_portal_visibility() {
     // Viewpoint on positive side but looking away
     assert!(!portal.is_visible_from(&[0.0, 0.0, 1.0], &[0.0, 0.0, 1.0]));
 }
-```
-
-## Common Pitfalls
-
-1. **Byte Order**: All multi-byte values are little-endian
-2. **Chunk Alignment**: Some chunks may have padding to align to 4-byte boundaries
-3. **String Parsing**: Strings in MOTX, MOGN, MODN are null-terminated and can be empty
-4. **Group Numbering**: Group files are numbered from 000, not 001
-5. **Coordinate System**: Remember WoW uses a right-handed system with Y pointing north
-6. **Material IDs**: Material IDs in groups index into the root file's MOMT chunk
-7. **BSP Face Indices**: BSP face indices refer to triangles, not vertices
-8. **Portal Normals**: Portal plane normals point toward the positive side
-9. **Vertex Colors**: MOCV can have 1 or 2 sets of colors (check MOGI flags)
-10. **Texture Coordinates**: Groups can have up to 3 sets of texture coordinates
-
-## References
-
-1. [WoWDev Wiki - WMO Format](https://wowdev.wiki/WMO)
-2. [WoWDev Wiki - WMO/v17](https://wowdev.wiki/WMO/v17)
-3. [Ladislav Zezula's WMO Documentation](http://www.zezula.net/en/wow/wmo.html)
-4. [libwarcraft WMO Implementation](https://github.com/WowDevTools/libwarcraft)
-5. [Neo (WoW Model Viewer) Source](https://bitbucket.org/siliconknight/neo)
-6. [WoWMapViewer Source Code](https://github.com/Marlamin/WoWMapViewer)
-7. [PyWoW WMO Module](https://github.com/wowdev/pywowlib)
-
-### Implementation References
-
-- **C++**: [StormLib](https://github.com/ladislav-zezula/StormLib) for MPQ reading
-- **C#**: [libwarcraft](https://github.com/WowDevTools/libwarcraft) for complete WMO support
-- **Python**: [pywow](https://github.com/wowdev/pywowlib) for WMO parsing
-- **JavaScript**: [tswow](https://github.com/tswow/tswow) for modding framework
-
-This documentation is based on reverse engineering efforts by the WoW modding community and may contain inaccuracies. Always verify against known working implementations when developing WMO parsing code.
-
-## Key Findings from Empirical Analysis
-
-### Format Stability
-- **Version Consistency**: All WMO files from 1.12.1 through 3.3.5a use version 17
-- **Chunk Order**: The 17 core chunks always appear in the same order
-- **Backward Compatibility**: No breaking changes detected between versions
-- **Extension Model**: New features added via optional chunks, not format changes
-
-### Common Patterns
-- **Empty Chunks**: MOVV and MOVB frequently have 0 size (no visibility blocking)
-- **Single Doodad Set**: Most WMOs have just one doodad set (32 bytes)
-- **Skybox**: Usually empty (4 bytes of zeros) for indoor WMOs
-- **Consistent Sizes**: MOHD always 64 bytes, MVER always 4 bytes
-
-### Implementation Priority
-Based on chunk frequency and importance:
-1. **Essential**: MVER, MOHD, MOTX, MOMT, MOGI, MOGN (basic structure)
-2. **Important**: MODD, MODN, MODS (doodad placement)
-3. **Lighting**: MOLT, MFOG (visual quality)
-4. **Advanced**: MOPV, MOPT, MOPR (portal culling)
-5. **Optional**: MOVV, MOVB (rarely used)
-
-### File Size Distribution
-- **Root files**: Typically 50KB - 500KB
-- **Group files**: Typically 100KB - 2MB per group
-- **Texture paths**: Average 500-5000 bytes
-- **Doodad data**: Can be 80KB+ for complex WMOs
-
-## See Also
-
-- [BLP Format](blp.md) - Texture format used by WMO
-- [M2 Format](m2.md) - Doodads placed in WMO
-- [ADT Format](../world-data/adt.md) - Terrain that WMOs sit on
-- [WMO Rendering Guide](../../guides/wmo-rendering.md)

@@ -882,10 +882,27 @@ fn extract_files_with_options(options: ExtractOptions) -> Result<()> {
 
         println!("Patch chain built with {} archives", chain.archive_count());
 
-        let files_to_extract = if files.is_empty() {
+        let files_to_extract: Vec<String> = if files.is_empty() {
             // Get all files from the chain
             let entries = chain.list()?;
-            entries.into_iter().map(|e| e.name).collect()
+            let mut file_list: Vec<String> = entries.into_iter().map(|e| e.name).collect();
+
+            // Filter by file type if specified
+            if let Some(file_type) = file_type {
+                println!("Filtering by file type...");
+                file_list.retain(|f| {
+                    // Ignore case
+                    let lowercase_filename = f.to_lowercase();
+                    let lowercase_file_type = file_type.to_lowercase();
+                    lowercase_filename.ends_with(&lowercase_file_type)
+                });
+                println!(
+                    "Found {} files matching type {}",
+                    file_list.len(),
+                    file_type
+                );
+            }
+            file_list
         } else {
             files
         };
@@ -1854,9 +1871,7 @@ fn create_file_node(
                     .with_external_ref(&format!("{base_name}.skin"), detect_ref_type("file.skin"));
                 node = node.with_external_ref("*.blp", detect_ref_type("file.blp"));
             }
-            "dbc"
-                if file_name.to_lowercase().contains("item") =>
-            {
+            "dbc" if file_name.to_lowercase().contains("item") => {
                 node = node.with_external_ref("Interface/Icons/*.blp", detect_ref_type("file.blp"));
             }
             _ => {}

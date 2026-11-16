@@ -21,4 +21,5 @@ cargo test --test parser_tests
 
 ## Test Data
 
-Integration tests use synthetic test data created programmatically to avoid dependencies on copyrighted game files.
+Integration tests use synthetic test data created programmatically to avoid dependencies on
+copyrighted game files.

@@ -16,8 +16,8 @@
 
 use crate::{Error, Result};
 use std::path::{Component, Path};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 /// Security limits for various MPQ structures
@@ -837,10 +837,12 @@ mod tests {
         );
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid MPQ signature"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid MPQ signature")
+        );
     }
 
     #[test]
@@ -861,10 +863,12 @@ mod tests {
         );
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Hash table too large"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Hash table too large")
+        );
     }
 
     #[test]
@@ -900,34 +904,40 @@ mod tests {
         let limits = SecurityLimits::default();
 
         // Valid file
-        assert!(validate_file_bounds(
-            1000,   // offset
-            2048,   // decompressed size
-            1024,   // compressed size
-            100000, // archive size
-            &limits,
-        )
-        .is_ok());
+        assert!(
+            validate_file_bounds(
+                1000,   // offset
+                2048,   // decompressed size
+                1024,   // compressed size
+                100000, // archive size
+                &limits,
+            )
+            .is_ok()
+        );
 
         // File extends beyond archive
-        assert!(validate_file_bounds(
-            99000,  // offset
-            2048,   // decompressed size
-            2000,   // compressed size (would end at 101000)
-            100000, // archive size
-            &limits,
-        )
-        .is_err());
+        assert!(
+            validate_file_bounds(
+                99000,  // offset
+                2048,   // decompressed size
+                2000,   // compressed size (would end at 101000)
+                100000, // archive size
+                &limits,
+            )
+            .is_err()
+        );
 
         // Potential zip bomb
-        assert!(validate_file_bounds(
-            1000,    // offset
-            1000000, // decompressed size (1MB)
-            100,     // compressed size (100 bytes = 10000:1 ratio)
-            100000,  // archive size
-            &limits,
-        )
-        .is_err());
+        assert!(
+            validate_file_bounds(
+                1000,    // offset
+                1000000, // decompressed size (1MB)
+                100,     // compressed size (100 bytes = 10000:1 ratio)
+                100000,  // archive size
+                &limits,
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -947,13 +957,15 @@ mod tests {
     #[test]
     fn test_sector_validation() {
         // Valid sector
-        assert!(validate_sector_data(
-            0,    // sector index
-            4096, // sector size
-            2048, // data size
-            None, // no CRC check
-        )
-        .is_ok());
+        assert!(
+            validate_sector_data(
+                0,    // sector index
+                4096, // sector size
+                2048, // data size
+                None, // no CRC check
+            )
+            .is_ok()
+        );
 
         // Invalid sector size
         assert!(validate_sector_data(0, 0, 1024, None).is_err());
@@ -1040,44 +1052,40 @@ mod tests {
         let limits = SecurityLimits::default();
 
         // Normal compression should pass
-        assert!(detect_compression_bomb_patterns(
-            1024,
-            10240,
-            0x02,
-            Some("data/file.txt"),
-            &limits
-        )
-        .is_ok());
+        assert!(
+            detect_compression_bomb_patterns(1024, 10240, 0x02, Some("data/file.txt"), &limits)
+                .is_ok()
+        );
 
         // Extreme ratio should fail
-        assert!(detect_compression_bomb_patterns(
-            100,
-            100_000_000,
-            0x02,
-            Some("data/file.txt"),
-            &limits
-        )
-        .is_err());
+        assert!(
+            detect_compression_bomb_patterns(
+                100,
+                100_000_000,
+                0x02,
+                Some("data/file.txt"),
+                &limits
+            )
+            .is_err()
+        );
 
         // Tiny compressed with huge output should fail
-        assert!(detect_compression_bomb_patterns(
-            50,
-            20_000_000,
-            0x02,
-            Some("data/file.txt"),
-            &limits
-        )
-        .is_err());
+        assert!(
+            detect_compression_bomb_patterns(50, 20_000_000, 0x02, Some("data/file.txt"), &limits)
+                .is_err()
+        );
 
         // Nested archive with large size should fail
-        assert!(detect_compression_bomb_patterns(
-            1_000_000,
-            100_000_000,
-            0x02,
-            Some("nested.mpq"),
-            &limits
-        )
-        .is_err());
+        assert!(
+            detect_compression_bomb_patterns(
+                1_000_000,
+                100_000_000,
+                0x02,
+                Some("nested.mpq"),
+                &limits
+            )
+            .is_err()
+        );
     }
 
     #[test]

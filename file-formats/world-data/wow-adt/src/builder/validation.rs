@@ -4,12 +4,12 @@
 //! - Method-level: Basic parameter checks
 //! - Build-level: Structural and reference validation
 
-use crate::chunks::blend_mesh::{MbbbChunk, MbmhChunk, MbmiChunk, MbnvChunk};
+use crate::ChunkId;
 use crate::chunks::DoodadPlacement;
 use crate::chunks::WmoPlacement;
+use crate::chunks::blend_mesh::{MbbbChunk, MbmhChunk, MbmiChunk, MbnvChunk};
 use crate::error::{AdtError, Result};
 use crate::version::AdtVersion;
-use crate::ChunkId;
 
 /// Validate texture filename format.
 ///

@@ -82,16 +82,8 @@ fn main() {
     println!("Events count: {}", model.events.len());
 
     // Show Vanilla-specific header fields
-    if model.header.playable_animation_lookup.is_some() {
-        println!(
-            "Playable animation lookup: {} entries",
-            model
-                .header
-                .playable_animation_lookup
-                .as_ref()
-                .unwrap()
-                .count
-        );
+    if let Some(lookup) = model.header.playable_animation_lookup.as_ref() {
+        println!("Playable animation lookup: {} entries", lookup.count);
     }
 
     // Check if this is actually a pre-WotLK model

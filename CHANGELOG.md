@@ -10,15 +10,21 @@ and this project adheres to
 
 ### Fixed
 
-- **wow-m2**: LDV1 chunk is now parsed as the single 16-byte record documented on wowdev.wiki (`unk0`, `lodCount`, `unk2_f`, `particleBoneLod[4]`, `unk4`) instead of an array of 14-byte levels. Chunked (MD21) models with an LDV1 chunk, such as current Classic Era clients, previously failed with "LDV1 chunk size 16 is not a multiple of LOD level size 14"
-  - Breaking: `LodData` now exposes `unknown_0`, `lod_count`, `unknown_2`, `particle_bone_lod` and `unknown_4`; `LodLevel`, `LodData::levels`/`len`/`is_empty`/`select_lod` and `M2Model::select_lod` are removed
+- **wow-m2**: LDV1 chunk is now parsed as the single 16-byte record documented on wowdev.wiki
+  (`unk0`, `lodCount`, `unk2_f`, `particleBoneLod[4]`, `unk4`) instead of an array of 14-byte
+  levels. Chunked (MD21) models with an LDV1 chunk, such as current Classic Era clients, previously
+  failed with "LDV1 chunk size 16 is not a multiple of LOD level size 14"
+  - Breaking: `LodData` now exposes `unknown_0`, `lod_count`, `unknown_2`, `particle_bone_lod` and
+    `unknown_4`; `LodLevel`, `LodData::levels`/`len`/`is_empty`/`select_lod` and `M2Model::select_lod`
+    are removed
 
 ## [0.7.0] - 2026-07-09
 
 ### Added
 
 - **wow-cdbc**: JSON import support for DBC files (PR #53)
-  - `warcraft-rs dbc import --schema <yaml> --output <dbc> <json>` converts JSON array to WDBC binary
+  - `warcraft-rs dbc import --schema <yaml> --output <dbc> <json>` converts JSON array to WDBC
+    binary
   - `import_from_json` library function with type coercion and string interning
   - `StringBlock::from_bytes` in-memory constructor needed by the importer
   - Fixed `dbd_to_yaml` to use correct `type_name`, per-build layout, and array sizes
@@ -29,9 +35,16 @@ and this project adheres to
 
 ### Fixed
 
-- **wow-blp**: Palettized BLP palette color channel order — BLP palette is BGRX on disk (byte 0 = B, byte 2 = R), not 0xBBGGRR. Encoder and decoder both had R↔B swapped, causing red/blue inversion on real Blizzard BLPs (PR #59, closes #52, #58)
-- **wow-mpq**: Fixed V4 archive support — `decrypt_table_data` no longer corrupts trailing bytes not aligned to a 4-byte DWORD boundary, matching StormLib's `DecryptMpqBlock`. V4 compressed hash/block tables are now decrypted before decompression (the encrypted first byte was misinterpreted as the compression type)
-- **wow-mpq**: Fixed LZMA decompression — MPQ LZMA format has a 14-byte header with 1 filter byte (0x00) + 5 LZMA props + 8 byte uncompressed size. The filter byte was not stripped, causing lzma_rs to compute wrong dictionary size (524381 instead of 2048)
+- **wow-blp**: Palettized BLP palette color channel order — BLP palette is BGRX on disk (byte 0 =
+  B, byte 2 = R), not 0xBBGGRR. Encoder and decoder both had R↔B swapped, causing red/blue
+  inversion on real Blizzard BLPs (PR #59, closes #52, #58)
+- **wow-mpq**: Fixed V4 archive support — `decrypt_table_data` no longer corrupts trailing bytes
+  not aligned to a 4-byte DWORD boundary, matching StormLib's `DecryptMpqBlock`. V4 compressed
+  hash/block tables are now decrypted before decompression (the encrypted first byte was
+  misinterpreted as the compression type)
+- **wow-mpq**: Fixed LZMA decompression — MPQ LZMA format has a 14-byte header with 1 filter byte
+  (0x00) + 5 LZMA props + 8 byte uncompressed size. The filter byte was not stripped, causing
+  lzma_rs to compute wrong dictionary size (524381 instead of 2048)
 - **wow-blp**: Fixed BLP1 palette size to use correct 256 colors instead of 255
 - **wow-blp**: Fixed 4-bit alpha encoding formula for RAW1 format conversion
   - Alpha values now correctly scaled to 0-15 range before packing
@@ -39,14 +52,19 @@ and this project adheres to
   - 1-bit alpha now correctly maps 0→0, 1→255 (was 0→0, 1→1)
   - 4-bit alpha now correctly maps 0-15→0-255 via multiplication by 17 (was 0-15)
   - Matches blp-rs reference implementation behavior
-- **wow-m2**: Fixed `texture_combiner_combos` field to be flag-based instead of version-based (PR #47, #35)
+- **wow-m2**: Fixed `texture_combiner_combos` field to be flag-based instead of version-based (PR
+  #47, #35)
   - Field now controlled by `USE_TEXTURE_COMBINERS` flag (0x0008), not version
   - Pre-Cataclysm M2 files WITH flag set now correctly parse combos
   - Cataclysm+ M2 files WITHOUT flag set no longer read garbage data
   - Flag is properly preserved during version conversion
-- **wow-wmo**: Fixed MOLT (SMOLight) `MoltEntry` struct — was 32 bytes, missing the C4Quaternion rotation field at +0x18 (should be 48 bytes). Parser read rotation.x/rotation.y as attenuation_start/attenuation_end, then skipped the actual attenuation values. Writer had a different field order from both BN and the parser, corrupting roundtripped data
+- **wow-wmo**: Fixed MOLT (SMOLight) `MoltEntry` struct — was 32 bytes, missing the C4Quaternion
+  rotation field at +0x18 (should be 48 bytes). Parser read rotation.x/rotation.y as
+  attenuation_start/attenuation_end, then skipped the actual attenuation values. Writer had a
+  different field order from both BN and the parser, corrupting roundtripped data
 - **wow-wmo**: Fixed doc comment bracket escaping in MOLT to prevent rustdoc intra-doc link errors
-- **wow-adt**: Fixed MCIN `McnkEntry` field naming — offset 0x0C is `async_id`, not `layer_count`. Matches BN, wowdev.wiki, and wooly-beast
+- **wow-adt**: Fixed MCIN `McnkEntry` field naming — offset 0x0C is `async_id`, not
+  `layer_count`. Matches BN, wowdev.wiki, and wooly-beast
 - **wow-cdbc**: Fixed language string size and build version selection for DBC schema loading
 - **wow-cdbc**: Gated database module behind `mpq` feature flag
 - **CI**: Added `GH_REPO` variable to cache cleanup workflow
@@ -56,21 +74,26 @@ and this project adheres to
 - **wow-mpq**: Removed `pub mod database` — hash database moved to `warcraft-rs` CLI (BREAKING)
   - `calculate_mpq_hashes` and `calculate_het_hashes` promoted to `wow_mpq::crypto`
   - Removed `rusqlite`, `directories`, `chrono`, and `glob` dependencies from `wow-mpq`
-- **warcraft-rs**: Refactored hash database from `wow-mpq` to `warcraft-rs` CLI (PR #51, closes #50)
+- **warcraft-rs**: Refactored hash database from `wow-mpq` to `warcraft-rs` CLI (PR #51, closes
+  #50)
   - New async `warcraft-rs/src/database/` module using `turso` (async SQLite)
   - CLI made async with `#[tokio::main]`
   - `mpq` command dispatch, `list_archive`, and `execute_db_command` now async
-- **wow-blp**: Palette color channel documented as BGRX (confirmed via 3.3.5a client RE — `DecompPalFastPath` copies 3 bytes per entry as BGR)
-- **Performance**: Database bulk insert optimized with transactions, WAL journal mode, `synchronous=NORMAL`, and `prepare_cached` — 185k filenames from ~6 min down to ~15s
+- **wow-blp**: Palette color channel documented as BGRX (confirmed via 3.3.5a client RE —
+  `DecompPalFastPath` copies 3 bytes per entry as BGR)
+- **Performance**: Database bulk insert optimized with transactions, WAL journal mode,
+  `synchronous=NORMAL`, and `prepare_cached` — 185k filenames from ~6 min down to ~15s
 - **Documentation**: Converted `docs/` to mdbook with mermaid diagram support
 - **Documentation**: Added Read the Docs configuration
 - **Documentation**: Fixed inaccurate API examples and CLI flags across all crate READMEs
-- **Documentation**: Fixed incorrect API references and broken imports across docs (replaced fabricated `warcraft_rs::` namespace with actual crate paths)
+- **Documentation**: Fixed incorrect API references and broken imports across docs (replaced
+  fabricated `warcraft_rs::` namespace with actual crate paths)
 - **Documentation**: Standardized README structure with badges and sponsor links
 - **Documentation**: Standardized KISS/DRY principles across docs and code comments
 - **Tooling**: Simplified cargo config, updated Discord link
 - **Tooling**: Synced license files from org, removed outdated CoC
-- **Tooling**: Reorganized mise.toml with profiling tools, removed duplicate CONTRIBUTING.md and SECURITY.md
+- **Tooling**: Reorganized mise.toml with profiling tools, removed duplicate CONTRIBUTING.md and
+  SECURITY.md
 
 ## [Unreleased]
 
@@ -89,14 +112,16 @@ and this project adheres to
 ### Fixed
 
 - **CI**: Fixed shell variable expansion in GitHub Actions YAML action inputs
-  - `actions/upload-artifact` `path:` field requires `${{ vars.* }}` expressions, not `${SHELL_VAR}`
+- `actions/upload-artifact` `path:` field requires `${{ vars.* }}` expressions, not `${SHELL_VAR}`
   - Added `shell: bash` to native build steps to prevent PowerShell default on Windows runners
-  - Fixed release notes heredoc: removed escaped backticks, use `${{ }}` expressions in single-quoted heredoc
+- Fixed release notes heredoc: removed escaped backticks, use `${{ }}` expressions in single-quoted
+heredoc
   - Fixed sed delimiter collision when REPO variable contains `/`
 - **CI**: Fixed cross-build workflow artifact upload for all targets
 - **CI**: Fixed release-cli workflow packaging and signing for cross-compiled Windows binaries
 - **CI**: Reduced cache-cleanup workflow permissions from `write-all` to `actions: write`
-- **CI**: Fixed install-script workflow environment variable name (`BINARY_NAME` -> `BINARY_DEFAULT`)
+- **CI**: Fixed install-script workflow environment variable name (`BINARY_NAME` ->
+  `BINARY_DEFAULT`)
 
 ### Changed
 
@@ -447,7 +472,8 @@ and this project adheres to
   - Export processing chunks: EXPT
 - **M2 Format**: Chunk validation and cross-reference checking
 - **M2 Format**: Physics file (.phys) basic parsing support via PFID references
-- **Code Quality**: Enhanced clippy linting with stricter rules (all, pedantic, nursery, cargo groups)
+- **Code Quality**: Enhanced clippy linting with stricter rules (all, pedantic, nursery, cargo
+  groups)
 - **Testing**: QA script adapted from cascette-rs
 - **Security**: Improved dependency security audit configuration with documented exceptions
 
@@ -492,7 +518,8 @@ and this project adheres to
 - **Performance**: Optimized MPQ bulk extraction performance
 - **Code Quality**: Removed unused imports and variables across test modules
 
-- **M2 Triangle Index Parsing**: Critical mesh connectivity corruption causing fragmented geometry (CRITICAL FIX)
+- **M2 Triangle Index Parsing**: Critical mesh connectivity corruption causing fragmented geometry
+  (CRITICAL FIX)
   - **Double Indirection Bug**: Fixed unnecessary two-level indirection in `get_resolved_indices()`
     - Triangle indices were incorrectly resolved as `indices[triangles[i]]` instead of direct usage
     - Created sequential indices [0,1,2,3...] resulting in flat "airplane" geometry
@@ -503,7 +530,8 @@ and this project adheres to
     - All M2 models benefit from corrected triangle-to-vertex mapping
     - Verified against reference blender-wow-studio triangle connectivity data
 
-- **M2 Quaternion Parsing**: Critical bone rotation corruption across all animated models (CRITICAL FIX)
+- **M2 Quaternion Parsing**: Critical bone rotation corruption across all animated models (CRITICAL
+  FIX)
   - **X-Component Sign Error**: Fixed quaternion X-component negation in `M2CompQuat::parse()`
     - pywowlib reference implementation negates X-component during parsing
     - warcraft-rs was not applying negation, causing incorrect bone rotations
@@ -521,7 +549,8 @@ and this project adheres to
     - Prevents out-of-bounds bone references and rendering crashes
 
 - **M2 Bone Parsing**: Critical data corruption issues in vertex and bone parsing (MAJOR FIX)
-  - **Invalid Bone Indices**: Vertices referencing non-existent bones (e.g., bones [51, 196, 141, 62] when only 34 exist)
+- **Invalid Bone Indices**: Vertices referencing non-existent bones (e.g., bones [51, 196, 141, 62]
+when only 34 exist)
     - Enhanced `M2Vertex::parse_with_validation()` with bone index validation
     - Invalid indices automatically clamped to root bone (index 0) for safety
     - Prevents rendering failures and vertex positioning corruption
@@ -568,10 +597,11 @@ and this project adheres to
     - Proper handling of WoW's (North, West, Up) coordinate system
     - Batch transformation capabilities for large models
 
-- **M2 Coordinate System Support**: Complete transformation utilities for cross-application compatibility
+- **M2 Coordinate System Support**: Complete transformation utilities for cross-application
+  compatibility
   - **CoordinateSystem**: Support for Blender, Unity, and Unreal Engine coordinate systems
     - WoW to Blender: `(y, -x, z)` position transformation
-    - WoW to Unity: `(-y, z, x)` position transformation  
+    - WoW to Unity: `(-y, z, x)` position transformation
     - WoW to Unreal Engine: `(x, -y, z)` position transformation
     - Proper quaternion transformations for each target system
   - **CoordinateTransformer**: High-performance batch transformation system
@@ -686,27 +716,43 @@ and this project adheres to
 ### Fixed
 
 - **wow-mpq**: Replaced custom ReadLittleEndian trait with standard
+
   byteorder crate across 50+ locations
+
 - **wow-mpq**: Added generic error conversion helpers for compression
+
   algorithms
+
 - **wow-mpq**: Standardized error handling patterns in compression
+
   module
+
 - **wow-blp**: Extracted duplicate bounds checking logic into reusable
+
   module
+
 - **wow-wmo**: Simplified error handling patterns in chunk reading code
 - **wow-m2**: Fixed ribbon emitter parsing for Cataclysm/MoP using numeric
+
   version comparison
+
 - **wow-mpq**: Fixed HET table creation to handle attributes files correctly
 - **wow-mpq**: Fixed sector offset validation preventing false positive
+
   truncation errors
 
 ### Added
 
 - **wow-blp**: Support for alpha_type=7 for TBC+ enhanced alpha blending
+
   compatibility
+
 - **wow-m2**: Empirically verified version numbers (Classic=256, TBC=260,
+
   WotLK=264, Cata/MoP=272)
+
 - **wow-wmo**: MCVP chunk support for Cataclysm+ transport collision
+
   volumes
 
 ### Changed (0.3.0)
@@ -724,31 +770,51 @@ and this project adheres to
 ### Breaking Changes
 
 - **wow-adt**: MFBO chunk structure changed from 8 bytes to 36 bytes
+
   (2 planes × 9 int16 coordinates)
+
 - **wow-wdt**: MWMO chunk handling changed for Cataclysm+ compatibility
+
   (only WMO-only maps include MWMO)
+
 - **wow-adt**: Version detection API enhanced with chunk-based detection methods
 
 ### Added (0.3.0)
 
 - **wow-adt**: Complete WoW version support (Vanilla through Mists of
+
   Pandaria) with automatic detection
+
 - **wow-adt**: Split ADT file support for Cataclysm+ (`_tex0`, `_obj0`,
+
   `_obj1`, `_lod` files) with merge functionality
+
 - **wow-adt**: MAMP chunk parser for 4-byte texture amplifier values
+
   (Cataclysm+)
+
 - **wow-adt**: MTXP chunk parser for texture parameters with 16-byte
+
   entries (MoP+)
+
 - **wow-wdt**: Enhanced version detection across all WoW expansions
 - **wow-wdt**: Map type detection distinguishing terrain maps from WMO-only maps
 - **wow-wdl**: Enhanced chunk support for all documented chunks (MAOF, MAOH,
+
   MAHO, MWID, MWMO, MODF, ML)
+
 - **wow-mpq**: MutableArchive methods: read_file(), list(), find_file(),
+
   verify_signature(), load_attributes()
+
 - **wow-mpq**: Complete compact() method implementation for archive
+
   defragmentation
+
 - **wow-mpq**: Attributes file parsing handles both self-inclusive and
+
   self-exclusive cases
+
 - **wow-m2**: WotLK M2 model and skin format support
 - **wow-m2**: Texture filename parsing functionality
 - **wow-m2**: Old skin format support
@@ -757,20 +823,30 @@ and this project adheres to
 ### Fixed (0.3.0)
 
 - **wow-adt**: MFBO flight boundaries now use correct structure matching
+
   TrinityCore server
+
 - **wow-wdt**: MWMO chunk writing uses version-aware logic for Cataclysm+
+
   compatibility
+
 - **wow-mpq**: Huffman decompression algorithm matches StormLib linked
+
   list approach
+
 - **wow-mpq**: IMPLODE compression handling for Warcraft III MPQ archives
 - **wow-mpq**: Attributes file parsing handles varying block counts
+
   across implementations
+
 - **wow-m2**: BLP texture parsing with correct header field order and data types
 
 ### Changed
 
 - **wow-mpq**: Enhanced attributes file block count detection with
+
   automatic fallback logic
+
 - **wow-m2**: Replaced custom BLP implementation with wow-blp crate dependency
 - **wow-m2**: BlpTexture now re-exports wow_blp::BlpImage for compatibility
 
@@ -785,43 +861,69 @@ and this project adheres to
 
 - **wow-mpq**: Complete parallel processing support with ParallelArchive struct
 - **wow-mpq**: Multi-threaded functions: extract_from_multiple_archives(),
+
   search_in_multiple_archives(), process_archives_parallel(),
   validate_archives_parallel()
+
 - **wow-mpq**: Thread-safe file handle cloning strategy for concurrent access
 - **wow-mpq**: Parallel patch chain loading with from_archives_parallel()
+
   and add_archives_parallel()
+
 - **wow-mpq**: Buffer pre-allocation optimizations for sector reading
 - **wow-mpq**: Hash table mask caching for improved file lookup
 - **wow-mpq**: Public list_files() and read_file_with_new_handle() methods
 - **wow-mpq**: Rayon integration for CPU-optimal work distribution
 - **wow-mpq**: SQLite database support for persistent filename hash storage
+
   and resolution
+
 - **wow-mpq**: Database import functionality supporting listfiles, MPQ
+
   archives, and directory scanning
+
 - **wow-mpq**: Automatic filename resolution through database lookup
+
   during archive operations
+
 - **storm-ffi**: Complete archive modification support through C FFI
 - **storm-ffi**: File operations: add, remove, rename with SFileAddFile,
+
   SFileRemoveFile, SFileRenameFile
+
 - **storm-ffi**: Archive operations: create, flush, compact with
+
   SFileCreateArchive, SFileFlushArchive, SFileCompactArchive
+
 - **storm-ffi**: File finding functionality with
+
   SFileFindFirstFile/NextFile/Close
+
 - **storm-ffi**: File and archive attributes API support
 - **warcraft-rs**: CLI with mpq subcommands: list, extract, info, verify
 - **warcraft-rs**: mpq db subcommand with status, import, analyze, lookup,
+
   export, list operations
+
 - **warcraft-rs**: Parallel processing enabled by default with --threads
+
   parameter
+
 - **warcraft-rs**: --patch parameter for patch chain support in extract command
 - **warcraft-rs**: BLP commands: convert, info, validate with mipmap
+
   generation and DXT compression
+
 - **warcraft-rs**: ADT commands: info, validate, convert, tree with
+
   expansion name support
+
 - **warcraft-rs**: WDT commands: info, validate, convert, tiles
 - **warcraft-rs**: WDL commands: validate, convert, info
 - **warcraft-rs**: Tree visualization for all formats with emoji icons
+
   and color support
+
 - **wow-blp**: Complete BLP texture format support (BLP0, BLP1, BLP2)
 - **wow-blp**: All compression formats: JPEG, RAW1 (palettized), RAW3, DXT1/3/5
 - **wow-blp**: Mipmap support for internal and external mipmaps
@@ -839,7 +941,9 @@ and this project adheres to
 - **wow-adt**: Height maps, texture layers, doodad and WMO placement data
 - **wow-adt**: Liquid information, vertex shading, shadow maps, alpha maps
 - **wow-adt**: Version conversion between Classic, TBC, WotLK, and
+
   Cataclysm formats
+
 - **wow-wdt**: WDT file support with MPHD header and MAIN chunk parsing
 - **wow-wdt**: MAID chunk support for file data IDs (Legion+)
 - **wow-wdt**: WMO-only world support with map metadata
@@ -853,7 +957,9 @@ and this project adheres to
 - **wow-mpq**: Critical sector reading bug truncating large files
 - **wow-mpq**: Archive modification to properly update listfile and attributes
 - **wow-mpq**: V3 archive compatibility issues with StormLib attributes
+
   file reading
+
 - **wow-mpq**: V4 malloc crash by checking hi-block table necessity
 - **wow-mpq**: ADPCM decompression overflow when bit shift value exceeds 31
 - **wow-mpq**: SINGLE_UNIT file compression method detection
@@ -872,20 +978,28 @@ and this project adheres to
 - **wow-mpq**: Enhanced thread safety architecture for concurrent operations
 - **wow-mpq**: Attributes files use StormLib-compatible 149-byte format
 - **storm-ffi**: Renamed from storm to storm-ffi while retaining
+
   libstorm library name
+
 - **storm-ffi**: Archive handles support both read-only and mutable operations
 - **Project-wide**: Test reorganization with component,
+
   integration, scenarios, compliance directories
+
 - **Project-wide**: Consolidated examples from 50+ to 15 focused demonstrations
 - **All crates**: Replaced byteorder crate with native Rust byte order functions
 - **Documentation**: Fixed API discrepancies between documentation and
+
   implementation
+
 - **Documentation**: Updated all code examples to compile correctly
 
 ### Performance (0.2.0)
 
 - Up to 6x performance improvement for multi-archive operations through
+
   parallel processing
+
 - Optimized sector reading with buffer pre-allocation strategies
 - Enhanced file lookup performance through hash table mask caching
 - CPU-optimal work distribution using rayon thread pools
@@ -893,7 +1007,9 @@ and this project adheres to
 ### Removed (0.2.0)
 
 - **wow-mpq**: Redundant create_het_table() method replaced by
+
   create_het_table_with_hash_table()
+
 - **warcraft-rs**: --parallel and --sequential flags (parallel now default)
 - **warcraft-rs**: --batch-size option (automatically optimized)
 - **wow-mpq**: Redundant examples consolidated into fewer demonstrations
@@ -905,23 +1021,37 @@ and this project adheres to
 - **wow-mpq**: Complete archive modification API with MutableArchive
 - **wow-mpq**: Automatic listfile and attributes updates during modifications
 - **wow-mpq**: StormLib bidirectional compatibility for
+
   created/modified archives
+
 - **wow-mpq**: Support for WoW versions 1.12.1 through 5.4.8
 - **wow-mpq**: Support for MPQ format versions (V1, V2, V3 with HET/BET,
+
   V4 with advanced HET/BET)
+
 - **wow-mpq**: Portable WoW data discovery using environment variables
+
   and common paths
+
 - **wow-mpq**: test-utils feature for examples requiring WoW game data
 - **wow-mpq**: Cross-platform path separator conversion (forward slash
+
   to backslash)
+
 - **wow-mpq**: Graceful handling of Blizzard's 28-byte attributes file deviation
 - **wow-mpq**: HET/BET table generation for V3+ archives with attributes
+
   file indexing
+
 - **wow-mpq**: V4 archive creation with corrected hi-block table size
+
   calculation
+
 - **wow-mpq**: ADPCM audio compression support with overflow protection
 - **wow-mpq**: Support for all compression formats (ZLIB, BZIP2, ADPCM,
+
   Huffman, Sparse, LZMA)
+
 - **wow-mpq**: Encryption/decryption support with hash and block table parsing
 - **wow-mpq**: Extended attributes and HET/BET table support
 - **wow-mpq**: Patch archive support with proper file resolution
@@ -937,11 +1067,13 @@ and this project adheres to
 - **wow-mpq**: HET table creation to properly index attributes files
 - **wow-mpq**: ADPCM decompression overflow protection
 - **wow-mpq**: Sector reading validation preventing false positive
+
   truncation errors
 
 ### Changed (0.1.0)
 
 - **wow-mpq**: Attributes files use full StormLib-compatible format
+
   (CRC32+MD5+timestamp) instead of CRC32-only
 
 [0.7.0]: https://github.com/wowemulation-dev/warcraft-rs/compare/v0.6.4...v0.7.0

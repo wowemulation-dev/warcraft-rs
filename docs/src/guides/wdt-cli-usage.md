@@ -1,6 +1,7 @@
 # WDT CLI Usage Guide
 
-The `warcraft-rs` command-line tool provides WDT (World Data Table) operations through the `wdt` subcommand, supporting all World of Warcraft versions from Classic through later expansions.
+The `warcraft-rs` command-line tool provides WDT (World Data Table) operations through the `wdt`
+subcommand, supporting all World of Warcraft versions from Classic through later expansions.
 
 **Key Features:**
 
@@ -40,7 +41,7 @@ warcraft-rs wdt info Azeroth.wdt --detailed
 
 Example output:
 
-```
+```text
 WDT File Information
 ===================
 
@@ -69,7 +70,7 @@ warcraft-rs wdt validate Azeroth.wdt --version 3.3.5a --warnings
 
 Example output:
 
-```
+```text
 Validating WDT File
 ==================
 
@@ -91,7 +92,7 @@ warcraft-rs wdt tiles Azeroth.wdt --format csv > azeroth_tiles.csv
 
 Text output:
 
-```
+```text
 Existing ADT Tiles
 ==================
 
@@ -138,7 +139,7 @@ warcraft-rs wdt convert classic_map.wdt wotlk_map.wdt \
 
 Example conversion output:
 
-```
+```text
 WDT Version Conversion
 =====================
 

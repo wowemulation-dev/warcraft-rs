@@ -26,9 +26,10 @@ Testing of all `warcraft-rs` convert subcommands using real game data from WoW c
 
 ### BLP Convert
 
-**Status: Working**
+#### Status: Working
 
 Tested conversions:
+
 - BLP1 (1.12.1) -> PNG: Success
 - BLP2 (3.3.5a) -> PNG: Success
 - PNG -> BLP1 RAW1: Success
@@ -38,6 +39,7 @@ Tested conversions:
 - PNG -> BLP2 DXT5: Success (auto-selects 8-bit alpha for RGBA input)
 
 Features:
+
 - Alpha bits are auto-detected from input image if not specified
 - JPEG format now works with RGBA images (alpha is stripped with a warning)
 - DXT1 auto-selects 1-bit alpha for images with transparency
@@ -50,7 +52,7 @@ images requiring alpha, DXT5 or Raw1 formats are recommended.
 
 ### M2 Convert
 
-**Status: Working - All versions parse and roundtrip correctly**
+#### Status: Working - All versions parse and roundtrip correctly
 
 The M2 converter preserves all animation data including bone animations, particle emitter
 animations, ribbon emitter animations, texture animations, color animations, transparency
@@ -58,6 +60,7 @@ animations, event track data, attachment animations, camera animations, light an
 and embedded skin data through roundtrip and version conversion for all supported versions.
 
 **Working:**
+
 - Full model roundtrip (Vanilla, TBC, WotLK, Cataclysm, MoP)
 - Version conversion between any supported versions
 - Bone animation keyframes (timestamps, values, ranges) preserved
@@ -66,10 +69,12 @@ and embedded skin data through roundtrip and version conversion for all supporte
 - Texture animations (5 track types) preserved with offset relocation
 - Color animations (2 track types: RGB color, alpha) preserved with offset relocation
 - Transparency animations (1 track type: alpha) preserved with offset relocation
-- Event track data (simple M2Array<u32> timestamps) preserved with offset relocation
+- Event track data (simple `M2Array<u32>` timestamps) preserved with offset relocation
 - Attachment animations (1 track type: scale) preserved with offset relocation
-- Camera animations (3 track types: position, target position, roll) preserved with offset relocation
-- Light animations (5 track types: ambient color, diffuse color, attenuation start/end, visibility) preserved with offset relocation
+- Camera animations (3 track types: position, target position, roll) preserved with offset
+  relocation
+- Light animations (5 track types: ambient color, diffuse color, attenuation start/end, visibility)
+  preserved with offset relocation
 - Pre-WotLK embedded skin data preserved (ModelView, indices, triangles, submeshes, batches)
 - Header fields correctly handle version-specific differences:
   - `playable_animation_lookup` (Vanilla/TBC only, versions 256-263)
@@ -79,7 +84,8 @@ and embedded skin data through roundtrip and version conversion for all supporte
 - Bone structure and animation tracks preserved with offset relocation
 
 **Test results with DwarfMale.m2 (vanilla 1.12.1):**
-```
+
+```text
 Original:                2,124,656 bytes (version 256, embedded skins)
 Vanilla roundtrip:       1,496,389 bytes (version 256, 4 skins, 138 bone anims, 34 attachment anims)
 Converted to WotLK:      1,259,407 bytes (version 264, external skins)
@@ -91,6 +97,7 @@ Note: Roundtrip file is smaller than original because we don't preserve padding/
 from the original file. The output contains all data needed to display and animate the model.
 
 The converter preserves:
+
 - Magic (MD20) and version
 - Vertices and geometry (3246 vertices)
 - Bones with animation tracks (110 bones, 138 animation data entries)
@@ -111,9 +118,10 @@ All M2 animation data types are now preserved through roundtrip conversion.
 
 ### M2 Skin Convert
 
-**Status: Working**
+#### Status: Working
 
 Tested conversions:
+
 - WotLK old format -> MoP new format: Success
 - MoP new format -> WotLK old format: Success
 
@@ -122,16 +130,18 @@ indices, submeshes, batches) across format changes.
 
 ### M2 Anim Convert
 
-**Status: Working**
+#### Status: Working
 
 Tested conversion:
+
 - Legacy format -> MoP: Success (no actual conversion needed for legacy format)
 
 ### WMO Convert
 
-**Status: Partial - Root files work; group files pending**
+#### Status: Partial - Root files work; group files pending
 
 Tested conversions:
+
 - Classic root -> WotLK: Success
 - Classic root -> Cataclysm: Success
 
@@ -139,11 +149,13 @@ The WMO root file converter works using expansion names (WotLK, Cataclysm, MoP)
 instead of raw version numbers. Uses WmoParser -> WmoConverter -> WmoWriter pipeline.
 
 **Working:**
+
 - Root file conversion between any supported versions
 - Materials, groups, portals, lights, doodads preserved
 - Header flags converted appropriately for target version
 
 **Not yet implemented:**
+
 - Group file conversion (requires bridging parser types to core types)
 
 Group files (`*_000.wmo`, `*_001.wmo`, etc.) return an informative error explaining
@@ -151,9 +163,10 @@ that conversion is not yet supported due to internal type system differences.
 
 ### ADT Convert
 
-**Status: Working - Root ADT files convert and roundtrip correctly**
+#### Status: Working - Root ADT files convert and roundtrip correctly
 
 Tested conversions:
+
 - Vanilla root -> WotLK: Success (roundtrip verified)
 - Vanilla root -> MoP: Success (roundtrip verified)
 - TBC root -> WotLK: Success (roundtrip verified)
@@ -164,9 +177,11 @@ The ADT root file converter works using expansion names (classic, tbc, wotlk, ca
 Uses ParsedAdt → BuiltAdt.from_root_adt() → write_to_file() pipeline.
 
 **Working:**
+
 - Parsing all ADT versions (Vanilla through MoP) - 256/256 MCNK chunks
 - Conversion between any supported versions (up and down)
-- Version-specific chunk handling (MFBO for TBC+, MH2O for WotLK+, MAMP for Cataclysm+, MTXP for MoP+)
+- Version-specific chunk handling (MFBO for TBC+, MH2O for WotLK+, MAMP for Cataclysm+, MTXP for
+  MoP+)
 - Terrain heights, normals, shadow maps, alpha maps, and vertex colors preserved
 - Textures, models, WMOs, and placements preserved
 - Fixed: MCAL/MCSH subchunk parsing now uses header size fields instead of corrupted subchunk sizes
@@ -174,17 +189,20 @@ Uses ParsedAdt → BuiltAdt.from_root_adt() → write_to_file() pipeline.
 - Fixed: MCNK serializer clears stale offsets to prevent invalid pointer references
 
 **Not yet supported:**
+
 - Split ADT files (_tex0, _obj0, _lod) from Cataclysm+
 
 ### WDT Convert
 
-**Status: Working**
+#### Status: Working
 
 Tested conversions:
+
 - Classic -> WotLK: Success (no changes needed)
 - WotLK -> MoP: Success (adds 0x0040 flag, updates MODF values)
 
 The converter correctly:
+
 - Adds the universal flag (0x0040) for Cataclysm+ versions
 - Updates MODF scale values from 0 to 1024
 - Updates MODF unique IDs from 0xFFFFFFFF to 0x00000000
@@ -193,31 +211,34 @@ Output verified by `wdt info` and the converted file is readable.
 
 ### WDL Convert
 
-**Status: Working**
+#### Status: Working
 
 Tested conversion:
+
 - Classic -> MoP: Success
 
 Output validated successfully with `wdl validate`.
 
 ### DBC Export
 
-**Status: Working (with caveats)**
+#### Status: Working (with caveats)
 
 JSON and CSV export work correctly when provided with a valid schema file.
 
 Caveats:
+
 - Requires a YAML schema file - no built-in schemas
 - Schema must use `type_name` field (not `type`)
 - Field order matters for matching record structure
 
 ### DBC Discover
 
-**Status: Working**
+#### Status: Working
 
 The schema discovery command analyzes DBC files and generates field type information.
 
 Features:
+
 - Correctly identifies String, Int32, UInt32, Float32, and Bool field types
 - Validates string references point to actual string starts (not middle of strings)
 - Detects localized string (locstring) patterns: 8 locale strings + 1 flags field
@@ -226,7 +247,8 @@ Features:
 - Improved float detection: small integers (< 65536) no longer misdetected as floats
 
 For AreaTable.dbc (21 fields, 84 bytes per record):
-```
+
+```text
 Field  0: Int32    (confidence: Low)     ⚷ Key candidate
 Field  1: Int32    (confidence: Low)
 ...
@@ -238,7 +260,8 @@ Field 20: Int32    (confidence: Low)
 ```
 
 For SpellRadius.dbc (actual float values correctly detected):
-```
+
+```text
 Field  0: Int32    (confidence: Low)     ⚷ Key candidate
 Field  1: Float32  (confidence: Medium)  <- actual float (1.0, 2.0, 5.0, etc.)
 Field  2: Bool     (confidence: High)
@@ -246,6 +269,7 @@ Field  3: Float32  (confidence: Medium)  <- actual float
 ```
 
 Limitations:
+
 - Field naming is generic (Float_1, Value_2, etc.) - use WoWDBDefs for accurate names
 
 ---
@@ -255,6 +279,7 @@ Limitations:
 Test files extracted to `/tmp/warcraft-rs-test/`:
 
 ### 1.12.1 (Vanilla)
+
 - `FacialLowerHair00_00.blp` - BLP1 texture
 - `DwarfMale.m2` - Character model (version 256)
 - `AltarOfStorms.wmo` - WMO root (version 17)
@@ -264,6 +289,7 @@ Test files extracted to `/tmp/warcraft-rs-test/`:
 - `AreaTable.dbc` - Database table
 
 ### 3.3.5a (WotLK)
+
 - `HAIR00_00.BLP` - BLP2 texture
 - `IceTrollMale.m2` - Character model (version 264)
 - `IceTrollMale00.skin` - Skin file (old format)
@@ -278,9 +304,11 @@ Test files extracted to `/tmp/warcraft-rs-test/`:
 ## Recommendations
 
 1. **Implement WMO group file conversion** - Root files work but group files need
+
    type bridging between parser and converter/writer types.
 
 2. **Implement ADT split file conversion** - Root ADT files work but Cataclysm+
+
    split files (_tex0, _obj0, _lod) require additional support.
 
 ---

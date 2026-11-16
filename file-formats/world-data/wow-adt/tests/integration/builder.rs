@@ -974,8 +974,7 @@ fn test_mh2o_vertex_data_round_trip() {
     }
 
     // Verify remaining entries have no liquid data
-    for i in 4..256 {
-        let entry = &parsed_mh2o.entries[i];
+    for (i, entry) in parsed_mh2o.entries.iter().enumerate().skip(4) {
         assert!(
             !entry.has_liquid(),
             "Entry {} should have no liquid data",

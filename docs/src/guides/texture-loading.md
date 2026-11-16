@@ -1301,6 +1301,10 @@ impl CompressionCache {
 ## References
 
 - [BLP Format Documentation](https://wowdev.wiki/BLP) - Complete BLP format specification
-- [DXT Compression](https://docs.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression) - Understanding DXT formats
-- [Texture Best Practices](https://developer.nvidia.com/content/understanding-compressed-texture-formats) - GPU texture optimization
+- [DXT
+  Compression](https://docs.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression)
+  - Understanding DXT formats
+- [Texture Best
+  Practices](https://developer.nvidia.com/content/understanding-compressed-texture-formats) - GPU
+  texture optimization
 - [WoW Model Viewer](https://github.com/Marlamin/WoWModelViewer) - Reference implementation

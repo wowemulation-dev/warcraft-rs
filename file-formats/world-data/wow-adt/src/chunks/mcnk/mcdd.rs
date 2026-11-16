@@ -269,9 +269,7 @@ mod tests {
     #[test]
     fn test_mcdd_all_disabled() {
         let mut mcdd1 = McddChunk::default();
-        for i in 0..64 {
-            mcdd1.disable[i] = 0xFF;
-        }
+        mcdd1.disable.fill(0xFF);
         assert!(mcdd1.all_disabled());
 
         let mcdd2 = McddChunk::default();

@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cataclysm+: Only WMO-only maps have MWMO chunks, terrain maps don't include them
   - This matches TrinityCore server behavior and actual client files
 
-### Added  
+### Added
 
 - **Enhanced version detection**: Automatic detection across all WoW versions (Vanilla through MoP)
 - **Smart chunk handling**: Version-aware logic for conditional chunk presence

@@ -34,113 +34,113 @@ impl ChunkId {
     // Root-level chunks (present in all versions)
 
     /// Version chunk - stores ADT format version number
-    pub const MVER: Self = Self([b'R', b'E', b'V', b'M']);
+    pub const MVER: Self = Self(*b"REVM");
 
     /// Header chunk - contains offsets to other chunks
-    pub const MHDR: Self = Self([b'R', b'D', b'H', b'M']);
+    pub const MHDR: Self = Self(*b"RDHM");
 
     /// Chunk index - MCNK offset table for efficient access
-    pub const MCIN: Self = Self([b'N', b'I', b'C', b'M']);
+    pub const MCIN: Self = Self(*b"NICM");
 
     /// Texture filenames - null-terminated strings
-    pub const MTEX: Self = Self([b'X', b'E', b'T', b'M']);
+    pub const MTEX: Self = Self(*b"XETM");
 
     /// Model (doodad) filenames - M2 model paths
-    pub const MMDX: Self = Self([b'X', b'D', b'M', b'M']);
+    pub const MMDX: Self = Self(*b"XDMM");
 
     /// Model filename indices - offsets into MMDX
-    pub const MMID: Self = Self([b'D', b'I', b'M', b'M']);
+    pub const MMID: Self = Self(*b"DIMM");
 
     /// WMO (World Map Object) filenames
-    pub const MWMO: Self = Self([b'O', b'M', b'W', b'M']);
+    pub const MWMO: Self = Self(*b"OMWM");
 
     /// WMO filename indices - offsets into MWMO
-    pub const MWID: Self = Self([b'D', b'I', b'W', b'M']);
+    pub const MWID: Self = Self(*b"DIWM");
 
     /// Doodad (M2) placement definitions
-    pub const MDDF: Self = Self([b'F', b'D', b'D', b'M']);
+    pub const MDDF: Self = Self(*b"FDDM");
 
     /// WMO placement definitions
-    pub const MODF: Self = Self([b'F', b'D', b'O', b'M']);
+    pub const MODF: Self = Self(*b"FDOM");
 
     /// Terrain chunk - contains height map, textures, objects (16x16 grid)
-    pub const MCNK: Self = Self([b'K', b'N', b'C', b'M']);
+    pub const MCNK: Self = Self(*b"KNCM");
 
     // Version-specific root-level chunks
 
     /// Flight bounds object (TBC 2.0+) - defines no-fly zones
-    pub const MFBO: Self = Self([b'O', b'B', b'F', b'M']);
+    pub const MFBO: Self = Self(*b"OBFM");
 
     /// Water/liquid data (WotLK 3.0+) - replaces MCLQ
-    pub const MH2O: Self = Self([b'O', b'2', b'H', b'M']);
+    pub const MH2O: Self = Self(*b"O2HM");
 
     /// Texture flags (WotLK 3.0+) - rendering flags for textures
-    pub const MTXF: Self = Self([b'F', b'X', b'T', b'M']);
+    pub const MTXF: Self = Self(*b"FXTM");
 
     /// Texture amplitude/scale (Cataclysm 4.0+)
-    pub const MAMP: Self = Self([b'P', b'M', b'A', b'M']);
+    pub const MAMP: Self = Self(*b"PMAM");
 
     /// Texture parameters (MoP 5.0+) - advanced texture properties
-    pub const MTXP: Self = Self([b'P', b'X', b'T', b'M']);
+    pub const MTXP: Self = Self(*b"PXTM");
 
     /// Blend mesh headers (MoP 5.0+) - mesh metadata with index/vertex ranges
-    pub const MBMH: Self = Self([b'H', b'M', b'B', b'M']);
+    pub const MBMH: Self = Self(*b"HMBM");
 
     /// Blend mesh bounding boxes (MoP 5.0+) - visibility culling boxes
-    pub const MBBB: Self = Self([b'B', b'B', b'B', b'M']);
+    pub const MBBB: Self = Self(*b"BBBM");
 
     /// Blend mesh vertices (MoP 5.0+) - vertex data with position/normal/UV/colors
-    pub const MBNV: Self = Self([b'V', b'N', b'B', b'M']);
+    pub const MBNV: Self = Self(*b"VNBM");
 
     /// Blend mesh indices (MoP 5.0+) - triangle indices referencing MBNV
-    pub const MBMI: Self = Self([b'I', b'M', b'B', b'M']);
+    pub const MBMI: Self = Self(*b"IMBM");
 
     // MCNK subchunks
 
     /// Height map vertices - 9x9 + 8x8 grid (145 vertices total)
-    pub const MCVT: Self = Self([b'T', b'V', b'C', b'M']);
+    pub const MCVT: Self = Self(*b"TVCM");
 
     /// Normal vectors - per-vertex lighting normals
-    pub const MCNR: Self = Self([b'R', b'N', b'C', b'M']);
+    pub const MCNR: Self = Self(*b"RNCM");
 
     /// Texture layers - up to 4 texture layers per chunk
-    pub const MCLY: Self = Self([b'Y', b'L', b'C', b'M']);
+    pub const MCLY: Self = Self(*b"YLCM");
 
     /// Alpha maps - texture blending data
-    pub const MCAL: Self = Self([b'L', b'A', b'C', b'M']);
+    pub const MCAL: Self = Self(*b"LACM");
 
     /// Shadow map - baked terrain shadows
-    pub const MCSH: Self = Self([b'H', b'S', b'C', b'M']);
+    pub const MCSH: Self = Self(*b"HSCM");
 
     /// Object references - indices into MDDF/MODF (pre-Cataclysm)
-    pub const MCRF: Self = Self([b'F', b'R', b'C', b'M']);
+    pub const MCRF: Self = Self(*b"FRCM");
 
     /// Doodad references - M2 model indices into MDDF (Cataclysm+ split files)
-    pub const MCRD: Self = Self([b'D', b'R', b'C', b'M']);
+    pub const MCRD: Self = Self(*b"DRCM");
 
     /// WMO references - WMO indices into MODF (Cataclysm+ split files)
-    pub const MCRW: Self = Self([b'W', b'R', b'C', b'M']);
+    pub const MCRW: Self = Self(*b"WRCM");
 
     /// Legacy liquid data (pre-WotLK) - replaced by MH2O in 3.0+
-    pub const MCLQ: Self = Self([b'Q', b'L', b'C', b'M']);
+    pub const MCLQ: Self = Self(*b"QLCM");
 
     /// Vertex colors - per-vertex color data (WotLK+)
-    pub const MCCV: Self = Self([b'V', b'C', b'C', b'M']);
+    pub const MCCV: Self = Self(*b"VCCM");
 
     /// Vertex lighting - per-vertex ARGB lighting (Cataclysm+)
-    pub const MCLV: Self = Self([b'V', b'L', b'C', b'M']);
+    pub const MCLV: Self = Self(*b"VLCM");
 
     /// Terrain materials - material IDs for texture layers (Cataclysm+)
-    pub const MCMT: Self = Self([b'T', b'M', b'C', b'M']);
+    pub const MCMT: Self = Self(*b"TMCM");
 
     /// Doodad disable - bitmap for disabling doodads (Cataclysm+)
-    pub const MCDD: Self = Self([b'D', b'D', b'C', b'M']);
+    pub const MCDD: Self = Self(*b"DDCM");
 
     /// Blend batches - triangle batches for blend mesh (MoP+)
-    pub const MCBB: Self = Self([b'B', b'B', b'C', b'M']);
+    pub const MCBB: Self = Self(*b"BBCM");
 
     /// Sound emitters - ambient sound placement
-    pub const MCSE: Self = Self([b'E', b'S', b'C', b'M']);
+    pub const MCSE: Self = Self(*b"ESCM");
 
     /// Convert to human-readable string.
     ///

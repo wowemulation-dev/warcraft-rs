@@ -174,7 +174,7 @@ pub fn parse_root_file<R: Read + Seek>(
         match chunk_info.id.as_str() {
             "MVER" => {
                 // Read version
-                root.version = reader.read_le()?;
+                root.version = BinReaderExt::read_le(&mut *reader)?;
             }
             "MOHD" => {
                 // Read header and populate all fields
@@ -331,7 +331,7 @@ pub fn parse_root_file<R: Read + Seek>(
                 // Read doodad file IDs (Battle for Azeroth+)
                 let count = chunk_info.size / 4; // Each ID is 4 bytes (u32)
                 for _ in 0..count {
-                    root.doodad_ids.push(reader.read_le()?);
+                    root.doodad_ids.push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             "MOM3" => {
@@ -349,7 +349,8 @@ pub fn parse_root_file<R: Read + Seek>(
                 // Read group file IDs (modern WoW versions)
                 let count = chunk_info.size / 4; // Each ID is 4 bytes (u32)
                 for _ in 0..count {
-                    root.group_file_ids.push(reader.read_le()?);
+                    root.group_file_ids
+                        .push(BinReaderExt::read_le(&mut *reader)?);
                 }
             }
             _ => {

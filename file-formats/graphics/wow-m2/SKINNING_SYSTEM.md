@@ -4,7 +4,10 @@ This document describes the vertex skinning/deformation system implemented for t
 
 ## Overview
 
-The M2 vertex skinning system transforms vertices from their bind pose using bone weights and transformations to get correct final positions. This is essential for displaying M2 models correctly, as the raw vertex data from M2 files represents bind pose geometry that needs to be transformed based on bone influences.
+The M2 vertex skinning system transforms vertices from their bind pose using bone weights and
+transformations to get correct final positions. This is essential for displaying M2 models
+correctly, as the raw vertex data from M2 files represents bind pose geometry that needs to be
+transformed based on bone influences.
 
 ## Key Features
 
@@ -15,7 +18,7 @@ The M2 vertex skinning system transforms vertices from their bind pose using bon
    - Handles bone hierarchy with parent-child transformations
    - Supports both bind pose and animated pose calculations
 
-2. **Vertex Skinning Pipeline** 
+2. **Vertex Skinning Pipeline**
    - Transforms vertices using bone weights and indices
    - Implements standard skinning formula: `final_pos = sum(weight[i] * bone_matrix[i] * bind_pos)`
    - Handles multiple bone influences per vertex (up to 4 bones)
@@ -54,7 +57,7 @@ Configuration for controlling skinning behavior:
 ```rust
 pub struct SkinningOptions {
     pub normalize_weights: bool,      // Automatically normalize bone weights
-    pub weight_threshold: f32,        // Minimum weight threshold 
+    pub weight_threshold: f32,        // Minimum weight threshold
     pub validate_bone_indices: bool,  // Validate bone indices
     pub handle_invalid_indices: bool, // Handle invalid indices gracefully
 }
@@ -126,6 +129,7 @@ let mut skinner = M2Skinner::new(&model.bones, options);
 The skinning system includes the following tests:
 
 ### Unit Tests (8 tests)
+
 - Skinner creation and initialization
 - Bind pose calculation
 - Single and multi-bone skinning
@@ -135,17 +139,19 @@ The skinning system includes the following tests:
 - Bone hierarchy processing
 
 ### Integration Tests (4 tests)
+
 - Complete skinning pipeline
 - Performance characteristics
 - Error resilience
 - Skinning options variations
 
 Run tests with:
+
 ```bash
 # Unit tests
 cargo test skinning --lib
 
-# Integration tests  
+# Integration tests
 cargo test --test skinning_integration
 
 # All skinning tests
@@ -163,11 +169,12 @@ cargo test skinning
 
 The skinning system implements the standard linear blend skinning (LBS) formula:
 
-```
+```text
 skinned_vertex = Σ(weight_i × bone_matrix_i × inverse_bind_matrix_i × bind_vertex)
 ```
 
 Where:
+
 - `weight_i` is the normalized bone weight
 - `bone_matrix_i` is the final bone transformation matrix
 - `inverse_bind_matrix_i` is the inverse of the bind pose matrix
@@ -193,15 +200,20 @@ While the current system handles bind pose skinning perfectly, future enhancemen
 
 ## Solving the "Spiky" Rabbit Problem
 
-This skinning system directly addresses the issue where M2 models appear "spiky" or deformed. The raw vertex data in M2 files represents the bind pose, but without proper bone transformations, vertices appear in incorrect positions. The skinning system:
+This skinning system directly addresses the issue where M2 models appear "spiky" or deformed. The
+raw vertex data in M2 files represents the bind pose, but without proper bone transformations,
+vertices appear in incorrect positions. The skinning system:
 
 1. **Calculates Proper Bone Matrices**: Uses bone pivot points and hierarchy
-2. **Applies Vertex Transformations**: Transforms each vertex using its bone influences  
+2. **Applies Vertex Transformations**: Transforms each vertex using its bone influences
 3. **Handles Weight Normalization**: Ensures proper vertex deformation
 4. **Manages Bone Hierarchy**: Correctly accumulates parent transformations
 
-The result is properly positioned vertices that represent the actual model geometry as intended by the original artists.
+The result is properly positioned vertices that represent the actual model geometry as intended by
+the original artists.
 
 ## Conclusion
 
-The M2 vertex skinning system transforms M2 model vertices from their bind pose to properly positioned geometry. It handles all edge cases and integrates with the existing M2 parser infrastructure.
+The M2 vertex skinning system transforms M2 model vertices from their bind pose to properly
+positioned geometry. It handles all edge cases and integrates with the existing M2 parser
+infrastructure.

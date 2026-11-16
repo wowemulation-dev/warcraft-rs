@@ -464,13 +464,13 @@ mod tests {
         let mfbo = MfboChunk::read_le(&mut cursor).unwrap();
 
         // Verify max plane values
-        for i in 0..9 {
-            assert_eq!(mfbo.max_plane[i], 100 + i as i16);
+        for (i, &value) in mfbo.max_plane.iter().enumerate() {
+            assert_eq!(value, 100 + i as i16);
         }
 
         // Verify min plane values
-        for i in 0..9 {
-            assert_eq!(mfbo.min_plane[i], i as i16);
+        for (i, &value) in mfbo.min_plane.iter().enumerate() {
+            assert_eq!(value, i as i16);
         }
     }
 

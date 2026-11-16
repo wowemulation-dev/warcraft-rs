@@ -26,26 +26,45 @@ support for all format versions and features.
 ## Features
 
 - **Complete Archive Reading** - All MPQ versions (v1-v4) with full
+
   feature coverage
+
 - **Archive Creation** - Build new archives with full control over format
+
   and compression
+
 - **Archive Modification** - Add, remove, and rename files with automatic
+
   listfile/attributes updates
+
 - **Archive Rebuilding** - Rebuild with format upgrades and
+
   optimization
+
 - **All Compression Algorithms** - Zlib, BZip2, LZMA, Sparse, ADPCM,
+
   PKWare, Huffman
+
 - **Full Cryptography** - File encryption/decryption, signature verification
+
   and generation
+
 - **Patch Chain Support** - Complete World of Warcraft patch archive management
 - **Binary Patch Files** - PTCH format support with COPY and BSD0 (bsdiff40) patch types
 - **Advanced Tables** - HET/BET tables for v3+ archives with optimal
+
   compression
+
 - **StormLib Compatibility** - 100% bidirectional compatibility with the
+
   reference implementation
+
 - **High Performance** - Efficient I/O, zero-copy where possible,
+
   benchmarks included
+
 - **Parallel Processing** - Multi-threaded extraction and validation for
+
   better performance
 
 ## Installation
@@ -105,7 +124,8 @@ mutable.flush()?; // Save all changes
 
 ### Patch Chain Support
 
-Handle World of Warcraft's patch archive system with automatic priority-based file resolution and binary patch application (PTCH format):
+Handle World of Warcraft's patch archive system with automatic priority-based file resolution and
+binary patch application (PTCH format):
 
 ```rust
 use wow_mpq::PatchChain;
@@ -120,9 +140,11 @@ chain.add_archive("Data/patch-2.MPQ", 200)?;  // Higher priority
 let data = chain.read_file("DBFilesClient\\Spell.dbc")?;
 ```
 
-**Patch File Support (Cataclysm+)**
+#### Patch File Support (Cataclysm+)
 
-Starting with Cataclysm (4.x), WoW introduced binary patch files (PTCH format) in update archives. These files cannot be extracted directly - they must be applied to base files. This crate handles patch files automatically:
+Starting with Cataclysm (4.x), WoW introduced binary patch files (PTCH format) in update archives.
+These files cannot be extracted directly - they must be applied to base files. This crate handles
+patch files automatically:
 
 - **COPY Patches** - Simple file replacement
 - **BSD0 Patches** - Binary diff using bsdiff40 algorithm
@@ -141,7 +163,7 @@ chain.add_archive("World/Maps/Azeroth/Azeroth_2.MPQ", 200)?;
 let adt_data = chain.read_file("World\\Maps\\Azeroth\\Azeroth_30_30.adt")?;
 ```
 
-**CLI Usage**
+#### CLI Usage
 
 The `mpq extract` command supports patch chains via the `--patch` flag:
 
@@ -291,20 +313,84 @@ performance and specialized features are not implemented:
 Blizzard's MPQ implementation has some quirks that this library handles gracefully:
 
 - **Attributes File Size**: All official Blizzard MPQs have attributes files
+
   that are exactly 28 bytes larger than the specification. This library detects
   and handles this discrepancy automatically.
+
 - **Path Separators**: MPQ archives use backslashes (`\`) as path separators. While
+
   this library accepts forward slashes for convenience, they are automatically converted
   to backslashes internally.
+
+### MPQ Table Dispatch (v3+)
+
+For v3+ archives, the WoW client chooses between the extended HET/BET tables
+and the classic 16-byte hash/block tables using an **open flag** test, not just
+the presence of table positions in the header. The client's `InitializeTables`
+(`SFileArchives.cpp`, `// OFFSET: 0x007F8130`) uses:
+
+```cpp
+if (m_header.m_formatVersion >= 2 && (m_flags & 0x410) == 0x400) {
+    // Load extended BET/HET tables; discard classic tables on success
+}
+```
+
+`m_formatVersion >= 2` (raw) is `FormatVersion::V3` in this crate. `m_flags` is
+the open flag word passed to `SFileOpenArchive`, not a header field.
+
+This crate mirrors that dispatch via `OpenOptions::open_flags`:
+
+- **`open_flags` set** — the client's exact flag test is applied:
+
+  `(flags & 0x410) == 0x400` selects extended tables; otherwise classic tables.
+  WoW's default data-archive open flag `0x9E48` evaluates to extended tables
+  (`0x9E48 & 0x410 == 0x400`); the other observed open flags (`0x14818`,
+  `0x18808`, `0x800`, `0`) evaluate to classic tables.
+
+- **`open_flags` unset (`None`)** — the crate falls back to loading extended
+
+  tables whenever the header carries both `het_table_pos` and `bet_table_pos`
+  (the pre-existing behavior).
+
+When extended tables load successfully, the classic tables are skipped
+(exclusive loading, matching the client). If either extended table fails to
+load, the crate falls back to the classic tables.
+
+```rust
+// Open with the client's default data-archive flags (extended tables)
+let archive = Archive::open_with_options(
+    "Data/common.MPQ",
+    OpenOptions::new().open_flags(0x9E48),
+)?;
+
+// Open with flags that force classic tables
+let archive = Archive::open_with_options(
+    "Data/common.MPQ",
+    OpenOptions::new().open_flags(0x14818),
+)?;
+```
+
+#### 4.3.4 in-memory `BLOCKENTRY` width
+
+The on-disk block table entry is 16 bytes in all versions. The 4.3.4 client,
+however, uses a **wider in-memory** `BLOCKENTRY` (57 bytes) with 64-bit
+`compressedSize`/`fileSize` and an `m_patch` flag, versus the 3.3.5a layout
+(49 bytes, 32-bit sizes). This affects only in-memory representation and
+writing; reading is unaffected because the on-disk layout is identical.
+A 64-bit entry variant is not yet exposed; consider adding one only if
+writing/patching support is introduced.
 
 ## License
 
 Licensed under either of
 
 - Apache License, Version 2.0,
+
   ([LICENSE-APACHE](../../LICENSE-APACHE) or
   <http://www.apache.org/licenses/LICENSE-2.0>)
+
 - MIT license ([LICENSE-MIT](../../LICENSE-MIT) or
+
   <http://opensource.org/licenses/MIT>)
 
 at your option.

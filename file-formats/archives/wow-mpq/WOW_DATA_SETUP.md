@@ -1,6 +1,7 @@
 # WoW Data Setup for Examples
 
-This document explains how to set up World of Warcraft game data for running examples that require actual MPQ files.
+This document explains how to set up World of Warcraft game data for running examples that require
+actual MPQ files.
 
 ## Quick Setup
 
@@ -41,7 +42,7 @@ If environment variables aren't set, the library will search common installation
 
 ### Linux/Unix
 
-```
+```text
 ~/wow/[version]/Data
 ~/Downloads/wow/[version]/Data
 /opt/wow/[version]/Data
@@ -50,7 +51,7 @@ If environment variables aren't set, the library will search common installation
 
 ### Windows
 
-```
+```text
 C:\Program Files\World of Warcraft\[version]\Data
 C:\Program Files (x86)\World of Warcraft\[version]\Data
 C:\Games\World of Warcraft\[version]\Data
@@ -58,7 +59,7 @@ C:\Games\World of Warcraft\[version]\Data
 
 ### macOS
 
-```
+```text
 /Applications/World of Warcraft/[version]/Data
 ~/Applications/World of Warcraft/[version]/Data
 ```
@@ -102,7 +103,7 @@ cargo run --example patch_chain_demo -- "/path/to/wow/Data"
 
 Your WoW data should be organized like this:
 
-```
+```text
 /home/user/wow/
 ├── 1.12.1/
 │   └── Data/
@@ -145,7 +146,7 @@ Examples will look for these MPQ files (in order of preference):
 
 If you see this error:
 
-```
+```text
 No WoW game data found!
 ```
 
@@ -192,4 +193,5 @@ The library checks for both variants.
    cargo run --example patch_chain_demo
    ```
 
-This system makes examples portable across different development environments while maintaining the ability to override paths when needed.
+This system makes examples portable across different development environments while maintaining the
+ability to override paths when needed.

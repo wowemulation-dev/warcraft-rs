@@ -1,6 +1,7 @@
 # wow-mpq Examples
 
-This directory contains examples demonstrating various features and use cases of the wow-mpq library.
+This directory contains examples demonstrating various features and use cases of the wow-mpq
+library.
 
 ## Running Examples
 
@@ -39,8 +40,9 @@ cargo run --release --example <example_name> [arguments]
   ```bash
   cargo run --example create_archive
   ```
-  
+
   Demonstrates:
+
   - Basic archive creation
   - Files from disk
   - Custom compression and encryption
@@ -75,10 +77,11 @@ World of Warcraft uses patch chains to apply updates:
   ```bash
   cargo run --example wow_patch_chains
   ```
-  
+
   Demonstrates the correct loading order for:
+
   - WoW 1.12.1 (Vanilla)
-  - WoW 2.4.3 (The Burning Crusade)  
+  - WoW 2.4.3 (The Burning Crusade)
   - WoW 3.3.5a (Wrath of the Lich King)
   - WoW 4.3.4 (Cataclysm)
   - WoW 5.4.8 (Mists of Pandaria)
@@ -151,7 +154,7 @@ Start with these examples to understand basic MPQ operations:
 
 These examples are useful for WoW modding:
 
-1. `wow_patch_chains.rs` - Understand WoW's loading system  
+1. `wow_patch_chains.rs` - Understand WoW's loading system
 2. `modify_archive.rs` - Edit existing archives
 3. `verify_wow_files.rs` - Validate game data
 

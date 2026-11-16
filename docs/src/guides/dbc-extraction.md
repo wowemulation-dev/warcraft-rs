@@ -80,7 +80,8 @@ fn extract_dbc_files(mpq_path: &str, output_dir: &str) -> Result<Vec<String>, Bo
 
 ### 2. Parsing DBC Files
 
-Note: The DBC parsing implementation is still under development. For now, you can extract the raw DBC files and use external tools or implement basic parsing:
+Note: The DBC parsing implementation is still under development. For now, you can extract the raw
+DBC files and use external tools or implement basic parsing:
 
 ```rust
 // Basic DBC header structure (for reference)
@@ -299,7 +300,7 @@ impl DbcDatabase {
         }
     }
 
-    pub fn load_from_directory(&mut self, dbc_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn load_from_directory(&mut self, dbc_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         use std::path::Path;
 
         // Load Spell.dbc
@@ -347,14 +348,16 @@ use serde::{Serialize, Deserialize};
 use csv::Writer;
 
 // Export to JSON
-fn export_dbc_to_json<T: Serialize>(records: &[T], output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn export_dbc_to_json<T: Serialize>(records: &[T], output_path: &str) -> Result<(), Box<dyn
+std::error::Error>> {
     let json = serde_json::to_string_pretty(records)?;
     std::fs::write(output_path, json)?;
     Ok(())
 }
 
 // Export to CSV
-fn export_spells_to_csv(spells: &[SpellRecord], output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn export_spells_to_csv(spells: &[SpellRecord], output_path: &str) -> Result<(), Box<dyn
+std::error::Error>> {
     let mut writer = Writer::from_path(output_path)?;
 
     // Write header
@@ -667,7 +670,8 @@ impl LazyDbcLoader {
         }
     }
 
-    pub fn get<T: DbcRecord + 'static>(&self, filename: &str) -> Result<Rc<Vec<T>>, Box<dyn std::error::Error>> {
+pub fn get<T: DbcRecord + 'static>(&self, filename: &str) -> Result<Rc<Vec<T>>, Box<dyn
+std::error::Error>> {
         let mut loaded = self.loaded.borrow_mut();
 
         if let Some(data) = loaded.get(filename) {
@@ -933,7 +937,8 @@ impl MappedDbc {
 use flate2::{Compression, write::GzEncoder, read::GzDecoder};
 use std::io::prelude::*;
 
-pub fn compress_dbc(input_path: &str, output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn compress_dbc(input_path: &str, output_path: &str) -> Result<(), Box<dyn std::error::Error>>
+{
     let input_data = std::fs::read(input_path)?;
 
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
@@ -965,5 +970,7 @@ pub fn decompress_dbc(input_path: &str) -> Result<Vec<u8>, Box<dyn std::error::E
 
 - [DBC Format Documentation](https://wowdev.wiki/DBC) - Complete DBC format specification
 - [DBC File List](https://wowdev.wiki/Category:DBC) - List of all DBC files and their purposes
-- [Trinity Core DBC Structures](https://github.com/TrinityCore/TrinityCore/tree/master/src/server/game/DataStores) - Reference DBC structures
+- [Trinity Core DBC Structures][trinity-dbc] - Reference DBC structures
 - [WoW Dev Tools](https://github.com/WoWDevTools) - Tools for working with WoW files
+
+[trinity-dbc]: https://github.com/TrinityCore/TrinityCore/tree/master/src/server/game/DataStores

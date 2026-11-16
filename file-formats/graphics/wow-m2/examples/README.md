@@ -75,4 +75,5 @@ cargo run --example work_with_skins -- test-data/3.3.5a/Creature/tigon/TigonFema
 
 - The examples include error handling and will provide helpful messages if something goes wrong.
 
-- When converting models, be aware that downgrading to older versions may result in data loss, as newer formats support features that older ones don't.
+- When converting models, be aware that downgrading to older versions may result in data loss, as
+  newer formats support features that older ones don't.

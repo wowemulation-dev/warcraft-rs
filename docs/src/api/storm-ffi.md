@@ -2,7 +2,9 @@
 
 ## Overview
 
-The `storm-ffi` crate provides a C-compatible FFI layer that implements the StormLib API, allowing C/C++ applications to use the `wow-mpq` Rust implementation. This enables drop-in replacement of StormLib with a Rust-based implementation.
+The `storm-ffi` crate provides a C-compatible FFI layer that implements the StormLib API, allowing
+C/C++ applications to use the `wow-mpq` Rust implementation. This enables drop-in replacement of
+StormLib with a Rust-based implementation.
 
 **Key Features:**
 
@@ -69,7 +71,7 @@ HANDLE file;
 if (SFileOpenFileEx(archive, "Interface\\Icons\\INV_Misc_QuestionMark.blp", 0, &file)) {
     // Get file size
     DWORD file_size = SFileGetFileSize(file, NULL);
-    
+
     // Read file data
     char* buffer = malloc(file_size);
     DWORD bytes_read;
@@ -77,7 +79,7 @@ if (SFileOpenFileEx(archive, "Interface\\Icons\\INV_Misc_QuestionMark.blp", 0, &
         // File read successfully
         printf("Read %u bytes\n", bytes_read);
     }
-    
+
     free(buffer);
     SFileCloseFile(file);
 }
@@ -138,11 +140,11 @@ HANDLE find = SFileFindFirstFile(archive, "*.blp", &find_data);
 
 if (find != INVALID_HANDLE_VALUE) {
     do {
-        printf("Found: %s (%u bytes)\n", 
-            find_data.c_file_name, 
+        printf("Found: %s (%u bytes)\n",
+            find_data.c_file_name,
             find_data.file_size);
     } while (SFileFindNextFile(find, &find_data));
-    
+
     SFileFindClose(find);
 }
 ```
@@ -287,7 +289,8 @@ All functions are thread-safe with the following guarantees:
 
 While the API is compatible, there are some implementation differences:
 
-1. **Memory Management**: The Rust implementation manages memory internally - no manual cleanup required except for handles
+1. **Memory Management**: The Rust implementation manages memory internally - no manual cleanup
+   required except for handles
 2. **Error Handling**: Thread-local error storage instead of global error state
 3. **Performance**: Generally faster due to Rust optimizations
 4. **Safety**: Memory-safe implementation prevents buffer overflows and use-after-free
@@ -301,51 +304,51 @@ While the API is compatible, there are some implementation differences:
 
 int main() {
     HANDLE archive;
-    
+
     // Open archive
     if (!SFileOpenArchive("Data/patch.mpq", 0, MPQ_OPEN_READ_WRITE, &archive)) {
         printf("Failed to open archive: %u\n", SFileGetLastError());
         return 1;
     }
-    
+
     // Add a new file
     if (SFileAddFile(archive, "readme.txt", "README.txt", MPQ_FILE_COMPRESS)) {
         printf("File added successfully\n");
     }
-    
+
     // Find all DBC files
     SFILE_FIND_DATA find_data;
     HANDLE find = SFileFindFirstFile(archive, "*.dbc", &find_data);
-    
+
     if (find != INVALID_HANDLE_VALUE) {
         do {
             printf("DBC: %s\n", find_data.c_file_name);
         } while (SFileFindNextFile(find, &find_data));
-        
+
         SFileFindClose(find);
     }
-    
+
     // Extract a file
     HANDLE file;
     if (SFileOpenFileEx(archive, "Interface\\FrameXML\\Fonts.xml", 0, &file)) {
         DWORD size = SFileGetFileSize(file, NULL);
         char* buffer = malloc(size);
         DWORD read;
-        
+
         if (SFileReadFile(file, buffer, size, &read, NULL)) {
             FILE* out = fopen("Fonts.xml", "wb");
             fwrite(buffer, 1, read, out);
             fclose(out);
             printf("Extracted Fonts.xml\n");
         }
-        
+
         free(buffer);
         SFileCloseFile(file);
     }
-    
+
     // Close archive
     SFileCloseArchive(archive);
-    
+
     return 0;
 }
 ```

@@ -157,6 +157,16 @@ pub struct OpenOptions {
     /// This field is only used when creating new archives via `create()`.
     /// If `None`, defaults to MPQ version 1 for maximum compatibility.
     version: Option<crate::header::FormatVersion>,
+
+    /// Open flags, mirroring the WoW client's `SFileOpenArchive` flag word.
+    ///
+    /// When set, table dispatch follows the client's exact test
+    /// (`format_version >= V3 && (open_flags & 0x410) == 0x400`): extended
+    /// BET/HET tables are used when the test passes, classic 16B tables
+    /// otherwise. When `None` (default), the crate falls back to loading
+    /// extended tables whenever the header carries `het_table_pos`/
+    /// `bet_table_pos`.
+    open_flags: Option<u32>,
 }
 
 impl OpenOptions {
@@ -169,6 +179,7 @@ impl OpenOptions {
         Self {
             load_tables: true,
             version: None,
+            open_flags: None,
         }
     }
 
@@ -197,6 +208,23 @@ impl OpenOptions {
     /// Self for method chaining
     pub fn version(mut self, version: crate::header::FormatVersion) -> Self {
         self.version = Some(version);
+        self
+    }
+
+    /// Set the open flags, mirroring the WoW client's `SFileOpenArchive` flag word.
+    ///
+    /// When set, table dispatch follows the client's exact test
+    /// (`format_version >= V3 && (open_flags & 0x410) == 0x400`). See the
+    /// `open_flags` field docs for details.
+    ///
+    /// # Parameters
+    /// - `flags`: The open flag word (e.g. `0x9E48` for the client's default
+    ///   data-archive open, or `0x400` to force the extended-table path).
+    ///
+    /// # Returns
+    /// Self for method chaining
+    pub fn open_flags(mut self, flags: u32) -> Self {
+        self.open_flags = Some(flags);
         self
     }
 
@@ -276,8 +304,32 @@ pub struct Archive {
     bet_table: Option<BetTable>,
     /// File attributes from (attributes) file
     attributes: Option<special_files::Attributes>,
+    /// Open flags (from `OpenOptions`), used for client-aligned table dispatch
+    open_flags: Option<u32>,
 }
 
+/// Decide whether to load the extended BET/HET tables, mirroring the
+/// client's `InitializeTables` dispatch (`SFileArchives.cpp`,
+/// `// OFFSET: 0x007F8130`):
+///
+/// ```text
+/// if (m_formatVersion >= 2 && (m_flags & 0x410) == 0x400) { /* extended */ }
+/// ```
+///
+/// `m_formatVersion >= 2` (raw) is our `FormatVersion::V3`. When
+/// `open_flags` is set we apply the client's exact flag test; otherwise we
+/// fall back to loading extended tables whenever the header carries
+/// `het_table_pos`/`bet_table_pos` (the pre-existing behavior).
+fn should_use_extended_tables(header: &MpqHeader, open_flags: Option<u32>) -> bool {
+    if header.format_version < header::FormatVersion::V3 {
+        return false;
+    }
+
+    match open_flags {
+        Some(flags) => (flags & 0x410) == 0x400,
+        None => header.het_table_pos.is_some() && header.bet_table_pos.is_some(),
+    }
+}
 impl Archive {
     /// Open an existing MPQ archive
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -305,6 +357,7 @@ impl Archive {
             bet_table: None,
             het_table: None,
             attributes: None,
+            open_flags: options.open_flags,
         };
 
         // Load tables if requested
@@ -315,6 +368,22 @@ impl Archive {
         Ok(archive)
     }
 
+    /// Decide whether to load the extended BET/HET tables, mirroring the
+    /// client's `InitializeTables` dispatch (`SFileArchives.cpp`,
+    /// `// OFFSET: 0x007F8130`):
+    ///
+    /// ```text
+    /// if (m_formatVersion >= 2 && (m_flags & 0x410) == 0x400) { /* extended */ }
+    /// ```
+    ///
+    /// `m_formatVersion >= 2` (raw) is our `FormatVersion::V3`. When
+    /// `open_flags` is set we apply the client's exact flag test; otherwise we
+    /// fall back to loading extended tables whenever the header carries
+    /// `het_table_pos`/`bet_table_pos` (the pre-existing behavior).
+    fn should_use_extended_tables(&self) -> bool {
+        should_use_extended_tables(&self.header, self.open_flags)
+    }
+
     /// Load hash and block tables
     pub fn load_tables(&mut self) -> Result<()> {
         log::debug!(
@@ -322,59 +391,12 @@ impl Archive {
             self.header.format_version
         );
 
-        // For v3+ archives, check for HET/BET tables first
-        if self.header.format_version >= header::FormatVersion::V3 {
-            // Try to load HET table
-            if let Some(het_pos) = self.header.het_table_pos
-                && het_pos != 0
-            {
-                let mut het_size = self
-                    .header
-                    .v4_data
-                    .as_ref()
-                    .map(|v4| v4.het_table_size_64)
-                    .unwrap_or(0);
-
-                // For V3 without V4 data, we need to determine the size
-                if het_size == 0 && self.header.format_version == header::FormatVersion::V3 {
-                    log::debug!("V3 archive without V4 data, reading HET table size from header");
-                    // Try to read the table size from the HET header
-                    match self.read_het_table_size(het_pos) {
-                        Ok(size) => {
-                            log::debug!("Determined HET table size: 0x{size:X}");
-                            het_size = size;
-                        }
-                        Err(e) => {
-                            log::warn!("Failed to determine HET table size: {e}");
-                        }
-                    }
-                }
-
-                if het_size > 0 {
-                    log::debug!("Loading HET table from offset 0x{het_pos:X}, size 0x{het_size:X}");
-
-                    // HET table key is based on table name
-                    let key = hash_string("(hash table)", hash_type::FILE_KEY);
-
-                    match HetTable::read(
-                        &mut self.reader,
-                        self.archive_offset + het_pos,
-                        het_size,
-                        key,
-                    ) {
-                        Ok(het) => {
-                            let file_count = het.header.max_file_count;
-                            log::info!("Loaded HET table with {file_count} max files");
-                            self.het_table = Some(het);
-                        }
-                        Err(e) => {
-                            log::warn!("Failed to load HET table: {e}");
-                        }
-                    }
-                }
-            }
-
-            // Try to load BET table
+        // Client-aligned dispatch: extended BET/HET tables are loaded only when
+        // the flag test passes (see `should_use_extended_tables`). The client
+        // loads BET first, then HET, and uses them only if both succeed;
+        // otherwise it falls back to the classic 16B tables.
+        if self.should_use_extended_tables() {
+            // Try to load BET table (client loads BET first)
             if let Some(bet_pos) = self.header.bet_table_pos
                 && bet_pos != 0
             {
@@ -443,20 +465,65 @@ impl Archive {
                     }
                 }
             }
+
+            // Try to load HET table (only if BET succeeded, per the client)
+            if self.bet_table.is_some()
+                && let Some(het_pos) = self.header.het_table_pos
+                && het_pos != 0
+            {
+                let mut het_size = self
+                    .header
+                    .v4_data
+                    .as_ref()
+                    .map(|v4| v4.het_table_size_64)
+                    .unwrap_or(0);
+
+                // For V3 without V4 data, we need to determine the size
+                if het_size == 0 && self.header.format_version == header::FormatVersion::V3 {
+                    log::debug!("V3 archive without V4 data, reading HET table size from header");
+                    // Try to read the table size from the HET header
+                    match self.read_het_table_size(het_pos) {
+                        Ok(size) => {
+                            log::debug!("Determined HET table size: 0x{size:X}");
+                            het_size = size;
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to determine HET table size: {e}");
+                        }
+                    }
+                }
+
+                if het_size > 0 {
+                    log::debug!("Loading HET table from offset 0x{het_pos:X}, size 0x{het_size:X}");
+
+                    // HET table key is based on table name
+                    let key = hash_string("(hash table)", hash_type::FILE_KEY);
+
+                    match HetTable::read(
+                        &mut self.reader,
+                        self.archive_offset + het_pos,
+                        het_size,
+                        key,
+                    ) {
+                        Ok(het) => {
+                            let file_count = het.header.max_file_count;
+                            log::info!("Loaded HET table with {file_count} max files");
+                            self.het_table = Some(het);
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to load HET table: {e}");
+                        }
+                    }
+                }
+            }
         }
 
-        // Check if we have valid HET/BET tables with actual entries
-        let _has_valid_het_bet = match (&self.het_table, &self.bet_table) {
-            (Some(het), Some(bet)) => {
-                // Tables are valid if they have entries
-                het.header.max_file_count > 0 && bet.header.file_count > 0
-            }
-            _ => false,
-        };
-
-        // Always try to load classic tables if they exist (for compatibility)
-        // Only skip them if the archive appears to be truncated/corrupted
-        if self.header.hash_table_size > 0 {
+        // Extended tables are authoritative only if both loaded successfully
+        // (mirrors the client, which discards the classic tables in that case).
+        let extended_loaded = self.het_table.is_some() && self.bet_table.is_some();
+        // Load classic tables only if the extended tables did not load
+        // successfully (the client discards them in that case).
+        if !extended_loaded && self.header.hash_table_size > 0 {
             // Load hash table
             let hash_table_offset = self.archive_offset + self.header.get_hash_table_pos();
             let uncompressed_size = self.header.hash_table_size as usize * 16; // Each hash entry is 16 bytes
@@ -605,7 +672,7 @@ impl Archive {
             }
         }
 
-        if self.header.block_table_size > 0 {
+        if !extended_loaded && self.header.block_table_size > 0 {
             // Load block table
             let block_table_offset = self.archive_offset + self.header.get_block_table_pos();
             let uncompressed_size = self.header.block_table_size as usize * 16; // Each block entry is 16 bytes
@@ -754,8 +821,9 @@ impl Archive {
             }
         }
 
-        // Load hi-block table if present (v2+)
-        if let Some(hi_block_pos) = self.header.hi_block_table_pos
+        // Load hi-block table if present (v2+), only when using classic tables
+        if !extended_loaded
+            && let Some(hi_block_pos) = self.header.hi_block_table_pos
             && hi_block_pos != 0
         {
             let hi_block_offset = self.archive_offset + hi_block_pos;
@@ -1048,6 +1116,7 @@ impl Archive {
                         het_table: None,
                         bet_table: None,
                         attributes: None,
+                        open_flags: self.open_flags,
                     };
 
                     if let Ok(size) = temp_archive.read_het_table_size(pos) {
@@ -1091,6 +1160,7 @@ impl Archive {
                         het_table: None,
                         bet_table: None,
                         attributes: None,
+                        open_flags: self.open_flags,
                     };
 
                     if let Ok(size) = temp_archive.read_bet_table_size(pos) {
@@ -1652,11 +1722,11 @@ impl Archive {
                     data.len()
                 );
                 if data.len() <= 64 {
-                    log::debug!("Before decrypt: {:02X?}", &data);
+                    log::debug!("Before decrypt: {:02X?}", data);
                 }
                 decrypt_file_data(&mut data, key);
                 if data.len() <= 64 {
-                    log::debug!("After decrypt: {:02X?}", &data);
+                    log::debug!("After decrypt: {:02X?}", data);
                 }
             }
 
@@ -1925,7 +1995,7 @@ impl Archive {
                 sector_offsets.push(cursor.read_u32::<LittleEndian>()?);
             }
 
-            log::debug!("Sector offsets: {:?}", &sector_offsets);
+            log::debug!("Sector offsets: {:?}", sector_offsets);
 
             // Read and decompress each sector
             let mut decompressed_data = Vec::with_capacity(patch_data_size as usize);
@@ -2658,7 +2728,9 @@ impl Archive {
             // Decrypt the entire blob before reading the compression type
             let full_len = (raw_data.len() / 4) * 4;
             let mut u32_buffer: Vec<u32> = raw_data[..full_len]
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
                 .collect();
 
@@ -2687,7 +2759,9 @@ impl Archive {
             // Not compressed — just decrypt in place
             let full_len = (raw_data.len() / 4) * 4;
             let mut u32_buffer: Vec<u32> = raw_data[..full_len]
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
                 .collect();
 
@@ -3137,5 +3211,101 @@ mod tests {
 
         // This is the expected ADLER32 value for "Hello, World!"
         assert_eq!(crc, 0x1F9E046A);
+    }
+
+    // --- Regression tests for client-aligned table dispatch ---
+
+    fn make_header(
+        version: header::FormatVersion,
+        het_pos: Option<u64>,
+        bet_pos: Option<u64>,
+    ) -> MpqHeader {
+        MpqHeader {
+            header_size: version.header_size(),
+            archive_size: 0,
+            format_version: version,
+            block_size: 3,
+            hash_table_pos: 0,
+            block_table_pos: 0,
+            hash_table_size: 0,
+            block_table_size: 0,
+            hi_block_table_pos: None,
+            hash_table_pos_hi: None,
+            block_table_pos_hi: None,
+            archive_size_64: None,
+            bet_table_pos: bet_pos,
+            het_table_pos: het_pos,
+            v4_data: None,
+        }
+    }
+
+    #[test]
+    fn test_dispatch_version_gate() {
+        // V1 and V2 archives never use extended tables, regardless of flags.
+        for version in [header::FormatVersion::V1, header::FormatVersion::V2] {
+            let h = make_header(version, Some(0x1000), Some(0x2000));
+            assert!(
+                !should_use_extended_tables(&h, Some(0x400)),
+                "V1/V2 must never dispatch to extended tables"
+            );
+            assert!(
+                !should_use_extended_tables(&h, None),
+                "V1/V2 must never dispatch to extended tables (default)"
+            );
+        }
+    }
+
+    #[test]
+    fn test_dispatch_default_flags() {
+        // With no open flags (None), the crate falls back to loading extended
+        // tables whenever both table positions are present.
+        let h_both = make_header(header::FormatVersion::V3, Some(0x1000), Some(0x2000));
+        assert!(should_use_extended_tables(&h_both, None));
+
+        let h_het_only = make_header(header::FormatVersion::V3, Some(0x1000), None);
+        assert!(!should_use_extended_tables(&h_het_only, None));
+
+        let h_bet_only = make_header(header::FormatVersion::V3, None, Some(0x2000));
+        assert!(!should_use_extended_tables(&h_bet_only, None));
+
+        let h_none = make_header(header::FormatVersion::V3, None, None);
+        assert!(!should_use_extended_tables(&h_none, None));
+    }
+
+    #[test]
+    fn test_dispatch_client_flag_test() {
+        // The client's exact test: (flags & 0x410) == 0x400.
+        // 0x400 must be set and 0x10 must be clear.
+        let h = make_header(header::FormatVersion::V3, Some(0x1000), Some(0x2000));
+
+        // 0x400 set, 0x10 clear -> extended tables
+        assert!(should_use_extended_tables(&h, Some(0x400)));
+        assert!(should_use_extended_tables(&h, Some(0x1400)));
+        assert!(should_use_extended_tables(&h, Some(0x18400)));
+
+        // 0x10 set (0x400 may or may not be set) -> classic tables
+        assert!(!should_use_extended_tables(&h, Some(0x10)));
+        assert!(!should_use_extended_tables(&h, Some(0x410)));
+        assert!(!should_use_extended_tables(&h, Some(0x14818)));
+        assert!(!should_use_extended_tables(&h, Some(0x18808)));
+
+        // 0x9E48 is the client's default data-archive open flag.
+        // 0x9E48 & 0x410 == 0x400, so the client uses extended tables.
+        assert!(should_use_extended_tables(&h, Some(0x9E48)));
+        // 0x400 clear, 0x10 clear -> classic tables
+        assert!(!should_use_extended_tables(&h, Some(0x800)));
+        assert!(!should_use_extended_tables(&h, Some(0)));
+    }
+
+    #[test]
+    fn test_dispatch_v4_with_flags() {
+        // V4 archives follow the same flag test.
+        let h = make_header(header::FormatVersion::V4, Some(0x1000), Some(0x2000));
+
+        assert!(should_use_extended_tables(&h, Some(0x400)));
+        assert!(should_use_extended_tables(&h, Some(0x1400)));
+        assert!(!should_use_extended_tables(&h, Some(0x410)));
+        assert!(should_use_extended_tables(&h, Some(0x9E48))); // client default
+        assert!(should_use_extended_tables(&h, None)); // default fallback
     }
 }

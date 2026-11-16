@@ -7,27 +7,27 @@ use crate::error::{Result, WdlError};
 use crate::version::WdlVersion;
 
 /// Magic number for the MVER chunk (Version)
-pub const MVER_MAGIC: [u8; 4] = [b'R', b'E', b'V', b'M'];
+pub const MVER_MAGIC: [u8; 4] = *b"REVM";
 /// Magic number for the MWMO chunk (WMO Filenames)
-pub const MWMO_MAGIC: [u8; 4] = [b'O', b'M', b'W', b'M'];
+pub const MWMO_MAGIC: [u8; 4] = *b"OMWM";
 /// Magic number for the MWID chunk (WMO Filename Offsets)
-pub const MWID_MAGIC: [u8; 4] = [b'D', b'I', b'W', b'M'];
+pub const MWID_MAGIC: [u8; 4] = *b"DIWM";
 /// Magic number for the MODF chunk (WMO Placement Data)
-pub const MODF_MAGIC: [u8; 4] = [b'F', b'D', b'O', b'M'];
+pub const MODF_MAGIC: [u8; 4] = *b"FDOM";
 /// Magic number for the MAOF chunk (Map Area Offset Table)
-pub const MAOF_MAGIC: [u8; 4] = [b'F', b'O', b'A', b'M'];
+pub const MAOF_MAGIC: [u8; 4] = *b"FOAM";
 /// Magic number for the MARE chunk (Map Area Low-Resolution Heights)
-pub const MARE_MAGIC: [u8; 4] = [b'E', b'R', b'A', b'M'];
+pub const MARE_MAGIC: [u8; 4] = *b"ERAM";
 /// Magic number for the MAHO chunk (Map Area Holes)
-pub const MAHO_MAGIC: [u8; 4] = [b'O', b'H', b'A', b'M'];
+pub const MAHO_MAGIC: [u8; 4] = *b"OHAM";
 /// Magic number for the MLDD chunk (M2 doodad placement, Legion+)
-pub const MLDD_MAGIC: [u8; 4] = [b'D', b'D', b'L', b'M'];
+pub const MLDD_MAGIC: [u8; 4] = *b"DDLM";
 /// Magic number for the MLDX chunk (M2 doodad visibility, Legion+)
-pub const MLDX_MAGIC: [u8; 4] = [b'X', b'D', b'L', b'M'];
+pub const MLDX_MAGIC: [u8; 4] = *b"XDLM";
 /// Magic number for the MLMD chunk (WMO placement, Legion+)
-pub const MLMD_MAGIC: [u8; 4] = [b'D', b'M', b'L', b'M'];
+pub const MLMD_MAGIC: [u8; 4] = *b"DMLM";
 /// Magic number for the MLMX chunk (WMO visibility, Legion+)
-pub const MLMX_MAGIC: [u8; 4] = [b'X', b'M', b'L', b'M'];
+pub const MLMX_MAGIC: [u8; 4] = *b"XMLM";
 
 /// Vector 3D type used in WoW files
 #[derive(Debug, Clone, PartialEq)]

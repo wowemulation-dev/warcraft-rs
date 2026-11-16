@@ -15,15 +15,20 @@ tile, which is 533.33333 yards (1600 feet) on each side.
 
 ## File Types
 
-Since Cataclysm (4.x), ADT data is split across multiple files. **Confirmed in Cataclysm Preservation Project TrinityCore 4.3.4**:
+Since Cataclysm (4.x), ADT data is split across multiple files. **Confirmed in Cataclysm
+Preservation Project TrinityCore 4.3.4**:
 
 | File Pattern | Description | Content | Chunks Present |
 |--------------|-------------|---------|----------------|
 | `MapName_XX_YY.adt` | Root file | Terrain structure and header | MVER, MHDR, MCNK, MFBO |
-| `MapName_XX_YY_tex0.adt` | Texture file | Texture data and amplitude | MVER, MTEX, MAMP, MCNK, MTXP (MoP+) |
-| `MapName_XX_YY_tex1.adt` | Texture file | Additional texture layers | MVER, MTEX, MAMP, MCNK, MTXP (MoP+) |
-| `MapName_XX_YY_obj0.adt` | Object file | M2 and WMO placement data | MVER, MMDX, MMID, MWMO, MWID, MDDF, MODF, MCNK |
-| `MapName_XX_YY_obj1.adt` | Object file | Additional object data | MVER, MMDX, MMID, MWMO, MWID, MDDF, MODF, MCNK |
+| `MapName_XX_YY_tex0.adt` | Texture file | Texture data and amplitude | MVER, MTEX, MAMP, MCNK,
+MTXP (MoP+) |
+| `MapName_XX_YY_tex1.adt` | Texture file | Additional texture layers | MVER, MTEX, MAMP, MCNK,
+MTXP (MoP+) |
+| `MapName_XX_YY_obj0.adt` | Object file | M2 and WMO placement data | MVER, MMDX, MMID, MWMO,
+MWID, MDDF, MODF, MCNK |
+| `MapName_XX_YY_obj1.adt` | Object file | Additional object data | MVER, MMDX, MMID, MWMO, MWID,
+MDDF, MODF, MCNK |
 | `MapName_XX_YY_lod.adt` | LOD file | Level of detail information | (Not analyzed) |
 
 Where XX and YY are the tile coordinates (0-63).
@@ -218,9 +223,12 @@ struct MODFEntry {
 
 ### MH2O - Water Information (WotLK+)
 
-**First appeared in Wrath of the Lich King (3.3.5a)**. Contains water levels and types, replacing the legacy MCLQ system.
+**First appeared in Wrath of the Lich King (3.3.5a)**. Contains water levels and types, replacing
+the legacy MCLQ system.
 
-**Structural Analysis**: Complex variable-size chunks with 16×16 grid structure. **Validated across multiple TrinityCore versions**:
+**Structural Analysis**: Complex variable-size chunks with 16×16 grid structure. **Validated
+across multiple TrinityCore versions**:
+
 - TrinityCore 3.3.5a (detailed implementation)
 - SkyFire 5.4.8 (simplified MoP implementation)
 
@@ -271,7 +279,9 @@ const MH2O_FISHABLE: u16 = 0x0008;
 
 Contains flight ceiling information. **First appeared in The Burning Crusade (2.4.3)**:
 
-**Structural Analysis**: All analyzed MFBO chunks are consistently 36 bytes. **Validated against TrinityCore implementation** which defines the structure as two planes with 9 int16 coordinates each.
+**Structural Analysis**: All analyzed MFBO chunks are consistently 36 bytes. **Validated against
+TrinityCore implementation** which defines the structure as two planes with 9 int16 coordinates
+each.
 
 ```rust
 #[repr(C, packed)]
@@ -283,32 +293,40 @@ struct MFBOPlane {
 #[repr(C, packed)]
 struct MFBOChunk {
     header: ChunkHeader,  // Magic: "MFBO"
-    
+
     /// Maximum flight bounds plane
     max: MFBOPlane,  // 18 bytes
-    
-    /// Minimum flight bounds plane  
+
+    /// Minimum flight bounds plane
     min: MFBOPlane,  // 18 bytes
 }
 ```
 
-**Total data size**: 36 bytes (18 + 18), confirmed by empirical analysis and **validated across multiple TrinityCore versions**:
+**Total data size**: 36 bytes (18 + 18), confirmed by empirical analysis and **validated across
+multiple TrinityCore versions**:
+
 - TrinityCore 3.3.5a (WotLK)
 - Cataclysm Preservation Project TrinityCore 4.3.4
 
-**Usage**: Both TrinityCore versions extract these as `int16 flight_box_max[3][3]` and `int16 flight_box_min[3][3]` arrays for flight ceiling calculations.
+**Usage**: Both TrinityCore versions extract these as `int16 flight_box_max[3][3]` and `int16
+flight_box_min[3][3]` arrays for flight ceiling calculations.
 
-**Validation**: Structure confirmed across multiple production WoW server emulator implementations spanning TBC through Cataclysm.
+**Validation**: Structure confirmed across multiple production WoW server emulator implementations
+spanning TBC through Cataclysm.
 
-**Note**: SkyFire 5.4.8 (MoP) does not implement MFBO chunks in their map extractor, suggesting flight bounds may be handled differently in later expansions or not required for server-side processing.
+**Note**: SkyFire 5.4.8 (MoP) does not implement MFBO chunks in their map extractor, suggesting
+flight bounds may be handled differently in later expansions or not required for server-side
+processing.
 
 ### MAMP - Amplitude Map (Cataclysm+)
 
 **First appeared in Cataclysm (4.3.4)**. Contains amplitude or deformation data for terrain:
 
-**Structural Analysis**: Always 4 bytes, appears to be flags or simple values. Structure based on empirical analysis only.
+**Structural Analysis**: Always 4 bytes, appears to be flags or simple values. Structure based on
+empirical analysis only.
 
-**Server Implementation Status**: 
+**Server Implementation Status**:
+
 - Not implemented in Cataclysm Preservation Project TrinityCore 4.3.4
 - Not implemented in SkyFire 5.4.8 (MoP)
 - Suggests this chunk is texture-file specific or client-rendering optimization only
@@ -317,7 +335,7 @@ struct MFBOChunk {
 #[repr(C, packed)]
 struct MAMPChunk {
     header: ChunkHeader,  // Magic: "MAMP"
-    
+
     /// Amplitude value or flags
     /// Common values: 0x00000000, 0x00000001
     value: u32,
@@ -326,11 +344,14 @@ struct MAMPChunk {
 
 ### MTXP - Texture Parameters (MoP+)
 
-**First appeared in Mists of Pandaria (5.4.8)**. Contains texture parameters for advanced material properties:
+**First appeared in Mists of Pandaria (5.4.8)**. Contains texture parameters for advanced material
+properties:
 
-**Structural Analysis**: Variable size, contains arrays of 16-byte entries. Average size 154 bytes. Structure based on empirical analysis only.
+**Structural Analysis**: Variable size, contains arrays of 16-byte entries. Average size 154 bytes.
+Structure based on empirical analysis only.
 
-**Server Implementation Status**: 
+**Server Implementation Status**:
+
 - Not implemented in SkyFire 5.4.8 (MoP)
 - Suggests this chunk is client-rendering specific for advanced texture material properties
 
@@ -759,7 +780,8 @@ pub fn position_to_chunk(x: f32, y: f32) -> (usize, usize) {
 
 ### Loading and Parsing ADT (Current Implementation)
 
-**Implementation Status:** ⚠️ **Basic Parsing Only** - Advanced terrain processing not implemented
+**Implementation Status:** ⚠️ **Basic Parsing Only** - Advanced terrain processing not
+implemented
 
 ```rust
 use wow_adt::{Adt, AdtVersion};
@@ -787,9 +809,11 @@ if adt.mh2o.is_some() {
 
 ### Texture Blending (Format Specification)
 
-**Implementation Status:** ⚠️ **Format Specification Only** - Mathematical blending approach documented
+**Implementation Status:** ⚠️ **Format Specification Only** - Mathematical blending approach
+documented
 
-ADT files support up to 4 texture layers per chunk with alpha map blending. The official format specification describes a complex blending algorithm involving:
+ADT files support up to 4 texture layers per chunk with alpha map blending. The official format
+specification describes a complex blending algorithm involving:
 
 1. **Layer Weight Calculation** - Based on alpha map values
 2. **Height-based Scaling** - Terrain height influences blending
@@ -798,7 +822,7 @@ ADT files support up to 4 texture layers per chunk with alpha map blending. The 
 ```text
 // From Legion terrain shader (format specification):
 // layer_pct = layer_pct / vec4(sum(layer_pct));
-// 
+//
 // Current implementation provides access to raw texture and alpha data
 // through parsed MCNK chunks, but blending logic must be implemented separately
 ```
@@ -830,7 +854,6 @@ if let Some(liquid) = &chunk.liquid {
     }
 }
 ```
-
 
 ## Implementation Notes
 
@@ -934,22 +957,25 @@ These chunks are present in all analyzed versions:
 Analysis of chunk sizes and structures reveals several evolution patterns:
 
 #### MHDR Structure Evolution
+
 - **Pre-Cataclysm**: All files have MCIN offsets (centralized chunk index)
 - **Cataclysm+**: MCIN offsets removed from many files (distributed across split files)
 - **MFBO Support**: 90% of TBC files, 75% of WotLK files, 67% of Cataclysm+ files
 - **MH2O Support**: 0% in TBC, 63% in WotLK, variable in later versions
 
 #### Chunk Size Patterns
+
 - **MVER**: Consistently 4 bytes across all versions
-- **MHDR**: Consistently 64 bytes across all versions  
+- **MHDR**: Consistently 64 bytes across all versions
 - **MCIN**: Consistently 4096 bytes (256 entries × 16 bytes) when present
 - **MCNK**: Highly variable sizes, trend toward larger chunks in later versions
   - 1.12.1: avg 4905 bytes
-  - 2.4.3: avg 2892 bytes  
+  - 2.4.3: avg 2892 bytes
   - 3.3.5a: avg 5428 bytes
   - 4.3.4+: avg 383-940 bytes (split file architecture)
 
 #### Split File Architecture Impact (Cataclysm+)
+
 - Root ADT files become much smaller (mainly MHDR + MCNK structure)
 - Texture files contain MAMP, MTEX, MTXP chunks
 - Object files contain model/WMO placement data
@@ -959,7 +985,7 @@ Analysis of chunk sizes and structures reveals several evolution patterns:
 
 - ✅ **WoW 1.12.1**: 11 chunk types, monolithic files (avg 4905 byte MCNK)
 - ✅ **WoW 2.4.3**: 12 chunk types (+MFBO 36 bytes), MFBO in 90% of files
-- ✅ **WoW 3.3.5a**: 13 chunk types (+MH2O variable size), MH2O in 63% of files  
+- ✅ **WoW 3.3.5a**: 13 chunk types (+MH2O variable size), MH2O in 63% of files
 - ✅ **WoW 4.3.4**: 14 chunk types (+MAMP 4 bytes), split file architecture introduced
 - ✅ **WoW 5.4.8**: 14 chunk types (+MTXP 16-byte entries), MTXP in texture files
 
@@ -968,8 +994,9 @@ Analysis of chunk sizes and structures reveals several evolution patterns:
 Our analysis has been cross-validated against production WoW server emulator implementations:
 
 #### **Validation Sources**
+
 - **TrinityCore 3.3.5a** (WotLK) - Reference implementation
-- **Cataclysm Preservation Project TrinityCore 4.3.4** - Cataclysm support  
+- **Cataclysm Preservation Project TrinityCore 4.3.4** - Cataclysm support
 - **SkyFire 5.4.8** - Mists of Pandaria support
 
 #### **Implementation Confidence Levels**
@@ -982,7 +1009,8 @@ Our analysis has been cross-validated against production WoW server emulator imp
 | **MAMP** | **Medium** | None (empirical only) | Client rendering optimization |
 | **MTXP** | **Medium** | None (empirical only) | Client texture enhancement |
 
-**Key Insight**: Server-validated chunks are essential for gameplay mechanics, while empirical-only chunks appear to be client-side rendering optimizations.
+**Key Insight**: Server-validated chunks are essential for gameplay mechanics, while empirical-only
+chunks appear to be client-side rendering optimizations.
 
 ## Version History
 
@@ -1006,7 +1034,8 @@ Based on analysis of original MPQ archives:
 
 - [WoWDev Wiki - ADT Format](https://wowdev.wiki/ADT)
 - [Map Coordinates System](https://wowdev.wiki/Map_coordinates)
-- [Trinity Core Map Extractor](https://github.com/TrinityCore/TrinityCore/tree/master/src/tools/map_extractor)
+- [Trinity Core Map
+  Extractor](https://github.com/TrinityCore/TrinityCore/tree/master/src/tools/map_extractor)
 - [libwarcraft ADT Implementation](https://github.com/WowDevTools/libwarcraft)
 
 ## See Also

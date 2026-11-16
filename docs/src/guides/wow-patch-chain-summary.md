@@ -23,7 +23,7 @@ entire archives.
 
 **Loading Order:**
 
-```
+```text
 Priority 0-4:    Base archives
 Priority 1000+:  Patch archives (override everything)
 ```
@@ -37,7 +37,7 @@ Priority 1000+:  Patch archives (override everything)
 
 **Example Override:**
 
-```
+```text
 DBFilesClient\Spell.dbc:
   dbc.MPQ (base) → patch.MPQ → patch-2.MPQ (final)
 ```
@@ -53,7 +53,7 @@ DBFilesClient\Spell.dbc:
 
 **Loading Order:**
 
-```
+```text
 Priority 0-1:      Base archives
 Priority 100-101:  Locale base archives
 Priority 1000-1001: General patches
@@ -70,7 +70,7 @@ Priority 2000-2001: Locale patches (highest priority)
 
 **Locale Override Example:**
 
-```
+```text
 DBFilesClient\Spell.dbc:
   locale-enUS.MPQ → patch-enUS.MPQ → patch-enUS-2.MPQ (final)
 ```
@@ -86,7 +86,7 @@ DBFilesClient\Spell.dbc:
 
 **Loading Order (TrinityCore Definitive):**
 
-```
+```text
 Priority 0-3:      Base archives (in order)
 Priority 100-102:  Locale base archives
 Priority 1000-1002: General patches
@@ -118,7 +118,7 @@ Priority 2000-2002: Locale patches (highest)
 
 **Loading Order:**
 
-```
+```text
 Priority 0-99:      Base archives (by content type)
 Priority 100-199:   Locale base archives
 Priority 1000-1999: Base patches
@@ -147,13 +147,14 @@ Priority 4000+:     Locale wow-update archives
 **Archive Structure:**
 
 - Most complex (potentially 100+ archives)
-- Base: `art.MPQ`, `expansion1-4.MPQ`, `misc.MPQ`, `model.MPQ`, `sound.MPQ`, `texture.MPQ`, `world.MPQ`, `world2.MPQ`
+- Base: `art.MPQ`, `expansion1-4.MPQ`, `misc.MPQ`, `model.MPQ`, `sound.MPQ`, `texture.MPQ`,
+  `world.MPQ`, `world2.MPQ`
 - Patches: `base-{1-50}.MPQ`, `wow-update-{13156-18500}.MPQ`
 - Full locale structure for each component
 
 **Loading Order:**
 
-```
+```text
 Priority 0-99:      Base archives
 Priority 100-199:   Locale base archives
 Priority 1000-2999: Base patches & locale patches
@@ -199,4 +200,6 @@ Priority 4000+:     Locale wow-update archives
 - **MoP**: Peak complexity, preparing for CASC storage system
 - **WoD (6.0)+**: Switched to CASC, abandoning MPQ
 
-The progression shows Blizzard's evolution from simple file patching to increasingly sophisticated content delivery, ultimately leading to the complete replacement of MPQ with the CASC system in Warlords of Draenor.
+The progression shows Blizzard's evolution from simple file patching to increasingly sophisticated
+content delivery, ultimately leading to the complete replacement of MPQ with the CASC system in
+Warlords of Draenor.

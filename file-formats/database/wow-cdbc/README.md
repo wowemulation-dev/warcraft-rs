@@ -81,7 +81,9 @@ if let Some(record) = records.get_record_by_key(0) {  // Eastern Kingdoms
 
 ## DBD Support
 
-This crate supports [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) Database Definition files for automatic schema generation. DBD files provide community-maintained schema definitions for various WoW versions.
+This crate supports [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) Database Definition files for
+automatic schema generation. DBD files provide community-maintained schema definitions for various
+WoW versions.
 
 ```rust
 use wow_cdbc::dbd::{parse_dbd_file, convert_to_yaml_schemas};
@@ -106,7 +108,8 @@ The crate includes several command-line tools:
 
 Licensed under either of
 
-- Apache License, Version 2.0, ([LICENSE-APACHE](../../LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- Apache License, Version 2.0, ([LICENSE-APACHE](../../LICENSE-APACHE) or
+  <http://www.apache.org/licenses/LICENSE-2.0>)
 - MIT license ([LICENSE-MIT](../../LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.

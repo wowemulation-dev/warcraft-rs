@@ -1675,7 +1675,7 @@ impl ArchiveBuilder {
 
         // Convert chunks to u32 values, encrypt, and write back
         let mut u32_buffer = Vec::with_capacity(chunks.len() / 4);
-        for chunk in chunks.chunks_exact(4) {
+        for chunk in chunks.as_chunks::<4>().0 {
             u32_buffer.push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
         }
 

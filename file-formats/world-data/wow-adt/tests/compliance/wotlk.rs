@@ -117,9 +117,8 @@ fn test_wotlk_mcnk_subchunks() {
     let mut found_mccv = false;
 
     for mcnk in &root.mcnk_chunks {
-        if mcnk.heights.is_some() {
+        if let Some(heights) = mcnk.heights.as_ref() {
             found_mcvt = true;
-            let heights = mcnk.heights.as_ref().unwrap();
             assert_eq!(
                 heights.heights.len(),
                 145,
@@ -127,9 +126,8 @@ fn test_wotlk_mcnk_subchunks() {
             );
         }
 
-        if mcnk.normals.is_some() {
+        if let Some(normals) = mcnk.normals.as_ref() {
             found_mcnr = true;
-            let normals = mcnk.normals.as_ref().unwrap();
             assert_eq!(
                 normals.normals.len(),
                 145,
@@ -137,18 +135,16 @@ fn test_wotlk_mcnk_subchunks() {
             );
         }
 
-        if mcnk.layers.is_some() {
+        if let Some(layers) = mcnk.layers.as_ref() {
             found_mcly = true;
-            let layers = mcnk.layers.as_ref().unwrap();
             assert!(
                 layers.layers.len() <= 4,
                 "MCLY should have at most 4 texture layers"
             );
         }
 
-        if mcnk.vertex_colors.is_some() {
+        if let Some(colors) = mcnk.vertex_colors.as_ref() {
             found_mccv = true;
-            let colors = mcnk.vertex_colors.as_ref().unwrap();
             assert_eq!(
                 colors.colors.len(),
                 145,

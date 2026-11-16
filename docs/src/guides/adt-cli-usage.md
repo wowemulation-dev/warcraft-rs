@@ -4,7 +4,8 @@ This guide covers the ADT (terrain) commands available in the warcraft-rs CLI to
 
 ## Overview
 
-The ADT command provides tools for working with World of Warcraft terrain files, including parsing, validation, conversion, and visualization.
+The ADT command provides tools for working with World of Warcraft terrain files, including parsing,
+validation, conversion, and visualization.
 
 ## Installation
 
@@ -113,7 +114,8 @@ Tree view shows:
 - 📍 Placements (MDDF/MODF) - shows count of placed objects
 - 💧 Water chunks (MH2O) with water chunk count
 
-The enhanced tree view now displays the actual content of texture, model, and WMO chunks, showing filenames and counts rather than just chunk presence.
+The enhanced tree view now displays the actual content of texture, model, and WMO chunks, showing
+filenames and counts rather than just chunk presence.
 
 ### Extract Command (Optional Feature)
 
@@ -226,19 +228,19 @@ warcraft-rs adt extract terrain.adt --models --output ./model_data
 
 ### Common Issues
 
-**"Failed to parse ADT file"**
+"Failed to parse ADT file"
 
 - Check file is not corrupted
 - Ensure it's a valid ADT file (not WDT/WDL)
 - Try basic validation first
 
-**"Version conversion failed"**
+"Version conversion failed"
 
 - Some features can't be converted backwards
 - Check source and target version compatibility
 - Validate source file first
 
-**"Extract command not available"**
+"Extract command not available"
 
 - Install with `--features extract` or `--features full`
 - Check feature is enabled in your build

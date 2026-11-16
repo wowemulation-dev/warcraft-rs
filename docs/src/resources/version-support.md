@@ -23,7 +23,8 @@ World of Warcraft client version compatibility and file format changes.
 | v3 | 4.x+ | HET/BET tables, increased hash table size | ✅ Supported |
 | v4 | 5.x+ | 64-bit file support, MD5 checksums | ✅ Supported |
 
-**Note:** wow-mpq has bidirectional compatibility with StormLib (the reference C++ implementation) and support for official Blizzard WoW archives.
+**Note:** wow-mpq has bidirectional compatibility with StormLib (the reference C++ implementation)
+and support for official Blizzard WoW archives.
 
 ### M2 Models
 
@@ -68,8 +69,10 @@ World of Warcraft client version compatibility and file format changes.
 Each crate handles version detection differently:
 
 - **MPQ**: Format version is read from the archive header (v1-v4)
-- **M2**: Header version field distinguishes expansions; MD20 vs MD21 magic separates legacy from chunked format
-- **ADT**: MVER chunk is always 18; actual version is detected from chunk presence (MFBO, MH2O, MAMP, MTXP)
+- **M2**: Header version field distinguishes expansions; MD20 vs MD21 magic separates legacy from
+  chunked format
+- **ADT**: MVER chunk is always 18; actual version is detected from chunk presence (MFBO, MH2O,
+  MAMP, MTXP)
 - **BLP**: File magic is `BLP1` or `BLP2`
 - **WMO**: MVER chunk version number increases with expansions (17-27)
 - **WDT/WDL**: Version detection via chunk analysis

@@ -1304,6 +1304,8 @@ pub async fn load_wmo_async(
 ## References
 
 - [WMO Format Documentation](https://wowdev.wiki/WMO) - Complete WMO format specification
-- [Portal Rendering](https://en.wikipedia.org/wiki/Portal_rendering) - Understanding portal-based visibility
-- [BSP Trees](https://en.wikipedia.org/wiki/Binary_space_partitioning) - Binary space partitioning for WMOs
+- [Portal Rendering](https://en.wikipedia.org/wiki/Portal_rendering) - Understanding portal-based
+  visibility
+- [BSP Trees](https://en.wikipedia.org/wiki/Binary_space_partitioning) - Binary space partitioning
+  for WMOs
 - [WoW Model Viewer](https://github.com/Marlamin/WoWModelViewer) - Reference WMO implementation

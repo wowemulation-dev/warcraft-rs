@@ -236,4 +236,5 @@ error: could not compile `warcraft-rs` (bin "warcraft-rs") due to previous error
 
 - Read the [Quick Start Guide](quick-start.md)
 - Explore [Basic Usage](basic-usage.md)
-- Browse [Example Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/warcraft-rs/examples)
+- Browse [Example
+  Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/warcraft-rs/examples)

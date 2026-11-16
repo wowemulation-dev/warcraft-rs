@@ -546,14 +546,16 @@ fn generate_filename(base_name: &str, version: &str) -> String {
     format!("{base_name}_{sanitized_version}.yaml")
 }
 
-/// Locale ordering for the WotLK-era (3.x and 4.0 pre-collapse) locstring layout.
+/// Locale ordering for the TBC/WotLK-era (2.x, 3.x and 4.0 pre-collapse) locstring layout.
 /// 16 stringref slots are stored in this order, followed by a single u32 flags field.
+/// The client stores 16 slots even though only the first 9 locales were ever used
+/// (TBC added ruRU; see CMaNGOS TBC SpellEntry SpellName\[16\]).
 const LOCSTRING_LOCALES_WOTLK: &[&str] = &[
     "enUS", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "esMX", "ruRU", "unk9", "unk10",
     "unk11", "unk12", "unk13", "unk14", "unk15",
 ];
 
-/// Locale ordering for the Vanilla/TBC-era (1.x, 2.x) locstring layout.
+/// Locale ordering for the Vanilla (1.x) locstring layout.
 /// 8 stringref slots are stored in this order, followed by a single u32 flags field.
 const LOCSTRING_LOCALES_CLASSIC: &[&str] = &[
     "enUS", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "esMX",
@@ -582,8 +584,10 @@ fn locstring_locales_for_build(
     let minor: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
 
     match major {
-        0..=2 => LOCSTRING_LOCALES_CLASSIC,
-        3 => LOCSTRING_LOCALES_WOTLK,
+        // Vanilla stored 8 locale slots; TBC (2.x) already stored 16 slots
+        // (see CMaNGOS TBC SpellEntry SpellName[16]).
+        0..=1 => LOCSTRING_LOCALES_CLASSIC,
+        2..=3 => LOCSTRING_LOCALES_WOTLK,
         // The 4.0 pre-Cataclysm client kept the WotLK locstring layout; from
         // 4.1 onward it collapsed back to a single string field.
         4 if minor == 0 => LOCSTRING_LOCALES_WOTLK,

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Client-Aligned MPQ Table Dispatch (v3+)** - `OpenOptions::open_flags` mirrors the WoW client's
+  `SFileOpenArchive` flag word; table dispatch now follows the client's exact test (`format_version
+  >= V3 && (open_flags & 0x410) == 0x400`) with exclusive loading (extended tables discard classic
+  tables on success, otherwise fall back to classic)
+  - `Archive::open_with_options` accepts `OpenOptions::open_flags(flags)`
+- When `open_flags` is unset, the crate falls back to loading extended tables whenever the header
+carries both `het_table_pos` and `bet_table_pos` (pre-existing behavior)
+- Regression tests cover the version gate, the default-flag fallback, and the client flag test
+across V3/V4 and the observed open-flag values (`0x9E48`, `0x14818`, `0x18808`, `0x800`, `0`)
 - **PTCH Patch File Support** - Complete binary patch file implementation for Cataclysm+
   - COPY patches for simple file replacement
   - BSD0 patches using bsdiff40 algorithm for binary diffs
@@ -42,11 +51,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **V4 Archive Support** - Fixed two bugs preventing MPQ V4 archives from loading
-  - `decrypt_table_data` no longer corrupts trailing bytes not aligned to a 4-byte DWORD boundary, matching StormLib's `DecryptMpqBlock` behavior
-  - V4 compressed hash/block tables are now decrypted before decompression, matching StormLib's `LoadMpqTable` behavior
-  - Added `from_bytes_decrypted` to `HashTable` and `BlockTable` to avoid double-decrypting data in the V4 compressed table path
+- `decrypt_table_data` no longer corrupts trailing bytes not aligned to a 4-byte DWORD boundary,
+matching StormLib's `DecryptMpqBlock` behavior
+- V4 compressed hash/block tables are now decrypted before decompression, matching StormLib's
+`LoadMpqTable` behavior
+- Added `from_bytes_decrypted` to `HashTable` and `BlockTable` to avoid double-decrypting data in
+the V4 compressed table path
 - **LZMA Decompression** - Fixed MPQ LZMA format handling
-  - MPQ archives use a custom LZMA header with a leading filter byte (0x00) before the standard LZMA stream; this byte was not being stripped, causing the LZMA decoder to misparse the properties and dictionary size
+- MPQ archives use a custom LZMA header with a leading filter byte (0x00) before the standard LZMA
+stream; this byte was not being stripped, causing the LZMA decoder to misparse the properties and
+dictionary size
   - LZMA compression now produces MPQ-compatible format with the filter byte prefix
 - **Compression Module** - Minor fixes in compression algorithm selection
 - **Documentation** - Updated README with patch file documentation
@@ -63,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- New methods in `MutableArchive`: `read_file()`, `list()`, `find_file()`, `verify_signature()`, `load_attributes()`
+- New methods in `MutableArchive`: `read_file()`, `list()`, `find_file()`, `verify_signature()`,
+  `load_attributes()`
 - Complete implementation of `compact()` method for archive defragmentation
 - Improved attributes file parsing to handle both cases where attributes include/exclude themselves
 
@@ -74,10 +89,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed Huffman decompression algorithm to match StormLib's linked list approach, resolving ADPCM audio decompression failures and file count discrepancies in Warcraft 3 MPQ archives
-- Fixed IMPLODE compression handling for Warcraft III MPQ archives - IMPLODE-compressed files no longer incorrectly skip the first byte as a compression type prefix
-- Fixed attributes file parsing to correctly handle varying block counts across different MPQ implementations
-- Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test failures
+- Fixed Huffman decompression algorithm to match StormLib's linked list approach, resolving ADPCM
+  audio decompression failures and file count discrepancies in Warcraft 3 MPQ archives
+- Fixed IMPLODE compression handling for Warcraft III MPQ archives - IMPLODE-compressed files no
+  longer incorrectly skip the first byte as a compression type prefix
+- Fixed attributes file parsing to correctly handle varying block counts across different MPQ
+  implementations
+- Removed invalid Huffman test case and obsolete PKWare compression tests to eliminate test
+  failures
 - Applied rustfmt formatting fixes to improve code consistency
 - Fixed clippy warnings by using inline format arguments in log statements
 

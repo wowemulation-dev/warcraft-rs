@@ -94,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 let obj_adt = Adt::from_path("map_32_48_obj0.adt")?;
 println!("Doodads: {}", obj_adt.mddf.as_ref().map_or(0, |d| d.doodads.len()));
 
-// Parse texture information ADT (Cataclysm+ split format)  
+// Parse texture information ADT (Cataclysm+ split format)
 let tex_adt = Adt::from_path("map_32_48_tex0.adt")?;
 println!("Textures: {}", tex_adt.mtex.as_ref().map_or(0, |t| t.filenames.len()));
 ```

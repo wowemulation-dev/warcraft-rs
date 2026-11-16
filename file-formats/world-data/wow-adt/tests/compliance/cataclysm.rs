@@ -230,9 +230,7 @@ fn test_mcdd_edge_cases() {
 
     // Test all disabled
     let mut mcdd_full = McddChunk::default();
-    for i in 0..64 {
-        mcdd_full.disable[i] = 0xFF;
-    }
+    mcdd_full.disable.fill(0xFF);
     assert!(mcdd_full.all_disabled());
     assert!(!mcdd_full.all_enabled());
     assert_eq!(mcdd_full.disabled_count(), 512); // 64 bytes × 8 bits
@@ -480,9 +478,8 @@ fn test_cataclysm_mcnk_features() {
 
     for mcnk in &root.mcnk_chunks {
         // Check for vertex lighting (MCLV)
-        if mcnk.vertex_lighting.is_some() {
+        if let Some(lighting) = mcnk.vertex_lighting.as_ref() {
             found_mclv = true;
-            let lighting = mcnk.vertex_lighting.as_ref().unwrap();
             assert_eq!(
                 lighting.colors.len(),
                 145,
@@ -491,8 +488,7 @@ fn test_cataclysm_mcnk_features() {
         }
 
         // Verify standard chunks are present
-        if mcnk.heights.is_some() {
-            let heights = mcnk.heights.as_ref().unwrap();
+        if let Some(heights) = mcnk.heights.as_ref() {
             assert_eq!(
                 heights.heights.len(),
                 145,
@@ -500,8 +496,7 @@ fn test_cataclysm_mcnk_features() {
             );
         }
 
-        if mcnk.normals.is_some() {
-            let normals = mcnk.normals.as_ref().unwrap();
+        if let Some(normals) = mcnk.normals.as_ref() {
             assert_eq!(
                 normals.normals.len(),
                 145,

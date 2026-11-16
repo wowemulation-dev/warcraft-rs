@@ -12,12 +12,14 @@ A Rust library for parsing, validating, and converting World of Warcraft M2 mode
 
 ## Overview
 
-`wow-m2` supports M2 model files across all World of Warcraft expansions from Classic (1.12.1) through The War Within (11.x). The library handles:
+`wow-m2` supports M2 model files across all World of Warcraft expansions from Classic (1.12.1)
+through The War Within (11.x). The library handles:
 
 - **M2 Models** (`.m2`/`.mdx`) - 3D character, creature, and object models
 - **Skin Files** (`.skin`) - Level-of-detail and submesh information
 - **Animation Files** (`.anim`) - External animation sequences
-- **BLP Texture References** - Re-exports BLP support from the [wow-blp](https://crates.io/crates/wow-blp) crate
+- **BLP Texture References** - Re-exports BLP support from the
+  [wow-blp](https://crates.io/crates/wow-blp) crate
 
 ## Features
 
@@ -106,7 +108,8 @@ let unity_pos = transform_position(wow_pos, CoordinateSystem::Unity);
 let unreal_pos = transform_position(wow_pos, CoordinateSystem::UnrealEngine);
 ```
 
-**Why coordinate transformation is needed:** WoW uses X=North, Y=West, Z=Up, which differs from standard 3D applications. Without transformation, models appear rotated or mirrored.
+**Why coordinate transformation is needed:** WoW uses X=North, Y=West, Z=Up, which differs from
+standard 3D applications. Without transformation, models appear rotated or mirrored.
 
 ### Version Support
 
@@ -149,7 +152,8 @@ See the `examples/` directory for more detailed examples:
 
 ## Documentation
 
-- **[Coordinate Systems Guide](../../../docs/COORDINATE_SYSTEMS.md)** - WoW coordinate systems and transformations
+- **[Coordinate Systems Guide](../../../docs/COORDINATE_SYSTEMS.md)** - WoW coordinate systems and
+  transformations
 - **[API Documentation](https://docs.rs/wow-m2)** - Complete API reference
 
 ## License

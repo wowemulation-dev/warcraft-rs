@@ -1,15 +1,18 @@
 # warcraft-rs
 
-A Rust library and CLI toolset for parsing, manipulating, and creating World of Warcraft file formats.
+A Rust library and CLI toolset for parsing, manipulating, and creating World of Warcraft file
+formats.
 
 <div align="center">
 
 [![Discord](https://img.shields.io/discord/1394228766414471219?logo=discord&style=flat-square)](https://discord.gg/Jj4uWy3DGP)
 [![Sponsor](https://img.shields.io/github/sponsors/danielsreichenbach?logo=github&style=flat-square)](https://github.com/sponsors/danielsreichenbach)
-[![CI Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
+[![CI
+Status](https://github.com/wowemulation-dev/warcraft-rs/workflows/CI/badge.svg)](https://github.com/wowemulation-dev/warcraft-rs/actions)
 [![docs.rs](https://img.shields.io/docsrs/warcraft-rs)](https://docs.rs/warcraft-rs)
 [![Rust Version](https://img.shields.io/badge/rust-1.92+-orange.svg)](https://www.rust-lang.org)
-[![Crates.io Version](https://img.shields.io/crates/v/warcraft-rs)](https://crates.io/crates/warcraft-rs)
+[![Crates.io
+Version](https://img.shields.io/crates/v/warcraft-rs)](https://crates.io/crates/warcraft-rs)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE-APACHE)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 
@@ -32,7 +35,9 @@ Supports World of Warcraft versions **1.12.1 through 5.4.8**:
 ## Features
 
 - **MPQ Archives** - Game data archives with StormLib compatibility and
+
   parallel processing
+
 - **DBC** - Client database files containing game data
 - **BLP Textures** - Compressed texture format with DXT and palette support
 - **M2 Models** - Character, creature, and object 3D models
@@ -143,8 +148,11 @@ If you find this project useful, please consider
 This is currently a nights-and-weekends effort by one person. Funding goals:
 
 - **20 hours/week** - Sustained funding to dedicate real development time
+
   instead of squeezing it into spare hours
+
 - **Public CDN mirror** - Host a community mirror for World of Warcraft builds,
+
   ensuring long-term availability of historical game data
 
 ## Contributing
@@ -156,7 +164,8 @@ guidelines. Thanks to all [contributors](CONTRIBUTORS.md).
 
 This project is dual-licensed under either:
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+  <http://www.apache.org/licenses/LICENSE-2.0>)
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 You may choose to use either license at your option.

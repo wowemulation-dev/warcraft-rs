@@ -1,10 +1,12 @@
 # wow-blp Examples
 
-This directory contains examples demonstrating how to use the wow-blp crate for loading and saving BLP texture files.
+This directory contains examples demonstrating how to use the wow-blp crate for loading and saving
+BLP texture files.
 
 ## Running Examples
 
-All examples accept command-line arguments. If no arguments are provided, they use default filenames.
+All examples accept command-line arguments. If no arguments are provided, they use default
+filenames.
 
 ## Examples
 
@@ -24,6 +26,7 @@ cargo run --example load -- icon.blp icon.jpg
 ```
 
 **Features demonstrated:**
+
 - Loading BLP files of any version (BLP0/1/2)
 - Extracting the main image (mipmap level 0)
 - Saving to standard image formats
@@ -44,6 +47,7 @@ cargo run --example save -- photo.jpg texture.blp
 ```
 
 **Features demonstrated:**
+
 - Loading standard image formats (PNG, JPEG, etc.)
 - Converting to BLP1 format with RAW1 compression
 - Generating mipmaps automatically
@@ -51,7 +55,8 @@ cargo run --example save -- photo.jpg texture.blp
 
 ## Advanced Usage
 
-For more advanced examples showing different BLP formats and options, see the integration tests in the `tests/` directory or the main crate documentation.
+For more advanced examples showing different BLP formats and options, see the integration tests in
+the `tests/` directory or the main crate documentation.
 
 ### Example: Creating BLP2 with DXT5 Compression
 
@@ -78,6 +83,7 @@ save_blp(&blp, "output.blp")?;
 ## Test Data
 
 To test these examples, you can:
+
 1. Extract BLP files from WoW MPQ archives using the warcraft-rs CLI
 2. Use any PNG/JPEG image as input for the save example
 3. Download sample BLP files from WoW modding communities

@@ -95,7 +95,7 @@ jobs:
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             ls -la target/${{ matrix.target }}/release/*.exe || true
           else
-            ls -la target/${{ matrix.target }}/release/${BINARY_DEFAULT} || true
+            ls -la target/${{ matrix.target }}/release/"${BINARY_DEFAULT}" || true
           fi
 
       - name: Upload cross-compilation artifacts for ${{ matrix.target }}

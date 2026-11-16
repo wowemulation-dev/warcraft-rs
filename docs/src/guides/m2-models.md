@@ -928,5 +928,8 @@ pub fn optimize_m2_geometry(skin: &M2Skin) -> OptimizedMesh {
 
 - [M2 Format Documentation](https://wowdev.wiki/M2) - Complete M2 format specification
 - [WoW Model Viewer](https://github.com/Marlamin/WoWModelViewer) - Reference implementation
-- [Skeletal Animation](https://learnopengl.com/Guest-Articles/2020/Skeletal-Animation) - Understanding skeletal animation
-- [GPU Skinning](https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-4-animation-gpu) - GPU-based skeletal animation
+- [Skeletal Animation](https://learnopengl.com/Guest-Articles/2020/Skeletal-Animation) -
+  Understanding skeletal animation
+- [GPU
+  Skinning](https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-4-animation-gpu)
+  - GPU-based skeletal animation

@@ -184,7 +184,6 @@ println!("WDL version: {:?}", wdl.version);
 
 ## Loading Models (M2)
 
-
 ### Basic Model Loading
 
 ```rust
@@ -292,7 +291,6 @@ let wmo = parse_wmo(&mut Cursor::new(data))?;
 
 ## Reading Databases (DBC)
 
-
 ### Basic DBC Reading
 
 ```rust
@@ -387,4 +385,5 @@ let textures: Vec<_> = texture_paths
 - Explore [File Format Reference](../formats/README.md)
 - Read format-specific guides in [Guides](../guides/)
 - Check [API Documentation](../api/)
-- See [Example Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/warcraft-rs/examples)
+- See [Example
+  Projects](https://github.com/wowemulation-dev/warcraft-rs/tree/main/warcraft-rs/examples)

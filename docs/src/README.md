@@ -7,7 +7,9 @@ provides examples for parsing and handling them.
 
 - [Quick Start Guide](getting-started/quick-start.md) - Get up and running quickly
 - [Installation](getting-started/installation.md) - Detailed installation
+
   instructions
+
 - [Basic Usage](getting-started/basic-usage.md) - Common usage patterns
 
 ## File Formats
@@ -15,6 +17,7 @@ provides examples for parsing and handling them.
 ### Archives
 
 - [MPQ Format](formats/archives/mpq.md) - Blizzard's archive format
+
   (100% StormLib compatible)
 
 ### Terrain and World Data

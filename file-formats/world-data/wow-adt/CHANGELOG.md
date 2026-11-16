@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-- **Complete Parser Rewrite** - Migrated from manual binary parsing to BinRead-based declarative parsing
+- **Complete Parser Rewrite** - Migrated from manual binary parsing to BinRead-based declarative
+  parsing
   - All chunk parsing now uses BinRead derive macros for type safety
   - Changed internal parser architecture to two-phase (discovery + typed parsing)
   - Module structure reorganized with new chunk-specific modules
@@ -147,21 +148,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-- **MFBO chunk structure**: Fixed from incorrect 8 bytes to correct 36 bytes (2 planes × 9 int16 coordinates)
+- **MFBO chunk structure**: Fixed from incorrect 8 bytes to correct 36 bytes (2 planes × 9 int16
+  coordinates)
   - Changed from simple `min: u32, max: u32` to proper `min: [i16; 9], max: [i16; 9]` arrays
   - This matches TrinityCore server implementation and actual WoW client behavior
-- **Version detection API**: Enhanced with `detect_from_chunks_extended()` for full version detection
+- **Version detection API**: Enhanced with `detect_from_chunks_extended()` for full version
+  detection
 - **API reorganization**: Some internal chunk structures updated for consistency
 
 ### Added
 
 - **Complete WoW version support**: Automatic detection for Vanilla through Mists of Pandaria
-- **Split ADT file support**: Cataclysm+ `_tex0`, `_obj0`, `_obj1`, `_lod` file parsing with merge functionality  
+- **Split ADT file support**: Cataclysm+ `_tex0`, `_obj0`, `_obj1`, `_lod` file parsing with merge
+  functionality
 - **Enhanced chunk parsing**:
   - MAMP chunk parser (4-byte texture amplifier values for Cataclysm+)
   - MTXP chunk parser (texture parameters for MoP+ with 16-byte entries)
   - Enhanced MH2O water chunk support (already implemented)
-- **TrinityCore compliance**: All chunk structures validated against authoritative server implementation
+- **TrinityCore compliance**: All chunk structures validated against authoritative server
+  implementation
 - **Test suite**: 30+ tests including version-specific and TrinityCore compliance validation
 - **Version-specific features**: Progressive chunk detection based on expansion evolution
 - **High-level split file API**: `SplitAdtLoader` for handling Cataclysm+ split terrain files
@@ -169,7 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **MFBO flight boundaries**: Now use correct 36-byte structure matching game files and server code
-- **Version detection**: Enhanced logic can distinguish between all WoW versions based on chunk presence
+- **Version detection**: Enhanced logic can distinguish between all WoW versions based on chunk
+  presence
 - **Chunk parsing accuracy**: All chunk sizes and structures verified against real game data
 - **Documentation examples**: Updated with correct API usage and field names
 
